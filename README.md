@@ -10,6 +10,8 @@
 
 ![1691583329105](image/README/1691583329105.png)
 
+体验网址：[http://www.aideepin.com](http://www.aideepin.com/)
+
 该仓库为后端服务，前端项目见[aideepin-web](https://github.com/moyangzhan/aideepin-web)
 
 ### 如何部署
