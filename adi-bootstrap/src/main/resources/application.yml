@@ -1,0 +1,60 @@
+server:
+  port: 9999
+  context-path: /
+  session:
+    timeout: 28800
+  tomcat:
+    uri-encoding: UTF-8
+
+spring:
+  application:
+    name: AiDeepIn
+  profiles:
+    active: dev
+  jackson:
+    date-format: "yyyy-MM-dd HH:mm:ss"
+    time-zone: "GMT+8"
+    serialization: { write-dates-as-timestamps: false }
+  cache:
+    type: redis
+    redis:
+      key-prefix: CACHE
+      time-to-live: 1d
+  mail:
+    default-encoding: UTF-8
+    protocol: smtps
+    host: your-email-host  # smtp.exmail.qq.com
+    username: your-email-username # xxx@qq.com
+    password: your-email-password
+    port: 465
+    properties:
+      mail:
+        smtp:
+          ssl:
+            enable: true
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+mybatis-plus:
+  # 支持统配符 * 或者 ; 分割
+  mapper-locations: classpath*:/mapper/*.xml
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+logging:
+  file: /data/logs
+
+adi:
+  frontend-url: http://www.aideepin.com
+  backend-url: http://www.aideepin.com/api
+
+local:
+  files: /data/files/
+  images: /data/images/
+  tmp_images: /data/tmp_images/

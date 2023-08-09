@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/aideepin?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&tinyInt1isBit=false&allowMultiQueries=true
+    username: your-mysql-account
+    password: your-mysql-password
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      database: 0
+      lettuce:
+        pool:
+          #连接池最大连接数
+          max-active: 20
+          #连接池最大阻塞等待时间
+          max-wait: -1
+          #连接池中的最大空闲连接
+          max-idle: 5
+          #连接池中的最小空闲连接
+          min-idle: 1

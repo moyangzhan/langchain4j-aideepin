@@ -1,0 +1,24 @@
+version: '3.7'
+services:
+  redis:
+    image: redis:6.2.5
+    container_name: redis
+    ports:
+      - 6379:6379
+    volumes:
+      - /data/redis/data:/data
+      - /data/redis/config:/usr/local/etc/redis/redis.conf
+      - /data/redis/logs:/logs
+    command: ["redis-server","/usr/local/etc/redis/redis.conf"]
+  aideepin:
+    image: adi-bootstrap:${IMAGE_VERSION}
+    container_name: aideepin
+    build: ../adi-chat
+    environment:
+      APP_VERSION: ${APP_VERSION}
+      TZ: ${TZ}
+      APP_PROFILE: ${APP_PROFILE}
+    ports:
+      - 9999:9999
+    volumes:
+      - /data/aideepin/logs:/data/logs
