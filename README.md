@@ -12,6 +12,8 @@
 
 体验网址：[http://www.aideepin.com](http://www.aideepin.com/)
 
+接入的模型：ChatGPT 3.5，DALL-E 2
+
 该仓库为后端服务，前端项目见[aideepin-web](https://github.com/moyangzhan/aideepin-web)
 
 ### 如何部署
