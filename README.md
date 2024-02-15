@@ -34,6 +34,16 @@
 
 该仓库为后端服务，前端项目见[langchain4j-aideepin-web](https://github.com/moyangzhan/langchain4j-aideepin-web)
 
+### 功能点
+
+* 登录注册
+* 聊天历史记录
+
+* AI生图、改图
+* RAG知识库
+
+* token限制
+
 ### 技术
 
 后端：
