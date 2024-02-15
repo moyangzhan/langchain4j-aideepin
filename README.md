@@ -4,20 +4,23 @@
 
 **LangChain4j-AiDeepin**
 基于 ChatGPT 等大语言模型与 Langchain4j 等应用框架实现，开源、可离线部署的检索增强生成(RAG)大模型知识库项目。
-功能：
 
-* AI聊天
-* AI生图
-* 大模型知识库（RAG）
+### 功能点
 
-![1691585301627](image/README/1691585301627.png)
+* 登录注册
+* 聊天历史记录
+* AI生图、改图
+* RAG知识库
+* token统计
+
+![1691585301627](image/README/1691585301627.png "登录注册")
 
 **AI聊天：**
 ![1691583184761](image/README/1691583184761.png)
 
-![1691583124744](image/README/1691583124744.png)
+![1691583124744](image/README/1691583124744.png "AI绘图")
 
-![1691583329105](image/README/1691583329105.png)
+![1691583329105](image/README/1691583329105.png "token统计")
 
 **知识库：**
 ![kbindex](image/README/kbidx.png)
@@ -33,16 +36,6 @@
 接入的模型：ChatGPT 3.5，DALL-E 2
 
 该仓库为后端服务，前端项目见[langchain4j-aideepin-web](https://github.com/moyangzhan/langchain4j-aideepin-web)
-
-### 功能点
-
-* 登录注册
-* 聊天历史记录
-
-* AI生图、改图
-* RAG知识库
-
-* token限制
 
 ### 技术
 
@@ -114,7 +107,6 @@ docker run -d \
   -v="/data/aideepin/logs:/data/logs" \
   aideepin:0.0.1
 ```
-
 
 ### 待办：
 
