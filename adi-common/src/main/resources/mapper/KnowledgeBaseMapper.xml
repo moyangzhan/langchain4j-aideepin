@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moyz.adi.common.mapper.KnowledgeBaseMapper">
+    <select id="searchByAdmin" resultType="com.moyz.adi.common.entity.KnowledgeBase">
+        select *
+        from adi_knowledge_base
+        where is_deleted = false
+        <if test="keyword != null and keyword != ''">
+            and title like "%"#{keyword}"%"
+        </if>
+        order by update_time desc
+    </select>
+
+    <select id="searchByUser" resultType="com.moyz.adi.common.entity.KnowledgeBase">
+        select *
+        from adi_knowledge_base
+        where is_deleted = false
+        <choose>
+            <when test="includeOthersPublic">
+                nd (is_public = true or owner_id = #{ownerId})
+            </when>
+            <otherwise>
+                and owner_id = #{ownerId}
+            </otherwise>
+        </choose>
+        <if test="keyword != null and keyword != ''">
+            and title like "%"#{keyword}"%"
+        </if>
+        order by update_time desc
+    </select>
+
+</mapper>

@@ -1,9 +1,9 @@
 spring:
   datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/aideepin?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&tinyInt1isBit=false&allowMultiQueries=true
-    username: your-mysql-account
-    password: your-mysql-password
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:3306/aideepin?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&tinyInt1isBit=false&allowMultiQueries=true
+    username: your-db-account
+    password: your-db-password
   data:
     redis:
       host: localhost

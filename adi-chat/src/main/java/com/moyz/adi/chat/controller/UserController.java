@@ -32,7 +32,7 @@ public class UserController {
 
     @Operation(summary = "用户信息")
     @GetMapping("/{uuid}")
-    public void login(@Validated @PathVariable String uuid) {
+    public void info(@Validated @PathVariable String uuid) {
         log.info(uuid);
     }
 

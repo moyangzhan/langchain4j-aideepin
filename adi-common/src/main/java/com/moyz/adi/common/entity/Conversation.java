@@ -45,7 +45,4 @@ public class Conversation extends BaseEntity {
     @Schema(title = "set the system message to ai, ig: you are a lawyer")
     @TableField("ai_system_message")
     private String aiSystemMessage;
-
-    @TableField(value = "is_delete")
-    private Boolean isDelete;
 }

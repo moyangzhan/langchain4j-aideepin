@@ -5,7 +5,7 @@ import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.moyz.adi.common.entity.UserDayCost;
 import com.moyz.adi.common.mapper.UserDayCostMapper;
-import com.moyz.adi.common.model.CostStat;
+import com.moyz.adi.common.vo.CostStat;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.moyz.adi.common.util.UserUtil;
 import lombok.extern.slf4j.Slf4j;

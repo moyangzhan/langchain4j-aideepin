@@ -1,13 +1,16 @@
 package com.moyz.adi.common.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.moyz.adi.common.cosntant.AdiConstant;
-import com.moyz.adi.common.model.RequestRateLimit;
-import com.moyz.adi.common.util.JsonUtil;
-import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.entity.SysConfig;
 import com.moyz.adi.common.mapper.SysConfigMapper;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.moyz.adi.common.util.JsonUtil;
+import com.moyz.adi.common.util.LocalCache;
+import com.moyz.adi.common.vo.RequestRateLimit;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -21,7 +24,7 @@ public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
     @Scheduled(fixedDelay = 20 * 60 * 1000)
     public void reload() {
         log.info("reload system config");
-        List<SysConfig> configsFromDB = this.lambdaQuery().eq(SysConfig::getIsDelete, false).list();
+        List<SysConfig> configsFromDB = this.lambdaQuery().eq(SysConfig::getIsDeleted, false).list();
         if (LocalCache.CONFIGS.isEmpty()) {
             configsFromDB.stream().forEach(item -> LocalCache.CONFIGS.put(item.getName(), item.getValue()));
         } else {
@@ -56,6 +59,26 @@ public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
 
     public static String getSecretKey() {
         return LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.SECRET_KEY);
+    }
+
+    public static String getByKey(String key) {
+        return LocalCache.CONFIGS.get(key);
+    }
+
+    public static Integer getIntByKey(String key) {
+        String val = LocalCache.CONFIGS.get(key);
+        if (null != val) {
+            return Integer.parseInt(val);
+        }
+        return null;
+    }
+
+    public Page<SysConfig> search(String keyword, Integer currentPage, Integer pageSize) {
+        LambdaQueryWrapper<SysConfig> wrapper = new LambdaQueryWrapper<>();
+        if (StringUtils.isNotBlank(keyword)) {
+            wrapper.eq(SysConfig::getName, keyword);
+        }
+        return baseMapper.selectPage(new Page<>(currentPage, pageSize), wrapper);
     }
 
 }

@@ -1,30 +1,34 @@
 package com.moyz.adi.common.helper;
 
-import com.didalgo.gpt3.ChatFormatDescriptor;
-import com.didalgo.gpt3.Encoding;
-import com.didalgo.gpt3.GPT3Tokenizer;
-import com.didalgo.gpt3.TokenCount;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.moyz.adi.common.cosntant.AdiConstant;
+import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.entity.AiImage;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.model.AnswerMeta;
-import com.moyz.adi.common.model.ChatMeta;
-import com.moyz.adi.common.model.QuestionMeta;
+import com.moyz.adi.common.interfaces.IChatAssistant;
 import com.moyz.adi.common.service.FileService;
 import com.moyz.adi.common.service.SysConfigService;
-import com.moyz.adi.common.util.FileUtil;
 import com.moyz.adi.common.util.ImageUtil;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.TriConsumer;
+import com.moyz.adi.common.vo.AnswerMeta;
+import com.moyz.adi.common.vo.ChatMeta;
+import com.moyz.adi.common.vo.QuestionMeta;
+import com.moyz.adi.common.vo.SseAskParams;
 import com.theokanning.openai.OpenAiApi;
-import com.theokanning.openai.completion.chat.ChatCompletionChoice;
-import com.theokanning.openai.completion.chat.ChatCompletionRequest;
-import com.theokanning.openai.completion.chat.ChatMessage;
-import com.theokanning.openai.image.*;
+import com.theokanning.openai.image.CreateImageEditRequest;
+import com.theokanning.openai.image.CreateImageVariationRequest;
+import com.theokanning.openai.image.ImageResult;
 import com.theokanning.openai.service.OpenAiService;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.model.image.ImageModel;
+import dev.langchain4j.model.openai.OpenAiImageModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.TokenStream;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
@@ -35,19 +39,23 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import retrofit2.Retrofit;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.OPENAI_CREATE_IMAGE_RESP_FORMATS_URL;
 import static com.moyz.adi.common.cosntant.AdiConstant.OPENAI_CREATE_IMAGE_SIZES;
 import static com.theokanning.openai.service.OpenAiService.defaultClient;
 import static com.theokanning.openai.service.OpenAiService.defaultRetrofit;
+import static dev.ai4j.openai4j.image.ImageModel.DALL_E_SIZE_1024_x_1024;
+import static dev.ai4j.openai4j.image.ImageModel.DALL_E_SIZE_512_x_512;
+import static dev.langchain4j.model.openai.OpenAiModelName.DALL_E_2;
 
 @Slf4j
 @Service
@@ -62,21 +70,23 @@ public class OpenAiHelper {
     @Value("${openai.proxy.http-port:0}")
     private int proxyHttpPort;
 
-    @Value("${local.images}")
-    private String localImagesPath;
-
     @Resource
     private FileService fileService;
 
     @Resource
     private ObjectMapper objectMapper;
 
-    public OpenAiService getOpenAiService(User user) {
+    public String getSecretKey() {
         String secretKey = SysConfigService.getSecretKey();
-        String userSecretKey = user.getSecretKey();
-        if (StringUtils.isNotBlank(userSecretKey)) {
-            secretKey = userSecretKey;
+        User user = ThreadContext.getCurrentUser();
+        if (null != user && StringUtils.isNotBlank(user.getSecretKey())) {
+            secretKey = user.getSecretKey();
         }
+        return secretKey;
+    }
+
+    public OpenAiService getOpenAiService() {
+        String secretKey = getSecretKey();
         if (proxyEnable) {
             Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyHttpPort));
             OkHttpClient client = defaultClient(secretKey, Duration.of(60, ChronoUnit.SECONDS))
@@ -90,102 +100,121 @@ public class OpenAiHelper {
         return new OpenAiService(secretKey, Duration.of(60, ChronoUnit.SECONDS));
     }
 
-    /**
-     * Send http request to openai server <br/>
-     * Calculate token
-     *
-     * @param user
-     * @param regenerateQuestionUuid
-     * @param chatMessageList
-     * @param sseEmitter
-     * @param consumer
-     */
-    public void sseAsk(User user, String regenerateQuestionUuid, List<ChatMessage> chatMessageList, SseEmitter sseEmitter, TriConsumer<String, QuestionMeta, AnswerMeta> consumer) {
-        final int[] answerTokens = {0};
-        StringBuilder response = new StringBuilder();
-        OpenAiService service = getOpenAiService(user);
-        ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest
-                .builder()
-                .model(AdiConstant.DEFAULT_MODEL)
-                .messages(chatMessageList)
-                .n(1)
-                .logitBias(new HashMap<>())
-                .build();
-        service.streamChatCompletion(chatCompletionRequest)
-                .doOnError(onError -> {
-                    log.error("openai error", onError);
-                    sseEmitter.send(SseEmitter.event().name("error").data(onError.getMessage()));
-                    sseEmitter.complete();
-                }).subscribe(completionChunk -> {
-                    answerTokens[0]++;
-                    List<ChatCompletionChoice> choices = completionChunk.getChoices();
-                    String content = choices.get(0).getMessage().getContent();
-                    log.info("get content:{}", content);
-                    if (null == content && response.isEmpty()) {
-                        return;
-                    }
-                    if (null == content || AdiConstant.OPENAI_MESSAGE_DONE_FLAG.equals(content)) {
-                        log.info("OpenAI返回数据结束了");
-                        sseEmitter.send(AdiConstant.OPENAI_MESSAGE_DONE_FLAG);
-
-
-                        GPT3Tokenizer tokenizer = new GPT3Tokenizer(Encoding.CL100K_BASE);
-                        int questionTokens = 0;
-                        try {
-                            questionTokens = TokenCount.fromMessages(chatMessageList, tokenizer, ChatFormatDescriptor.forModel(AdiConstant.DEFAULT_MODEL));
-                        } catch (IllegalArgumentException e) {
-                            log.error("该模型的token无法统计,model:{}", AdiConstant.DEFAULT_MODEL);
-                        }
-                        System.out.println("requestTokens:" + questionTokens);
-                        System.out.println("返回内容：" + response);
-
-                        String questionUuid = StringUtils.isNotBlank(regenerateQuestionUuid) ? regenerateQuestionUuid : UUID.randomUUID().toString().replace("-", "");
-                        QuestionMeta questionMeta = new QuestionMeta(questionTokens, questionUuid);
-                        AnswerMeta answerMeta = new AnswerMeta(answerTokens[0], UUID.randomUUID().toString().replace("-", ""));
-                        ChatMeta chatMeta = new ChatMeta(questionMeta, answerMeta);
-//                        String meta = JsonUtil.toJson(chatMeta).replaceAll("\r\n", "");
-                        String meta = JsonUtil.toJson(chatMeta).replaceAll("\r\n", "");
-                        log.info("meta:" + meta);
-                        sseEmitter.send(" [META]" + meta);
-                        // close eventSourceEmitter after tokens was calculated
-                        sseEmitter.complete();
-                        consumer.accept(response.toString(), questionMeta, answerMeta);
-                        return;
-                    }
-                    //加空格配合前端的fetchEventSource进行解析，见https://github.com/Azure/fetch-event-source/blob/45ac3cfffd30b05b79fbf95c21e67d4ef59aa56a/src/parse.ts#L129-L133
-                    sseEmitter.send(" " + content);
-                    response.append(content);
-                });
-
-
-        System.out.println("返回内容1111：" + response);
+    public IChatAssistant getChatAssistant(ChatMemory chatMemory) {
+        String secretKey = getSecretKey();
+        OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder = OpenAiStreamingChatModel.builder();
+        if (proxyEnable) {
+            Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyHttpPort));
+            builder.proxy(proxy);
+        }
+        builder.apiKey(secretKey).timeout(Duration.of(60, ChronoUnit.SECONDS));
+        AiServices<IChatAssistant> serviceBuilder = AiServices.builder(IChatAssistant.class)
+                .streamingChatLanguageModel(builder.build());
+        if (null != chatMemory) {
+            serviceBuilder.chatMemory(chatMemory);
+        }
+        return serviceBuilder.build();
     }
 
-    public List<Image> createImage(User user, AiImage aiImage) {
+    public ImageModel getImageModel(User user, String size) {
+        String secretKey = getSecretKey();
+        if (proxyEnable) {
+            Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyHttpPort));
+            return OpenAiImageModel.builder()
+                    .modelName(DALL_E_2)
+                    .apiKey(secretKey)
+                    .user(user.getUuid())
+                    .responseFormat(OPENAI_CREATE_IMAGE_RESP_FORMATS_URL)
+                    .size(StringUtils.defaultString(size, DALL_E_SIZE_512_x_512))
+                    .logRequests(true)
+                    .logResponses(true)
+                    .withPersisting(false)
+                    .maxRetries(2)
+                    .proxy(proxy)
+                    .build();
+        }
+        return OpenAiImageModel.builder()
+                .modelName(DALL_E_2)
+                .apiKey(secretKey)
+                .user(user.getUuid())
+                .responseFormat(OPENAI_CREATE_IMAGE_RESP_FORMATS_URL)
+                .size(StringUtils.defaultString(size, DALL_E_SIZE_512_x_512))
+                .logRequests(true)
+                .logResponses(true)
+                .withPersisting(false)
+                .maxRetries(2)
+                .build();
+    }
+
+    /**
+     * Send http request to llm server
+     */
+    public void sseAsk(SseAskParams params, TriConsumer<String, QuestionMeta, AnswerMeta> consumer) {
+        IChatAssistant chatAssistant = getChatAssistant(params.getChatMemory());
+        TokenStream tokenStream;
+        if (StringUtils.isNotBlank(params.getSystemMessage())) {
+            tokenStream = chatAssistant.chat(params.getSystemMessage(), params.getUserMessage());
+        } else {
+            tokenStream = chatAssistant.chat(params.getUserMessage());
+        }
+        tokenStream.onNext((content) -> {
+                    log.info("get content:{}", content);
+                    //加空格配合前端的fetchEventSource进行解析，见https://github.com/Azure/fetch-event-source/blob/45ac3cfffd30b05b79fbf95c21e67d4ef59aa56a/src/parse.ts#L129-L133
+                    try {
+                        params.getSseEmitter().send(" " + content);
+                    } catch (IOException e) {
+                        log.error("stream onNext error", e);
+                    }
+                })
+                .onComplete((response) -> {
+                    log.info("返回数据结束了:{}", response);
+                    String questionUuid = StringUtils.isNotBlank(params.getRegenerateQuestionUuid()) ? params.getRegenerateQuestionUuid() : UUID.randomUUID().toString().replace("-", "");
+                    QuestionMeta questionMeta = new QuestionMeta(response.tokenUsage().inputTokenCount(), questionUuid);
+                    AnswerMeta answerMeta = new AnswerMeta(response.tokenUsage().outputTokenCount(), UUID.randomUUID().toString().replace("-", ""));
+                    ChatMeta chatMeta = new ChatMeta(questionMeta, answerMeta);
+                    String meta = JsonUtil.toJson(chatMeta).replaceAll("\r\n", "");
+                    log.info("meta:" + meta);
+                    try {
+                        params.getSseEmitter().send(" [META]" + meta);
+                    } catch (IOException e) {
+                        log.error("stream onComplete error", e);
+                        throw new RuntimeException(e);
+                    }
+                    // close eventSourceEmitter after tokens was calculated
+                    params.getSseEmitter().complete();
+                    consumer.accept(response.content().text(), questionMeta, answerMeta);
+                })
+                .onError((error) -> {
+                    log.error("stream error", error);
+                    try {
+                        params.getSseEmitter().send(SseEmitter.event().name("error").data(error.getMessage()));
+                    } catch (IOException e) {
+                        log.error("sse error", e);
+                    }
+                    params.getSseEmitter().complete();
+                })
+                .start();
+    }
+
+    public List<String> createImage(User user, AiImage aiImage) {
         if (aiImage.getGenerateNumber() < 1 || aiImage.getGenerateNumber() > 10) {
             throw new BaseException(ErrorEnum.A_IMAGE_NUMBER_ERROR);
         }
         if (!OPENAI_CREATE_IMAGE_SIZES.contains(aiImage.getGenerateSize())) {
             throw new BaseException(ErrorEnum.A_IMAGE_SIZE_ERROR);
         }
-        OpenAiService service = getOpenAiService(user);
-        CreateImageRequest createImageRequest = new CreateImageRequest();
-        createImageRequest.setPrompt(aiImage.getPrompt());
-        createImageRequest.setN(aiImage.getGenerateNumber());
-        createImageRequest.setSize(aiImage.getGenerateSize());
-        createImageRequest.setResponseFormat(OPENAI_CREATE_IMAGE_RESP_FORMATS_URL);
-        createImageRequest.setUser(user.getUuid());
+        ImageModel imageModel = getImageModel(user, aiImage.getGenerateSize());
         try {
-            ImageResult imageResult = service.createImage(createImageRequest);
-            log.info("createImage response:{}", imageResult);
-            return imageResult.getData();
+            Response<List<Image>> response = imageModel.generate(aiImage.getPrompt(), aiImage.getGenerateNumber());
+            log.info("createImage response:{}", response);
+            return response.content().stream().map(item -> item.url().toString()).collect(Collectors.toList());
         } catch (Exception e) {
             log.error("create image error", e);
         }
         return Collections.emptyList();
     }
 
-    public List<Image> editImage(User user, AiImage aiImage) {
+    public List<String> editImage(User user, AiImage aiImage) {
         File originalFile = new File(fileService.getImagePath(aiImage.getOriginalImage()));
         File maskFile = null;
         if (StringUtils.isNotBlank(aiImage.getMaskImage())) {
@@ -193,7 +222,7 @@ public class OpenAiHelper {
         }
         //如果不是RGBA类型的图片，先转成RGBA
         File rgbaOriginalImage = ImageUtil.rgbConvertToRgba(originalFile, fileService.getTmpImagesPath(aiImage.getOriginalImage()));
-        OpenAiService service = getOpenAiService(user);
+        OpenAiService service = getOpenAiService();
         CreateImageEditRequest request = new CreateImageEditRequest();
         request.setPrompt(aiImage.getPrompt());
         request.setN(aiImage.getGenerateNumber());
@@ -203,16 +232,16 @@ public class OpenAiHelper {
         try {
             ImageResult imageResult = service.createImageEdit(request, rgbaOriginalImage, maskFile);
             log.info("editImage response:{}", imageResult);
-            return imageResult.getData();
+            return imageResult.getData().stream().map(item -> item.getUrl()).collect(Collectors.toList());
         } catch (Exception e) {
             log.error("edit image error", e);
         }
         return Collections.emptyList();
     }
 
-    public List<Image> createImageVariation(User user, AiImage aiImage) {
+    public List<String> createImageVariation(User user, AiImage aiImage) {
         File imagePath = new File(fileService.getImagePath(aiImage.getOriginalImage()));
-        OpenAiService service = getOpenAiService(user);
+        OpenAiService service = getOpenAiService();
         CreateImageVariationRequest request = new CreateImageVariationRequest();
         request.setN(aiImage.getGenerateNumber());
         request.setSize(aiImage.getGenerateSize());
@@ -221,7 +250,7 @@ public class OpenAiHelper {
         try {
             ImageResult imageResult = service.createImageVariation(request, imagePath);
             log.info("createImageVariation response:{}", imageResult);
-            return imageResult.getData();
+            return imageResult.getData().stream().map(item -> item.getUrl()).collect(Collectors.toList());
         } catch (Exception e) {
             log.error("image variation error", e);
         }

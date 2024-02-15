@@ -10,19 +10,25 @@ import com.moyz.adi.common.entity.Conversation;
 import com.moyz.adi.common.entity.ConversationMessage;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.entity.UserDayCost;
+import com.moyz.adi.common.enums.ChatMessageRoleEnum;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.OpenAiHelper;
 import com.moyz.adi.common.helper.QuotaHelper;
 import com.moyz.adi.common.helper.RateLimitHelper;
 import com.moyz.adi.common.mapper.ConversationMessageMapper;
-import com.moyz.adi.common.model.AnswerMeta;
-import com.moyz.adi.common.model.QuestionMeta;
 import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.moyz.adi.common.util.UserUtil;
-import com.theokanning.openai.completion.chat.ChatMessage;
+import com.moyz.adi.common.vo.AnswerMeta;
+import com.moyz.adi.common.vo.QuestionMeta;
+import com.moyz.adi.common.vo.SseAskParams;
 import com.theokanning.openai.completion.chat.ChatMessageRole;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.TokenWindowChatMemory;
+import dev.langchain4j.model.openai.OpenAiTokenizer;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -35,12 +41,12 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.text.MessageFormat;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static com.moyz.adi.common.enums.ErrorEnum.B_MESSAGE_NOT_FOUND;
+import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 
 @Slf4j
 @Service
@@ -90,7 +96,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             //check 2: the conversation has been deleted
             Conversation delConv = conversationService.lambdaQuery()
                     .eq(Conversation::getUuid, askReq.getConversationUuid())
-                    .eq(Conversation::getIsDelete, true)
+                    .eq(Conversation::getIsDeleted, true)
                     .one();
             if (null != delConv) {
                 sendErrorMsg(sseEmitter, "该对话已经删除");
@@ -100,7 +106,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             //check 3: conversation quota
             Long convsCount = conversationService.lambdaQuery()
                     .eq(Conversation::getUserId, user.getId())
-                    .eq(Conversation::getIsDelete, false)
+                    .eq(Conversation::getIsDeleted, false)
                     .count();
             long convsMax = Integer.parseInt(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.CONVERSATION_MAX_NUM));
             if (convsCount >= convsMax) {
@@ -175,12 +181,16 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                     }
                 }
         );
+        SseAskParams sseAskParams = new SseAskParams();
         String prompt = askReq.getPrompt();
         if (StringUtils.isNotBlank(askReq.getRegenerateQuestionUuid())) {
-            prompt = getPromptMsgByQuestionUuid(askReq.getRegenerateQuestionUuid()).getContent();
+            prompt = getPromptMsgByQuestionUuid(askReq.getRegenerateQuestionUuid()).getRemark();
         }
+        sseAskParams.setSystemMessage(StringUtils.EMPTY);
+        sseAskParams.setSseEmitter(sseEmitter);
+        sseAskParams.setUserMessage(prompt);
+        sseAskParams.setRegenerateQuestionUuid(askReq.getRegenerateQuestionUuid());
         //questions
-        final List<ChatMessage> chatMessageList = new ArrayList<>();
         //system message
         Conversation conversation = conversationService.lambdaQuery()
                 .eq(Conversation::getUuid, askReq.getConversationUuid())
@@ -188,8 +198,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                 .orElse(null);
         if (null != conversation) {
             if (StringUtils.isNotBlank(conversation.getAiSystemMessage())) {
-                ChatMessage chatMessage = new ChatMessage(ChatMessageRole.SYSTEM.value(), conversation.getAiSystemMessage());
-                chatMessageList.add(chatMessage);
+                sseAskParams.setSystemMessage(conversation.getAiSystemMessage());
             }
             //history message
             if (Boolean.TRUE.equals(conversation.getUnderstandContextEnable()) && user.getUnderstandContextMsgPairNum() > 0) {
@@ -200,19 +209,23 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                         .last("limit " + user.getUnderstandContextMsgPairNum() * 2)
                         .list();
                 if (!historyMsgList.isEmpty()) {
+                    ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(1000, new OpenAiTokenizer(GPT_3_5_TURBO));
                     historyMsgList.sort(Comparator.comparing(ConversationMessage::getId));
                     for (ConversationMessage historyMsg : historyMsgList) {
-                        ChatMessage chatMessage = new ChatMessage(historyMsg.getMessageRole(), historyMsg.getContent());
-                        chatMessageList.add(chatMessage);
+                        if (ChatMessageRole.USER.value().equals(historyMsg.getMessageRole())) {
+                            UserMessage userMessage = UserMessage.from(historyMsg.getRemark());
+                            chatMemory.add(userMessage);
+                        } else if (ChatMessageRole.SYSTEM.value().equals(historyMsg.getMessageRole())) {
+                            SystemMessage userMessage = SystemMessage.from(historyMsg.getRemark());
+                            chatMemory.add(userMessage);
+                        }
                     }
+                    sseAskParams.setChatMemory(chatMemory);
                 }
 
             }
         }
-        //new user message
-        ChatMessage userMessage = new ChatMessage(ChatMessageRole.USER.value(), prompt);
-        chatMessageList.add(userMessage);
-        openAiHelper.sseAsk(user, askReq.getRegenerateQuestionUuid(), chatMessageList, sseEmitter, (response, questionMeta, answerMeta) -> {
+        openAiHelper.sseAsk(sseAskParams, (response, questionMeta, answerMeta) -> {
             try {
                 _this.saveAfterAiResponse(user, askReq, response, questionMeta, answerMeta);
             } catch (Exception e) {
@@ -228,7 +241,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         queryWrapper.eq(ConversationMessage::getConversationId, convId);
         queryWrapper.eq(ConversationMessage::getParentMessageId, 0);
         queryWrapper.lt(ConversationMessage::getId, maxId);
-        queryWrapper.eq(ConversationMessage::getIsDelete, false);
+        queryWrapper.eq(ConversationMessage::getIsDeleted, false);
         queryWrapper.last("limit " + pageSize);
         queryWrapper.orderByDesc(ConversationMessage::getId);
         return getBaseMapper().selectList(queryWrapper);
@@ -257,8 +270,8 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             question.setUuid(questionMeta.getUuid());
             question.setConversationId(conversation.getId());
             question.setConversationUuid(convUuid);
-            question.setMessageRole(ChatMessageRole.USER.value());
-            question.setContent(prompt);
+            question.setMessageRole(ChatMessageRoleEnum.USER.getValue());
+            question.setRemark(prompt);
             question.setTokens(questionMeta.getTokens());
             question.setSecretKeyType(secretKeyType);
             question.setUnderstandContextMsgPairNum(user.getUnderstandContextMsgPairNum());
@@ -273,8 +286,8 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         aiAnswer.setUuid(answerMeta.getUuid());
         aiAnswer.setConversationId(conversation.getId());
         aiAnswer.setConversationUuid(convUuid);
-        aiAnswer.setMessageRole(ChatMessageRole.ASSISTANT.value());
-        aiAnswer.setContent(response);
+        aiAnswer.setMessageRole(ChatMessageRoleEnum.ASSISTANT.getValue());
+        aiAnswer.setRemark(response);
         aiAnswer.setTokens(answerMeta.getTokens());
         aiAnswer.setParentMessageId(promptMsg.getId());
         aiAnswer.setSecretKeyType(secretKeyType);
@@ -321,8 +334,8 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         return this.lambdaUpdate()
                 .eq(ConversationMessage::getUuid, uuid)
                 .eq(ConversationMessage::getUserId, ThreadContext.getCurrentUserId())
-                .eq(ConversationMessage::getIsDelete, false)
-                .set(ConversationMessage::getIsDelete, true)
+                .eq(ConversationMessage::getIsDeleted, false)
+                .set(ConversationMessage::getIsDeleted, true)
                 .update();
     }
 

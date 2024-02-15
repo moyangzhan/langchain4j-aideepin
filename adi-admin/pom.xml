@@ -11,18 +11,7 @@
 
     <artifactId>adi-admin</artifactId>
 
-    <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
-
     <dependencies>
-        <dependency>
-            <groupId>com.moyz</groupId>
-            <artifactId>adi-bootstrap</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
-        </dependency>
         <dependency>
             <groupId>com.moyz</groupId>
             <artifactId>adi-common</artifactId>

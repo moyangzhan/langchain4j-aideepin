@@ -9,11 +9,16 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.BiFunction;
 
 @Slf4j
 public class MPPageUtil {
 
     public static <T, U> Page<U> convertTo(Page<T> source, Page<U> target, Class<U> targetRecordClass) {
+        return MPPageUtil.convertTo(source, target, targetRecordClass, null);
+    }
+
+    public static <T, U> Page<U> convertTo(Page<T> source, Page<U> target, Class<U> targetRecordClass, BiFunction<T, U, U> biFunction) {
         BeanUtils.copyProperties(source, target);
         List<U> records = new ArrayList<>();
         target.setRecords(records);
@@ -21,6 +26,9 @@ public class MPPageUtil {
             for (T t : source.getRecords()) {
                 U u = targetRecordClass.getDeclaredConstructor().newInstance();
                 BeanUtils.copyProperties(t, u);
+                if (null != biFunction) {
+                    biFunction.apply(t, u);
+                }
                 records.add(u);
             }
         } catch (NoSuchMethodException e1) {

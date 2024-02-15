@@ -1,6 +1,6 @@
 package com.moyz.adi.common.util;
 
-import com.moyz.adi.common.model.RequestRateLimit;
+import com.moyz.adi.common.vo.RequestRateLimit;
 
 import java.util.HashMap;
 import java.util.Map;

@@ -35,7 +35,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
     public List<ConvDto> listByUser() {
         List<Conversation> list = this.lambdaQuery()
                 .eq(Conversation::getUserId, ThreadContext.getCurrentUserId())
-                .eq(Conversation::getIsDelete, false)
+                .eq(Conversation::getIsDeleted, false)
                 .orderByDesc(Conversation::getId)
                 .last("limit " + sysConfigService.getConversationMaxNum())
                 .list();
@@ -61,7 +61,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
             ConversationMessage maxMsg = conversationMessageService.lambdaQuery()
                     .select(ConversationMessage::getId)
                     .eq(ConversationMessage::getUuid, maxMsgUuid)
-                    .eq(ConversationMessage::getIsDelete, false)
+                    .eq(ConversationMessage::getIsDeleted, false)
                     .one();
             if (null == maxMsg) {
                 throw new RuntimeException("找不到对应的消息");
@@ -88,7 +88,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
         List<ConversationMessage> childMessages = conversationMessageService
                 .lambdaQuery()
                 .in(ConversationMessage::getParentMessageId, parentIds)
-                .eq(ConversationMessage::getIsDelete, false)
+                .eq(ConversationMessage::getIsDeleted, false)
                 .list();
         Map<Long, List<ConversationMessage>> idToMessages = childMessages.stream().collect(Collectors.groupingBy(ConversationMessage::getParentMessageId));
 
@@ -126,7 +126,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
         Conversation conversation = this.lambdaQuery()
                 .eq(Conversation::getUuid, uuid)
                 .eq(Conversation::getUserId, ThreadContext.getCurrentUserId())
-                .eq(Conversation::getIsDelete, false)
+                .eq(Conversation::getIsDeleted, false)
                 .one();
         if (null == conversation) {
             throw new BaseException(A_CONVERSATION_NOT_EXIST);
@@ -144,7 +144,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
         return this.lambdaUpdate()
                 .eq(Conversation::getUuid, uuid)
                 .eq(Conversation::getUserId, ThreadContext.getCurrentUserId())
-                .set(Conversation::getIsDelete, true)
+                .set(Conversation::getIsDeleted, true)
                 .update();
     }
 

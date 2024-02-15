@@ -1,18 +1,18 @@
 package com.moyz.adi.common.config;
 
 import com.baomidou.mybatisplus.annotation.DbType;
-import com.baomidou.mybatisplus.core.config.GlobalConfig;
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.BlockAttackInnerInterceptor;
-import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
-import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.common.collect.Lists;
+import com.moyz.adi.common.util.LocalDateTimeUtil;
+import com.pgvector.PGvector;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.context.annotation.Bean;
@@ -34,7 +34,7 @@ public class BeanConfig {
 
     @Bean
     public RestTemplate restTemplate() {
-        log.info("Configuration==create restTemplate");
+        log.info("Configuration:create restTemplate");
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         // 设置建立连接超时时间  毫秒
         requestFactory.setConnectTimeout(60000);
@@ -50,9 +50,9 @@ public class BeanConfig {
 
     @Bean
     @Primary
-    public ObjectMapper objectMapper(Jackson2ObjectMapperBuilder builder) {
-        log.info("Configuration==create objectMapper");
-        ObjectMapper objectMapper = builder.createXmlMapper(false).build();
+    public ObjectMapper objectMapper() {
+        log.info("Configuration:create objectMapper");
+        ObjectMapper objectMapper = new Jackson2ObjectMapperBuilder().createXmlMapper(false).build();
         objectMapper.registerModules(LocalDateTimeUtil.getSimpleModule(), new JavaTimeModule(), new Jdk8Module());
         //设置null值不参与序列化(字段不被显示)
         objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
@@ -88,12 +88,18 @@ public class BeanConfig {
         bean.setDataSource(dataSource);
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
         // 分页插件
-        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
+        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.POSTGRE_SQL));
         // 防止全表更新
         interceptor.addInnerInterceptor(new BlockAttackInnerInterceptor());
         bean.setPlugins(interceptor);
         bean.setMapperLocations(
                 new PathMatchingResourcePatternResolver().getResources("classpath*:/mapper/*.xml"));
+        MybatisConfiguration configuration = bean.getConfiguration();
+        if(null == configuration){
+            configuration = new MybatisConfiguration();
+            bean.setConfiguration(configuration);
+        }
+        bean.getConfiguration().getTypeHandlerRegistry().register(PGvector.class, PostgresVectorTypeHandler.class);
         return bean.getObject();
     }
 

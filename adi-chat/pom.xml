@@ -14,11 +14,6 @@
     <dependencies>
         <dependency>
             <groupId>com.moyz</groupId>
-            <artifactId>adi-bootstrap</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>com.moyz</groupId>
             <artifactId>adi-common</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>

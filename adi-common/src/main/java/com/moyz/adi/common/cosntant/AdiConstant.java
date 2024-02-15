@@ -54,8 +54,7 @@ public class AdiConstant {
     public static final List<String> OPENAI_CREATE_IMAGE_SIZES = List.of("256x256", "512x512", "1024x1024");
 
 
-
-    public static class GenerateImage{
+    public static class GenerateImage {
         public static final int INTERACTING_METHOD_GENERATE_IMAGE = 1;
         public static final int INTERACTING_METHOD_EDIT_IMAGE = 2;
         public static final int INTERACTING_METHOD_VARIATION = 3;
@@ -78,4 +77,6 @@ public class AdiConstant {
         public static final String QUOTA_BY_IMAGE_MONTHLY = "quota_by_image_monthly";
 
     }
+
+    public static final String[] POI_DOC_TYPES = {"doc", "docx", "ppt", "pptx", "xls", "xlsx"};
 }

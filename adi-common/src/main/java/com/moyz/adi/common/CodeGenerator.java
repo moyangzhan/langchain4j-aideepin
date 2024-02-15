@@ -10,7 +10,7 @@ import java.util.Collections;
 
 public class CodeGenerator {
     public static void main(String[] args) {
-        FastAutoGenerator.create("jdbc:mysql://localhost:3306/aideepin?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&tinyInt1isBit=false&allowMultiQueries=true", "root", "123456")
+        FastAutoGenerator.create("jdbc:postgres://172.17.30.40:5432/aideepin?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&tinyInt1isBit=false&allowMultiQueries=true", "postgres", "postgres")
                 .globalConfig(builder -> {
                     builder.author("moyz") // 设置作者
                             .enableSwagger() // 开启 swagger 模式
@@ -35,7 +35,7 @@ public class CodeGenerator {
                             .pathInfo(Collections.singletonMap(OutputFile.xml, "D://mybatisplus-generatorcode")); // 设置mapperXml生成路径
                 })
                 .strategyConfig(builder -> {
-                    builder.addInclude("adi_user,adi_conversation,adi_conversation_message") // 设置需要生成的表名
+                    builder.addInclude("adi_knowledge_base_qa_record") // 设置需要生成的表名
                             .addTablePrefix("adi_");
                     builder.mapperBuilder().enableBaseResultMap().enableMapperAnnotation().build();
                 })

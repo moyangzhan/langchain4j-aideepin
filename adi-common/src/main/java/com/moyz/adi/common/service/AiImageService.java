@@ -17,7 +17,6 @@ import com.moyz.adi.common.mapper.AiImageMapper;
 import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.moyz.adi.common.util.UserUtil;
-import com.theokanning.openai.image.Image;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -174,7 +173,7 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
             String requestTimesKey = MessageFormat.format(RedisKeyConstant.USER_REQUEST_TEXT_TIMES, user.getId());
             rateLimitHelper.increaseRequestTimes(requestTimesKey, LocalCache.IMAGE_RATE_LIMIT_CONFIG);
 
-            List<Image> images = new ArrayList<>();
+            List<String> images = new ArrayList<>();
             if (aiImage.getInteractingMethod() == INTERACTING_METHOD_GENERATE_IMAGE) {
                 images = openAiHelper.createImage(user, aiImage);
             } else if (aiImage.getInteractingMethod() == INTERACTING_METHOD_EDIT_IMAGE) {
@@ -183,8 +182,8 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
                 images = openAiHelper.createImageVariation(user, aiImage);
             }
             List<String> imageUuids = new ArrayList();
-            images.forEach(image -> {
-                String imageUuid = fileService.saveToLocal(user, image.getUrl());
+            images.forEach(imageUrl -> {
+                String imageUuid = fileService.saveToLocal(user, imageUrl);
                 imageUuids.add(imageUuid);
             });
             String imageUuidsJoin = imageUuids.stream().collect(Collectors.joining(","));
@@ -192,7 +191,7 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
                 _this.lambdaUpdate().eq(AiImage::getId, aiImage.getId()).set(AiImage::getProcessStatus, STATUS_FAIL).update();
                 return;
             }
-            String respImagesPath = images.stream().map(Image::getUrl).collect(Collectors.joining(","));
+            String respImagesPath = images.stream().collect(Collectors.joining(","));
             updateAiImageStatus(aiImage.getId(), respImagesPath, imageUuidsJoin, STATUS_SUCCESS);
 
             //Update the cost of current user
@@ -231,7 +230,7 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
     public AiImagesListResp listAll(@RequestParam Long maxId, @RequestParam int pageSize) {
         List<AiImage> list = this.lambdaQuery()
                 .eq(AiImage::getUserId, ThreadContext.getCurrentUserId())
-                .eq(AiImage::getIsDelete, false)
+                .eq(AiImage::getIsDeleted, false)
                 .lt(AiImage::getId, maxId)
                 .orderByDesc(AiImage::getId)
                 .last("limit " + pageSize)

@@ -17,7 +17,4 @@ public class SysConfig extends BaseEntity {
     @Schema(title = "配置项的值")
     private String value;
 
-    @Schema(title = "是否删除（0：未删除，1：已删除）")
-    @TableField(value = "is_delete")
-    private Boolean isDelete;
 }

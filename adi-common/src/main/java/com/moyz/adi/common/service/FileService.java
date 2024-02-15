@@ -38,14 +38,14 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
     @Value("${local.tmp_images}")
     private String tmpImagesPath;
 
-    public String writeToLocal(MultipartFile file) {
+    public AdiFile writeToLocal(MultipartFile file) {
         String md5 = MD5Utils.md5ByMultipartFile(file);
         Optional<AdiFile> existFile = this.lambdaQuery()
                 .eq(AdiFile::getMd5, md5)
-                .eq(AdiFile::getIsDelete, false)
+                .eq(AdiFile::getIsDeleted, false)
                 .oneOpt();
         if (existFile.isPresent()) {
-            return existFile.get().getUuid();
+            return existFile.get();
         }
         String uuid = UUID.randomUUID().toString().replace("-", "");
         Pair<String, String> originalFile = FileUtil.saveToLocal(file, imagePath, uuid);
@@ -56,7 +56,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         adiFile.setExt(originalFile.getRight());
         adiFile.setUserId(ThreadContext.getCurrentUserId());
         this.getBaseMapper().insert(adiFile);
-        return uuid;
+        return adiFile;
     }
 
     public String saveToLocal(User user, String sourceImageUrl) {
@@ -83,7 +83,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         return this.lambdaUpdate()
                 .eq(AdiFile::getUserId, ThreadContext.getCurrentUserId())
                 .eq(AdiFile::getUuid, uuid)
-                .set(AdiFile::getIsDelete, true)
+                .set(AdiFile::getIsDeleted, true)
                 .update();
     }
 

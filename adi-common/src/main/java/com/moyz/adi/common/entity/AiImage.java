@@ -45,7 +45,4 @@ public class AiImage extends BaseEntity {
 
     @TableField("process_status")
     private Integer processStatus;
-
-    @TableField("is_delete")
-    private Boolean isDelete;
 }

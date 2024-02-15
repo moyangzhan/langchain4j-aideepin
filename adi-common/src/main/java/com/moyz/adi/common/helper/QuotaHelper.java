@@ -2,7 +2,7 @@ package com.moyz.adi.common.helper;
 
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ErrorEnum;
-import com.moyz.adi.common.model.CostStat;
+import com.moyz.adi.common.vo.CostStat;
 import com.moyz.adi.common.service.UserDayCostService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;

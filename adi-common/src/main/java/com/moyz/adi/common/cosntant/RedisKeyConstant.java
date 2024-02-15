@@ -78,4 +78,17 @@ public class RedisKeyConstant {
      * 值: 用户id，用于校验后续流程中的重置密码使用
      */
     public static final String FIND_MY_PASSWORD = "user:find:password:{0}";
+
+    /**
+     * qa提问次数（每天）
+     * 参数：用户id:日期yyyyMMdd
+     * 值：提问数量
+     */
+    public static final String AQ_ASK_TIMES = "qa:ask:limit:{0}:{1}";
+
+    /**
+     * 知识库知识点生成数量
+     * 值: 用户id
+     */
+    public static final String qa_item_create_limit = "aq:item:create:{0}";
 }

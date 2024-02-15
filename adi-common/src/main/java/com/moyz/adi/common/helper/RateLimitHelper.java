@@ -1,6 +1,6 @@
 package com.moyz.adi.common.helper;
 
-import com.moyz.adi.common.model.RequestRateLimit;
+import com.moyz.adi.common.vo.RequestRateLimit;
 import jakarta.annotation.Resource;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;

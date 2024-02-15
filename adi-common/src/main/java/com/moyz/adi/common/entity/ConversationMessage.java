@@ -39,12 +39,12 @@ public class ConversationMessage extends BaseEntity {
     private Long userId;
 
     @Schema(title = "对话的消息")
-    @TableField("content")
-    private String content;
+    @TableField("remark")
+    private String remark;
 
     @Schema(title = "产生该消息的角色：1: 用户,2:系统,3:助手")
     @TableField("message_role")
-    private String messageRole;
+    private Integer messageRole;
 
     @Schema(title = "消耗的token数量")
     @TableField("tokens")
@@ -57,7 +57,4 @@ public class ConversationMessage extends BaseEntity {
     @Schema(name = "上下文理解中携带的消息对数量（提示词及回复）")
     @TableField("understand_context_msg_pair_num")
     private Integer understandContextMsgPairNum;
-
-    @TableField(value = "is_delete")
-    private Boolean isDelete;
 }

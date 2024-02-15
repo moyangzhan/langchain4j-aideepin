@@ -21,11 +21,11 @@ public class ConvMsgResp {
     private Long parentMessageId;
 
     @Schema(title = "对话的消息")
-    @TableField("content")
-    private String content;
+    @TableField("remark")
+    private String remark;
 
     @Schema(title = "产生该消息的角色：1: 用户,2:系统,3:助手")
-    private String messageRole;
+    private Integer messageRole;
 
     @Schema(title = "消耗的token数量")
     private Integer tokens;

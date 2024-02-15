@@ -3,22 +3,22 @@ package com.moyz.adi.common.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
-import com.moyz.adi.common.cosntant.AdiConstant;
-import com.moyz.adi.common.enums.ErrorEnum;
-import com.moyz.adi.common.enums.UserStatusEnum;
-import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.util.JsonUtil;
-import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.base.ThreadContext;
+import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.cosntant.RedisKeyConstant;
 import com.moyz.adi.common.dto.ConfigResp;
 import com.moyz.adi.common.dto.LoginReq;
 import com.moyz.adi.common.dto.LoginResp;
 import com.moyz.adi.common.dto.UserUpdateReq;
 import com.moyz.adi.common.entity.User;
+import com.moyz.adi.common.enums.ErrorEnum;
+import com.moyz.adi.common.enums.UserStatusEnum;
+import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.AdiMailSender;
 import com.moyz.adi.common.mapper.UserMapper;
-import com.moyz.adi.common.model.CostStat;
+import com.moyz.adi.common.util.JsonUtil;
+import com.moyz.adi.common.util.LocalCache;
+import com.moyz.adi.common.vo.CostStat;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -71,7 +71,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         }
         return this.lambdaQuery()
                 .eq(User::getEmail, email)
-                .eq(User::getIsDelete, false)
+                .eq(User::getIsDeleted, false)
                 .oneOpt()
                 .orElseThrow(() -> new BaseException(A_USER_NOT_EXIST));
     }
@@ -94,7 +94,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         stringRedisTemplate.delete(captchaInCache);
 
         User user = ChainWrappers.lambdaQueryChain(baseMapper)
-                .eq(User::getIsDelete, false)
+                .eq(User::getIsDeleted, false)
                 .eq(User::getEmail, email)
                 .one();
         if (null != user && user.getUserStatus() == UserStatusEnum.NORMAL) {
@@ -112,7 +112,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
 
         //创建用户
         User newOne = new User();
-        newOne.setName(email.substring(0, email.indexOf("@")));
+        newOne.setName(StringUtils.substringBetween(email, "@"));
         newOne.setUuid(UUID.randomUUID().toString().replace("-", ""));
         newOne.setEmail(email);
         newOne.setPassword(hashed);
@@ -157,7 +157,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
         User user = this.lambdaQuery()
                 .eq(User::getEmail, email)
-                .eq(User::getIsDelete, false)
+                .eq(User::getIsDeleted, false)
                 .oneOpt()
                 .orElse(null);
         if (null == user) {
@@ -201,7 +201,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         //captcha check end
 
         User user = this.lambdaQuery()
-                .eq(User::getIsDelete, false)
+                .eq(User::getIsDeleted, false)
                 .eq(User::getEmail, loginReq.getEmail())
                 .oneOpt()
                 .orElseThrow(() -> new BaseException(ErrorEnum.A_USER_NOT_EXIST));

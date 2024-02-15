@@ -25,7 +25,7 @@ import java.util.Map;
 public class PromptService extends ServiceImpl<PromptMapper, Prompt> {
 
     public List<PromptDto> getAll(long userId) {
-        List<Prompt> prompts = this.lambdaQuery().eq(Prompt::getUserId, userId).eq(Prompt::getIsDelete, false).list();
+        List<Prompt> prompts = this.lambdaQuery().eq(Prompt::getUserId, userId).eq(Prompt::getIsDeleted, false).list();
         return MPPageUtil.convertTo(prompts, PromptDto.class);
     }
 
@@ -34,13 +34,13 @@ public class PromptService extends ServiceImpl<PromptMapper, Prompt> {
         if (StringUtils.isNotBlank(keyword)) {
             promptPage = this.lambdaQuery()
                     .eq(Prompt::getUserId, ThreadContext.getCurrentUserId())
-                    .eq(Prompt::getIsDelete, false)
+                    .eq(Prompt::getIsDeleted, false)
                     .like(Prompt::getAct, keyword)
                     .page(new Page<>(currentPage, pageSize));
         } else {
             promptPage = this.lambdaQuery()
                     .eq(Prompt::getUserId, ThreadContext.getCurrentUserId())
-                    .eq(Prompt::getIsDelete, false)
+                    .eq(Prompt::getIsDeleted, false)
                     .page(new Page<>(currentPage, pageSize));
         }
         return MPPageUtil.convertTo(promptPage, new Page<>(), PromptDto.class);
@@ -51,14 +51,14 @@ public class PromptService extends ServiceImpl<PromptMapper, Prompt> {
         if (StringUtils.isNotBlank(keyword)) {
             promptPage = this.lambdaQuery()
                     .eq(Prompt::getUserId, ThreadContext.getCurrentUserId())
-                    .eq(Prompt::getIsDelete, false)
+                    .eq(Prompt::getIsDeleted, false)
                     .like(Prompt::getAct, keyword)
                     .last("limit 10")
                     .list();
         } else {
             promptPage = this.lambdaQuery()
                     .eq(Prompt::getUserId, ThreadContext.getCurrentUserId())
-                    .eq(Prompt::getIsDelete, false)
+                    .eq(Prompt::getIsDeleted, false)
                     .last("limit 10")
                     .list();
         }
@@ -106,7 +106,7 @@ public class PromptService extends ServiceImpl<PromptMapper, Prompt> {
             Prompt existOne = this.lambdaQuery()
                     .eq(Prompt::getUserId, userId)
                     .eq(Prompt::getAct, title)
-                    .eq(Prompt::getIsDelete, false)
+                    .eq(Prompt::getIsDeleted, false)
                     .one();
             if (null != existOne) {
                 //modify
@@ -137,14 +137,14 @@ public class PromptService extends ServiceImpl<PromptMapper, Prompt> {
         Prompt prompt = this.lambdaQuery()
                 .eq(Prompt::getUserId, ThreadContext.getCurrentUserId())
                 .eq(Prompt::getId, id)
-                .eq(Prompt::getIsDelete, false)
+                .eq(Prompt::getIsDeleted, false)
                 .one();
         if (null == prompt) {
             return false;
         }
         Prompt updateOne = new Prompt();
         updateOne.setId(id);
-        updateOne.setIsDelete(true);
+        updateOne.setIsDeleted(true);
         return this.updateById(updateOne);
     }
 
@@ -152,7 +152,7 @@ public class PromptService extends ServiceImpl<PromptMapper, Prompt> {
         Prompt prompt = this.lambdaQuery()
                 .eq(Prompt::getId, id)
                 .eq(Prompt::getUserId, ThreadContext.getCurrentUserId())
-                .eq(Prompt::getIsDelete, false)
+                .eq(Prompt::getIsDeleted, false)
                 .one();
         if (null == prompt) {
             return false;
