@@ -1,17 +1,17 @@
 ## Getting Started
 
-> 声明：此项目只发布于 Github，基于 MIT 协议，免费且作为开源学习使用。并且不会有任何形式的卖号等行为，谨防受骗。
-
-**LangChain4j-AiDeepin**
+**LangChain4j-AIDeepin**
 基于 ChatGPT 等大语言模型与 Langchain4j 等应用框架实现，开源、可离线部署的检索增强生成(RAG)大模型知识库项目。
 
 ### 功能点
 
-* 登录注册
-* 聊天历史记录
-* AI生图、改图
-* RAG知识库
-* token统计
+* 注册&登录
+* 多会话（多角色）
+* 图片生成（文生图、修图、图生图）
+* 提示词
+* 额度控制
+* 自定义openai secret_key
+* 基于大模型的知识库（RAG）
 
 ![1691585301627](image/README/1691585301627.png "登录注册")
 
@@ -110,4 +110,4 @@ docker run -d \
 
 ### 待办：
 
-接入基于ChatGLM的各种模型
+接入各种中文大语言模型
