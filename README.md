@@ -45,7 +45,7 @@ jdk17
 
 springboot3.0.5
 
-[langchain4j](https://github.com/langchain4j/langchain4j)
+[langchain4j(Java version of LangChain)](https://github.com/langchain4j/langchain4j)
 
 **Postgresql(需要安装[pgvector](https://github.com/pgvector/pgvector)扩展)**
 
