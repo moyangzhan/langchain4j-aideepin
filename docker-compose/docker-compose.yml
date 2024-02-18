@@ -13,7 +13,7 @@ services:
   aideepin:
     image: adi-bootstrap:${IMAGE_VERSION}
     container_name: aideepin
-    build: ../adi-chat
+    build: ../adi-bootstrap
     environment:
       APP_VERSION: ${APP_VERSION}
       TZ: ${TZ}
