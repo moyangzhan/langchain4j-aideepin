@@ -71,6 +71,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             knowledgeBase.setOwnerName(user.getName());
             baseMapper.insert(knowledgeBase);
         } else {
+            checkPrivilege(kbEditReq.getId(), null);
             knowledgeBase.setId(kbEditReq.getId());
             baseMapper.updateById(knowledgeBase);
         }
@@ -83,6 +84,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         if (ArrayUtils.isEmpty(docs)) {
             return Collections.emptyList();
         }
+        checkPrivilege(null, kbUuid);
         List<AdiFile> result = new ArrayList<>();
         KnowledgeBase knowledgeBase = ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(KnowledgeBase::getUuid, kbUuid)
@@ -162,8 +164,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     }
 
     public boolean embedding(String kbUuid, boolean forceAll) {
-        boolean privilege = checkPrivilege(null, kbUuid);
-        if (!privilege) throw new BaseException(A_USER_NOT_AUTH);
+        checkPrivilege(null, kbUuid);
         LambdaQueryWrapper<KnowledgeBaseItem> wrapper = new LambdaQueryWrapper();
         wrapper.eq(KnowledgeBaseItem::getIsDeleted, false);
         wrapper.eq(KnowledgeBaseItem::getUuid, kbUuid);
@@ -186,8 +187,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
 
     public boolean softDelete(String uuid) {
-        boolean privs = checkPrivilege(null, uuid);
-        if (!privs) throw new BaseException(A_USER_NOT_AUTH);
+        checkPrivilege(null, uuid);
         return ChainWrappers.lambdaUpdateChain(baseMapper)
                 .eq(KnowledgeBase::getUuid, uuid)
                 .set(KnowledgeBase::getIsDeleted, true)
@@ -225,7 +225,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 .oneOpt().orElseThrow(() -> new BaseException(A_DATA_NOT_FOUND));
     }
 
-    private boolean checkPrivilege(Long kbId, String kbUuid) {
+    private void checkPrivilege(Long kbId, String kbUuid) {
         if (null == kbId && StringUtils.isBlank(kbUuid)) {
             throw new BaseException(A_PARAMS_ERROR);
         }
@@ -235,7 +235,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         }
         boolean privilege = user.getIsAdmin();
         if (privilege) {
-            return true;
+            return;
         }
         LambdaQueryWrapper<KnowledgeBase> wrapper = new LambdaQueryWrapper();
         wrapper.eq(KnowledgeBase::getOwnerId, user.getId());
@@ -244,6 +244,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         } else if (StringUtils.isNotBlank(kbUuid)) {
             wrapper = wrapper.eq(KnowledgeBase::getUuid, kbUuid);
         }
-        return baseMapper.exists(wrapper);
+        boolean exists = baseMapper.exists(wrapper);
+        if (!exists) {
+            throw new BaseException(A_USER_NOT_AUTH);
+        }
     }
 }

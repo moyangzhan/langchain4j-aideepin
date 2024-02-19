@@ -17,7 +17,7 @@
         where is_deleted = false
         <choose>
             <when test="includeOthersPublic">
-                nd (is_public = true or owner_id = #{ownerId})
+                and (is_public = true or owner_id = #{ownerId})
             </when>
             <otherwise>
                 and owner_id = #{ownerId}
