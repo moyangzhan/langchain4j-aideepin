@@ -1,30 +1,25 @@
-package com.moyz.adi.common.helper;
+package com.moyz.adi.common.service;
 
+import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.util.AdiPgVectorEmbeddingStore;
+import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2EmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
-import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.net.InetSocketAddress;
-import java.net.Proxy;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -35,8 +30,7 @@ import static java.util.stream.Collectors.joining;
 
 @Slf4j
 @Service
-public class EmbeddingHelper {
-
+public class RAGService {
     @Value("${spring.datasource.url}")
     private String dataBaseUrl;
 
@@ -45,32 +39,16 @@ public class EmbeddingHelper {
 
     @Value("${spring.datasource.password}")
     private String dataBasePassword;
-
-    @Value("${openai.proxy.enable:false}")
-    private boolean proxyEnable;
-
-    @Value("${openai.proxy.host:0}")
-    private String proxyHost;
-
-    @Value("${openai.proxy.http-port:0}")
-    private int proxyHttpPort;
-
     private static final PromptTemplate promptTemplate = PromptTemplate.from("尽可能准确地回答下面的问题: {{question}}\n\n根据以下知识库的内容:\n{{information}}");
-
-    @Resource
-    private OpenAiHelper openAiHelper;
 
     private EmbeddingModel embeddingModel;
 
     private EmbeddingStore<TextSegment> embeddingStore;
 
-    private ChatLanguageModel chatLanguageModel;
-
     public void init() {
         log.info("initEmbeddingModel");
         embeddingModel = new AllMiniLmL6V2EmbeddingModel();
         embeddingStore = initEmbeddingStore();
-        chatLanguageModel = initChatLanguageModel();
     }
 
     private EmbeddingStore<TextSegment> initEmbeddingStore() {
@@ -107,16 +85,7 @@ public class EmbeddingHelper {
         return embeddingStore;
     }
 
-    private ChatLanguageModel initChatLanguageModel() {
-        OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder().apiKey(openAiHelper.getSecretKey());
-        if (proxyEnable) {
-            Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyHttpPort));
-            builder.proxy(proxy);
-        }
-        return builder.build();
-    }
-
-    public EmbeddingStoreIngestor getEmbeddingStoreIngestor() {
+    private EmbeddingStoreIngestor getEmbeddingStoreIngestor() {
         DocumentSplitter documentSplitter = DocumentSplitters.recursive(1000, 0, new OpenAiTokenizer(GPT_3_5_TURBO));
         EmbeddingStoreIngestor embeddingStoreIngestor = EmbeddingStoreIngestor.builder()
                 .documentSplitter(documentSplitter)
@@ -126,7 +95,24 @@ public class EmbeddingHelper {
         return embeddingStoreIngestor;
     }
 
-    public String findAnswer(String kbUuid, String question) {
+    /**
+     * 对文档切块并向量化
+     *
+     * @param document 知识库文档
+     */
+    public void ingest(Document document) {
+        getEmbeddingStoreIngestor().ingest(document);
+    }
+
+    /**
+     * 召回并搜索
+     *
+     * @param kbUuid    知识库uuid
+     * @param question  用户的问题
+     * @param modelName LLM model name
+     * @return
+     */
+    public String findAnswer(String kbUuid, String question, String modelName) {
 
         // Embed the question
         Embedding questionEmbedding = embeddingModel.embed(question).content();
@@ -147,10 +133,6 @@ public class EmbeddingHelper {
         }
         Prompt prompt = promptTemplate.apply(Map.of("question", question, "information", Matcher.quoteReplacement(information)));
 
-        AiMessage aiMessage = chatLanguageModel.generate(prompt.toUserMessage()).content();
-
-        // See an answer from the model
-        return aiMessage.text();
+        return new LLMContext(modelName).getLLMService().chat(prompt.toUserMessage());
     }
-
 }

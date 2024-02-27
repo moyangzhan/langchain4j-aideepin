@@ -21,4 +21,6 @@ public class AskReq {
      * If not empty, it means will request AI with the exist prompt, param {@code prompt} is ignored
      */
     private String regenerateQuestionUuid;
+
+    private String modelName;
 }

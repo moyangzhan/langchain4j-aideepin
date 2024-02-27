@@ -98,7 +98,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
                 .eq(User::getEmail, email)
                 .one();
         if (null != user && user.getUserStatus() == UserStatusEnum.NORMAL) {
-            throw new BaseException(A_REGISTER_USER_EXIST);
+            throw new BaseException(A_USER_EXIST);
         }
         if (null != user) {
             sendActiveEmail(email);
@@ -112,7 +112,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
 
         //创建用户
         User newOne = new User();
-        newOne.setName(StringUtils.substringBetween(email, "@"));
+        newOne.setName(StringUtils.substringBefore(email, "@"));
         newOne.setUuid(UUID.randomUUID().toString().replace("-", ""));
         newOne.setEmail(email);
         newOne.setPassword(hashed);

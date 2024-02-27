@@ -10,10 +10,8 @@
 * 图片生成（文生图、修图、图生图）
 * 提示词
 * 额度控制
-* 自定义openai secret_key
 * 基于大模型的知识库（RAG）
-
-![1691585301627](image/README/1691585301627.png "登录注册")
+* 多模型随意切换
 
 **AI聊天：**
 ![1691583184761](image/README/1691583184761.png)
@@ -31,13 +29,17 @@
 
 ![kb03](image/README/kb03.png)
 
-体验网址：[http://www.aideepin.com](http://www.aideepin.com/)
+### 体验网址
+[http://www.aideepin.com](http://www.aideepin.com/)
 
-接入的模型：ChatGPT 3.5，DALL-E 2
-
-该仓库为后端服务，前端项目见[langchain4j-aideepin-web](https://github.com/moyangzhan/langchain4j-aideepin-web)
+### 接入的模型：
+* ChatGPT 3.5
+* 通义千问
+* DALL-E 2
 
 ### 技术
+
+该仓库为后端服务，前端项目见[langchain4j-aideepin-web](https://github.com/moyangzhan/langchain4j-aideepin-web)
 
 后端：
 
@@ -61,10 +63,11 @@ vue3+typescript+pnpm
 
 * 创建数据库aideepin
 * 执行docs/create.sql
-* 填充openai的secret\_key
+* 填充openai的secretKey 或者 灵积模型的apiKey
 
 ```plaintext
-update adi_sys_config set value = 'my_chatgpt_secret_key' where name = 'secret_key'
+update adi_sys_config set value = '{"secret_key":"my_openai_secret_key"}' where name = 'openai_setting';
+update adi_sys_config set value = '{"api_key":"my_dashcope_api_key"}' where name = 'dashscope_setting';
 ```
 
 * 修改配置文件

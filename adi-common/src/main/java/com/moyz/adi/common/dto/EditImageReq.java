@@ -19,4 +19,6 @@ public class EditImageReq {
     @Min(1)
     @Max(10)
     private int number;
+
+    private String modelName;
 }

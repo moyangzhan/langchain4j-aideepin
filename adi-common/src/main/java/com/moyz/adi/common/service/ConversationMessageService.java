@@ -13,7 +13,7 @@ import com.moyz.adi.common.entity.UserDayCost;
 import com.moyz.adi.common.enums.ChatMessageRoleEnum;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.helper.OpenAiHelper;
+import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.QuotaHelper;
 import com.moyz.adi.common.helper.RateLimitHelper;
 import com.moyz.adi.common.mapper.ConversationMessageMapper;
@@ -58,9 +58,6 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
-
-    @Resource
-    private OpenAiHelper openAiHelper;
 
     @Resource
     private QuotaHelper quotaHelper;
@@ -225,9 +222,9 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
 
             }
         }
-        openAiHelper.sseAsk(sseAskParams, (response, questionMeta, answerMeta) -> {
+        new LLMContext(askReq.getModelName()).getLLMService().sseChat(sseAskParams, (response, questionMeta, answerMeta) -> {
             try {
-                _this.saveAfterAiResponse(user, askReq, response, questionMeta, answerMeta);
+                _this.saveAfterAiResponse(user, askReq, (String) response, (QuestionMeta) questionMeta, (AnswerMeta) answerMeta);
             } catch (Exception e) {
                 log.error("error:", e);
             } finally {

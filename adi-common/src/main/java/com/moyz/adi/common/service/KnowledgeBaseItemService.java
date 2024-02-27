@@ -10,7 +10,6 @@ import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.entity.KnowledgeBaseItem;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.helper.EmbeddingHelper;
 import com.moyz.adi.common.mapper.KnowledgeBaseItemMapper;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
@@ -32,7 +31,7 @@ import static com.moyz.adi.common.enums.ErrorEnum.*;
 public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMapper, KnowledgeBaseItem> {
 
     @Resource
-    private EmbeddingHelper embeddingHelper;
+    private RAGService ragService;
 
     @Resource
     private KnowledgeBaseEmbeddingService knowledgeBaseEmbeddingService;
@@ -103,12 +102,20 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
     }
 
 
-    public boolean embedding(KnowledgeBaseItem one) {
+    /**
+     * 知识点向量化，如向量已存在，则先删除
+     *
+     * @param kbItem
+     * @return
+     */
+    public boolean embedding(KnowledgeBaseItem kbItem) {
+        knowledgeBaseEmbeddingService.deleteByItemUuid(kbItem.getUuid());
+
         Metadata metadata = new Metadata();
-        metadata.add("kb_uuid", one.getKbUuid());
-        metadata.add("kb_item_uuid", one.getUuid());
-        Document document = new Document(one.getRemark(), metadata);
-        embeddingHelper.getEmbeddingStoreIngestor().ingest(document);
+        metadata.add("kb_uuid", kbItem.getKbUuid());
+        metadata.add("kb_item_uuid", kbItem.getUuid());
+        Document document = new Document(kbItem.getRemark(), metadata);
+        ragService.ingest(document);
         return true;
     }
 

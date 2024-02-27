@@ -9,7 +9,6 @@ import com.moyz.adi.common.cosntant.RedisKeyConstant;
 import com.moyz.adi.common.dto.KbEditReq;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.helper.EmbeddingHelper;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.util.BizPager;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
@@ -44,7 +43,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     private StringRedisTemplate stringRedisTemplate;
 
     @Resource
-    private EmbeddingHelper embeddingHelper;
+    private RAGService ragService;
 
     @Resource
     private KnowledgeBaseItemService knowledgeBaseItemService;
@@ -148,7 +147,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                         .add("kb_uuid", knowledgeBase.getUuid())
                         .add("kb_item_uuid", knowledgeBaseItem.getUuid());
 
-                embeddingHelper.getEmbeddingStoreIngestor().ingest(docWithoutPath);
+                ragService.ingest(docWithoutPath);
 
                 knowledgeBaseItemService
                         .lambdaUpdate()
@@ -194,7 +193,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 .update();
     }
 
-    public KnowledgeBaseQaRecord answerAndRecord(String kbUuid, String question) {
+    public KnowledgeBaseQaRecord answerAndRecord(String kbUuid, String question, String modelName) {
 
         String key = MessageFormat.format(RedisKeyConstant.AQ_ASK_TIMES, ThreadContext.getCurrentUserId(), LocalDateTimeUtil.format(LocalDateTime.now(), "yyyyMMdd"));
         String askTimes = stringRedisTemplate.opsForValue().get(key);
@@ -205,7 +204,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         stringRedisTemplate.opsForValue().increment(key);
 
         KnowledgeBase knowledgeBase = getOrThrow(kbUuid);
-        String answer = embeddingHelper.findAnswer(kbUuid, question);
+        String answer = ragService.findAnswer(kbUuid, question, modelName);
         String uuid = UUID.randomUUID().toString().replace("-", "");
         KnowledgeBaseQaRecord newObj = new KnowledgeBaseQaRecord();
         newObj.setKbId(knowledgeBase.getId());

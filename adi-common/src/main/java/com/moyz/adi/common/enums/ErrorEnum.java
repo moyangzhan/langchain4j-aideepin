@@ -14,7 +14,7 @@ public enum ErrorEnum {
     A_IMAGE_SIZE_ERROR("A0010", "图片尺寸不对"),
     A_FILE_NOT_EXIST("A0011", "文件不存在"),
     A_DRAWING("A0012", "作图还未完成"),
-    A_REGISTER_USER_EXIST("A0013", "账号已经存在，请使用账号密码登录"),
+    A_USER_EXIST("A0013", "账号已经存在，请使用账号密码登录"),
     A_FIND_PASSWORD_CODE_ERROR("A0014", "重置码已过期或不存在"),
     A_USER_WAIT_CONFIRM("A0015", "用户未激活"),
     A_USER_NOT_AUTH("A0016", "用户无权限"),
@@ -29,7 +29,8 @@ public enum ErrorEnum {
     B_FIND_IMAGE_404("B0005", "无法找到图片"),
     B_DAILY_QUOTA_USED("B0006", "今天额度已经用完"),
     B_MONTHLY_QUOTA_USED("B0007", "当月额度已经用完"),
-
+    B_LLM_NOT_SUPPORT("B0008", "LLM不支持该功能"),
+    B_LLM_SECRET_KEY_NOT_SET("B0009", "LLM的secret key没设置"),
     B_MESSAGE_NOT_FOUND("B0008", "消息不存在");
 
     private String code;

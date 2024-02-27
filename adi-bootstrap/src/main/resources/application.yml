@@ -53,6 +53,10 @@ logging:
 adi:
   frontend-url: http://www.aideepin.com
   backend-url: http://www.aideepin.com/api
+  proxy:
+    enable: false
+    host: 127.0.0.1
+    http-port: 1087
 
 local:
   files: /data/files/

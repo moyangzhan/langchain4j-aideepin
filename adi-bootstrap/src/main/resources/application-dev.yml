@@ -25,16 +25,13 @@ logging:
   file:
     path: D:/data/logs
 
-openai:
+adi:
+  frontend-url: http://localhost:1002
+  backend-url: http://localhost:1002/api
   proxy:
     enable: true
     host: 127.0.0.1
     http-port: 1087
-
-adi:
-  frontend-url: http://localhost:1002
-  backend-url: http://localhost:1002/api
-
 
 local:
   files: D:/data/files/

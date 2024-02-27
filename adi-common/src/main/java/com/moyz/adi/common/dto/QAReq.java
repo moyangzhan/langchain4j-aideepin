@@ -10,4 +10,6 @@ public class QAReq {
 
     @NotBlank
     private String question;
+
+    private String modelName;
 }

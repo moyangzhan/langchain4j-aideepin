@@ -57,10 +57,6 @@ public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
         return Integer.parseInt(maxNum);
     }
 
-    public static String getSecretKey() {
-        return LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.SECRET_KEY);
-    }
-
     public static String getByKey(String key) {
         return LocalCache.CONFIGS.get(key);
     }

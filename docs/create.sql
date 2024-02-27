@@ -201,7 +201,7 @@ CREATE TABLE public.adi_sys_config
 (
     id          bigserial primary key,
     name        character varying(100) DEFAULT ''::character varying NOT NULL,
-    value       character varying(100) DEFAULT ''::character varying NOT NULL,
+    value       character varying(1000) DEFAULT ''::character varying NOT NULL,
     create_time timestamp              DEFAULT localtimestamp        NOT NULL,
     update_time timestamp              DEFAULT localtimestamp        NOT NULL,
     is_deleted  boolean                DEFAULT false                 NOT NULL
@@ -382,7 +382,9 @@ CREATE TRIGGER trigger_user_day_cost_update_time
 EXECUTE PROCEDURE update_modified_column();
 
 INSERT INTO adi_sys_config (name, value)
-VALUES ('secret_key', '');
+VALUES ('openai_setting', '{"secret_key":""}');
+INSERT INTO adi_sys_config (name, value)
+VALUES ('dashscope_setting', '{"api_key":""}');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('request_text_rate_limit', '{"times":24,"minutes":3}');
 INSERT INTO adi_sys_config (name, value)

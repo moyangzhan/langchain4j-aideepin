@@ -3,10 +3,23 @@
 <mapper namespace="com.moyz.adi.common.mapper.KnowledgeBaseEmbeddingMapper">
 
     <select id="selectByItemUuid" resultType="com.moyz.adi.common.entity.KnowledgeBaseEmbedding">
-        select * from adi_knowledge_base_embedding where metadata->>'kb_item_uuid' = #{kbItemUuid}
+        select *
+        from adi_knowledge_base_embedding
+        where metadata ->> 'kb_item_uuid' = #{kbItemUuid}
     </select>
 
+    <delete id="deleteByIds">
+        delete from adi_knowledge_base_embedding where embedding_id in
+        <foreach collection="ids" open="(" separator="," close=")" item="id">
+            <if test="id != null and id != ''">
+                #{id}
+            </if>
+        </foreach>
+    </delete>
+
     <delete id="deleteByItemUuid">
-        delete from adi_knowledge_base_embedding where metadata->>'kb_item_uuid' = #{kbItemUuid}
+        delete
+        from adi_knowledge_base_embedding
+        where metadata ->> 'kb_item_uuid' = #{kbItemUuid}
     </delete>
 </mapper>

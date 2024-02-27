@@ -29,7 +29,8 @@ import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 public class TokenFilter extends OncePerRequestFilter {
 
     public static final String[] EXCLUDE_API = {
-            "/auth/"
+            "/auth/",
+            "/model/"
     };
 
     @Resource

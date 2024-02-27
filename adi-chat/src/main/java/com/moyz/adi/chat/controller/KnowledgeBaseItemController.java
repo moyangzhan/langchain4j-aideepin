@@ -39,6 +39,12 @@ public class KnowledgeBaseItemController {
                 .one();
     }
 
+    /**
+     * 知识点向量化
+     *
+     * @param uuid 知识点uuid
+     * @return
+     */
     @PostMapping("/embedding/{uuid}")
     public boolean embedding(@PathVariable String uuid) {
         return knowledgeBaseItemService.checkAndEmbedding(uuid);

@@ -10,7 +10,7 @@ import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.entity.UserDayCost;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.helper.OpenAiHelper;
+import com.moyz.adi.common.helper.ImageModelContext;
 import com.moyz.adi.common.helper.QuotaHelper;
 import com.moyz.adi.common.helper.RateLimitHelper;
 import com.moyz.adi.common.mapper.AiImageMapper;
@@ -46,10 +46,6 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
     @Resource
     @Lazy
     private AiImageService _this;
-
-    @Resource
-    private OpenAiHelper openAiHelper;
-
     @Resource
     private QuotaHelper quotaHelper;
 
@@ -173,13 +169,14 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
             String requestTimesKey = MessageFormat.format(RedisKeyConstant.USER_REQUEST_TEXT_TIMES, user.getId());
             rateLimitHelper.increaseRequestTimes(requestTimesKey, LocalCache.IMAGE_RATE_LIMIT_CONFIG);
 
+            ImageModelContext modelContext = new ImageModelContext();
             List<String> images = new ArrayList<>();
             if (aiImage.getInteractingMethod() == INTERACTING_METHOD_GENERATE_IMAGE) {
-                images = openAiHelper.createImage(user, aiImage);
+                images = modelContext.getModelService().createImage(user, aiImage);
             } else if (aiImage.getInteractingMethod() == INTERACTING_METHOD_EDIT_IMAGE) {
-                images = openAiHelper.editImage(user, aiImage);
+                images = modelContext.getModelService().editImage(user, aiImage);
             } else if (aiImage.getInteractingMethod() == INTERACTING_METHOD_VARIATION) {
-                images = openAiHelper.createImageVariation(user, aiImage);
+                images = modelContext.getModelService().createImageVariation(user, aiImage);
             }
             List<String> imageUuids = new ArrayList();
             images.forEach(imageUrl -> {

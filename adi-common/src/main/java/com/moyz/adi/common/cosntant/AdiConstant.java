@@ -65,7 +65,8 @@ public class AdiConstant {
     }
 
     public static class SysConfigKey {
-        public static final String SECRET_KEY = "secret_key";
+        public static final String OPENAI_SETTING = "openai_setting";
+        public static final String DASHSCOPE_SETTING = "dashscope_setting";
         public static final String REQUEST_TEXT_RATE_LIMIT = "request_text_rate_limit";
         public static final String REQUEST_IMAGE_RATE_LIMIT = "request_image_rate_limit";
         public static final String CONVERSATION_MAX_NUM = "conversation_max_num";

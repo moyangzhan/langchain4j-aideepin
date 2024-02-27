@@ -25,7 +25,7 @@ public class KnowledgeBaseQAController {
 
     @PostMapping("/ask/{kbUuid}")
     public KnowledgeBaseQaRecord ask(@PathVariable String kbUuid, @RequestBody @Validated QAReq req) {
-        return knowledgeBaseService.answerAndRecord(kbUuid, req.getQuestion());
+        return knowledgeBaseService.answerAndRecord(kbUuid, req.getQuestion(), req.getModelName());
     }
 
     @GetMapping("/record/search")

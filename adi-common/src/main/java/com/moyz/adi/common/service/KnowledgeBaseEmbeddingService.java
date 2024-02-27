@@ -23,7 +23,13 @@ public class KnowledgeBaseEmbeddingService extends ServiceImpl<KnowledgeBaseEmbe
         return result;
     }
 
-    public boolean deleteByItemUuid(String kbItemUuid){
+    /**
+     * 删除{kbItemUuid}这个知识库条目的向量
+     *
+     * @param kbItemUuid 知识库条目uuid
+     * @return
+     */
+    public boolean deleteByItemUuid(String kbItemUuid) {
         return baseMapper.deleteByItemUuid(kbItemUuid);
     }
 }
