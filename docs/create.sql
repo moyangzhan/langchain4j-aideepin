@@ -386,6 +386,8 @@ VALUES ('openai_setting', '{"secret_key":""}');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('dashscope_setting', '{"api_key":""}');
 INSERT INTO adi_sys_config (name, value)
+VALUES ('qianfan_setting', '{"api_key":"","secret_key":""}');
+INSERT INTO adi_sys_config (name, value)
 VALUES ('request_text_rate_limit', '{"times":24,"minutes":3}');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('request_image_rate_limit', '{"times":6,"minutes":3}');

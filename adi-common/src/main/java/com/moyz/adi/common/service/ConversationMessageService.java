@@ -201,7 +201,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             if (Boolean.TRUE.equals(conversation.getUnderstandContextEnable()) && user.getUnderstandContextMsgPairNum() > 0) {
                 List<ConversationMessage> historyMsgList = this.lambdaQuery()
                         .eq(ConversationMessage::getUserId, user.getId())
-                        .eq(ConversationMessage::getConversationId, askReq.getConversationUuid())
+                        .eq(ConversationMessage::getConversationUuid, askReq.getConversationUuid())
                         .orderByDesc(ConversationMessage::getConversationId)
                         .last("limit " + user.getUnderstandContextMsgPairNum() * 2)
                         .list();

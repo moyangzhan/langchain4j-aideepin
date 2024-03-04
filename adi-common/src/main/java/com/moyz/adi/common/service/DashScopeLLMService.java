@@ -21,8 +21,8 @@ import static com.moyz.adi.common.enums.ErrorEnum.B_LLM_SECRET_KEY_NOT_SET;
 @Slf4j
 public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
 
-    public DashScopeLLMService(String modelName, Proxy proxy) {
-        super(modelName, AdiConstant.SysConfigKey.DASHSCOPE_SETTING, DashScopeSetting.class, proxy);
+    public DashScopeLLMService(String modelName) {
+        super(modelName, AdiConstant.SysConfigKey.DASHSCOPE_SETTING, DashScopeSetting.class, null);
     }
 
     @Override

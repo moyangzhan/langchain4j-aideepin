@@ -39,7 +39,8 @@ public class Initializer {
             proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyHttpPort));
         }
         LLMContext.addLLMService(OpenAiModelName.GPT_3_5_TURBO, new OpenAiLLMService(OpenAiModelName.GPT_3_5_TURBO, proxy));
-        LLMContext.addLLMService(QwenModelName.QWEN_MAX, new DashScopeLLMService(QwenModelName.QWEN_MAX, proxy));
+        LLMContext.addLLMService(QwenModelName.QWEN_MAX, new DashScopeLLMService(QwenModelName.QWEN_MAX));
+        LLMContext.addLLMService("ERNIE-Bot", new QianFanLLMService("ERNIE-Bot"));
         ImageModelContext.addImageModelService(OpenAiModelName.DALL_E_2, new OpenAiImageModelService(OpenAiModelName.DALL_E_2, proxy));
 
 
