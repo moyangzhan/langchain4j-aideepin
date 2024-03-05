@@ -3,6 +3,12 @@
 **LangChain4j-AIDeepin**
 基于 ChatGPT 等大语言模型与 Langchain4j 等应用框架实现，开源、可离线部署的检索增强生成(RAG)大模型知识库项目。
 
+> **该项目如对您有帮助，欢迎点赞**
+
+### 体验网址
+
+[http://www.aideepin.com](http://www.aideepin.com/)
+
 ### 功能点
 
 * 注册&登录
@@ -13,32 +19,14 @@
 * 基于大模型的知识库（RAG）
 * 多模型随意切换
 
-**AI聊天：**
-![1691583184761](image/README/1691583184761.png)
-
-![1691583124744](image/README/1691583124744.png "AI绘图")
-
-![1691583329105](image/README/1691583329105.png "token统计")
-
-**知识库：**
-![kbindex](image/README/kbidx.png)
-
-![kb01](image/README/kb01.png)
-
-![kb02](image/README/kb02.png)
-
-![kb03](image/README/kb03.png)
-
-### 体验网址
-[http://www.aideepin.com](http://www.aideepin.com/)
-
 ### 接入的模型：
+
 * ChatGPT 3.5
 * 通义千问
 * 文心一言
 * DALL-E 2
 
-### 技术
+### 技术栈
 
 该仓库为后端服务，前端项目见[langchain4j-aideepin-web](https://github.com/moyangzhan/langchain4j-aideepin-web)
 
@@ -114,4 +102,23 @@ docker run -d \
 
 ### 待办：
 
-接入各种中文大语言模型
+增强RAG
+
+
+### 截图
+
+**AI聊天：**
+![1691583184761](image/README/1691583184761.png)
+
+![1691583124744](image/README/1691583124744.png "AI绘图")
+
+![1691583329105](image/README/1691583329105.png "token统计")
+
+**知识库：**
+![kbindex](image/README/kbidx.png)
+
+![kb01](image/README/kb01.png)
+
+![kb02](image/README/kb02.png)
+
+![kb03](image/README/kb03.png)
