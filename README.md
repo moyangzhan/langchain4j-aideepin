@@ -5,11 +5,11 @@
 
 > **该项目如对您有帮助，欢迎点赞**
 
-### 体验网址
+## 体验网址
 
 [http://www.aideepin.com](http://www.aideepin.com/)
 
-### 功能点
+## 功能点
 
 * 注册&登录
 * 多会话（多角色）
@@ -19,14 +19,14 @@
 * 基于大模型的知识库（RAG）
 * 多模型随意切换
 
-### 接入的模型：
+## 接入的模型：
 
 * ChatGPT 3.5
 * 通义千问
 * 文心一言
 * DALL-E 2
 
-### 技术栈
+## 技术栈
 
 该仓库为后端服务，前端项目见[langchain4j-aideepin-web](https://github.com/moyangzhan/langchain4j-aideepin-web)
 
@@ -44,9 +44,9 @@ springboot3.0.5
 
 vue3+typescript+pnpm
 
-### 如何部署
+## 如何部署
 
-#### 初始化
+### 初始化
 
 初始化数据库
 
@@ -65,7 +65,7 @@ update adi_sys_config set value = '{"api_key":"my_dashcope_api_key"}' where name
   * redis: application-[dev|prod].xml中的spring.data.redis
   * mail: application.xml中的spring.mail
 
-#### 编译及运行
+### 编译及运行
 
 * 进入项目
 
@@ -100,12 +100,12 @@ docker run -d \
   aideepin:0.0.1
 ```
 
-### 待办：
+## 待办：
 
 增强RAG
 
 
-### 截图
+## 截图
 
 **AI聊天：**
 ![1691583184761](image/README/1691583184761.png)

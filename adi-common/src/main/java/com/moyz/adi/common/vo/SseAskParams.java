@@ -21,4 +21,5 @@ public class SseAskParams {
 
     private SseEmitter sseEmitter;
 
+    private String modelName;
 }

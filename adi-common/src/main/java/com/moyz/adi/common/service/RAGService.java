@@ -1,22 +1,30 @@
 package com.moyz.adi.common.service;
 
 import com.moyz.adi.common.helper.LLMContext;
+import com.moyz.adi.common.interfaces.TriConsumer;
 import com.moyz.adi.common.util.AdiPgVectorEmbeddingStore;
+import com.moyz.adi.common.vo.AnswerMeta;
+import com.moyz.adi.common.vo.PromptMeta;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2EmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -104,16 +112,7 @@ public class RAGService {
         getEmbeddingStoreIngestor().ingest(document);
     }
 
-    /**
-     * 召回并搜索
-     *
-     * @param kbUuid    知识库uuid
-     * @param question  用户的问题
-     * @param modelName LLM model name
-     * @return
-     */
-    public String findAnswer(String kbUuid, String question, String modelName) {
-
+    public Prompt retrieveAndCreatePrompt(String kbUuid, String question) {
         // Embed the question
         Embedding questionEmbedding = embeddingModel.embed(question).content();
 
@@ -129,10 +128,25 @@ public class RAGService {
                 .collect(joining("\n\n"));
 
         if (StringUtils.isBlank(information)) {
-            return StringUtils.EMPTY;
+            return null;
         }
-        Prompt prompt = promptTemplate.apply(Map.of("question", question, "information", Matcher.quoteReplacement(information)));
+        return promptTemplate.apply(Map.of("question", question, "information", Matcher.quoteReplacement(information)));
+    }
 
-        return new LLMContext(modelName).getLLMService().chat(prompt.toUserMessage());
+    /**
+     * 召回并提问
+     *
+     * @param kbUuid    知识库uuid
+     * @param question  用户的问题
+     * @param modelName LLM model name
+     * @return
+     */
+    public Pair<String, Response<AiMessage>> retrieveAndAsk(String kbUuid, String question, String modelName) {
+        Prompt prompt = retrieveAndCreatePrompt(kbUuid, question);
+        if (null == prompt) {
+            return null;
+        }
+        Response<AiMessage> response = new LLMContext(modelName).getLLMService().chat(prompt.toUserMessage());
+        return new ImmutablePair<>(prompt.text(), response);
     }
 }

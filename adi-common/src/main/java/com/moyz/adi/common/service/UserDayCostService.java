@@ -18,6 +18,23 @@ import java.util.List;
 @Service
 public class UserDayCostService extends ServiceImpl<UserDayCostMapper, UserDayCost> {
 
+    public void appendCostToUser(User user, int tokens) {
+        UserDayCost userDayCost = getTodayCost(user);
+        UserDayCost saveOrUpdateInst = new UserDayCost();
+        if (null == userDayCost) {
+            saveOrUpdateInst.setUserId(user.getId());
+            saveOrUpdateInst.setDay(LocalDateTimeUtil.getToday());
+            saveOrUpdateInst.setTokens(tokens);
+            saveOrUpdateInst.setRequests(1);
+            saveOrUpdateInst.setSecretKeyType(UserUtil.getSecretType(user));
+        } else {
+            saveOrUpdateInst.setId(userDayCost.getId());
+            saveOrUpdateInst.setTokens(userDayCost.getTokens() + tokens);
+            saveOrUpdateInst.setRequests(userDayCost.getRequests() + 1);
+        }
+        saveOrUpdate(saveOrUpdateInst);
+    }
+
     public CostStat costStatByUser(long userId) {
         CostStat result = new CostStat();
 

@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class QuestionMeta {
+public class PromptMeta {
     private Integer tokens;
     private String uuid;
 }

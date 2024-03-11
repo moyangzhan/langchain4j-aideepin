@@ -1,23 +1,27 @@
 package com.moyz.adi.common.interfaces;
 
+import com.fasterxml.jackson.databind.util.JSONPObject;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.vo.AnswerMeta;
 import com.moyz.adi.common.vo.ChatMeta;
-import com.moyz.adi.common.vo.QuestionMeta;
+import com.moyz.adi.common.vo.PromptMeta;
 import com.moyz.adi.common.vo.SseAskParams;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.net.Proxy;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -32,7 +36,7 @@ public abstract class AbstractLLMService<T> {
     protected StreamingChatLanguageModel streamingChatLanguageModel;
     protected ChatLanguageModel chatLanguageModel;
 
-    public AbstractLLMService(String modelName, String settingName, Class<T> clazz, Proxy proxy){
+    public AbstractLLMService(String modelName, String settingName, Class<T> clazz, Proxy proxy) {
         this.modelName = modelName;
         this.proxy = proxy;
         String st = LocalCache.CONFIGS.get(settingName);
@@ -66,11 +70,13 @@ public abstract class AbstractLLMService<T> {
 
     protected abstract StreamingChatLanguageModel buildStreamingChatLLM();
 
-    public String chat(ChatMessage chatMessage) {
-        return getChatLLM().generate(chatMessage).content().text();
+    protected abstract String parseError(Object error);
+
+    public Response<AiMessage> chat(ChatMessage chatMessage) {
+        return getChatLLM().generate(chatMessage);
     }
 
-    public void sseChat(SseAskParams params, TriConsumer<String, QuestionMeta, AnswerMeta> consumer) {
+    public void sseChat(SseAskParams params, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
 
         //create chat assistant
         AiServices<IChatAssistant> serviceBuilder = AiServices.builder(IChatAssistant.class)
@@ -98,7 +104,7 @@ public abstract class AbstractLLMService<T> {
                 .onComplete((response) -> {
                     log.info("返回数据结束了:{}", response);
                     String questionUuid = StringUtils.isNotBlank(params.getRegenerateQuestionUuid()) ? params.getRegenerateQuestionUuid() : UUID.randomUUID().toString().replace("-", "");
-                    QuestionMeta questionMeta = new QuestionMeta(response.tokenUsage().inputTokenCount(), questionUuid);
+                    PromptMeta questionMeta = new PromptMeta(response.tokenUsage().inputTokenCount(), questionUuid);
                     AnswerMeta answerMeta = new AnswerMeta(response.tokenUsage().outputTokenCount(), UUID.randomUUID().toString().replace("-", ""));
                     ChatMeta chatMeta = new ChatMeta(questionMeta, answerMeta);
                     String meta = JsonUtil.toJson(chatMeta).replaceAll("\r\n", "");
@@ -116,7 +122,11 @@ public abstract class AbstractLLMService<T> {
                 .onError((error) -> {
                     log.error("stream error", error);
                     try {
-                        params.getSseEmitter().send(SseEmitter.event().name("error").data(error.getMessage()));
+                        String errorMsg = parseError(error);
+                        if(StringUtils.isBlank(errorMsg)){
+                            errorMsg = error.getMessage();
+                        }
+                        params.getSseEmitter().send(SseEmitter.event().name("error").data(errorMsg));
                     } catch (IOException e) {
                         log.error("sse error", e);
                     }

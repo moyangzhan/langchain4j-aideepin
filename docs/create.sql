@@ -200,11 +200,11 @@ COMMENT ON COLUMN public.adi_prompt.is_deleted IS '0:未删除；1：已删除';
 CREATE TABLE public.adi_sys_config
 (
     id          bigserial primary key,
-    name        character varying(100) DEFAULT ''::character varying NOT NULL,
+    name        character varying(100)  DEFAULT ''::character varying NOT NULL,
     value       character varying(1000) DEFAULT ''::character varying NOT NULL,
-    create_time timestamp              DEFAULT localtimestamp        NOT NULL,
-    update_time timestamp              DEFAULT localtimestamp        NOT NULL,
-    is_deleted  boolean                DEFAULT false                 NOT NULL
+    create_time timestamp               DEFAULT localtimestamp        NOT NULL,
+    update_time timestamp               DEFAULT localtimestamp        NOT NULL,
+    is_deleted  boolean                 DEFAULT false                 NOT NULL
 );
 
 COMMENT ON TABLE public.adi_sys_config IS '系统配置表';
@@ -497,7 +497,10 @@ create table adi_knowledge_base_qa_record
     kb_id           bigint        DEFAULT '0'::bigint           NOT NULL,
     kb_uuid         varchar(32)   default ''::character varying not null,
     question        varchar(1000) default ''::character varying not null,
+    prompt          text          default ''::character varying not null,
+    prompt_tokens   integer       DEFAULT 0                     NOT NULL,
     answer          text          default ''::character varying not null,
+    answer_tokens   integer       DEFAULT 0                     NOT NULL,
     source_file_ids varchar(500)  default ''::character varying not null,
     user_id         bigint        default '0'                   NOT NULL,
     create_time     timestamp     default CURRENT_TIMESTAMP     not null,
@@ -511,9 +514,15 @@ comment on column adi_knowledge_base_qa_record.kb_id is '所属知识库id';
 
 comment on column adi_knowledge_base_qa_record.kb_uuid is '所属知识库uuid';
 
-comment on column adi_knowledge_base_qa_record.question is '问题';
+comment on column adi_knowledge_base_qa_record.question is '用户的原始问题';
+
+comment on column adi_knowledge_base_qa_record.prompt is '提供给LLM的提示词';
+
+comment on column adi_knowledge_base_qa_record.prompt_tokens is '提示词消耗的token';
 
 comment on column adi_knowledge_base_qa_record.answer is '答案';
+
+comment on column adi_knowledge_base_qa_record.answer_tokens is '答案消耗的token';
 
 comment on column adi_knowledge_base_qa_record.source_file_ids is '来源文档id,以逗号隔开';
 

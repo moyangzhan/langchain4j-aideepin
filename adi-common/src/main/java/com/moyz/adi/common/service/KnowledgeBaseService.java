@@ -7,29 +7,35 @@ import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.RedisKeyConstant;
 import com.moyz.adi.common.dto.KbEditReq;
+import com.moyz.adi.common.dto.QAReq;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.util.BizPager;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
+import com.moyz.adi.common.vo.SseAskParams;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.parser.apache.pdfbox.ApachePdfBoxDocumentParser;
 import dev.langchain4j.data.document.parser.apache.poi.ApachePoiDocumentParser;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.output.Response;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.POI_DOC_TYPES;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
@@ -38,6 +44,10 @@ import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.load
 @Slf4j
 @Service
 public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, KnowledgeBase> {
+
+    @Lazy
+    @Resource
+    private KnowledgeBaseService _this;
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
@@ -53,6 +63,12 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
     @Resource
     private FileService fileService;
+
+    @Resource
+    private SSEEmitterHelper sseEmitterHelper;
+
+    @Resource
+    private UserDayCostService userDayCostService;
 
     public KnowledgeBase saveOrUpdate(KbEditReq kbEditReq) {
         String uuid = kbEditReq.getUuid();
@@ -184,7 +200,6 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         }
     }
 
-
     public boolean softDelete(String uuid) {
         checkPrivilege(null, uuid);
         return ChainWrappers.lambdaUpdateChain(baseMapper)
@@ -193,8 +208,29 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 .update();
     }
 
-    public KnowledgeBaseQaRecord answerAndRecord(String kbUuid, String question, String modelName) {
+    public KnowledgeBaseQaRecord ask(String kbUuid, String question, String modelName) {
+        checkRequestTimesOrThrow();
+        KnowledgeBase knowledgeBase = getOrThrow(kbUuid);
+        Pair<String, Response<AiMessage>> responsePair = ragService.retrieveAndAsk(kbUuid, question, modelName);
 
+        Response<AiMessage> ar = responsePair.getRight();
+        int inputTokenCount = ar.tokenUsage().inputTokenCount();
+        int outputTokenCount = ar.tokenUsage().outputTokenCount();
+        userDayCostService.appendCostToUser(ThreadContext.getCurrentUser(), inputTokenCount + outputTokenCount);
+        return knowledgeBaseQaRecordService.createNewRecord(ThreadContext.getCurrentUser(), knowledgeBase, question, responsePair.getLeft(), inputTokenCount, ar.content().text(), outputTokenCount);
+    }
+
+    public SseEmitter sseAsk(String kbUuid, QAReq req) {
+        checkRequestTimesOrThrow();
+        SseEmitter sseEmitter = new SseEmitter();
+        _this.retrieveAndPushToLLM(ThreadContext.getCurrentUser(), sseEmitter, kbUuid, req);
+        return sseEmitter;
+    }
+
+    /**
+     * 知识库问答限额判断
+     */
+    private void checkRequestTimesOrThrow() {
         String key = MessageFormat.format(RedisKeyConstant.AQ_ASK_TIMES, ThreadContext.getCurrentUserId(), LocalDateTimeUtil.format(LocalDateTime.now(), "yyyyMMdd"));
         String askTimes = stringRedisTemplate.opsForValue().get(key);
         String askQuota = SysConfigService.getByKey("quota_by_qa_ask_daily");
@@ -202,19 +238,24 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             throw new BaseException(A_QA_ASK_LIMIT);
         }
         stringRedisTemplate.opsForValue().increment(key);
+    }
 
+
+    @Async
+    public void retrieveAndPushToLLM(User user, SseEmitter sseEmitter, String kbUuid, QAReq req) {
+        log.info("retrieveAndPushToLLM,kbUuid:{},userId:{}", kbUuid, user.getId());
         KnowledgeBase knowledgeBase = getOrThrow(kbUuid);
-        String answer = ragService.findAnswer(kbUuid, question, modelName);
-        String uuid = UUID.randomUUID().toString().replace("-", "");
-        KnowledgeBaseQaRecord newObj = new KnowledgeBaseQaRecord();
-        newObj.setKbId(knowledgeBase.getId());
-        newObj.setKbUuid((knowledgeBase.getUuid()));
-        newObj.setUuid(uuid);
-        newObj.setUserId(ThreadContext.getCurrentUserId());
-        newObj.setQuestion(question);
-        newObj.setAnswer(answer);
-        knowledgeBaseQaRecordService.save(newObj);
-        return knowledgeBaseQaRecordService.lambdaQuery().eq(KnowledgeBaseQaRecord::getUuid, uuid).one();
+
+        String prompt = ragService.retrieveAndCreatePrompt(kbUuid, req.getQuestion()).text();
+        SseAskParams sseAskParams = new SseAskParams();
+        sseAskParams.setSystemMessage(StringUtils.EMPTY);
+        sseAskParams.setSseEmitter(sseEmitter);
+        sseAskParams.setUserMessage(prompt);
+        sseAskParams.setModelName(req.getModelName());
+        sseEmitterHelper.process(user, sseAskParams, (response, promptMeta, answerMeta) -> {
+            knowledgeBaseQaRecordService.createNewRecord(user, knowledgeBase, req.getQuestion(), prompt, promptMeta.getTokens(), response, answerMeta.getTokens());
+            userDayCostService.appendCostToUser(user, promptMeta.getTokens() + answerMeta.getTokens());
+        });
     }
 
     public KnowledgeBase getOrThrow(String kbUuid) {
@@ -248,4 +289,5 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             throw new BaseException(A_USER_NOT_AUTH);
         }
     }
+
 }

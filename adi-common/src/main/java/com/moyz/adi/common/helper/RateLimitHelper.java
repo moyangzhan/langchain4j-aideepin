@@ -14,6 +14,13 @@ public class RateLimitHelper {
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
+    /**
+     * 按固定时间窗口计算请求次数
+     *
+     * @param requestTimesKey redis key
+     * @param rateLimitConfig 请求频率限制配置
+     * @return
+     */
     public boolean checkRequestTimes(String requestTimesKey, RequestRateLimit rateLimitConfig) {
         int requestCountInTimeWindow = 0;
         String rateLimitVal = stringRedisTemplate.opsForValue().get(requestTimesKey);

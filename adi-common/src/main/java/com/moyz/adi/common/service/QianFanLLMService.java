@@ -49,4 +49,9 @@ public class QianFanLLMService extends AbstractLLMService<QianFanSetting> {
                 .secretKey(setting.getSecretKey())
                 .build();
     }
+
+    @Override
+    protected String parseError(Object error) {
+        return null;
+    }
 }

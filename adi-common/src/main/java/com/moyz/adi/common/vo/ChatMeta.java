@@ -6,6 +6,6 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class ChatMeta {
-    private QuestionMeta question;
+    private PromptMeta question;
     private AnswerMeta answer;
 }

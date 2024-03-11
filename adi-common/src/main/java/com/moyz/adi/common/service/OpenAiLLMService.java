@@ -4,7 +4,10 @@ import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
+import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.vo.OpenAiSetting;
+import com.theokanning.openai.OpenAiError;
+import dev.ai4j.openai4j.OpenAiHttpException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -12,6 +15,7 @@ import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.util.Strings;
 
 import java.net.Proxy;
 import java.time.Duration;
@@ -47,6 +51,16 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
             builder.proxy(proxy);
         }
         return builder.build();
+    }
+
+    @Override
+    protected String parseError(Object error) {
+        if(error instanceof OpenAiHttpException){
+            OpenAiHttpException openAiHttpException = (OpenAiHttpException)error;
+            OpenAiError openAiError = JsonUtil.fromJson(openAiHttpException.getMessage(), OpenAiError.class);
+            return openAiError.getError().getMessage();
+        }
+        return Strings.EMPTY;
     }
 
     @Override

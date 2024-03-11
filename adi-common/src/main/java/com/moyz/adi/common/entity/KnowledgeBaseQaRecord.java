@@ -31,11 +31,24 @@ public class KnowledgeBaseQaRecord extends BaseEntity {
     @TableField("question")
     private String question;
 
+    @Schema(title = "最终提供给LLM的提示词")
+    @TableField("prompt")
+    private String prompt;
+
+    @Schema(title = "提供给LLM的提示词所消耗的token数量")
+    @TableField("prompt_tokens")
+    private Integer promptTokens;
+
     @Schema(title = "答案")
     @TableField("answer")
     private String answer;
 
+    @Schema(title = "答案消耗的token")
+    @TableField("answer_tokens")
+    private Integer answerTokens;
+
     @Schema(title = "提问用户id")
     @TableField("user_id")
     private Long userId;
+
 }
