@@ -52,11 +52,21 @@ vue3+typescript+pnpm
 
 * 创建数据库aideepin
 * 执行docs/create.sql
-* 填充openai的secretKey 或者 灵积模型的apiKey
+* 填充各模型的配置
 
+openai的secretKey
 ```plaintext
 update adi_sys_config set value = '{"secret_key":"my_openai_secret_key"}' where name = 'openai_setting';
+```
+
+灵积大模型平台的apiKey
+```plaintext
 update adi_sys_config set value = '{"api_key":"my_dashcope_api_key"}' where name = 'dashscope_setting';
+```
+
+千帆大模型平台的配置
+```plaintext
+update adi_sys_config set value = '{"api_key":"my_qianfan_api_key","secret_key":"my_qianfan_secret_key"}' where name = 'qianfan_setting';
 ```
 
 * 修改配置文件
@@ -103,7 +113,6 @@ docker run -d \
 ## 待办：
 
 增强RAG
-
 
 ## 截图
 
