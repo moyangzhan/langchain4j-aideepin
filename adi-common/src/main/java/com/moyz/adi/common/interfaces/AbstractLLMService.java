@@ -1,6 +1,6 @@
 package com.moyz.adi.common.interfaces;
 
-import com.fasterxml.jackson.databind.util.JSONPObject;
+import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.vo.AnswerMeta;
@@ -20,9 +20,9 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.net.Proxy;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
+
+import static com.moyz.adi.common.enums.ErrorEnum.B_LLM_SERVICE_DISABLED;
 
 @Slf4j
 public abstract class AbstractLLMService<T> {
@@ -73,11 +73,18 @@ public abstract class AbstractLLMService<T> {
     protected abstract String parseError(Object error);
 
     public Response<AiMessage> chat(ChatMessage chatMessage) {
+        if(!isEnabled()){
+            log.error("llm service is disabled");
+            throw new BaseException(B_LLM_SERVICE_DISABLED);
+        }
         return getChatLLM().generate(chatMessage);
     }
 
     public void sseChat(SseAskParams params, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
-
+        if(!isEnabled()){
+            log.error("llm service is disabled");
+            throw new BaseException(B_LLM_SERVICE_DISABLED);
+        }
         //create chat assistant
         AiServices<IChatAssistant> serviceBuilder = AiServices.builder(IChatAssistant.class)
                 .streamingChatLanguageModel(getStreamingChatLLM());

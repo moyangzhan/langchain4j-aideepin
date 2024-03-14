@@ -24,6 +24,7 @@
 * ChatGPT 3.5
 * 通义千问
 * 文心一言
+* ollama
 * DALL-E 2
 
 ## 技术栈
@@ -48,32 +49,41 @@ vue3+typescript+pnpm
 
 ### 初始化
 
-初始化数据库
+**a. 初始化数据库**
 
 * 创建数据库aideepin
 * 执行docs/create.sql
 * 填充各模型的配置
 
 openai的secretKey
+
 ```plaintext
-update adi_sys_config set value = '{"secret_key":"my_openai_secret_key"}' where name = 'openai_setting';
+update adi_sys_config set value = '{"secret_key":"my_openai_secret_key","models":["gpt-3.5-turbo"]}' where name = 'openai_setting';
 ```
 
 灵积大模型平台的apiKey
+
 ```plaintext
-update adi_sys_config set value = '{"api_key":"my_dashcope_api_key"}' where name = 'dashscope_setting';
+update adi_sys_config set value = '{"api_key":"my_dashcope_api_key","models":["my model name,eg:qwen-max"]}' where name = 'dashscope_setting';
 ```
 
 千帆大模型平台的配置
+
 ```plaintext
-update adi_sys_config set value = '{"api_key":"my_qianfan_api_key","secret_key":"my_qianfan_secret_key"}' where name = 'qianfan_setting';
+update adi_sys_config set value = '{"api_key":"my_qianfan_api_key","secret_key":"my_qianfan_secret_key","models":["my model name,eg:ERNIE-Bot"]}' where name = 'qianfan_setting';
 ```
 
-* 修改配置文件
+ollama的配置
 
-  * postgresql: application-[dev|prod].xml中的spring.datasource
-  * redis: application-[dev|prod].xml中的spring.data.redis
-  * mail: application.xml中的spring.mail
+```
+update adi_sys_config set value = '{"base_url":"my_ollama_base_url","models":["my model name,eg:tinydolphin"]}' where name = 'ollama_setting';
+```
+
+**b. 修改配置文件**
+
+* postgresql: application-[dev|prod].xml中的spring.datasource
+* redis: application-[dev|prod].xml中的spring.data.redis
+* mail: application.xml中的spring.mail
 
 ### 编译及运行
 

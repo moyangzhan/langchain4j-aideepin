@@ -382,11 +382,13 @@ CREATE TRIGGER trigger_user_day_cost_update_time
 EXECUTE PROCEDURE update_modified_column();
 
 INSERT INTO adi_sys_config (name, value)
-VALUES ('openai_setting', '{"secret_key":""}');
+VALUES ('openai_setting', '{"secret_key":"","models":[]}');
 INSERT INTO adi_sys_config (name, value)
-VALUES ('dashscope_setting', '{"api_key":""}');
+VALUES ('dashscope_setting', '{"api_key":"","models":[]}');
 INSERT INTO adi_sys_config (name, value)
-VALUES ('qianfan_setting', '{"api_key":"","secret_key":""}');
+VALUES ('qianfan_setting', '{"api_key":"","secret_key":"","models":[]}');
+INSERT INTO adi_sys_config (name, value)
+VALUES ('ollama_setting', '{"base_url":"","models":[]}');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('request_text_rate_limit', '{"times":24,"minutes":3}');
 INSERT INTO adi_sys_config (name, value)

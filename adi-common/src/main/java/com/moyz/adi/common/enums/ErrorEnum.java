@@ -31,7 +31,9 @@ public enum ErrorEnum {
     B_MONTHLY_QUOTA_USED("B0007", "当月额度已经用完"),
     B_LLM_NOT_SUPPORT("B0008", "LLM不支持该功能"),
     B_LLM_SECRET_KEY_NOT_SET("B0009", "LLM的secret key没设置"),
-    B_MESSAGE_NOT_FOUND("B0008", "消息不存在");
+    B_MESSAGE_NOT_FOUND("B0008", "消息不存在"),
+    B_LLM_SERVICE_DISABLED("B0009", "LLM服务不可用"),
+    ;
 
     private String code;
     private String info;

@@ -35,12 +35,12 @@ public class ImageModelContext {
         }
     }
 
-    public static void addImageModelService(String modelName, AbstractImageModelService modelService) {
+    public static void addImageModelService(String modelServiceKey, AbstractImageModelService modelService) {
         ImageModelInfo imageModelInfo = new ImageModelInfo();
         imageModelInfo.setModelService(modelService);
-        imageModelInfo.setModelName(modelName);
+        imageModelInfo.setModelName(modelServiceKey);
         imageModelInfo.setEnable(modelService.isEnabled());
-        NAME_TO_MODEL.put(modelName, imageModelInfo);
+        NAME_TO_MODEL.put(modelServiceKey, imageModelInfo);
     }
 
     public AbstractImageModelService getModelService() {
