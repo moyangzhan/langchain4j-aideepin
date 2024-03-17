@@ -27,7 +27,7 @@ public class KnowledgeBaseController {
     }
 
     @PostMapping(path = "/uploadDocs/{uuid}", headers = "content-type=multipart/form-data", produces = MediaType.APPLICATION_JSON_VALUE)
-    public boolean uploadDocs(@PathVariable String uuid,@RequestParam(value = "embedding", defaultValue = "true") Boolean embedding, @RequestParam("files") MultipartFile[] docs) {
+    public boolean uploadDocs(@PathVariable String uuid, @RequestParam(value = "embedding", defaultValue = "true") Boolean embedding, @RequestParam("files") MultipartFile[] docs) {
         knowledgeBaseService.uploadDocs(uuid, embedding, docs);
         return true;
     }
@@ -37,9 +37,14 @@ public class KnowledgeBaseController {
         return knowledgeBaseService.uploadDoc(uuid, embedding, doc);
     }
 
-    @GetMapping("/search")
-    public Page<KnowledgeBase> list(String keyword, Boolean includeOthersPublic, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
-        return knowledgeBaseService.search(keyword, includeOthersPublic, currentPage, pageSize);
+    @GetMapping("/searchMine")
+    public Page<KnowledgeBase> searchMine(@RequestParam(defaultValue = "") String keyword, @RequestParam(defaultValue = "false") Boolean includeOthersPublic, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
+        return knowledgeBaseService.searchMine(keyword, includeOthersPublic, currentPage, pageSize);
+    }
+
+    @GetMapping("/searchPublic")
+    public Page<KnowledgeBase> searchPublic(@RequestParam(defaultValue = "") String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
+        return knowledgeBaseService.searchPublic(keyword, currentPage, pageSize);
     }
 
     @GetMapping("/info/{uuid}")
@@ -58,5 +63,15 @@ public class KnowledgeBaseController {
     @PostMapping("/embedding/{uuid}")
     public boolean embedding(@PathVariable String uuid, @RequestParam(defaultValue = "false") Boolean forceAll) {
         return knowledgeBaseService.embedding(uuid, forceAll);
+    }
+
+    /**
+     * 点赞
+     *
+     * @return
+     */
+    @PostMapping("/star/{uuid}")
+    public boolean star(@PathVariable String kbUuid) {
+        return knowledgeBaseService.star(kbUuid);
     }
 }

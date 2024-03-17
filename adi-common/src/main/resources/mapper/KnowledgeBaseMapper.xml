@@ -26,7 +26,7 @@
         <if test="keyword != null and keyword != ''">
             and title like "%"#{keyword}"%"
         </if>
-        order by update_time desc
+        order by star_count,update_time desc
     </select>
 
 </mapper>

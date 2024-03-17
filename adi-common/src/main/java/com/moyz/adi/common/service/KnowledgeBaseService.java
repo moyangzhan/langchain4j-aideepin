@@ -191,13 +191,24 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         return true;
     }
 
-    public Page<KnowledgeBase> search(String keyword, Boolean includeOthersPublic, Integer currentPage, Integer pageSize) {
+    public Page<KnowledgeBase> searchMine(String keyword, Boolean includeOthersPublic, Integer currentPage, Integer pageSize) {
         User user = ThreadContext.getCurrentUser();
         if (user.getIsAdmin()) {
             return baseMapper.searchByAdmin(new Page<>(currentPage, pageSize), keyword);
         } else {
             return baseMapper.searchByUser(new Page<>(currentPage, pageSize), user.getId(), keyword, includeOthersPublic);
         }
+    }
+
+    public Page<KnowledgeBase> searchPublic(String keyword, Integer currentPage, Integer pageSize) {
+        LambdaQueryWrapper<KnowledgeBase> wrapper = new LambdaQueryWrapper();
+        wrapper.eq(KnowledgeBase::getIsPublic, true);
+        wrapper.eq(KnowledgeBase::getIsDeleted, false);
+        if(StringUtils.isNotBlank(keyword)){
+            wrapper.like(KnowledgeBase::getTitle, keyword);
+        }
+        wrapper.orderByDesc(KnowledgeBase::getStarCount, KnowledgeBase::getUpdateTime);
+        return baseMapper.selectPage(new Page<>(currentPage, pageSize), wrapper);
     }
 
     public boolean softDelete(String uuid) {
@@ -225,6 +236,14 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         SseEmitter sseEmitter = new SseEmitter();
         _this.retrieveAndPushToLLM(ThreadContext.getCurrentUser(), sseEmitter, kbUuid, req);
         return sseEmitter;
+    }
+
+    public boolean star(String kbUuid) {
+        KnowledgeBase knowledgeBase = getOrThrow(kbUuid);
+        return ChainWrappers.lambdaUpdateChain(baseMapper)
+                .eq(KnowledgeBase::getId, knowledgeBase.getId())
+                .set(KnowledgeBase::getStarCount, knowledgeBase.getStarCount() + 1)
+                .update();
     }
 
     /**

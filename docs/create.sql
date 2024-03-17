@@ -419,6 +419,7 @@ create table adi_knowledge_base
     title       varchar(250) default ''::character varying not null,
     remark      text         default ''::character varying not null,
     is_public   boolean      default false                 not null,
+    star_count  int          default 0                     not null,
     owner_id    bigint       default 0                     not null,
     owner_name  varchar(45)  default ''::character varying not null,
     create_time timestamp    default CURRENT_TIMESTAMP     not null,
@@ -433,6 +434,8 @@ comment on column adi_knowledge_base.title is '知识库名称';
 comment on column adi_knowledge_base.remark is '知识库描述';
 
 comment on column adi_knowledge_base.is_public is '是否公开';
+
+comment on column adi_knowledge_base.star_count is '点赞数';
 
 comment on column adi_knowledge_base.owner_id is '所属人id';
 
