@@ -20,6 +20,7 @@ import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.parser.apache.pdfbox.ApachePdfBoxDocumentParser;
 import dev.langchain4j.data.document.parser.apache.poi.ApachePoiDocumentParser;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.output.Response;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -265,14 +266,19 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         log.info("retrieveAndPushToLLM,kbUuid:{},userId:{}", kbUuid, user.getId());
         KnowledgeBase knowledgeBase = getOrThrow(kbUuid);
 
-        String prompt = ragService.retrieveAndCreatePrompt(kbUuid, req.getQuestion()).text();
+        Prompt prompt = ragService.retrieveAndCreatePrompt(kbUuid, req.getQuestion());
+        if(null == prompt){
+            sseEmitterHelper.sendAndComplete(sseEmitter, B_KNOWLEDGE_BASE_NO_ANSWER.getInfo());
+            return;
+        }
+        String promptText = prompt.text();
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setSystemMessage(StringUtils.EMPTY);
         sseAskParams.setSseEmitter(sseEmitter);
-        sseAskParams.setUserMessage(prompt);
+        sseAskParams.setUserMessage(promptText);
         sseAskParams.setModelName(req.getModelName());
         sseEmitterHelper.process(user, sseAskParams, (response, promptMeta, answerMeta) -> {
-            knowledgeBaseQaRecordService.createNewRecord(user, knowledgeBase, req.getQuestion(), prompt, promptMeta.getTokens(), response, answerMeta.getTokens());
+            knowledgeBaseQaRecordService.createNewRecord(user, knowledgeBase, req.getQuestion(), promptText, promptMeta.getTokens(), response, answerMeta.getTokens());
             userDayCostService.appendCostToUser(user, promptMeta.getTokens() + answerMeta.getTokens());
         });
     }

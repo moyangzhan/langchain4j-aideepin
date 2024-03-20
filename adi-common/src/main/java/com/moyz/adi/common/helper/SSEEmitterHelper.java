@@ -47,7 +47,7 @@ public class SSEEmitterHelper {
         }
         stringRedisTemplate.opsForValue().set(askingKey, "1", 15, TimeUnit.SECONDS);
         try {
-            sseEmitter.send(SseEmitter.event().name("start"));
+            sseEmitter.send(SseEmitter.event().name("[START]"));
         } catch (IOException e) {
             log.error("error", e);
             sseEmitter.completeWithError(e);
@@ -65,7 +65,7 @@ public class SSEEmitterHelper {
                 throwable -> {
                     try {
                         log.error("sseEmitter error,uid:{},on error:{}", user.getId(), throwable);
-                        sseEmitter.send(SseEmitter.event().name("error").data(throwable.getMessage()));
+                        sseEmitter.send(SseEmitter.event().name("[ERROR]").data(throwable.getMessage()));
                     } catch (IOException e) {
                         log.error("error", e);
                     } finally {
@@ -84,9 +84,19 @@ public class SSEEmitterHelper {
         });
     }
 
+    public void sendAndComplete(SseEmitter sseEmitter, String msg){
+        try {
+            sseEmitter.send(SseEmitter.event().name("[START]"));
+            sseEmitter.send(SseEmitter.event().name("[DONE]").data(msg));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        sseEmitter.complete();
+    }
+
     public void sendErrorMsg(SseEmitter sseEmitter, String errorMsg) {
         try {
-            sseEmitter.send(SseEmitter.event().name("error").data(errorMsg));
+            sseEmitter.send(SseEmitter.event().name("[ERROR]").data(errorMsg));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

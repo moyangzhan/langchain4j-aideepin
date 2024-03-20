@@ -33,6 +33,8 @@ public enum ErrorEnum {
     B_LLM_SECRET_KEY_NOT_SET("B0009", "LLM的secret key没设置"),
     B_MESSAGE_NOT_FOUND("B0008", "消息不存在"),
     B_LLM_SERVICE_DISABLED("B0009", "LLM服务不可用"),
+    B_KNOWLEDGE_BASE_IS_EMPTY("B0010", "知识库内容为空"),
+    B_KNOWLEDGE_BASE_NO_ANSWER("B0011", "[无答案]")
     ;
 
     private String code;
