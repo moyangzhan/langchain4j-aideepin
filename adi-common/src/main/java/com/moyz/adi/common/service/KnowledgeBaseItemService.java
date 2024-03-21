@@ -116,6 +116,11 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
         metadata.add("kb_item_uuid", kbItem.getUuid());
         Document document = new Document(kbItem.getRemark(), metadata);
         ragService.ingest(document);
+
+        ChainWrappers.lambdaUpdateChain(baseMapper)
+                .eq(KnowledgeBaseItem::getId, kbItem.getId())
+                .set(KnowledgeBaseItem::getIsEmbedded, true)
+                .update();
         return true;
     }
 
