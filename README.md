@@ -122,7 +122,8 @@ docker run -d \
 
 ## 待办：
 
-增强RAG
+* AI搜索
+* 增强RAG
 
 ## 截图
 
