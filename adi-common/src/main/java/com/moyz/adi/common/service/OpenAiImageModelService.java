@@ -45,8 +45,8 @@ public class OpenAiImageModelService extends AbstractImageModelService<OpenAiSet
     @Resource
     private ObjectMapper objectMapper;
 
-    public OpenAiImageModelService(String modelName, Proxy proxy) {
-        super(modelName, AdiConstant.SysConfigKey.OPENAI_SETTING, OpenAiSetting.class, proxy);
+    public OpenAiImageModelService(String modelName) {
+        super(modelName, AdiConstant.SysConfigKey.OPENAI_SETTING, OpenAiSetting.class);
     }
 
     @Override

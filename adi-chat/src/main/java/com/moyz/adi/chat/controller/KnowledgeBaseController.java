@@ -70,7 +70,7 @@ public class KnowledgeBaseController {
      *
      * @return
      */
-    @PostMapping("/star/{uuid}")
+    @PostMapping("/star/{kbUuid}")
     public boolean star(@PathVariable String kbUuid) {
         return knowledgeBaseService.star(kbUuid);
     }

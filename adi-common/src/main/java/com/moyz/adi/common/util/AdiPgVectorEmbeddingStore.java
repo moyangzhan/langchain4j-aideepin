@@ -9,6 +9,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.Builder;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.slf4j.Logger;
@@ -286,16 +287,24 @@ public class AdiPgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
     }
 
-
     //adi
-    public List<EmbeddingMatch<TextSegment>> findRelevantByKbUuid(String kbUuid, Embedding referenceEmbedding, int maxResults, double minScore) {
+    public List<EmbeddingMatch<TextSegment>> findRelevantByMetadata(Map<String, String> metadatCondition, Embedding referenceEmbedding, int maxResults, double minScore) {
         List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
         try (Connection connection = setupConnection()) {
             String referenceVector = Arrays.toString(referenceEmbedding.vector());
-            //新增查询条件kb_id
+            //deal with metadata condition
+            StringBuilder whereSql = new StringBuilder();
+            if (null != metadatCondition && !metadatCondition.isEmpty()) {
+                whereSql = new StringBuilder("where");
+                for (String key : metadatCondition.keySet()) {
+                    whereSql.append(" metadata->>'").append(key).append("' = '").append(metadatCondition.get(key)).append("' and");
+                }
+                whereSql.replace(whereSql.length() - 3, whereSql.length(), "");
+            }
             String query = String.format(
-                    "WITH temp AS (SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, metadata FROM %s where metadata->>'kb_uuid' = '%s') SELECT * FROM temp WHERE score >= %s ORDER BY score desc LIMIT %s;",
-                    referenceVector, table, kbUuid, minScore, maxResults);
+                    "WITH temp AS (SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, metadata FROM %s " + whereSql + ") SELECT * FROM temp WHERE score >= %s ORDER BY score desc LIMIT %s;",
+                    referenceVector, table, minScore, maxResults);
+            log.info(query);
             PreparedStatement selectStmt = connection.prepareStatement(query);
 
             ResultSet resultSet = selectStmt.executeQuery();

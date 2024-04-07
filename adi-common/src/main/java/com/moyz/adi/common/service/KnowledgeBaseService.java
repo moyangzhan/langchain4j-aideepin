@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
+import com.google.common.collect.ImmutableMap;
 import com.moyz.adi.common.base.ThreadContext;
+import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.cosntant.RedisKeyConstant;
 import com.moyz.adi.common.dto.KbEditReq;
 import com.moyz.adi.common.dto.QAReq;
@@ -39,6 +41,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.POI_DOC_TYPES;
+import static com.moyz.adi.common.cosntant.AdiConstant.SysConfigKey.QUOTA_BY_QA_ASK_DAILY;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocument;
 
@@ -161,9 +164,8 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 //向量化
                 Document docWithoutPath = new Document(document.text());
                 docWithoutPath.metadata()
-                        .add("kb_uuid", knowledgeBase.getUuid())
-                        .add("kb_item_uuid", knowledgeBaseItem.getUuid());
-
+                        .add(AdiConstant.EmbeddingMetadataKey.KB_UUID, knowledgeBase.getUuid())
+                        .add(AdiConstant.EmbeddingMetadataKey.KB_ITEM_UUID, knowledgeBaseItem.getUuid());
                 ragService.ingest(docWithoutPath);
 
                 knowledgeBaseItemService
@@ -205,7 +207,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         LambdaQueryWrapper<KnowledgeBase> wrapper = new LambdaQueryWrapper();
         wrapper.eq(KnowledgeBase::getIsPublic, true);
         wrapper.eq(KnowledgeBase::getIsDeleted, false);
-        if(StringUtils.isNotBlank(keyword)){
+        if (StringUtils.isNotBlank(keyword)) {
             wrapper.like(KnowledgeBase::getTitle, keyword);
         }
         wrapper.orderByDesc(KnowledgeBase::getStarCount, KnowledgeBase::getUpdateTime);
@@ -223,7 +225,8 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     public KnowledgeBaseQaRecord ask(String kbUuid, String question, String modelName) {
         checkRequestTimesOrThrow();
         KnowledgeBase knowledgeBase = getOrThrow(kbUuid);
-        Pair<String, Response<AiMessage>> responsePair = ragService.retrieveAndAsk(kbUuid, question, modelName);
+        Map<String, String> metadataCond = ImmutableMap.of(AdiConstant.EmbeddingMetadataKey.KB_UUID, kbUuid);
+        Pair<String, Response<AiMessage>> responsePair = ragService.retrieveAndAsk(metadataCond, question, modelName);
 
         Response<AiMessage> ar = responsePair.getRight();
         int inputTokenCount = ar.tokenUsage().inputTokenCount();
@@ -235,7 +238,12 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     public SseEmitter sseAsk(String kbUuid, QAReq req) {
         checkRequestTimesOrThrow();
         SseEmitter sseEmitter = new SseEmitter();
-        _this.retrieveAndPushToLLM(ThreadContext.getCurrentUser(), sseEmitter, kbUuid, req);
+        User user = ThreadContext.getCurrentUser();
+        if (!sseEmitterHelper.checkOrComplete(user, sseEmitter)) {
+            return sseEmitter;
+        }
+        sseEmitterHelper.startSse(user, sseEmitter);
+        _this.retrieveAndPushToLLM(user, sseEmitter, kbUuid, req);
         return sseEmitter;
     }
 
@@ -253,7 +261,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     private void checkRequestTimesOrThrow() {
         String key = MessageFormat.format(RedisKeyConstant.AQ_ASK_TIMES, ThreadContext.getCurrentUserId(), LocalDateTimeUtil.format(LocalDateTime.now(), "yyyyMMdd"));
         String askTimes = stringRedisTemplate.opsForValue().get(key);
-        String askQuota = SysConfigService.getByKey("quota_by_qa_ask_daily");
+        String askQuota = SysConfigService.getByKey(QUOTA_BY_QA_ASK_DAILY);
         if (null != askTimes && null != askQuota && Integer.parseInt(askTimes) >= Integer.parseInt(askQuota)) {
             throw new BaseException(A_QA_ASK_LIMIT);
         }
@@ -265,10 +273,10 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     public void retrieveAndPushToLLM(User user, SseEmitter sseEmitter, String kbUuid, QAReq req) {
         log.info("retrieveAndPushToLLM,kbUuid:{},userId:{}", kbUuid, user.getId());
         KnowledgeBase knowledgeBase = getOrThrow(kbUuid);
-
-        Prompt prompt = ragService.retrieveAndCreatePrompt(kbUuid, req.getQuestion());
-        if(null == prompt){
-            sseEmitterHelper.sendAndComplete(sseEmitter, B_KNOWLEDGE_BASE_NO_ANSWER.getInfo());
+        Map<String, String> metadataCond = ImmutableMap.of(AdiConstant.EmbeddingMetadataKey.KB_UUID, kbUuid);
+        Prompt prompt = ragService.retrieveAndCreatePrompt(metadataCond, req.getQuestion());
+        if (null == prompt) {
+            sseEmitterHelper.sendAndComplete(user.getId(), sseEmitter, B_NO_ANSWER.getInfo());
             return;
         }
         String promptText = prompt.text();
@@ -277,7 +285,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         sseAskParams.setSseEmitter(sseEmitter);
         sseAskParams.setUserMessage(promptText);
         sseAskParams.setModelName(req.getModelName());
-        sseEmitterHelper.process(user, sseAskParams, (response, promptMeta, answerMeta) -> {
+        sseEmitterHelper.processAndPushToModel(user, sseAskParams, (response, promptMeta, answerMeta) -> {
             knowledgeBaseQaRecordService.createNewRecord(user, knowledgeBase, req.getQuestion(), promptText, promptMeta.getTokens(), response, answerMeta.getTokens());
             userDayCostService.appendCostToUser(user, promptMeta.getTokens() + answerMeta.getTokens());
         });

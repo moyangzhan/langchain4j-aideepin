@@ -39,11 +39,15 @@ public abstract class AbstractImageModelService<T> {
 
     protected ImageModel imageModel;
 
-    public AbstractImageModelService(String modelName, String settingName, Class<T> clazz, Proxy proxy){
+    public AbstractImageModelService(String modelName, String settingName, Class<T> clazz) {
         this.modelName = modelName;
-        this.proxy = proxy;
         String st = LocalCache.CONFIGS.get(settingName);
         setting = JsonUtil.fromJson(st, clazz);
+    }
+
+    public AbstractImageModelService setProxy(Proxy proxy) {
+        this.proxy = proxy;
+        return this;
     }
 
     public ImageModel getImageModel(User user, String size) {
@@ -56,6 +60,7 @@ public abstract class AbstractImageModelService<T> {
 
     /**
      * 检测该service是否可用（不可用的情况通过是没有配置key）
+     *
      * @return
      */
     public abstract boolean isEnabled();

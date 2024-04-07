@@ -22,7 +22,7 @@ import static com.moyz.adi.common.enums.ErrorEnum.B_LLM_SECRET_KEY_NOT_SET;
 public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
 
     public DashScopeLLMService(String modelName) {
-        super(modelName, AdiConstant.SysConfigKey.DASHSCOPE_SETTING, DashScopeSetting.class, null);
+        super(modelName, AdiConstant.SysConfigKey.DASHSCOPE_SETTING, DashScopeSetting.class);
     }
 
     @Override

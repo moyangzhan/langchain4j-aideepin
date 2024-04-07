@@ -17,7 +17,9 @@
 * 提示词
 * 额度控制
 * 基于大模型的知识库（RAG）
+* 基于大模型的搜索（RAG）
 * 多模型随意切换
+* 多搜索引擎随意切换
 
 ## 接入的模型：
 
@@ -26,6 +28,14 @@
 * 文心一言
 * ollama
 * DALL-E 2
+
+## 接入的搜索引擎
+
+Google
+
+Bing (TODO)
+
+百度 (TODO)
 
 ## 技术栈
 
@@ -53,7 +63,7 @@ vue3+typescript+pnpm
 
 * 创建数据库aideepin
 * 执行docs/create.sql
-* 填充各模型的配置
+* 填充各模型的配置(至少设置一个)
 
 openai的secretKey
 
@@ -78,6 +88,15 @@ ollama的配置
 ```
 update adi_sys_config set value = '{"base_url":"my_ollama_base_url","models":["my model name,eg:tinydolphin"]}' where name = 'ollama_setting';
 ```
+
+* 填充搜索引擎的配置
+
+Google的配置
+
+```
+update adi_sys_config set value = '{"url":"https://www.googleapis.com/customsearch/v1","key":"my key from cloud.google.com","cx":"my cx from programmablesearchengine.google.com"}' where name = 'google_setting';
+```
+
 
 **b. 修改配置文件**
 
@@ -122,23 +141,30 @@ docker run -d \
 
 ## 待办：
 
-* AI搜索
-* 增强RAG
+增强RAG
+
+增加搜索引擎（BING、百度）
 
 ## 截图
 
 **AI聊天：**
 ![1691583184761](image/README/1691583184761.png)
 
-![1691583124744](image/README/1691583124744.png "AI绘图")
+**AI画图：**
 
-![1691583329105](image/README/1691583329105.png "token统计")
+![1691583124744](image/README/1691583124744.png "AI绘图")
 
 **知识库：**
 ![kbindex](image/README/kbidx.png)
 
 ![kb01](image/README/kb01.png)
 
+**向量化：**
+
 ![kb02](image/README/kb02.png)
 
 ![kb03](image/README/kb03.png)
+
+**额度统计：**
+
+![1691583329105](https://file+.vscode-resource.vscode-cdn.net/e%3A/WORKSPACE/aideepin/image/README/1691583329105.png "token统计")

@@ -36,11 +36,15 @@ public abstract class AbstractLLMService<T> {
     protected StreamingChatLanguageModel streamingChatLanguageModel;
     protected ChatLanguageModel chatLanguageModel;
 
-    public AbstractLLMService(String modelName, String settingName, Class<T> clazz, Proxy proxy) {
+    public AbstractLLMService(String modelName, String settingName, Class<T> clazz) {
         this.modelName = modelName;
-        this.proxy = proxy;
         String st = LocalCache.CONFIGS.get(settingName);
         setting = JsonUtil.fromJson(st, clazz);
+    }
+
+    public AbstractLLMService setProxy(Proxy proxy) {
+        this.proxy = proxy;
+        return this;
     }
 
     /**
@@ -73,7 +77,7 @@ public abstract class AbstractLLMService<T> {
     protected abstract String parseError(Object error);
 
     public Response<AiMessage> chat(ChatMessage chatMessage) {
-        if(!isEnabled()){
+        if (!isEnabled()) {
             log.error("llm service is disabled");
             throw new BaseException(B_LLM_SERVICE_DISABLED);
         }
@@ -81,7 +85,7 @@ public abstract class AbstractLLMService<T> {
     }
 
     public void sseChat(SseAskParams params, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
-        if(!isEnabled()){
+        if (!isEnabled()) {
             log.error("llm service is disabled");
             throw new BaseException(B_LLM_SERVICE_DISABLED);
         }
@@ -131,7 +135,7 @@ public abstract class AbstractLLMService<T> {
                     log.error("stream error", error);
                     try {
                         String errorMsg = parseError(error);
-                        if(StringUtils.isBlank(errorMsg)){
+                        if (StringUtils.isBlank(errorMsg)) {
                             errorMsg = error.getMessage();
                         }
                         params.getSseEmitter().send(SseEmitter.event().name("[ERROR]").data(errorMsg));

@@ -34,7 +34,7 @@ public enum ErrorEnum {
     B_MESSAGE_NOT_FOUND("B0008", "消息不存在"),
     B_LLM_SERVICE_DISABLED("B0009", "LLM服务不可用"),
     B_KNOWLEDGE_BASE_IS_EMPTY("B0010", "知识库内容为空"),
-    B_KNOWLEDGE_BASE_NO_ANSWER("B0011", "[无答案]")
+    B_NO_ANSWER("B0011", "[无答案]")
     ;
 
     private String code;

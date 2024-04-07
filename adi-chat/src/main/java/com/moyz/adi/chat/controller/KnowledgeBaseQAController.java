@@ -44,6 +44,6 @@ public class KnowledgeBaseQAController {
 
     @PostMapping("/record/del/{uuid}")
     public boolean recordDel(@PathVariable String uuid) {
-        return knowledgeBaseQaRecordService.softDelele(uuid);
+        return knowledgeBaseQaRecordService.softDelete(uuid);
     }
 }

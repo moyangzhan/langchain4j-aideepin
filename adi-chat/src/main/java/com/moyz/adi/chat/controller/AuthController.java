@@ -3,7 +3,9 @@ package com.moyz.adi.chat.controller;
 import com.moyz.adi.common.dto.LoginReq;
 import com.moyz.adi.common.dto.LoginResp;
 import com.moyz.adi.common.dto.RegisterReq;
+import com.moyz.adi.common.searchengine.SearchEngineContext;
 import com.moyz.adi.common.service.UserService;
+import com.moyz.adi.common.vo.SearchEngineInfo;
 import com.ramostear.captcha.HappyCaptcha;
 import com.ramostear.captcha.support.CaptchaType;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,6 +25,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.net.URLEncoder;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
@@ -123,4 +127,9 @@ public class AuthController {
         happyCaptcha.output();
     }
 
+    @Operation(summary = "Search engine list")
+    @GetMapping(value = "/search-engine/list")
+    public List<SearchEngineInfo> engines() {
+        return SearchEngineContext.NAME_TO_ENGINE.values().stream().collect(Collectors.toList());
+    }
 }

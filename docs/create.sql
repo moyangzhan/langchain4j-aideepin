@@ -390,6 +390,9 @@ VALUES ('qianfan_setting', '{"api_key":"","secret_key":"","models":[]}');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('ollama_setting', '{"base_url":"","models":[]}');
 INSERT INTO adi_sys_config (name, value)
+VALUES ('google_setting',
+        '{"url":"https://www.googleapis.com/customsearch/v1","key":"","cx":""}');
+INSERT INTO adi_sys_config (name, value)
 VALUES ('request_text_rate_limit', '{"times":24,"minutes":3}');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('request_image_rate_limit', '{"times":6,"minutes":3}');
@@ -542,5 +545,50 @@ comment on column adi_knowledge_base_qa_record.is_deleted is '0：未删除；1�
 create trigger trigger_kb_qa_record_update_time
     before update
     on adi_knowledge_base_qa_record
+    for each row
+execute procedure update_modified_column();
+
+-- ai search
+create table adi_ai_search_record
+(
+    id                     bigserial primary key,
+    uuid                   varchar(32)   default ''::character varying not null,
+    question               varchar(1000) default ''::character varying not null,
+    search_engine_response jsonb                                       not null,
+    prompt                 text          default ''::character varying not null,
+    prompt_tokens          integer       DEFAULT 0                     NOT NULL,
+    answer                 text          default ''::character varying not null,
+    answer_tokens          integer       DEFAULT 0                     NOT NULL,
+    user_id                bigint        default '0'                   NOT NULL,
+    user_uuid              varchar(32)   default ''::character varying not null,
+    create_time            timestamp     default CURRENT_TIMESTAMP     not null,
+    update_time            timestamp     default CURRENT_TIMESTAMP     not null,
+    is_deleted             boolean       default false                 not null
+);
+comment on table adi_ai_search_record is 'Search record';
+
+comment on column adi_ai_search_record.question is 'User original question';
+
+comment on column adi_ai_search_record.search_engine_response is 'Search engine''s response content';
+
+comment on column adi_ai_search_record.prompt is 'Prompt of LLM';
+
+comment on column adi_ai_search_record.prompt_tokens is 'prompt消耗的token数量';
+
+comment on column adi_ai_search_record.answer is 'LLM response';
+
+comment on column adi_ai_search_record.answer_tokens is 'LLM响应消耗的token数量';
+
+comment on column adi_ai_search_record.user_id is 'Id from adi_user';
+
+comment on column adi_ai_search_record.create_time is '创建时间';
+
+comment on column adi_ai_search_record.update_time is '更新时间';
+
+comment on column adi_ai_search_record.is_deleted is '0: Normal; 1: Deleted';
+
+create trigger trigger_ai_search_record
+    before update
+    on adi_ai_search_record
     for each row
 execute procedure update_modified_column();

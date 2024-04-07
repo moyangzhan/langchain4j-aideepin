@@ -66,7 +66,7 @@ public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRec
         return baseMapper.selectOne(wrapper);
     }
 
-    public boolean softDelele(String uuid) {
+    public boolean softDelete(String uuid) {
         if (ThreadContext.getCurrentUser().getIsAdmin()) {
             return ChainWrappers.lambdaUpdateChain(baseMapper)
                     .eq(KnowledgeBaseQaRecord::getUuid, uuid)

@@ -19,7 +19,7 @@ import org.apache.commons.lang3.StringUtils;
 public class QianFanLLMService extends AbstractLLMService<QianFanSetting> {
 
     public QianFanLLMService(String modelName) {
-        super(modelName, AdiConstant.SysConfigKey.QIANFAN_SETTING, QianFanSetting.class, null);
+        super(modelName, AdiConstant.SysConfigKey.QIANFAN_SETTING, QianFanSetting.class);
     }
 
     @Override

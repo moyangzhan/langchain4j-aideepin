@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.moyz.adi.common.base.ThreadContext;
+import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.KbItemEditReq;
 import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.entity.KnowledgeBaseItem;
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.moyz.adi.common.cosntant.AdiConstant.RAG_TYPE_KB;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 @Slf4j
@@ -112,8 +114,8 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
         knowledgeBaseEmbeddingService.deleteByItemUuid(kbItem.getUuid());
 
         Metadata metadata = new Metadata();
-        metadata.add("kb_uuid", kbItem.getKbUuid());
-        metadata.add("kb_item_uuid", kbItem.getUuid());
+        metadata.add(AdiConstant.EmbeddingMetadataKey.KB_UUID, kbItem.getKbUuid());
+        metadata.add(AdiConstant.EmbeddingMetadataKey.KB_ITEM_UUID, kbItem.getUuid());
         Document document = new Document(kbItem.getRemark(), metadata);
         ragService.ingest(document);
 

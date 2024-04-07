@@ -7,14 +7,13 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.stereotype.Service;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.SysConfigKey.OLLAMA_SETTING;
 
 public class OllamaLLMService extends AbstractLLMService<OllamaSetting> {
 
     public OllamaLLMService(String modelName) {
-        super(modelName, OLLAMA_SETTING, OllamaSetting.class, null);
+        super(modelName, OLLAMA_SETTING, OllamaSetting.class);
     }
 
     @Override

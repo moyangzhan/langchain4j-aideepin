@@ -10,6 +10,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.ObjLongConsumer;
 import java.util.function.Supplier;
 
 public class BizPager {
@@ -66,6 +67,21 @@ public class BizPager {
                 consumer.accept(records);
             }
         } while (!Thread.currentThread().isInterrupted() && records.size() == AdiConstant.DEFAULT_PAGE_SIZE);
+    }
+
+    public static <T extends BaseEntity> void listByMaxId(Long maxId, LambdaQueryWrapper<T> queryWrapper, IService<T> service, SFunction<T, Long> idSupplier, ObjLongConsumer<List<T>> consumer) {
+        if (maxId > 0) {
+            queryWrapper.lt(idSupplier, maxId);
+        }
+        queryWrapper.orderByDesc(idSupplier);
+        queryWrapper.last("limit " + AdiConstant.DEFAULT_PAGE_SIZE);
+
+        long minId = 0;
+        List<T> records = service.list(queryWrapper);
+        if (CollectionUtils.isNotEmpty(records)) {
+            minId = records.stream().map(idSupplier).reduce(Long::min).get();
+        }
+        consumer.accept(records, minId);
     }
 
     /**

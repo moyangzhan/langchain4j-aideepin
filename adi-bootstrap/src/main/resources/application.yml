@@ -11,6 +11,9 @@ spring:
     name: AiDeepIn
   profiles:
     active: dev
+  mvc:
+    async:
+      request-timeout: 60000
   jackson:
     date-format: "yyyy-MM-dd HH:mm:ss"
     time-zone: "GMT+8"

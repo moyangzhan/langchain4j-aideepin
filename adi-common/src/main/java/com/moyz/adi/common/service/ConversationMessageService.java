@@ -8,7 +8,6 @@ import com.moyz.adi.common.dto.AskReq;
 import com.moyz.adi.common.entity.Conversation;
 import com.moyz.adi.common.entity.ConversationMessage;
 import com.moyz.adi.common.entity.User;
-import com.moyz.adi.common.entity.UserDayCost;
 import com.moyz.adi.common.enums.ChatMessageRoleEnum;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
@@ -16,8 +15,6 @@ import com.moyz.adi.common.helper.QuotaHelper;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.ConversationMessageMapper;
 import com.moyz.adi.common.util.LocalCache;
-import com.moyz.adi.common.util.LocalDateTimeUtil;
-import com.moyz.adi.common.util.UserUtil;
 import com.moyz.adi.common.vo.AnswerMeta;
 import com.moyz.adi.common.vo.PromptMeta;
 import com.moyz.adi.common.vo.SseAskParams;
@@ -66,11 +63,16 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
 
     public SseEmitter sseAsk(AskReq askReq) {
         SseEmitter sseEmitter = new SseEmitter();
+        User user = ThreadContext.getCurrentUser();
+        if (!sseEmitterHelper.checkOrComplete(user, sseEmitter)) {
+            return sseEmitter;
+        }
+        sseEmitterHelper.startSse(user, sseEmitter);
         _this.asyncCheckAndPushToClient(sseEmitter, ThreadContext.getCurrentUser(), askReq);
         return sseEmitter;
     }
 
-    private boolean check(SseEmitter sseEmitter, User user, AskReq askReq) {
+    private boolean checkConversation(SseEmitter sseEmitter, User user, AskReq askReq) {
         try {
 
             //check 1: the conversation has been deleted
@@ -79,7 +81,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                     .eq(Conversation::getIsDeleted, true)
                     .one();
             if (null != delConv) {
-                sseEmitterHelper.sendErrorMsg(sseEmitter, "该对话已经删除");
+                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "该对话已经删除");
                 return false;
             }
 
@@ -90,14 +92,14 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                     .count();
             long convsMax = Integer.parseInt(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.CONVERSATION_MAX_NUM));
             if (convsCount >= convsMax) {
-                sseEmitterHelper.sendErrorMsg(sseEmitter, "对话数量已经达到上限，当前对话上限为：" + convsMax);
+                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "对话数量已经达到上限，当前对话上限为：" + convsMax);
                 return false;
             }
 
             //check 3: current user's quota
             ErrorEnum errorMsg = quotaHelper.checkTextQuota(user);
             if (null != errorMsg) {
-                sseEmitterHelper.sendErrorMsg(sseEmitter, errorMsg.getInfo());
+                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, errorMsg.getInfo());
                 return false;
             }
         } catch (Exception e) {
@@ -112,7 +114,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
     public void asyncCheckAndPushToClient(SseEmitter sseEmitter, User user, AskReq askReq) {
         log.info("asyncCheckAndPushToClient,userId:{}", user.getId());
         //check business rules
-        if (!check(sseEmitter, user, askReq)) {
+        if (!checkConversation(sseEmitter, user, askReq)) {
             return;
         }
 
@@ -161,7 +163,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
 
             }
         }
-        sseEmitterHelper.process(user, sseAskParams, (response, questionMeta, answerMeta) -> {
+        sseEmitterHelper.processAndPushToModel(user, sseAskParams, (response, questionMeta, answerMeta) -> {
             _this.saveAfterAiResponse(user, askReq, response, questionMeta, answerMeta);
         });
     }

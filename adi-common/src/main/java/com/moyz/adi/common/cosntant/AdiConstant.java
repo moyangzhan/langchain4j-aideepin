@@ -1,10 +1,12 @@
 package com.moyz.adi.common.cosntant;
 
+import dev.langchain4j.model.input.PromptTemplate;
+
 import java.util.List;
 
 public class AdiConstant {
 
-    public static final int DEFAULT_PAGE_SIZE = 1;
+    public static final int DEFAULT_PAGE_SIZE = 10;
 
     /**
      * 验证码id过期时间：1小时
@@ -53,6 +55,13 @@ public class AdiConstant {
 
     public static final List<String> OPENAI_CREATE_IMAGE_SIZES = List.of("256x256", "512x512", "1024x1024");
 
+    public static final PromptTemplate PROMPT_TEMPLATE = PromptTemplate.from("""
+            根据以下已知信息:
+            {{information}}
+            尽可能准确地回答用户的问题,以下是用户的问题:
+            {{question}}
+            注意,回答的内容不能让用户感知到已知信息的存在
+            """);
 
     public static class GenerateImage {
         public static final int INTERACTING_METHOD_GENERATE_IMAGE = 1;
@@ -64,11 +73,21 @@ public class AdiConstant {
         public static final int STATUS_SUCCESS = 3;
     }
 
+    public static class EmbeddingMetadataKey {
+        public static final String KB_UUID = "kb_uuid";
+        public static final String KB_ITEM_UUID = "kb_item_uuid";
+        public static final String ENGINE_NAME = "engine_name";
+        public static final String SEARCH_UUID = "search_uuid";
+    }
+
     public static class SysConfigKey {
         public static final String OPENAI_SETTING = "openai_setting";
         public static final String DASHSCOPE_SETTING = "dashscope_setting";
         public static final String QIANFAN_SETTING = "qianfan_setting";
         public static final String OLLAMA_SETTING = "ollama_setting";
+        public static final String GOOGLE_SETTING = "google_setting";
+        public static final String BING_SETTING = "bing_setting";
+        public static final String BAIDU_SETTING = "baidu_setting";
         public static final String REQUEST_TEXT_RATE_LIMIT = "request_text_rate_limit";
         public static final String REQUEST_IMAGE_RATE_LIMIT = "request_image_rate_limit";
         public static final String CONVERSATION_MAX_NUM = "conversation_max_num";
@@ -78,8 +97,25 @@ public class AdiConstant {
         public static final String QUOTA_BY_REQUEST_MONTHLY = "quota_by_request_monthly";
         public static final String QUOTA_BY_IMAGE_DAILY = "quota_by_image_daily";
         public static final String QUOTA_BY_IMAGE_MONTHLY = "quota_by_image_monthly";
-
+        public static final String QUOTA_BY_QA_ASK_DAILY = "quota_by_qa_ask_daily";
     }
 
     public static final String[] POI_DOC_TYPES = {"doc", "docx", "ppt", "pptx", "xls", "xlsx"};
+
+    public static class SearchEngineName {
+        public static final String GOOGLE = "google";
+        public static final String BING = "bing";
+        public static final String BAIDU = "baidu";
+    }
+
+    public static class SSEEventName {
+        public static final String START = "[START]";
+        public static final String DONE = "[DONE]";
+        public static final String ERROR = "[ERROR]";
+
+        public static final String AI_SEARCH_SOURCE_LINKS = "[SOURCE_LINKS]";
+    }
+
+    public static final int RAG_TYPE_KB = 1;
+    public static final int RAG_TYPE_SEARCH = 2;
 }

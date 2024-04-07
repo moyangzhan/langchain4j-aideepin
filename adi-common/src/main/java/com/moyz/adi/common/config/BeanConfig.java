@@ -10,11 +10,14 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.google.common.collect.Lists;
+import com.moyz.adi.common.base.SearchEngineRespTypeHandler;
+import com.moyz.adi.common.dto.SearchEngineResp;
+import com.moyz.adi.common.service.RAGService;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.pgvector.PGvector;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.session.SqlSessionFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -32,6 +35,15 @@ import javax.sql.DataSource;
 @Configuration
 public class BeanConfig {
 
+    @Value("${spring.datasource.url}")
+    private String dataBaseUrl;
+
+    @Value("${spring.datasource.username}")
+    private String dataBaseUserName;
+
+    @Value("${spring.datasource.password}")
+    private String dataBasePassword;
+
     @Bean
     public RestTemplate restTemplate() {
         log.info("Configuration:create restTemplate");
@@ -42,7 +54,7 @@ public class BeanConfig {
         requestFactory.setReadTimeout(60000);
         RestTemplate restTemplate = new RestTemplate();
         // 注册LOG拦截器
-        restTemplate.setInterceptors(Lists.newArrayList(new LogClientHttpRequestInterceptor()));
+//        restTemplate.setInterceptors(Lists.newArrayList(new LogClientHttpRequestInterceptor()));
         restTemplate.setRequestFactory(new BufferingClientHttpRequestFactory(requestFactory));
 
         return restTemplate;
@@ -95,12 +107,28 @@ public class BeanConfig {
         bean.setMapperLocations(
                 new PathMatchingResourcePatternResolver().getResources("classpath*:/mapper/*.xml"));
         MybatisConfiguration configuration = bean.getConfiguration();
-        if(null == configuration){
+        if (null == configuration) {
             configuration = new MybatisConfiguration();
             bean.setConfiguration(configuration);
         }
         bean.getConfiguration().getTypeHandlerRegistry().register(PGvector.class, PostgresVectorTypeHandler.class);
+        bean.getConfiguration().getTypeHandlerRegistry().register(SearchEngineResp.class, SearchEngineRespTypeHandler.class);
         return bean.getObject();
+    }
+
+    @Bean(name = "kbRagService")
+    @Primary
+    public RAGService initKnowledgeBaseRAGService() {
+        RAGService ragService = new RAGService("adi_knowledge_base_embedding", dataBaseUrl, dataBaseUserName, dataBasePassword);
+        ragService.init();
+        return ragService;
+    }
+
+    @Bean(name = "searchRagService")
+    public RAGService initSearchRAGService() {
+        RAGService ragService = new RAGService("adi_ai_search_embedding", dataBaseUrl, dataBaseUserName, dataBasePassword);
+        ragService.init();
+        return ragService;
     }
 
 }

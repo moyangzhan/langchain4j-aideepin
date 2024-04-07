@@ -17,10 +17,10 @@ public class QuotaHelper {
     private UserDayCostService userDayCostService;
 
     public ErrorEnum checkTextQuota(User user) {
-        if (StringUtils.isNotBlank(user.getSecretKey())) {
-            log.info("Custom secret key,dont need to check text request quota,userId:{}", user.getId());
-            return null;
-        }
+//        if (StringUtils.isNotBlank(user.getSecretKey())) {
+//            log.info("Custom secret key,dont need to check text request quota,userId:{}", user.getId());
+//            return null;
+//        }
         int userQuotaByTokenDay = user.getQuotaByTokenDaily();
         int userQuotaByTokenMonth = user.getQuotaByTokenMonthly();
         int userQuotaByRequestDay = user.getQuotaByRequestDaily();

@@ -17,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 
-import java.net.Proxy;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 
@@ -28,8 +27,8 @@ import java.time.temporal.ChronoUnit;
 @Accessors(chain = true)
 public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
 
-    public OpenAiLLMService(String modelName, Proxy proxy) {
-        super(modelName, AdiConstant.SysConfigKey.OPENAI_SETTING, OpenAiSetting.class, proxy);
+    public OpenAiLLMService(String modelName) {
+        super(modelName, AdiConstant.SysConfigKey.OPENAI_SETTING, OpenAiSetting.class);
     }
 
     @Override
