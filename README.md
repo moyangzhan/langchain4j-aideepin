@@ -167,4 +167,4 @@ docker run -d \
 
 **额度统计：**
 
-![1691583329105](https://file+.vscode-resource.vscode-cdn.net/e%3A/WORKSPACE/aideepin/image/README/1691583329105.png "token统计")
+![1691583329105.png](image%2FREADME%2F1691583329105.png)
