@@ -1,29 +1,27 @@
 ## Getting Started
 
-[READ THIS IN ENGLISH](README_en.md)
+[中文](README.md)
 
 **LangChain4j-AIDeepin**
-基于 ChatGPT 等大语言模型与 Langchain4j 等应用框架实现，开源、可离线部署的检索增强生成(RAG)项目。
+Langchain4j-aideepin is an open source, offline deployable Retrieval Enhancement Generation (RAG) project based on large language models such as ChatGPT and application frameworks such as Langchain4j.
 
-> **该项目如对您有帮助，欢迎点赞**
-
-## 体验网址
+## Website
 
 [http://www.aideepin.com](http://www.aideepin.com/)
 
-## 功能点
+## Feature
 
-* 注册&登录
-* 多会话（多角色）
-* 图片生成（文生图、修图、图生图）
-* 提示词
-* 额度控制
-* 基于大模型的知识库（RAG）
-* 基于大模型的搜索（RAG）
-* 多模型随意切换
-* 多搜索引擎随意切换
+* Login & Register
+* Multiple Conversation | Multiple character
+* AI Draw
+* Prompt
+* Quota
+* Knowledge base(RAG)
+* AI Search(RAG)
+* Multiple models switch at will
+* Multiple search engine switch at will
 
-## 接入的模型：
+## Support Models
 
 * ChatGPT 3.5
 * 通义千问
@@ -31,7 +29,7 @@
 * ollama
 * DALL-E 2
 
-## 接入的搜索引擎
+## Support Search Engines
 
 Google
 
@@ -39,11 +37,11 @@ Bing (TODO)
 
 百度 (TODO)
 
-## 技术栈
+## Introduction
 
-该仓库为后端服务，前端项目见[langchain4j-aideepin-web](https://github.com/moyangzhan/langchain4j-aideepin-web)
+This repository is a back-end project, front-end project in [langchain4j-aideepin-web](https://github.com/moyangzhan/langchain4j-aideepin-web)
 
-后端：
+Backend：
 
 jdk17
 
@@ -53,83 +51,83 @@ springboot3.0.5
 
 **Postgresql(需要安装[pgvector](https://github.com/pgvector/pgvector)扩展)**
 
-前端：
+Frontend：
 
 vue3+typescript+pnpm
 
-## 如何部署
+## Build and run this project
 
-### 初始化
+### Init
 
-**a. 初始化数据库**
+**a. Init database**
 
-* 创建数据库aideepin
-* 执行docs/create.sql
-* 填充各模型的配置(至少设置一个)
+* Create database schema: aideepin
+* Run: docs/create.sql
+* Update language model config:
 
-openai的secretKey
+Openai setting
 
 ```plaintext
 update adi_sys_config set value = '{"secret_key":"my_openai_secret_key","models":["gpt-3.5-turbo"]}' where name = 'openai_setting';
 ```
 
-灵积大模型平台的apiKey
+Dashscope setting
 
 ```plaintext
 update adi_sys_config set value = '{"api_key":"my_dashcope_api_key","models":["my model name,eg:qwen-max"]}' where name = 'dashscope_setting';
 ```
 
-千帆大模型平台的配置
+Qianfan setting
 
 ```plaintext
 update adi_sys_config set value = '{"api_key":"my_qianfan_api_key","secret_key":"my_qianfan_secret_key","models":["my model name,eg:ERNIE-Bot"]}' where name = 'qianfan_setting';
 ```
 
-ollama的配置
+Ollama setting
 
 ```
 update adi_sys_config set value = '{"base_url":"my_ollama_base_url","models":["my model name,eg:tinydolphin"]}' where name = 'ollama_setting';
 ```
 
-* 填充搜索引擎的配置
+* Search engine setting
 
-Google的配置
+Google:
 
 ```
 update adi_sys_config set value = '{"url":"https://www.googleapis.com/customsearch/v1","key":"my key from cloud.google.com","cx":"my cx from programmablesearchengine.google.com"}' where name = 'google_setting';
 ```
 
 
-**b. 修改配置文件**
+**b. Init properties**
 
-* postgresql: application-[dev|prod].xml中的spring.datasource
-* redis: application-[dev|prod].xml中的spring.data.redis
-* mail: application.xml中的spring.mail
+* postgresql: spring.datasource in application-[dev|prod].xml
+* redis: spring.data.redis in application-[dev|prod].xml
+* mail: spring.mail in application.xml
 
-### 编译及运行
+### Compile & Run
 
-* 进入项目
+* Enter the project root directory:
 
 ```plaintext
 cd langchain4j-aideepin
 ```
 
-* 打包：
+* Package：
 
 ```
 mvn clean package -Dmaven.test.skip=true
 ```
 
-* 运行
+* Run:
 
-a. jar包启动：
+a. Run by jar：
 
 ```plaintext
 cd adi-bootstrap/target
 nohup java -jar -Xms768m -Xmx1024m -XX:+HeapDumpOnOutOfMemoryError adi-chat-0.0.1-SNAPSHOT.jar --spring.profiles.active=[dev|prod] dev/null 2>&1 &
 ```
 
-b. docker启动
+b. Run by docker
 
 ```plaintext
 cd adi-bootstrap
@@ -141,32 +139,32 @@ docker run -d \
   aideepin:0.0.1
 ```
 
-## 待办：
+## TODO：
 
-增强RAG
+Enhance RAG
 
-增加搜索引擎（BING、百度）
+More search engine（BING、百度）
 
-## 截图
+## Screenshot
 
-**AI聊天：**
+**AI Chat：**
 ![1691583184761](image/README/1691583184761.png)
 
-**AI画图：**
+**AI Draw：**
 
 ![1691583124744](image/README/1691583124744.png "AI绘图")
 
-**知识库：**
+**Knowlege base：**
 ![kbindex](image/README/kbidx.png)
 
 ![kb01](image/README/kb01.png)
 
-**向量化：**
+**Embedding：**
 
 ![kb02](image/README/kb02.png)
 
 ![kb03](image/README/kb03.png)
 
-**额度统计：**
+**Quota：**
 
 !![1691583329105.png](image%2FREADME%2F1691583329105.png)

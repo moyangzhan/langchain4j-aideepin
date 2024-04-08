@@ -18,6 +18,12 @@ import java.util.List;
 @Service
 public class UserDayCostService extends ServiceImpl<UserDayCostMapper, UserDayCost> {
 
+    /**
+     * Append token cost
+     *
+     * @param user
+     * @param tokens The number of tokens
+     */
     public void appendCostToUser(User user, int tokens) {
         UserDayCost userDayCost = getTodayCost(user);
         UserDayCost saveOrUpdateInst = new UserDayCost();

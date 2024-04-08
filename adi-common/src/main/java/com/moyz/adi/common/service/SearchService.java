@@ -55,6 +55,9 @@ public class SearchService {
     private AiSearchRecordService aiSearchRecordService;
 
     @Resource
+    private UserDayCostService userDayCostService;
+
+    @Resource
     private AsyncTaskExecutor mainExecutor;
 
     public SseEmitter search(boolean isBriefSearch, String searchText, String engineName, String modelName) {
@@ -136,6 +139,8 @@ public class SearchService {
             newRecord.setUserUuid(user.getUuid());
             newRecord.setUserId(user.getId());
             aiSearchRecordService.save(newRecord);
+
+            userDayCostService.appendCostToUser(user, promptMeta.getTokens() + answerMeta.getTokens());
         });
     }
 
@@ -225,6 +230,8 @@ public class SearchService {
             updateRecord.setAnswer(response);
             updateRecord.setAnswerTokens(answerMeta.getTokens());
             aiSearchRecordService.updateById(updateRecord);
+
+            userDayCostService.appendCostToUser(user, promptMeta.getTokens() + answerMeta.getTokens());
         });
     }
 
