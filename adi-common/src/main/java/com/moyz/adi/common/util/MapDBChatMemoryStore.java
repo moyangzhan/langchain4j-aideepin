@@ -2,11 +2,13 @@ package com.moyz.adi.common.util;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import lombok.extern.slf4j.Slf4j;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -31,10 +33,18 @@ public class MapDBChatMemoryStore implements ChatMemoryStore {
 
     @Override
     public void updateMessages(Object memoryId, List<ChatMessage> messages) {
-        if(messages.size() > 0 && messages.get(0) instanceof AiMessage){
+        //AiMessage in first position is not allow
+        if (messages.size() > 0 && messages.get(0) instanceof AiMessage) {
             messages.remove(0);
         }
-        String json = messagesToJson(messages);
+        //Filter out the available messages.(UserMessage,AiMessage)
+        List<ChatMessage> availableMessage = new ArrayList<>();
+        for (ChatMessage chatMessage : messages) {
+            if (!(chatMessage instanceof SystemMessage)) {
+                availableMessage.add(chatMessage);
+            }
+        }
+        String json = messagesToJson(availableMessage);
         log.info("updateMessages,{}", json);
         map.put((String) memoryId, json);
         db.commit();
