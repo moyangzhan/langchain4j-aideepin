@@ -19,6 +19,7 @@ import com.moyz.adi.common.vo.AnswerMeta;
 import com.moyz.adi.common.vo.PromptMeta;
 import com.moyz.adi.common.vo.SseAskParams;
 import com.theokanning.openai.completion.chat.ChatMessageRole;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
@@ -139,29 +140,33 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                 sseAskParams.setSystemMessage(conversation.getAiSystemMessage());
             }
             //history message
-            if (Boolean.TRUE.equals(conversation.getUnderstandContextEnable()) && user.getUnderstandContextMsgPairNum() > 0) {
-                List<ConversationMessage> historyMsgList = this.lambdaQuery()
-                        .eq(ConversationMessage::getUserId, user.getId())
-                        .eq(ConversationMessage::getConversationUuid, askReq.getConversationUuid())
-                        .orderByDesc(ConversationMessage::getConversationId)
-                        .last("limit " + user.getUnderstandContextMsgPairNum() * 2)
-                        .list();
-                if (!historyMsgList.isEmpty()) {
-                    ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(1000, new OpenAiTokenizer(GPT_3_5_TURBO));
-                    historyMsgList.sort(Comparator.comparing(ConversationMessage::getId));
-                    for (ConversationMessage historyMsg : historyMsgList) {
-                        if (ChatMessageRole.USER.value().equals(historyMsg.getMessageRole())) {
-                            UserMessage userMessage = UserMessage.from(historyMsg.getRemark());
-                            chatMemory.add(userMessage);
-                        } else if (ChatMessageRole.SYSTEM.value().equals(historyMsg.getMessageRole())) {
-                            SystemMessage userMessage = SystemMessage.from(historyMsg.getRemark());
-                            chatMemory.add(userMessage);
-                        }
-                    }
-                    sseAskParams.setChatMemory(chatMemory);
-                }
-
+            if (Boolean.TRUE.equals(conversation.getUnderstandContextEnable())) {
+                sseAskParams.setMessageId(askReq.getConversationUuid());
             }
+//                List<ConversationMessage> historyMsgList = this.lambdaQuery()
+//                        .eq(ConversationMessage::getUserId, user.getId())
+//                        .eq(ConversationMessage::getConversationUuid, askReq.getConversationUuid())
+//                        .orderByDesc(ConversationMessage::getId)
+//                        .last("limit " + user.getUnderstandContextMsgPairNum() * 2)
+//                        .list();
+//                if (!historyMsgList.isEmpty()) {
+//                    ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(1000, new OpenAiTokenizer(GPT_3_5_TURBO));
+//                    historyMsgList.sort(Comparator.comparing(ConversationMessage::getId));
+//                    for (ConversationMessage historyMsg : historyMsgList) {
+//                        if (ChatMessageRoleEnum.USER.getValue().equals(historyMsg.getMessageRole())) {
+//                            UserMessage userMessage = UserMessage.from(historyMsg.getRemark());
+//                            chatMemory.add(userMessage);
+//                        } else if (ChatMessageRoleEnum.SYSTEM.getValue().equals(historyMsg.getMessageRole())) {
+//                            SystemMessage systemMessage = SystemMessage.from(historyMsg.getRemark());
+//                            chatMemory.add(systemMessage);
+//                        }else if (ChatMessageRoleEnum.ASSISTANT.getValue().equals(historyMsg.getMessageRole())) {
+//                            AiMessage aiMessage = AiMessage.from(historyMsg.getRemark());
+//                            chatMemory.add(aiMessage);
+//                        }
+//                    }
+//                    sseAskParams.setChatMemory(chatMemory);
+//                }
+//            }
         }
         sseEmitterHelper.processAndPushToModel(user, sseAskParams, (response, questionMeta, answerMeta) -> {
             _this.saveAfterAiResponse(user, askReq, response, questionMeta, answerMeta);

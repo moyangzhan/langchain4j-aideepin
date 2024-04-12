@@ -9,6 +9,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Data
 public class SseAskParams {
 
+    private String messageId;
+
     private User user;
 
     private String regenerateQuestionUuid;
