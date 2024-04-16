@@ -14,11 +14,11 @@ import java.util.function.BiFunction;
 @Slf4j
 public class MPPageUtil {
 
-    public static <T, U> Page<U> convertTo(Page<T> source, Page<U> target, Class<U> targetRecordClass) {
-        return MPPageUtil.convertTo(source, target, targetRecordClass, null);
+    public static <T, U> Page<U> convertToPage(Page<T> source, Page<U> target, Class<U> targetRecordClass) {
+        return MPPageUtil.convertToPage(source, target, targetRecordClass, null);
     }
 
-    public static <T, U> Page<U> convertTo(Page<T> source, Page<U> target, Class<U> targetRecordClass, BiFunction<T, U, U> biFunction) {
+    public static <T, U> Page<U> convertToPage(Page<T> source, Page<U> target, Class<U> targetRecordClass, BiFunction<T, U, U> biFunction) {
         BeanUtils.copyProperties(source, target);
         List<U> records = new ArrayList<>();
         target.setRecords(records);
@@ -40,7 +40,7 @@ public class MPPageUtil {
         return target;
     }
 
-    public static <T, U> List<U> convertTo(List<T> source, Class<U> targetRecordClass) {
+    public static <T, U> List<U> convertToList(List<T> source, Class<U> targetRecordClass) {
         if (CollectionUtils.isEmpty(source)) {
             return Collections.emptyList();
         }

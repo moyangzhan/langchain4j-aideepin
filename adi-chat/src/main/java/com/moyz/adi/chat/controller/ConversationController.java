@@ -1,5 +1,6 @@
 package com.moyz.adi.chat.controller;
 
+import com.moyz.adi.common.dto.ConvAddReq;
 import com.moyz.adi.common.dto.ConvDto;
 import com.moyz.adi.common.dto.ConvEditReq;
 import com.moyz.adi.common.service.ConversationService;
@@ -11,6 +12,7 @@ import jakarta.annotation.Resource;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -40,6 +42,11 @@ public class ConversationController {
             , @Parameter(name = "最大uuid") @RequestParam String maxMsgUuid
             , @Parameter(name = "每页数量") @RequestParam @Min(1) @Max(100) int pageSize) {
         return conversationService.detail(uuid, maxMsgUuid, pageSize);
+    }
+
+    @PostMapping("/add")
+    public ConvDto add(@RequestBody @Validated ConvAddReq convAddReq) {
+        return conversationService.add(convAddReq.getTitle(), convAddReq.getAiSystemMessage());
     }
 
     @PostMapping("/edit/{uuid}")

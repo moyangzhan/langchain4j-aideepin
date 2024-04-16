@@ -43,7 +43,7 @@ public class GoogleSearchEngine extends AbstractSearchEngine<GoogleSetting> {
                     result.setErrorMessage(googleSearchResp.getError().getMessage());
                 } else {
                     log.info("google response:{}", resp);
-                    items = MPPageUtil.convertTo(googleSearchResp.getItems(), SearchResultItem.class);
+                    items = MPPageUtil.convertToList(googleSearchResp.getItems(), SearchResultItem.class);
                 }
             }
         } catch (Exception e) {

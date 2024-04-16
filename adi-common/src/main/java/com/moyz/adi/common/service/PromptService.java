@@ -26,7 +26,7 @@ public class PromptService extends ServiceImpl<PromptMapper, Prompt> {
 
     public List<PromptDto> getAll(long userId) {
         List<Prompt> prompts = this.lambdaQuery().eq(Prompt::getUserId, userId).eq(Prompt::getIsDeleted, false).list();
-        return MPPageUtil.convertTo(prompts, PromptDto.class);
+        return MPPageUtil.convertToList(prompts, PromptDto.class);
     }
 
     public Page<PromptDto> search(String keyword, int currentPage, int pageSize) {
@@ -43,7 +43,7 @@ public class PromptService extends ServiceImpl<PromptMapper, Prompt> {
                     .eq(Prompt::getIsDeleted, false)
                     .page(new Page<>(currentPage, pageSize));
         }
-        return MPPageUtil.convertTo(promptPage, new Page<>(), PromptDto.class);
+        return MPPageUtil.convertToPage(promptPage, new Page<>(), PromptDto.class);
     }
 
     public List<PromptDto> autocomplete(String keyword) {
@@ -62,7 +62,7 @@ public class PromptService extends ServiceImpl<PromptMapper, Prompt> {
                     .last("limit 10")
                     .list();
         }
-        return MPPageUtil.convertTo(promptPage, PromptDto.class);
+        return MPPageUtil.convertToList(promptPage, PromptDto.class);
     }
 
     public PromptListResp listByMinUpdateTime(LocalDateTime minUpdateTime) {
@@ -88,7 +88,7 @@ public class PromptService extends ServiceImpl<PromptMapper, Prompt> {
             }
             return b;
         }).get().getUpdateTime();
-        List<PromptDto> promptDtos = MPPageUtil.convertTo(list, PromptDto.class);
+        List<PromptDto> promptDtos = MPPageUtil.convertToList(list, PromptDto.class);
         resp.setMaxUpdateTime(LocalDateTimeUtil.format(maxUpdateTime));
         resp.setPrompts(promptDtos);
         return resp;
@@ -170,6 +170,6 @@ public class PromptService extends ServiceImpl<PromptMapper, Prompt> {
                 .like(Prompt::getAct, keyword)
                 .last("limit 10")
                 .list();
-        return MPPageUtil.convertTo(prompts, PromptDto.class);
+        return MPPageUtil.convertToList(prompts, PromptDto.class);
     }
 }

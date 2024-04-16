@@ -314,4 +314,10 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         adiMailSender.send("欢迎注册AIDeepIn", "激活链接(" + AdiConstant.AUTH_ACTIVE_CODE_EXPIRE + "小时内有效):" + backendUrl + "/auth/active?code=" + activeCode, email);
     }
 
+    public User getByUuid(String uuid){
+        return ChainWrappers.lambdaQueryChain(baseMapper)
+                .eq(User::getUuid, uuid)
+                .one();
+    }
+
 }

@@ -61,12 +61,30 @@ public class UserController {
         userService.logout();
     }
 
-    @Operation(summary = "头像")
-    @GetMapping(value = "/avatar", produces = MediaType.IMAGE_JPEG_VALUE)
-    public void avatar(HttpServletResponse response) {
+    @Operation(summary = "当前用户头像")
+    @GetMapping(value = "/myAvatar", produces = MediaType.IMAGE_JPEG_VALUE)
+    public void myAvatar(HttpServletResponse response) {
         User user = ThreadContext.getCurrentUser();
         Avatar avatar = CatAvatar.newAvatarBuilder().build();
         BufferedImage bufferedImage = avatar.create(user.getId());
+        //把图片写给浏览器
+        try {
+            ImageIO.write(bufferedImage, "png", response.getOutputStream());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Operation(summary = "用户头像")
+    @GetMapping(value = "/avatar/{uuid}", produces = MediaType.IMAGE_JPEG_VALUE)
+    public void avatar(@Validated @PathVariable String uuid, HttpServletResponse response){
+        User user = userService.getByUuid(uuid);
+        long userId = 0;
+        if(null != user){
+            userId = user.getId();
+        }
+        Avatar avatar = CatAvatar.newAvatarBuilder().build();
+        BufferedImage bufferedImage = avatar.create(userId);
         //把图片写给浏览器
         try {
             ImageIO.write(bufferedImage, "png", response.getOutputStream());

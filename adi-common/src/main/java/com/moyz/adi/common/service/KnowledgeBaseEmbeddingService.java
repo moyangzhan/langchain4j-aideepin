@@ -16,7 +16,7 @@ public class KnowledgeBaseEmbeddingService extends ServiceImpl<KnowledgeBaseEmbe
     public Page<KbItemEmbeddingDto> listByItemUuid(String kbItemUuid, int currentPage, int pageSize) {
         Page<KnowledgeBaseEmbedding> sourcePage = baseMapper.selectByItemUuid(new Page<>(currentPage, pageSize), kbItemUuid);
         Page<KbItemEmbeddingDto> result = new Page<>();
-        MPPageUtil.convertTo(sourcePage, result, KbItemEmbeddingDto.class, (source, target) -> {
+        MPPageUtil.convertToPage(sourcePage, result, KbItemEmbeddingDto.class, (source, target) -> {
             target.setEmbedding(source.getEmbedding().toArray());
             return target;
         });

@@ -1,12 +1,15 @@
 package com.moyz.adi.chat.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.KbEditReq;
+import com.moyz.adi.common.dto.KbInfoResp;
 import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.service.KnowledgeBaseService;
 import jakarta.annotation.Resource;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
@@ -38,12 +41,12 @@ public class KnowledgeBaseController {
     }
 
     @GetMapping("/searchMine")
-    public Page<KnowledgeBase> searchMine(@RequestParam(defaultValue = "") String keyword, @RequestParam(defaultValue = "false") Boolean includeOthersPublic, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
+    public Page<KbInfoResp> searchMine(@RequestParam(defaultValue = "") String keyword, @RequestParam(defaultValue = "false") Boolean includeOthersPublic, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
         return knowledgeBaseService.searchMine(keyword, includeOthersPublic, currentPage, pageSize);
     }
 
     @GetMapping("/searchPublic")
-    public Page<KnowledgeBase> searchPublic(@RequestParam(defaultValue = "") String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
+    public Page<KbInfoResp> searchPublic(@RequestParam(defaultValue = "") String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
         return knowledgeBaseService.searchPublic(keyword, currentPage, pageSize);
     }
 
@@ -70,8 +73,8 @@ public class KnowledgeBaseController {
      *
      * @return
      */
-    @PostMapping("/star/{kbUuid}")
-    public boolean star(@PathVariable String kbUuid) {
-        return knowledgeBaseService.star(kbUuid);
+    @PostMapping("/star/toggle")
+    public boolean star(@RequestParam @NotBlank String kbUuid) {
+        return knowledgeBaseService.toggleStar(ThreadContext.getCurrentUser(), kbUuid);
     }
 }

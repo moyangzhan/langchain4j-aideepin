@@ -228,6 +228,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         aiAnswer.setTokens(answerMeta.getTokens());
         aiAnswer.setParentMessageId(promptMsg.getId());
         aiAnswer.setSecretKeyType(secretKeyType);
+        aiAnswer.setLanguageModelName(askReq.getModelName());
         baseMapper.insert(aiAnswer);
 
         calcTodayCost(user, conversation, questionMeta, answerMeta);

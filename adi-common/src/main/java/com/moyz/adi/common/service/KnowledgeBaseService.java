@@ -9,6 +9,7 @@ import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.cosntant.RedisKeyConstant;
 import com.moyz.adi.common.dto.KbEditReq;
+import com.moyz.adi.common.dto.KbInfoResp;
 import com.moyz.adi.common.dto.QAReq;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
@@ -16,6 +17,7 @@ import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.util.BizPager;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
+import com.moyz.adi.common.util.MPPageUtil;
 import com.moyz.adi.common.vo.SseAskParams;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
@@ -33,6 +35,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -64,6 +67,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
     @Resource
     private KnowledgeBaseQaRecordService knowledgeBaseQaRecordService;
+
+    @Resource
+    private KnowledgeBaseStarRecordService knowledgeBaseStarRecordService;
 
     @Resource
     private FileService fileService;
@@ -194,16 +200,20 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         return true;
     }
 
-    public Page<KnowledgeBase> searchMine(String keyword, Boolean includeOthersPublic, Integer currentPage, Integer pageSize) {
+    public Page<KbInfoResp> searchMine(String keyword, Boolean includeOthersPublic, Integer currentPage, Integer pageSize) {
+        Page<KbInfoResp> result = new Page<>();
         User user = ThreadContext.getCurrentUser();
+        Page<KnowledgeBase> knowledgeBasePage;
         if (user.getIsAdmin()) {
-            return baseMapper.searchByAdmin(new Page<>(currentPage, pageSize), keyword);
+            knowledgeBasePage = baseMapper.searchByAdmin(new Page<>(currentPage, pageSize), keyword);
         } else {
-            return baseMapper.searchByUser(new Page<>(currentPage, pageSize), user.getId(), keyword, includeOthersPublic);
+            knowledgeBasePage = baseMapper.searchByUser(new Page<>(currentPage, pageSize), user.getId(), keyword, includeOthersPublic);
         }
+        return MPPageUtil.convertToPage(knowledgeBasePage, result, KbInfoResp.class, null);
     }
 
-    public Page<KnowledgeBase> searchPublic(String keyword, Integer currentPage, Integer pageSize) {
+    public Page<KbInfoResp> searchPublic(String keyword, Integer currentPage, Integer pageSize) {
+        Page<KbInfoResp> result = new Page<>();
         LambdaQueryWrapper<KnowledgeBase> wrapper = new LambdaQueryWrapper();
         wrapper.eq(KnowledgeBase::getIsPublic, true);
         wrapper.eq(KnowledgeBase::getIsDeleted, false);
@@ -211,7 +221,8 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             wrapper.like(KnowledgeBase::getTitle, keyword);
         }
         wrapper.orderByDesc(KnowledgeBase::getStarCount, KnowledgeBase::getUpdateTime);
-        return baseMapper.selectPage(new Page<>(currentPage, pageSize), wrapper);
+        Page<KnowledgeBase> knowledgeBasePage = baseMapper.selectPage(new Page<>(currentPage, pageSize), wrapper);
+        return MPPageUtil.convertToPage(knowledgeBasePage, result, KbInfoResp.class, null);
     }
 
     public boolean softDelete(String uuid) {
@@ -247,12 +258,42 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         return sseEmitter;
     }
 
-    public boolean star(String kbUuid) {
-        KnowledgeBase knowledgeBase = getOrThrow(kbUuid);
-        return ChainWrappers.lambdaUpdateChain(baseMapper)
+    /**
+     * Star or unstar
+     *
+     * @param user
+     * @param kbUuid
+     * @return true:star;false:unstar
+     */
+    @Transactional
+    public boolean toggleStar(User user, String kbUuid) {
+
+        KnowledgeBase knowledgeBase = _this.getOrThrow(kbUuid);
+        boolean star;
+        KnowledgeBaseStarRecord oldRecord = knowledgeBaseStarRecordService.getRecord(user.getId(), kbUuid);
+        if (null == oldRecord) {
+            KnowledgeBaseStarRecord starRecord = new KnowledgeBaseStarRecord();
+            starRecord.setUserId(user.getId());
+            starRecord.setUserUuid(user.getUuid());
+            starRecord.setKbId(knowledgeBase.getId());
+            starRecord.setKbUuid(kbUuid);
+            knowledgeBaseStarRecordService.save(starRecord);
+
+            star = true;
+        } else {
+            //Deleted means unstar
+            knowledgeBaseStarRecordService.lambdaUpdate()
+                    .eq(KnowledgeBaseStarRecord::getId, oldRecord.getId())
+                    .set(KnowledgeBaseStarRecord::getIsDeleted, !oldRecord.getIsDeleted())
+                    .update();
+            star = oldRecord.getIsDeleted();
+        }
+        int starCount = star ? knowledgeBase.getStarCount() + 1 : knowledgeBase.getStarCount() - 1;
+        ChainWrappers.lambdaUpdateChain(baseMapper)
                 .eq(KnowledgeBase::getId, knowledgeBase.getId())
-                .set(KnowledgeBase::getStarCount, knowledgeBase.getStarCount() + 1)
+                .set(KnowledgeBase::getStarCount, starCount)
                 .update();
+        return star;
     }
 
     /**

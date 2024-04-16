@@ -28,7 +28,11 @@ public class KnowledgeBase extends BaseEntity {
 
     @Schema(title = "点赞数")
     @TableField("star_count")
-    private Long starCount;
+    private Integer starCount;
+
+    @Schema(title = "所属人uuid")
+    @TableField("owner_uuid")
+    private String ownerUuid;
 
     @Schema(title = "所属人id")
     @TableField("owner_id")

@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.moyz.adi.common.enums.ErrorEnum.A_CONVERSATION_EXIST;
 import static com.moyz.adi.common.enums.ErrorEnum.A_CONVERSATION_NOT_EXIST;
 
 @Slf4j
@@ -39,7 +40,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
                 .orderByDesc(Conversation::getId)
                 .last("limit " + sysConfigService.getConversationMaxNum())
                 .list();
-        return MPPageUtil.convertTo(list, ConvDto.class);
+        return MPPageUtil.convertToList(list, ConvDto.class);
     }
 
     /**
@@ -80,7 +81,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
             return b;
         }).getUuid();
         //Wrap question content
-        List<ConvMsgResp> userMessages = MPPageUtil.convertTo(questions, ConvMsgResp.class);
+        List<ConvMsgResp> userMessages = MPPageUtil.convertToList(questions, ConvMsgResp.class);
         ConvMsgListResp result = new ConvMsgListResp(minUuid, userMessages);
 
         //Wrap answer content
@@ -94,7 +95,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
 
         //Fill AI answer to the request of user
         result.getMsgList().forEach(item -> {
-            List<ConvMsgResp> children = MPPageUtil.convertTo(idToMessages.get(item.getId()), ConvMsgResp.class);
+            List<ConvMsgResp> children = MPPageUtil.convertToList(idToMessages.get(item.getId()), ConvMsgResp.class);
             if (children.size() > 1) {
                 children = children.stream().sorted(Comparator.comparing(ConvMsgResp::getCreateTime).reversed()).collect(Collectors.toList());
             }
@@ -120,6 +121,27 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
         baseMapper.insert(conversation);
 
         return this.lambdaQuery().eq(Conversation::getUuid, uuid).oneOpt().orElse(null);
+    }
+
+    public ConvDto add(String title, String systemMessage) {
+        Conversation conversation = this.lambdaQuery()
+                .eq(Conversation::getUserId, ThreadContext.getCurrentUserId())
+                .eq(Conversation::getTitle, title)
+                .eq(Conversation::getIsDeleted, false)
+                .one();
+        if (null != conversation) {
+            throw new BaseException(A_CONVERSATION_EXIST);
+        }
+        String uuid = UUID.randomUUID().toString().replace("-", "");
+        Conversation one = new Conversation();
+        one.setUuid(uuid);
+        one.setTitle(title);
+        one.setAiSystemMessage(systemMessage);
+        one.setUserId(ThreadContext.getCurrentUserId());
+        baseMapper.insert(one);
+
+        Conversation conv = this.lambdaQuery().eq(Conversation::getUuid, uuid).one();
+        return MPPageUtil.convertTo(conv, ConvDto.class);
     }
 
     public boolean edit(String uuid, ConvEditReq convEditReq) {

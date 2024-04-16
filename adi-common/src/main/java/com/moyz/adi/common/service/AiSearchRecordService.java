@@ -14,7 +14,6 @@ import com.moyz.adi.common.util.BizPager;
 import com.moyz.adi.common.util.MPPageUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -45,7 +44,7 @@ public class AiSearchRecordService extends ServiceImpl<AiSearchRecordMapper, AiS
         }
         AiSearchResp result = new AiSearchResp();
         BizPager.listByMaxId(maxId, wrapper, this, AiSearchRecord::getId, (recordList, minId) -> {
-            List<AiSearchRecordResp> list = MPPageUtil.convertTo(recordList, AiSearchRecordResp.class);
+            List<AiSearchRecordResp> list = MPPageUtil.convertToList(recordList, AiSearchRecordResp.class);
             list.forEach(item -> {
                 if(null == item.getSearchEngineResp()){
                     SearchEngineResp searchEngineResp = new SearchEngineResp();
