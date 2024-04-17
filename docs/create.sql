@@ -103,7 +103,7 @@ CREATE TABLE public.adi_conversation_message
     uuid                            character varying(32) DEFAULT ''::character varying NOT NULL,
     message_role                    integer               DEFAULT 1                     NOT NULL,
     tokens                          integer               DEFAULT 0                     NOT NULL,
-    openai_message_id               character varying(32) DEFAULT ''::character varying NOT NULL,
+    language_model_name             character varying(32) DEFAULT ''::character varying NOT NULL,
     user_id                         bigint                DEFAULT '0'::bigint           NOT NULL,
     secret_key_type                 integer               DEFAULT 1                     NOT NULL,
     understand_context_msg_pair_num integer               DEFAULT 0                     NOT NULL,
@@ -127,7 +127,7 @@ COMMENT ON COLUMN public.adi_conversation_message.message_role IS '产生该消�
 
 COMMENT ON COLUMN public.adi_conversation_message.tokens IS '消耗的token数量';
 
-COMMENT ON COLUMN public.adi_conversation_message.openai_message_id IS 'OpenAI生成的消息ID';
+COMMENT ON COLUMN public.adi_conversation_message.language_model_name IS 'LLM name';
 
 COMMENT ON COLUMN public.adi_conversation_message.user_id IS '用户ID';
 
@@ -235,7 +235,7 @@ CREATE TABLE public.adi_user
     quota_by_request_monthly        integer                DEFAULT 0                     NOT NULL,
     secret_key                      character varying(120) DEFAULT ''::character varying NOT NULL,
     understand_context_enable       smallint               DEFAULT '0'::smallint         NOT NULL,
-    understand_context_msg_pair_num integer                DEFAULT 0                     NOT NULL,
+    understand_context_msg_pair_num integer                DEFAULT 3                     NOT NULL,
     quota_by_image_daily            integer                DEFAULT 0                     NOT NULL,
     quota_by_image_monthly          integer                DEFAULT 0                     NOT NULL,
     create_time                     timestamp              DEFAULT CURRENT_TIMESTAMP     NOT NULL,
@@ -424,6 +424,7 @@ create table adi_knowledge_base
     is_public   boolean      default false                 not null,
     star_count  int          default 0                     not null,
     owner_id    bigint       default 0                     not null,
+    owner_uuid  varchar(32)  default ''::character varying not null,
     owner_name  varchar(45)  default ''::character varying not null,
     create_time timestamp    default CURRENT_TIMESTAMP     not null,
     update_time timestamp    default CURRENT_TIMESTAMP     not null,
@@ -441,6 +442,8 @@ comment on column adi_knowledge_base.is_public is '是否公开';
 comment on column adi_knowledge_base.star_count is '点赞数';
 
 comment on column adi_knowledge_base.owner_id is '所属人id';
+
+comment on column adi_knowledge_base.owner_uuid is '所属人uuid';
 
 comment on column adi_knowledge_base.owner_name is '所属人名称';
 
@@ -495,6 +498,41 @@ comment on column adi_knowledge_base_item.is_deleted is '0：未删除；1：已
 create trigger trigger_kb_item_update_time
     before update
     on adi_knowledge_base_item
+    for each row
+execute procedure update_modified_column();
+
+create table adi_knowledge_base_star_record
+(
+    id          bigserial primary key,
+    kb_id       bigint      DEFAULT '0'::bigint           NOT NULL,
+    kb_uuid     varchar(32) default ''::character varying not null,
+    user_id     bigint      default '0'                   NOT NULL,
+    user_uuid   varchar(32) default ''::character varying not null,
+    create_time timestamp   default CURRENT_TIMESTAMP     not null,
+    update_time timestamp   default CURRENT_TIMESTAMP     not null,
+    is_deleted  boolean     default false                 not null,
+    UNIQUE (kb_id, user_id)
+);
+
+comment on table adi_knowledge_base_star_record is '知识库-点赞记录';
+
+comment on column adi_knowledge_base_star_record.kb_id is 'adi_knowledge_base id';
+
+comment on column adi_knowledge_base_star_record.kb_uuid is 'adi_knowledge_base uuid';
+
+comment on column adi_knowledge_base_star_record.user_id is 'adi_user id';
+
+comment on column adi_knowledge_base_star_record.user_uuid is 'adi_user uuid';
+
+comment on column adi_knowledge_base_star_record.create_time is '创建时间';
+
+comment on column adi_knowledge_base_star_record.update_time is '更新时间';
+
+comment on column adi_knowledge_base_star_record.is_deleted is '0:normal; 1:deleted';
+
+create trigger trigger_kb_star_record_update_time
+    before update
+    on adi_knowledge_base_star_record
     for each row
 execute procedure update_modified_column();
 
