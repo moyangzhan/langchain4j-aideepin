@@ -124,7 +124,7 @@ mvn clean package -Dmaven.test.skip=true
 a. jar包启动：
 
 ```plaintext
-adi-bootstrap-0.0.1-SNAPSHOT.jarcd adi-bootstrap/target
+cd adi-bootstrap/target
 nohup java -jar -Xms768m -Xmx1024m -XX:+HeapDumpOnOutOfMemoryError adi-bootstrap-0.0.1-SNAPSHOT.jar --spring.profiles.active=[dev|prod] dev/null 2>&1 &
 ```
 
