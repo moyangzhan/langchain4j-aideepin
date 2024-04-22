@@ -93,6 +93,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             uuid = UUID.randomUUID().toString().replace("-", "");
             knowledgeBase.setUuid(uuid);
             knowledgeBase.setOwnerId(user.getId());
+            knowledgeBase.setOwnerUuid(user.getUuid());
             knowledgeBase.setOwnerName(user.getName());
             baseMapper.insert(knowledgeBase);
         } else {

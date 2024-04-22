@@ -99,7 +99,6 @@ Google的配置
 update adi_sys_config set value = '{"url":"https://www.googleapis.com/customsearch/v1","key":"my key from cloud.google.com","cx":"my cx from programmablesearchengine.google.com"}' where name = 'google_setting';
 ```
 
-
 **b. 修改配置文件**
 
 * postgresql: application-[dev|prod].xml中的spring.datasource
@@ -125,8 +124,8 @@ mvn clean package -Dmaven.test.skip=true
 a. jar包启动：
 
 ```plaintext
-cd adi-bootstrap/target
-nohup java -jar -Xms768m -Xmx1024m -XX:+HeapDumpOnOutOfMemoryError adi-chat-0.0.1-SNAPSHOT.jar --spring.profiles.active=[dev|prod] dev/null 2>&1 &
+adi-bootstrap-0.0.1-SNAPSHOT.jarcd adi-bootstrap/target
+nohup java -jar -Xms768m -Xmx1024m -XX:+HeapDumpOnOutOfMemoryError adi-bootstrap-0.0.1-SNAPSHOT.jar --spring.profiles.active=[dev|prod] dev/null 2>&1 &
 ```
 
 b. docker启动
@@ -143,7 +142,7 @@ docker run -d \
 
 ## 待办：
 
-增强RAG
+高级RAG
 
 增加搜索引擎（BING、百度）
 

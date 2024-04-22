@@ -117,14 +117,10 @@ public abstract class AbstractLLMService<T> {
         }
 
         TokenStream tokenStream;
-        if (StringUtils.isNotBlank(params.getMessageId()) && StringUtils.isNotBlank(params.getSystemMessage())) {
-            tokenStream = chatAssistant.chat(params.getMessageId(), params.getSystemMessage(), params.getUserMessage());
-        } else if (StringUtils.isNotBlank(params.getMessageId()) && StringUtils.isBlank(params.getSystemMessage())) {
-            tokenStream = chatAssistant.chat(params.getMessageId(), params.getUserMessage());
-        } else if (StringUtils.isBlank(params.getMessageId()) && StringUtils.isNotBlank(params.getSystemMessage())) {
-            tokenStream = chatAssistantWithoutMemory.chat(params.getSystemMessage(), params.getUserMessage());
+        if (StringUtils.isNotBlank(params.getMessageId())) {
+            tokenStream = chatWithMemory(params.getMessageId(), params.getSystemMessage(), params.getUserMessage());
         } else {
-            tokenStream = chatAssistantWithoutMemory.chat(params.getUserMessage());
+            tokenStream = chatWithoutMemory(params.getSystemMessage(), params.getUserMessage());
         }
         tokenStream
                 .onNext((content) -> {
@@ -170,4 +166,19 @@ public abstract class AbstractLLMService<T> {
                 .start();
     }
 
+    public TokenStream chatWithoutMemory(String systemMessage, String userMessage) {
+        if (StringUtils.isNotBlank(systemMessage)) {
+            return chatAssistantWithoutMemory.chat(systemMessage, userMessage);
+        } else {
+            return chatAssistantWithoutMemory.chat(userMessage);
+        }
+    }
+
+    public TokenStream chatWithMemory(String messageId, String systemMessage, String userMessage) {
+        if (StringUtils.isNotBlank(systemMessage)) {
+            return chatAssistant.chat(messageId, systemMessage, userMessage);
+        } else {
+            return chatAssistant.chat(messageId, userMessage);
+        }
+    }
 }

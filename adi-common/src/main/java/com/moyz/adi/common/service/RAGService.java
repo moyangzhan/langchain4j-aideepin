@@ -127,7 +127,7 @@ public class RAGService {
         double minScore = 0.6;
         List<EmbeddingMatch<TextSegment>> relevantEmbeddings = ((AdiPgVectorEmbeddingStore) embeddingStore).findRelevantByMetadata(metadataCond, questionEmbedding, maxResults, minScore);
 
-        // Create a prompt for the model that includes question and relevant embeddings
+        // Create a prompt that includes question and relevant embeddings
         String information = relevantEmbeddings.stream()
                 .map(match -> match.embedded().text())
                 .collect(joining("\n\n"));
