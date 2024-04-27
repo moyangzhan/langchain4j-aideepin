@@ -32,7 +32,7 @@ public class Initializer {
     private SysConfigService sysConfigService;
 
     @Resource
-    private RAGService ragService;
+    private RAGService queryCompressingRagService;
 
     @PostConstruct
     public void init() {
@@ -49,7 +49,7 @@ public class Initializer {
             log.warn("openai service is disabled");
         }
         for (String model : openaiModels) {
-            LLMContext.addLLMService(model, new OpenAiLLMService(model).setProxy(proxy));
+            LLMContext.addLLMService(model, new OpenAiLLMService(model).setProxy(proxy).setQueryCompressingRAGService(queryCompressingRagService));
         }
 
         //dashscope
@@ -58,7 +58,7 @@ public class Initializer {
             log.warn("dashscope service is disabled");
         }
         for (String model : dashscopeModels) {
-            LLMContext.addLLMService(model, new DashScopeLLMService(model));
+            LLMContext.addLLMService(model, new DashScopeLLMService(model).setQueryCompressingRAGService(queryCompressingRagService));
         }
 
         //qianfan
@@ -67,7 +67,7 @@ public class Initializer {
             log.warn("qianfan service is disabled");
         }
         for (String model : qianfanModels) {
-            LLMContext.addLLMService(model, new QianFanLLMService(model));
+            LLMContext.addLLMService(model, new QianFanLLMService(model).setQueryCompressingRAGService(queryCompressingRagService));
         }
 
         //ollama
@@ -76,16 +76,13 @@ public class Initializer {
             log.warn("ollama service is disabled");
         }
         for (String model : ollamaModels) {
-            LLMContext.addLLMService("ollama:" + model, new OllamaLLMService(model));
+            LLMContext.addLLMService("ollama:" + model, new OllamaLLMService(model).setQueryCompressingRAGService(queryCompressingRagService));
         }
 
         ImageModelContext.addImageModelService(OpenAiModelName.DALL_E_2, new OpenAiImageModelService(OpenAiModelName.DALL_E_2).setProxy(proxy));
 
-
         //search engine
         SearchEngineContext.addEngine(AdiConstant.SearchEngineName.GOOGLE, new GoogleSearchEngine().setProxy(proxy));
 
-
-        ragService.init();
     }
 }

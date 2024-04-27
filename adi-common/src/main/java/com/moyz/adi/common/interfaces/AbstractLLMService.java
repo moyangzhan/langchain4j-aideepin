@@ -1,6 +1,7 @@
 package com.moyz.adi.common.interfaces;
 
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.service.RAGService;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.util.MapDBChatMemoryStore;
@@ -15,6 +16,10 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.rag.DefaultRetrievalAugmentor;
+import dev.langchain4j.rag.RetrievalAugmentor;
+import dev.langchain4j.rag.query.transformer.CompressingQueryTransformer;
+import dev.langchain4j.rag.query.transformer.QueryTransformer;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +48,7 @@ public abstract class AbstractLLMService<T> {
 
     private IChatAssistantWithoutMemory chatAssistantWithoutMemory;
 
-    private MapDBChatMemoryStore mapDBChatMemoryStore;
+    private RAGService queryCompressingRagService;
 
     public AbstractLLMService(String modelName, String settingName, Class<T> clazz) {
         this.modelName = modelName;
@@ -53,6 +58,11 @@ public abstract class AbstractLLMService<T> {
 
     public AbstractLLMService setProxy(Proxy proxy) {
         this.proxy = proxy;
+        return this;
+    }
+
+    public AbstractLLMService setQueryCompressingRAGService(RAGService ragService){
+        queryCompressingRagService = ragService;
         return this;
     }
 
@@ -99,6 +109,15 @@ public abstract class AbstractLLMService<T> {
             throw new BaseException(B_LLM_SERVICE_DISABLED);
         }
         log.info("sseChat,messageId:{}", params.getMessageId());
+
+        //Query compressing
+        QueryTransformer queryTransformer = new CompressingQueryTransformer(getChatLLM());
+
+        RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
+                .queryTransformer(queryTransformer)
+                .contentRetriever(queryCompressingRagService.buildContentRetriever())
+                .build();
+
         //create chat assistant
         if (null == chatAssistant && StringUtils.isNotBlank(params.getMessageId())) {
             ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.builder()
@@ -109,6 +128,7 @@ public abstract class AbstractLLMService<T> {
             chatAssistant = AiServices.builder(IChatAssistant.class)
                     .streamingChatLanguageModel(getStreamingChatLLM())
                     .chatMemoryProvider(chatMemoryProvider)
+                    .retrievalAugmentor(retrievalAugmentor)
                     .build();
         } else if (null == chatAssistantWithoutMemory && StringUtils.isBlank(params.getMessageId())) {
             chatAssistantWithoutMemory = AiServices.builder(IChatAssistantWithoutMemory.class)

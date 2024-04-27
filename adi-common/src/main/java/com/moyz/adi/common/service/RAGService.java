@@ -13,6 +13,8 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
@@ -32,6 +34,10 @@ import static java.util.stream.Collectors.joining;
 
 @Slf4j
 public class RAGService {
+
+    private static final int MAX_RESULTS = 3;
+    private static final double MIN_SCORE = 0.6;
+
     private String dataBaseUrl;
 
     private String dataBaseUserName;
@@ -91,23 +97,35 @@ public class RAGService {
         return embeddingStore;
     }
 
-    private EmbeddingStoreIngestor getEmbeddingStoreIngestor() {
+    /**
+     * 对文档切块、向量化并存储到数据库
+     *
+     * @param document 知识库文档
+     */
+    public void ingest(Document document) {
         DocumentSplitter documentSplitter = DocumentSplitters.recursive(1000, 0, new OpenAiTokenizer(GPT_3_5_TURBO));
         EmbeddingStoreIngestor embeddingStoreIngestor = EmbeddingStoreIngestor.builder()
                 .documentSplitter(documentSplitter)
                 .embeddingModel(embeddingModel)
                 .embeddingStore(embeddingStore)
                 .build();
-        return embeddingStoreIngestor;
+        embeddingStoreIngestor.ingest(document);
     }
 
     /**
-     * 对文档切块并向量化
+     * There are two methods for retrieve documents:
+     * 1. ContentRetriever.retrieve()
+     * 2. retrieveAndCreatePrompt()
      *
-     * @param document 知识库文档
+     * @return ContentRetriever
      */
-    public void ingest(Document document) {
-        getEmbeddingStoreIngestor().ingest(document);
+    public ContentRetriever buildContentRetriever() {
+        return EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(embeddingStore)
+                .embeddingModel(embeddingModel)
+                .maxResults(MAX_RESULTS)
+                .minScore(MIN_SCORE)
+                .build();
     }
 
     /**
