@@ -1,6 +1,7 @@
 package com.moyz.adi.chat.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.moyz.adi.common.dto.KbQaRecordDto;
 import com.moyz.adi.common.dto.QAReq;
 import com.moyz.adi.common.entity.KnowledgeBaseQaRecord;
 import com.moyz.adi.common.service.KnowledgeBaseQaRecordService;
@@ -38,7 +39,7 @@ public class KnowledgeBaseQAController {
     }
 
     @GetMapping("/record/search")
-    public Page<KnowledgeBaseQaRecord> list(String kbUuid, String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
+    public Page<KbQaRecordDto> list(String kbUuid, String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
         return knowledgeBaseQaRecordService.search(kbUuid, keyword, currentPage, pageSize);
     }
 

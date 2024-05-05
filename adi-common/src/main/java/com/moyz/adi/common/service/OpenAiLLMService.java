@@ -1,6 +1,7 @@
 package com.moyz.adi.common.service;
 
 import com.moyz.adi.common.cosntant.AdiConstant;
+import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
@@ -27,24 +28,24 @@ import java.time.temporal.ChronoUnit;
 @Accessors(chain = true)
 public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
 
-    public OpenAiLLMService(String modelName) {
-        super(modelName, AdiConstant.SysConfigKey.OPENAI_SETTING, OpenAiSetting.class);
+    public OpenAiLLMService(AiModel model) {
+        super(model, AdiConstant.SysConfigKey.OPENAI_SETTING, OpenAiSetting.class);
     }
 
     @Override
     public boolean isEnabled() {
-        return StringUtils.isNotBlank(setting.getSecretKey());
+        return StringUtils.isNotBlank(modelPlatformSetting.getSecretKey()) && aiModel.getIsEnable();
     }
 
     @Override
     protected StreamingChatLanguageModel buildStreamingChatLLM() {
-        if (StringUtils.isBlank(setting.getSecretKey())) {
+        if (StringUtils.isBlank(modelPlatformSetting.getSecretKey())) {
             throw new BaseException(ErrorEnum.B_LLM_SECRET_KEY_NOT_SET);
         }
         OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder = OpenAiStreamingChatModel
                 .builder()
-                .modelName(modelName)
-                .apiKey(setting.getSecretKey())
+                .modelName(aiModel.getName())
+                .apiKey(modelPlatformSetting.getSecretKey())
                 .timeout(Duration.of(60, ChronoUnit.SECONDS));
         if (null != proxy) {
             builder.proxy(proxy);
@@ -54,8 +55,8 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
 
     @Override
     protected String parseError(Object error) {
-        if(error instanceof OpenAiHttpException){
-            OpenAiHttpException openAiHttpException = (OpenAiHttpException)error;
+        if (error instanceof OpenAiHttpException) {
+            OpenAiHttpException openAiHttpException = (OpenAiHttpException) error;
             OpenAiError openAiError = JsonUtil.fromJson(openAiHttpException.getMessage(), OpenAiError.class);
             return openAiError.getError().getMessage();
         }
@@ -64,10 +65,10 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
 
     @Override
     protected ChatLanguageModel buildChatLLM() {
-        if (StringUtils.isBlank(setting.getSecretKey())) {
+        if (StringUtils.isBlank(modelPlatformSetting.getSecretKey())) {
             throw new BaseException(ErrorEnum.B_LLM_SECRET_KEY_NOT_SET);
         }
-        OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder().apiKey(setting.getSecretKey());
+        OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder().apiKey(modelPlatformSetting.getSecretKey());
         if (null != proxy) {
             builder.proxy(proxy);
         }

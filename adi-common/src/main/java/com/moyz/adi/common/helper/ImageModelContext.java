@@ -1,5 +1,6 @@
 package com.moyz.adi.common.helper;
 
+import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.interfaces.AbstractImageModelService;
 import com.moyz.adi.common.vo.ImageModelInfo;
 import lombok.extern.slf4j.Slf4j;
@@ -35,12 +36,12 @@ public class ImageModelContext {
         }
     }
 
-    public static void addImageModelService(String modelServiceKey, AbstractImageModelService modelService) {
+    public static void addImageModelService(AbstractImageModelService modelService) {
         ImageModelInfo imageModelInfo = new ImageModelInfo();
         imageModelInfo.setModelService(modelService);
-        imageModelInfo.setModelName(modelServiceKey);
+        imageModelInfo.setModelName(modelService.getAiModel().getName());
         imageModelInfo.setEnable(modelService.isEnabled());
-        NAME_TO_MODEL.put(modelServiceKey, imageModelInfo);
+        NAME_TO_MODEL.put(modelService.getAiModel().getName(), imageModelInfo);
     }
 
     public AbstractImageModelService getModelService() {

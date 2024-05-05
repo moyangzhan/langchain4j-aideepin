@@ -1,5 +1,6 @@
 package com.moyz.adi.common.interfaces;
 
+import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.service.RAGService;
 import com.moyz.adi.common.util.JsonUtil;
@@ -37,9 +38,9 @@ public abstract class AbstractLLMService<T> {
 
     protected Proxy proxy;
 
-    protected String modelName;
+    protected AiModel aiModel;
 
-    protected T setting;
+    protected T modelPlatformSetting;
 
     protected StreamingChatLanguageModel streamingChatLanguageModel;
     protected ChatLanguageModel chatLanguageModel;
@@ -50,10 +51,10 @@ public abstract class AbstractLLMService<T> {
 
     private RAGService queryCompressingRagService;
 
-    public AbstractLLMService(String modelName, String settingName, Class<T> clazz) {
-        this.modelName = modelName;
+    public AbstractLLMService(AiModel aiModel, String settingName, Class<T> clazz) {
+        this.aiModel = aiModel;
         String st = LocalCache.CONFIGS.get(settingName);
-        setting = JsonUtil.fromJson(st, clazz);
+        modelPlatformSetting = JsonUtil.fromJson(st, clazz);
     }
 
     public AbstractLLMService setProxy(Proxy proxy) {
@@ -61,7 +62,7 @@ public abstract class AbstractLLMService<T> {
         return this;
     }
 
-    public AbstractLLMService setQueryCompressingRAGService(RAGService ragService){
+    public AbstractLLMService setQueryCompressingRAGService(RAGService ragService) {
         queryCompressingRagService = ragService;
         return this;
     }
@@ -200,5 +201,9 @@ public abstract class AbstractLLMService<T> {
         } else {
             return chatAssistant.chat(messageId, userMessage);
         }
+    }
+
+    public AiModel getAiModel() {
+        return aiModel;
     }
 }

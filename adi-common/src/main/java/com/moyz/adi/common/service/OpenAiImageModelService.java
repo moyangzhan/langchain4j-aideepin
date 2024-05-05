@@ -3,6 +3,7 @@ package com.moyz.adi.common.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiImage;
+import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
@@ -45,13 +46,13 @@ public class OpenAiImageModelService extends AbstractImageModelService<OpenAiSet
     @Resource
     private ObjectMapper objectMapper;
 
-    public OpenAiImageModelService(String modelName) {
-        super(modelName, AdiConstant.SysConfigKey.OPENAI_SETTING, OpenAiSetting.class);
+    public OpenAiImageModelService(AiModel aiModel) {
+        super(aiModel, AdiConstant.SysConfigKey.OPENAI_SETTING, OpenAiSetting.class);
     }
 
     @Override
     public boolean isEnabled() {
-        return StringUtils.isNotBlank(setting.getSecretKey());
+        return StringUtils.isNotBlank(setting.getSecretKey()) && aiModel.getIsEnable();
     }
 
     @Override
@@ -60,7 +61,7 @@ public class OpenAiImageModelService extends AbstractImageModelService<OpenAiSet
             throw new BaseException(ErrorEnum.B_LLM_SECRET_KEY_NOT_SET);
         }
         OpenAiImageModel.OpenAiImageModelBuilder builder = OpenAiImageModel.builder()
-                .modelName(modelName)
+                .modelName(aiModel.getName())
                 .apiKey(setting.getSecretKey())
                 .user(user.getUuid())
                 .responseFormat(OPENAI_CREATE_IMAGE_RESP_FORMATS_URL)

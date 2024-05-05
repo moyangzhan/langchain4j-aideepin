@@ -1,5 +1,6 @@
 package com.moyz.adi.common.service;
 
+import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
 import com.moyz.adi.common.vo.OllamaSetting;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -12,20 +13,20 @@ import static com.moyz.adi.common.cosntant.AdiConstant.SysConfigKey.OLLAMA_SETTI
 
 public class OllamaLLMService extends AbstractLLMService<OllamaSetting> {
 
-    public OllamaLLMService(String modelName) {
-        super(modelName, OLLAMA_SETTING, OllamaSetting.class);
+    public OllamaLLMService(AiModel aiModel) {
+        super(aiModel, OLLAMA_SETTING, OllamaSetting.class);
     }
 
     @Override
     public boolean isEnabled() {
-        return StringUtils.isNotBlank(setting.getBaseUrl());
+        return StringUtils.isNotBlank(modelPlatformSetting.getBaseUrl()) && aiModel.getIsEnable();
     }
 
     @Override
     protected ChatLanguageModel buildChatLLM() {
         return OllamaChatModel.builder()
-                .baseUrl(setting.getBaseUrl())
-                .modelName(modelName)
+                .baseUrl(modelPlatformSetting.getBaseUrl())
+                .modelName(aiModel.getName())
                 .temperature(0.0)
                 .build();
     }
@@ -33,8 +34,8 @@ public class OllamaLLMService extends AbstractLLMService<OllamaSetting> {
     @Override
     protected StreamingChatLanguageModel buildStreamingChatLLM() {
         return OllamaStreamingChatModel.builder()
-                .baseUrl(setting.getBaseUrl())
-                .modelName(modelName)
+                .baseUrl(modelPlatformSetting.getBaseUrl())
+                .modelName(aiModel.getName())
                 .build();
     }
 

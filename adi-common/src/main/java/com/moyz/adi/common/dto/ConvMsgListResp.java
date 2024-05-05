@@ -11,5 +11,5 @@ public class ConvMsgListResp {
 
     private String minMsgUuid;
 
-    private List<ConvMsgResp> msgList;
+    private List<ConvMsgDto> msgList;
 }

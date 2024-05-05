@@ -5,11 +5,15 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.moyz.adi.common.base.ThreadContext;
+import com.moyz.adi.common.dto.KbQaRecordDto;
+import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.entity.KnowledgeBaseQaRecord;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.KnowledgeBaseQaRecordMapper;
+import com.moyz.adi.common.util.MPPageUtil;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -17,12 +21,16 @@ import org.springframework.stereotype.Service;
 import java.util.UUID;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_DATA_NOT_FOUND;
+import static com.moyz.adi.common.util.LocalCache.MODEL_ID_TO_OBJ;
 
 @Slf4j
 @Service
 public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRecordMapper, KnowledgeBaseQaRecord> {
 
-    public Page<KnowledgeBaseQaRecord> search(String kbUuid, String keyword, Integer currentPage, Integer pageSize) {
+    @Resource
+    private AiModelService aiModelService;
+
+    public Page<KbQaRecordDto> search(String kbUuid, String keyword, Integer currentPage, Integer pageSize) {
         LambdaQueryWrapper<KnowledgeBaseQaRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeBaseQaRecord::getKbUuid, kbUuid);
         wrapper.eq(KnowledgeBaseQaRecord::getIsDeleted, false);
@@ -33,7 +41,15 @@ public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRec
             wrapper.like(KnowledgeBaseQaRecord::getQuestion, keyword);
         }
         wrapper.orderByDesc(KnowledgeBaseQaRecord::getUpdateTime);
-        return baseMapper.selectPage(new Page<>(currentPage, pageSize), wrapper);
+        Page<KnowledgeBaseQaRecord> page = baseMapper.selectPage(new Page<>(currentPage, pageSize), wrapper);
+
+        Page<KbQaRecordDto> result = new Page<>();
+        MPPageUtil.convertToPage(page, result, KbQaRecordDto.class, (t1, t2) -> {
+            AiModel aiModel = MODEL_ID_TO_OBJ.get(t1.getAiModelId());
+            t2.setAiModelPlatform(null == aiModel ? "" : aiModel.getPlatform());
+            return t2;
+        });
+        return result;
     }
 
     /**
@@ -45,9 +61,10 @@ public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRec
      * @param promptTokens  提示词消耗的token
      * @param answer        答案
      * @param answerTokens  答案消耗的token
+     * @param modelName     ai model name
      * @return
      */
-    public KnowledgeBaseQaRecord createNewRecord(User user, KnowledgeBase knowledgeBase, String question, String prompt, int promptTokens, String answer, int answerTokens) {
+    public KnowledgeBaseQaRecord createNewRecord(User user, KnowledgeBase knowledgeBase, String question, String prompt, int promptTokens, String answer, int answerTokens, String modelName) {
         String uuid = UUID.randomUUID().toString().replace("-", "");
         KnowledgeBaseQaRecord newObj = new KnowledgeBaseQaRecord();
         newObj.setKbId(knowledgeBase.getId());
@@ -59,6 +76,7 @@ public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRec
         newObj.setPromptTokens(promptTokens);
         newObj.setAnswer(answer);
         newObj.setAnswerTokens(answerTokens);
+        newObj.setAiModelId(aiModelService.getIdByName(modelName));
         baseMapper.insert(newObj);
 
         LambdaQueryWrapper<KnowledgeBaseQaRecord> wrapper = new LambdaQueryWrapper<>();

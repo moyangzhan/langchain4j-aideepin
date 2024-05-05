@@ -1,6 +1,7 @@
 package com.moyz.adi.common.interfaces;
 
 import com.moyz.adi.common.entity.AiImage;
+import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
@@ -24,7 +25,7 @@ public abstract class AbstractImageModelService<T> {
 
     protected Proxy proxy;
 
-    protected String modelName;
+    protected AiModel aiModel;
 
     protected T setting;
 
@@ -39,8 +40,8 @@ public abstract class AbstractImageModelService<T> {
 
     protected ImageModel imageModel;
 
-    public AbstractImageModelService(String modelName, String settingName, Class<T> clazz) {
-        this.modelName = modelName;
+    public AbstractImageModelService(AiModel aiModel, String settingName, Class<T> clazz) {
+        this.aiModel = aiModel;
         String st = LocalCache.CONFIGS.get(settingName);
         setting = JsonUtil.fromJson(st, clazz);
     }
@@ -88,4 +89,8 @@ public abstract class AbstractImageModelService<T> {
     public abstract List<String> editImage(User user, AiImage aiImage);
 
     public abstract List<String> createImageVariation(User user, AiImage aiImage);
+
+    public AiModel getAiModel() {
+        return aiModel;
+    }
 }

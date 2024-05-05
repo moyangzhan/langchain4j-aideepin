@@ -58,7 +58,7 @@ public class ConversationMessage extends BaseEntity {
     @TableField("understand_context_msg_pair_num")
     private Integer understandContextMsgPairNum;
 
-    @Schema(name = "LLM name")
-    @TableField("language_model_name")
-    private String languageModelName;
+    @Schema(name = "adi_ai_model id")
+    @TableField("ai_model_id")
+    private Long aiModelId;
 }

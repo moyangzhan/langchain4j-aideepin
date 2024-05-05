@@ -1,5 +1,6 @@
 package com.moyz.adi.common.helper;
 
+import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.LocalCache;
@@ -34,12 +35,12 @@ public class LLMContext {
         }
     }
 
-    public static void addLLMService(String llmServiceKey, AbstractLLMService llmService) {
+    public static void addLLMService(AbstractLLMService llmService) {
         LLMModelInfo llmModelInfo = new LLMModelInfo();
-        llmModelInfo.setModelName(llmServiceKey);
+        llmModelInfo.setModelName(llmService.getAiModel().getName());
         llmModelInfo.setEnable(llmService.isEnabled());
         llmModelInfo.setLlmService(llmService);
-        NAME_TO_MODEL.put(llmServiceKey, llmModelInfo);
+        NAME_TO_MODEL.put(llmService.getAiModel().getName(), llmModelInfo);
     }
 
     public AbstractLLMService getLLMService() {

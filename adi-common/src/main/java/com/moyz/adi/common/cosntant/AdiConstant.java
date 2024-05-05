@@ -102,6 +102,21 @@ public class AdiConstant {
 
     public static final String[] POI_DOC_TYPES = {"doc", "docx", "ppt", "pptx", "xls", "xlsx"};
 
+
+    public static class ModelPlatform {
+        public static final String OPENAI = "openai";
+        public static final String DASHSCOPE = "dashscope";
+        public static final String QIANFAN = "qianfan";
+        public static final String OLLAMA = "ollama";
+    }
+
+    public static class ModelType {
+        public static final String TEXT = "text";
+        public static final String IMAGE = "image";
+        public static final String EMBEDDING = "embedding";
+        public static final String RERANK = "rerank";
+    }
+
     public static class SearchEngineName {
         public static final String GOOGLE = "google";
         public static final String BING = "bing";

@@ -5,7 +5,8 @@ import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.ConvDto;
 import com.moyz.adi.common.dto.ConvEditReq;
 import com.moyz.adi.common.dto.ConvMsgListResp;
-import com.moyz.adi.common.dto.ConvMsgResp;
+import com.moyz.adi.common.dto.ConvMsgDto;
+import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.Conversation;
 import com.moyz.adi.common.entity.ConversationMessage;
 import com.moyz.adi.common.exception.BaseException;
@@ -19,9 +20,12 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_CONVERSATION_EXIST;
 import static com.moyz.adi.common.enums.ErrorEnum.A_CONVERSATION_NOT_EXIST;
+import static com.moyz.adi.common.util.LocalCache.MODEL_ID_TO_OBJ;
+import static com.moyz.adi.common.util.LocalCache.MODEL_NAME_TO_OBJ;
 
 @Slf4j
 @Service
@@ -32,6 +36,9 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
 
     @Resource
     private ConversationMessageService conversationMessageService;
+
+    @Resource
+    private AiModelService aiModelService;
 
     public List<ConvDto> listByUser() {
         List<Conversation> list = this.lambdaQuery()
@@ -81,7 +88,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
             return b;
         }).getUuid();
         //Wrap question content
-        List<ConvMsgResp> userMessages = MPPageUtil.convertToList(questions, ConvMsgResp.class);
+        List<ConvMsgDto> userMessages = MPPageUtil.convertToList(questions, ConvMsgDto.class);
         ConvMsgListResp result = new ConvMsgListResp(minUuid, userMessages);
 
         //Wrap answer content
@@ -95,9 +102,14 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
 
         //Fill AI answer to the request of user
         result.getMsgList().forEach(item -> {
-            List<ConvMsgResp> children = MPPageUtil.convertToList(idToMessages.get(item.getId()), ConvMsgResp.class);
+            List<ConvMsgDto> children = MPPageUtil.convertToList(idToMessages.get(item.getId()), ConvMsgDto.class);
             if (children.size() > 1) {
-                children = children.stream().sorted(Comparator.comparing(ConvMsgResp::getCreateTime).reversed()).collect(Collectors.toList());
+                children = children.stream().sorted(Comparator.comparing(ConvMsgDto::getCreateTime).reversed()).collect(Collectors.toList());
+            }
+
+            for (ConvMsgDto convMsgDto : children) {
+                AiModel aiModel = MODEL_ID_TO_OBJ.get(convMsgDto.getAiModelId());
+                convMsgDto.setAiModelPlatform(null == aiModel ? "" : aiModel.getPlatform());
             }
             item.setChildren(children);
         });

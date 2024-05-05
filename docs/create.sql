@@ -49,25 +49,38 @@ COMMENT ON COLUMN public.adi_ai_image.is_deleted IS 'Flag indicating whether the
 
 CREATE TABLE public.adi_ai_model
 (
-    id           bigserial primary key,
-    name         character varying(45) DEFAULT ''::character varying NOT NULL,
-    remark       character varying(1000),
-    model_status smallint              DEFAULT '1'::smallint         NOT NULL,
-    create_time  timestamp             DEFAULT CURRENT_TIMESTAMP     NOT NULL,
-    update_time  timestamp             DEFAULT CURRENT_TIMESTAMP     NOT NULL,
-    is_deleted   boolean               DEFAULT false                 NOT NULL,
-    CONSTRAINT adi_ai_model_model_status_check CHECK ((model_status = ANY (ARRAY [1, 2])))
+    id          bigserial primary key,
+    name        varchar(45)   default ''                not null,
+    type        varchar(45)   default 'llm'             not null,
+    remark      varchar(1000) default '',
+    platform    varchar(45)   default ''                not null,
+    max_tokens  int           default 0                 not null,
+    is_enable   boolean       default false             NOT NULL,
+    create_time timestamp     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    update_time timestamp     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    is_deleted  boolean       DEFAULT false             NOT NULL
 );
 
 COMMENT ON TABLE public.adi_ai_model IS 'ai模型';
-
+COMMENT ON COLUMN public.adi_ai_model.type IS 'The type of the AI model,eg: text,image,embedding,rerank';
 COMMENT ON COLUMN public.adi_ai_model.name IS 'The name of the AI model';
 COMMENT ON COLUMN public.adi_ai_model.remark IS 'Additional remarks about the AI model';
-COMMENT ON COLUMN public.adi_ai_model.model_status IS '1: Normal usage, 2: Not available';
-
+COMMENT ON COLUMN public.adi_ai_model.platform IS 'eg: openai,dashscope,qianfan,ollama';
+COMMENT ON COLUMN public.adi_ai_model.max_tokens IS 'The maximum number of tokens that can be generated';
+COMMENT ON COLUMN public.adi_ai_model.is_enable IS '1: Normal usage, 0: Not available';
 COMMENT ON COLUMN public.adi_ai_model.create_time IS 'Timestamp of record creation';
-
 COMMENT ON COLUMN public.adi_ai_model.update_time IS 'Timestamp of record last update, automatically updated on each update';
+
+INSERT INTO adi_ai_model (name, type, platform, max_tokens, is_enable)
+VALUES ('gpt-3.5-turbo', 'text', 'openai', 2048, false);
+INSERT INTO adi_ai_model (name, type, platform, is_enable)
+VALUES ('dall-e-2', 'image', 'openai', false);
+INSERT INTO adi_ai_model (name, type, platform, is_enable)
+VALUES ('qwen-turbo', 'text', 'dashscope', false);
+INSERT INTO adi_ai_model (name, type, platform, is_enable)
+VALUES ('ernie-3.5-8k-0205', 'text', 'qianfan', false);
+INSERT INTO adi_ai_model (name, type, platform, is_enable)
+VALUES ('tinydolphin', 'text', 'ollama', false);
 
 CREATE TABLE public.adi_conversation
 (
@@ -103,8 +116,8 @@ CREATE TABLE public.adi_conversation_message
     uuid                            character varying(32) DEFAULT ''::character varying NOT NULL,
     message_role                    integer               DEFAULT 1                     NOT NULL,
     tokens                          integer               DEFAULT 0                     NOT NULL,
-    language_model_name             character varying(32) DEFAULT ''::character varying NOT NULL,
     user_id                         bigint                DEFAULT '0'::bigint           NOT NULL,
+    ai_model_id                     bigint                default 0                     not null,
     secret_key_type                 integer               DEFAULT 1                     NOT NULL,
     understand_context_msg_pair_num integer               DEFAULT 0                     NOT NULL,
     create_time                     timestamp             DEFAULT CURRENT_TIMESTAMP     NOT NULL,
@@ -130,6 +143,8 @@ COMMENT ON COLUMN public.adi_conversation_message.tokens IS '消耗的token数�
 COMMENT ON COLUMN public.adi_conversation_message.language_model_name IS 'LLM name';
 
 COMMENT ON COLUMN public.adi_conversation_message.user_id IS '用户ID';
+
+COMMENT ON COLUMN public.adi_conversation_message.ai_model_id IS 'adi_ai_model id';
 
 COMMENT ON COLUMN public.adi_conversation_message.secret_key_type IS '加密密钥类型';
 
@@ -381,6 +396,12 @@ CREATE TRIGGER trigger_user_day_cost_update_time
     FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
 
+create trigger trigger_ai_model
+    before update
+    on adi_ai_model
+    for each row
+execute procedure update_modified_column();
+
 INSERT INTO adi_sys_config (name, value)
 VALUES ('openai_setting', '{"secret_key":"","models":[]}');
 INSERT INTO adi_sys_config (name, value)
@@ -549,6 +570,7 @@ create table adi_knowledge_base_qa_record
     answer_tokens   integer       DEFAULT 0                     NOT NULL,
     source_file_ids varchar(500)  default ''::character varying not null,
     user_id         bigint        default '0'                   NOT NULL,
+    ai_model_id     bigint        default 0                     not null,
     create_time     timestamp     default CURRENT_TIMESTAMP     not null,
     update_time     timestamp     default CURRENT_TIMESTAMP     not null,
     is_deleted      boolean       default false                 not null

@@ -70,25 +70,39 @@ vue3+typescript+pnpm
 openai的secretKey
 
 ```plaintext
-update adi_sys_config set value = '{"secret_key":"my_openai_secret_key","models":["gpt-3.5-turbo"]}' where name = 'openai_setting';
+update adi_sys_config set value = '{"secret_key":"my_openai_secret_key"}' where name = 'openai_setting';
 ```
 
 灵积大模型平台的apiKey
 
 ```plaintext
-update adi_sys_config set value = '{"api_key":"my_dashcope_api_key","models":["my model name,eg:qwen-max"]}' where name = 'dashscope_setting';
+update adi_sys_config set value = '{"api_key":"my_dashcope_api_key"}' where name = 'dashscope_setting';
 ```
 
 千帆大模型平台的配置
 
 ```plaintext
-update adi_sys_config set value = '{"api_key":"my_qianfan_api_key","secret_key":"my_qianfan_secret_key","models":["my model name,eg:ERNIE-Bot"]}' where name = 'qianfan_setting';
+update adi_sys_config set value = '{"api_key":"my_qianfan_api_key","secret_key":"my_qianfan_secret_key"}' where name = 'qianfan_setting';
 ```
 
 ollama的配置
 
 ```
-update adi_sys_config set value = '{"base_url":"my_ollama_base_url","models":["my model name,eg:tinydolphin"]}' where name = 'ollama_setting';
+update adi_sys_config set value = '{"base_url":"my_ollama_base_url"}' where name = 'ollama_setting';
+```
+
+* 启用模型或新增模型
+
+```
+-- Enable model
+update adi_ai_model set is_enable = true where name = 'gpt-3.5-turbo';
+update adi_ai_model set is_enable = true where name = 'dall-e-2';
+update adi_ai_model set is_enable = true where name = 'qwen-turbo';
+update adi_ai_model set is_enable = true where name = 'ernie-3.5-8k-0205';
+update adi_ai_model set is_enable = true where name = 'tinydolphin';
+
+-- Add new model
+INSERT INTO adi_ai_model (name, type, platform, is_enable) VALUES ('vicuna', 'text', 'ollama', true);
 ```
 
 * 填充搜索引擎的配置
