@@ -37,11 +37,14 @@ public class ImageModelContext {
     }
 
     public static void addImageModelService(AbstractImageModelService modelService) {
+        AiModel aiModel = modelService.getAiModel();
         ImageModelInfo imageModelInfo = new ImageModelInfo();
+        imageModelInfo.setModelId(aiModel.getId());
         imageModelInfo.setModelService(modelService);
-        imageModelInfo.setModelName(modelService.getAiModel().getName());
+        imageModelInfo.setModelName(aiModel.getName());
+        imageModelInfo.setModelPlatform(aiModel.getPlatform());
         imageModelInfo.setEnable(modelService.isEnabled());
-        NAME_TO_MODEL.put(modelService.getAiModel().getName(), imageModelInfo);
+        NAME_TO_MODEL.put(aiModel.getName(), imageModelInfo);
     }
 
     public AbstractImageModelService getModelService() {

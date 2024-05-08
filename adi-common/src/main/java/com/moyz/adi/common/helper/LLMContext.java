@@ -2,13 +2,9 @@ package com.moyz.adi.common.helper;
 
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
-import com.moyz.adi.common.util.JsonUtil;
-import com.moyz.adi.common.util.LocalCache;
-import com.moyz.adi.common.vo.CommonAiPlatformSetting;
 import com.moyz.adi.common.vo.LLMModelInfo;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -36,8 +32,11 @@ public class LLMContext {
     }
 
     public static void addLLMService(AbstractLLMService llmService) {
+        AiModel aiModel = llmService.getAiModel();
         LLMModelInfo llmModelInfo = new LLMModelInfo();
-        llmModelInfo.setModelName(llmService.getAiModel().getName());
+        llmModelInfo.setModelId(aiModel.getId());
+        llmModelInfo.setModelName(aiModel.getName());
+        llmModelInfo.setModelPlatform(aiModel.getPlatform());
         llmModelInfo.setEnable(llmService.isEnabled());
         llmModelInfo.setLlmService(llmService);
         NAME_TO_MODEL.put(llmService.getAiModel().getName(), llmModelInfo);
@@ -45,11 +44,5 @@ public class LLMContext {
 
     public AbstractLLMService getLLMService() {
         return llmService;
-    }
-
-    public static String[] getSupportModels(String settingName) {
-        String st = LocalCache.CONFIGS.get(settingName);
-        CommonAiPlatformSetting setting = JsonUtil.fromJson(st, CommonAiPlatformSetting.class);
-        return setting.getModels();
     }
 }
