@@ -30,4 +30,8 @@ public class AiSearchRecordResp {
     private String userUuid;
 
     private LocalDateTime createTime;
+
+    private Long aiModelId;
+
+    private String aiModelPlatform;
 }

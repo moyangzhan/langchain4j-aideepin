@@ -47,4 +47,8 @@ public class AiSearchRecord extends BaseEntity {
     @Schema(title = "提问用户id")
     @TableField("user_id")
     private Long userId;
+
+    @Schema(title = "adi_ai_model id")
+    @TableField("ai_model_id")
+    private Long aiModelId;
 }

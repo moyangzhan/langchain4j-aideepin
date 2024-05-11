@@ -58,6 +58,9 @@ public class SearchService {
     private UserDayCostService userDayCostService;
 
     @Resource
+    private AiModelService aiModelService;
+
+    @Resource
     private AsyncTaskExecutor mainExecutor;
 
     public SseEmitter search(boolean isBriefSearch, String searchText, String engineName, String modelName) {
@@ -138,6 +141,7 @@ public class SearchService {
             newRecord.setAnswerTokens(answerMeta.getTokens());
             newRecord.setUserUuid(user.getUuid());
             newRecord.setUserId(user.getId());
+            newRecord.setAiModelId(aiModelService.getIdByName(modelName));
             aiSearchRecordService.save(newRecord);
 
             userDayCostService.appendCostToUser(user, promptMeta.getTokens() + answerMeta.getTokens());
@@ -168,6 +172,7 @@ public class SearchService {
         newRecord.setSearchEngineResp(resp);
         newRecord.setUserId(user.getId());
         newRecord.setUserUuid(user.getUuid());
+        newRecord.setAiModelId(aiModelService.getIdByName(modelName));
         aiSearchRecordService.save(newRecord);
 
         CountDownLatch countDownLatch = new CountDownLatch(resultItems.size());

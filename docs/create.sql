@@ -140,8 +140,6 @@ COMMENT ON COLUMN public.adi_conversation_message.message_role IS '产生该消�
 
 COMMENT ON COLUMN public.adi_conversation_message.tokens IS '消耗的token数量';
 
-COMMENT ON COLUMN public.adi_conversation_message.language_model_name IS 'LLM name';
-
 COMMENT ON COLUMN public.adi_conversation_message.user_id IS '用户ID';
 
 COMMENT ON COLUMN public.adi_conversation_message.ai_model_id IS 'adi_ai_model id';
@@ -621,6 +619,7 @@ create table adi_ai_search_record
     answer_tokens          integer       DEFAULT 0                     NOT NULL,
     user_id                bigint        default '0'                   NOT NULL,
     user_uuid              varchar(32)   default ''::character varying not null,
+    ai_model_id            bigint        default 0                     not null,
     create_time            timestamp     default CURRENT_TIMESTAMP     not null,
     update_time            timestamp     default CURRENT_TIMESTAMP     not null,
     is_deleted             boolean       default false                 not null
@@ -640,6 +639,8 @@ comment on column adi_ai_search_record.answer is 'LLM response';
 comment on column adi_ai_search_record.answer_tokens is 'LLM响应消耗的token数量';
 
 comment on column adi_ai_search_record.user_id is 'Id from adi_user';
+
+COMMENT ON COLUMN adi_ai_search_record.ai_model_id IS 'adi_ai_model id';
 
 comment on column adi_ai_search_record.create_time is '创建时间';
 

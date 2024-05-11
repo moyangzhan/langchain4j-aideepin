@@ -7,6 +7,7 @@ import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.AiSearchRecordResp;
 import com.moyz.adi.common.dto.AiSearchResp;
 import com.moyz.adi.common.dto.SearchEngineResp;
+import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.AiSearchRecord;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.AiSearchRecordMapper;
@@ -20,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_DATA_NOT_FOUND;
+import static com.moyz.adi.common.util.LocalCache.MODEL_ID_TO_OBJ;
 
 /**
  * Ai search
@@ -46,11 +48,13 @@ public class AiSearchRecordService extends ServiceImpl<AiSearchRecordMapper, AiS
         BizPager.listByMaxId(maxId, wrapper, this, AiSearchRecord::getId, (recordList, minId) -> {
             List<AiSearchRecordResp> list = MPPageUtil.convertToList(recordList, AiSearchRecordResp.class);
             list.forEach(item -> {
-                if(null == item.getSearchEngineResp()){
+                if (null == item.getSearchEngineResp()) {
                     SearchEngineResp searchEngineResp = new SearchEngineResp();
                     searchEngineResp.setItems(new ArrayList<>());
                     item.setSearchEngineResp(searchEngineResp);
                 }
+                AiModel aiModel = MODEL_ID_TO_OBJ.get(item.getAiModelId());
+                item.setAiModelPlatform(null == aiModel ? "" : aiModel.getPlatform());
             });
             result.setRecords(list);
             result.setMinId(minId);
