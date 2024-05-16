@@ -21,7 +21,6 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
@@ -48,9 +47,6 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
     private AiImageService _this;
     @Resource
     private QuotaHelper quotaHelper;
-
-    @Value("${local.images}")
-    private String localImagesPath;
 
     @Resource
     private RateLimitHelper rateLimitHelper;
@@ -180,7 +176,7 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
             }
             List<String> imageUuids = new ArrayList();
             images.forEach(imageUrl -> {
-                String imageUuid = fileService.saveToLocal(user, imageUrl);
+                String imageUuid = fileService.saveImageToLocal(user, imageUrl);
                 imageUuids.add(imageUuid);
             });
             String imageUuidsJoin = imageUuids.stream().collect(Collectors.joining(","));

@@ -50,6 +50,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         String uuid = UUID.randomUUID().toString().replace("-", "");
         Pair<String, String> originalFile = FileUtil.saveToLocal(file, imagePath, uuid);
         AdiFile adiFile = new AdiFile();
+        adiFile.setName(file.getOriginalFilename());
         adiFile.setUuid(uuid);
         adiFile.setMd5(md5);
         adiFile.setPath(originalFile.getLeft());
@@ -59,7 +60,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         return adiFile;
     }
 
-    public String saveToLocal(User user, String sourceImageUrl) {
+    public String saveImageToLocal(User user, String sourceImageUrl) {
         String uuid = UUID.randomUUID().toString().replace("-", "");
         String localPath = imagePath + uuid + ".png";
         File target = new File(localPath);
@@ -71,10 +72,12 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
             throw new BaseException(B_SAVE_IMAGE_ERROR);
         }
         AdiFile adiFile = new AdiFile();
+        adiFile.setName(target.getName());
         adiFile.setUuid(uuid);
         adiFile.setMd5(MD5Utils.calculateMD5(localPath));
         adiFile.setPath(localPath);
         adiFile.setUserId(user.getId());
+        adiFile.setExt("png");
         this.getBaseMapper().insert(adiFile);
         return uuid;
     }
@@ -101,6 +104,20 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
             file.delete();
         }
         return this.softDel(uuid);
+    }
+
+    public AdiFile getByUuid(String uuid) {
+        return this.lambdaQuery()
+                .eq(AdiFile::getUuid, uuid)
+                .eq(AdiFile::getUserId, ThreadContext.getCurrentUserId())
+                .oneOpt().orElse(null);
+    }
+
+    public byte[] readBytes(AdiFile adiFile) {
+        if (null == adiFile) {
+            throw new BaseException(A_FILE_NOT_EXIST);
+        }
+        return FileUtil.readBytes(adiFile.getPath());
     }
 
     public byte[] readBytes(String uuid) {

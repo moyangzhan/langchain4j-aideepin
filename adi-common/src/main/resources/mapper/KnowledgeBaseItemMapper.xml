@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moyz.adi.common.mapper.KnowledgeBaseItemMapper">
+
+    <select id="searchByKb" parameterType="Map" resultType="com.moyz.adi.common.dto.KbItemDto">
+        select a.*, b.name source_file_name, b.uuid source_file_uuid
+        from adi_knowledge_base_item a
+        left join adi_file b on a.source_file_id = b.id
+        where a.is_deleted = false
+        and a.kb_uuid = #{kbUuid}
+        <if test="keyword!='' and keyword!=null">
+            and a.title like CONCAT('%', #{keyword}, '%')
+        </if>
+        order by create_time desc
+    </select>
+
+</mapper>

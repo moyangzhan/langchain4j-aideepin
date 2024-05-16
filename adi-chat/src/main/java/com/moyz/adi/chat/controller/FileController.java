@@ -1,20 +1,27 @@
 package com.moyz.adi.chat.controller;
 
+import com.moyz.adi.common.entity.AdiFile;
+import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.service.FileService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.validator.constraints.Length;
-import org.springframework.http.MediaType;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.*;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+
+import static com.moyz.adi.common.enums.ErrorEnum.A_FILE_NOT_EXIST;
 
 @Slf4j
 @RestController
@@ -33,6 +40,25 @@ public class FileController {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @GetMapping(value = "/file/{uuid}")
+    public ResponseEntity<org.springframework.core.io.Resource> file(@Length(min = 32, max = 32) @PathVariable String uuid) {
+        AdiFile adiFile = fileService.getByUuid(uuid);
+        if (null == adiFile) {
+            throw new BaseException(A_FILE_NOT_EXIST);
+        }
+        byte[] bytes = fileService.readBytes(adiFile);
+        InputStreamResource inputStreamResource = new InputStreamResource(new ByteArrayInputStream(bytes));
+
+        String fileName = adiFile.getName();
+        if (StringUtils.isBlank(fileName)) {
+            fileName = adiFile.getUuid() + "." + adiFile.getExt();
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentDisposition(ContentDisposition.attachment().filename(fileName).build());
+        return new ResponseEntity<>(inputStreamResource, headers, HttpStatus.OK);
+
     }
 
     @PostMapping(path = "/file/upload", headers = "content-type=multipart/form-data", produces = MediaType.APPLICATION_JSON_VALUE)

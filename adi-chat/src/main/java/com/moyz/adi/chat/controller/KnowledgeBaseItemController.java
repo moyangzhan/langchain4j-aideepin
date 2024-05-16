@@ -1,6 +1,7 @@
 package com.moyz.adi.chat.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.moyz.adi.common.dto.KbItemDto;
 import com.moyz.adi.common.dto.KbItemEditReq;
 import com.moyz.adi.common.dto.KbItemEmbeddingBatchReq;
 import com.moyz.adi.common.entity.KnowledgeBaseItem;
@@ -10,8 +11,6 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/knowledge-base-item")
@@ -27,7 +26,7 @@ public class KnowledgeBaseItemController {
     }
 
     @GetMapping("/search")
-    public Page<KnowledgeBaseItem> search(String kbUuid, String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
+    public Page<KbItemDto> search(String kbUuid, String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
         return knowledgeBaseItemService.search(kbUuid, keyword, currentPage, pageSize);
     }
 

@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.NoSuchFileException;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_FILE_NOT_EXIST;
 
@@ -37,6 +38,9 @@ public class FileUtil {
     public static byte[] readBytes(String localPath) {
         try {
             return FileUtils.readFileToByteArray(new File(localPath));
+        } catch (NoSuchFileException noSuchFileException) {
+            log.error("file not found", noSuchFileException);
+            throw new BaseException(A_FILE_NOT_EXIST);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

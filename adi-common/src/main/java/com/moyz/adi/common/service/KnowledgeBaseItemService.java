@@ -1,11 +1,11 @@
 package com.moyz.adi.common.service;
 
-import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.AdiConstant;
+import com.moyz.adi.common.dto.KbItemDto;
 import com.moyz.adi.common.dto.KbItemEditReq;
 import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.entity.KnowledgeBaseItem;
@@ -25,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 import java.util.UUID;
 
-import static com.moyz.adi.common.cosntant.AdiConstant.RAG_TYPE_KB;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 @Slf4j
@@ -74,15 +73,8 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                 .one();
     }
 
-    public Page<KnowledgeBaseItem> search(String kbUuid, String keyword, Integer currentPage, Integer pageSize) {
-        LambdaQueryChainWrapper<KnowledgeBaseItem> wrapper = ChainWrappers.lambdaQueryChain(baseMapper);
-        wrapper.select(KnowledgeBaseItem::getId, KnowledgeBaseItem::getUuid, KnowledgeBaseItem::getTitle, KnowledgeBaseItem::getBrief, KnowledgeBaseItem::getKbUuid, KnowledgeBaseItem::getIsEmbedded, KnowledgeBaseItem::getCreateTime, KnowledgeBaseItem::getUpdateTime);
-        wrapper.eq(KnowledgeBaseItem::getIsDeleted, false);
-        wrapper.eq(KnowledgeBaseItem::getKbUuid, kbUuid);
-        if (StringUtils.isNotBlank(keyword)) {
-            wrapper.eq(KnowledgeBaseItem::getTitle, keyword);
-        }
-        return wrapper.page(new Page<>(currentPage, pageSize));
+    public Page<KbItemDto> search(String kbUuid, String keyword, Integer currentPage, Integer pageSize) {
+        return baseMapper.searchByKb(new Page<>(currentPage, pageSize), kbUuid, keyword);
     }
 
     public boolean checkAndEmbedding(String[] uuids) {
