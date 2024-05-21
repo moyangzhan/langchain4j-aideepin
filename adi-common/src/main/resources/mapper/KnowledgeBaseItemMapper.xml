@@ -14,4 +14,9 @@
         order by create_time desc
     </select>
 
+    <select id="getByUuid" resultType="com.moyz.adi.common.entity.KnowledgeBaseItem">
+        select *
+        from adi_knowledge_base_item a
+        where uuid = #{uuid}
+    </select>
 </mapper>

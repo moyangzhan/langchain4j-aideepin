@@ -61,6 +61,9 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
             item.setId(itemEditReq.getId());
             baseMapper.updateById(item);
         }
+
+        knowledgeBaseService.updateStatistic(itemEditReq.getKbUuid());
+
         return ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(KnowledgeBaseItem::getUuid, uuid)
                 .one();
@@ -115,6 +118,8 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                 .eq(KnowledgeBaseItem::getId, kbItem.getId())
                 .set(KnowledgeBaseItem::getIsEmbedded, true)
                 .update();
+
+        knowledgeBaseService.updateStatistic(kbItem.getKbUuid());
         return true;
     }
 
@@ -130,7 +135,20 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
             return false;
         }
         knowledgeBaseEmbeddingService.deleteByItemUuid(uuid);
+
+        KnowledgeBaseItem item = baseMapper.getByUuid(uuid);
+        if (null != item) {
+            knowledgeBaseService.updateStatistic(item.getKbUuid());
+        }
         return true;
+    }
+
+    public int countByKbUuid(String kbUuid) {
+        return ChainWrappers.lambdaQueryChain(baseMapper)
+                .eq(KnowledgeBaseItem::getKbUuid, kbUuid)
+                .eq(KnowledgeBaseItem::getIsDeleted, false)
+                .count()
+                .intValue();
     }
 
     private boolean checkPrivilege(String uuid) {

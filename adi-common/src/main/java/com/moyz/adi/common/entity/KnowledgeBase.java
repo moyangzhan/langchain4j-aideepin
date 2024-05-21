@@ -30,6 +30,14 @@ public class KnowledgeBase extends BaseEntity {
     @TableField("star_count")
     private Integer starCount;
 
+    @Schema(title = "知识点数量")
+    @TableField("item_count")
+    private Integer itemCount;
+
+    @Schema(title = "向量数")
+    @TableField("embedding_count")
+    private Integer embeddingCount;
+
     @Schema(title = "所属人uuid")
     @TableField("owner_uuid")
     private String ownerUuid;

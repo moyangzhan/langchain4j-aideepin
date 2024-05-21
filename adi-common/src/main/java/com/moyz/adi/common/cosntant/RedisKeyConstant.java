@@ -91,4 +91,10 @@ public class RedisKeyConstant {
      * 值: 用户id
      */
     public static final String qa_item_create_limit = "aq:item:create:{0}";
+
+    /**
+     * 重新统计知识库信号
+     * 值:知识库uuid
+     */
+    public static final String KB_STATISTIC_RECALCULATE_SIGNAL = "kb:statistic:recalculate:signal";
 }

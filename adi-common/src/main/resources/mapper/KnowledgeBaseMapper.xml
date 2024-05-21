@@ -29,4 +29,16 @@
         order by star_count,update_time desc
     </select>
 
+    <update id="updateStatByUuid">
+        update adi_knowledge_base
+        set item_count      = (select count(1)
+                               from adi_knowledge_base_item
+                               where kb_uuid = #{uuid}
+                                 and is_deleted = false),
+            embedding_count = (select count(1)
+                               from adi_knowledge_base_embedding
+                               where metadata ->> 'kb_uuid' = #{uuid})
+        where uuid = #{uuid}
+    </update>
+
 </mapper>

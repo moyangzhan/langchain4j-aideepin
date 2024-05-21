@@ -32,4 +32,8 @@ public class KnowledgeBaseEmbeddingService extends ServiceImpl<KnowledgeBaseEmbe
     public boolean deleteByItemUuid(String kbItemUuid) {
         return baseMapper.deleteByItemUuid(kbItemUuid);
     }
+
+    public Integer countByKbUuid(String kbUuid){
+        return baseMapper.countByKbUuid(kbUuid);
+    }
 }

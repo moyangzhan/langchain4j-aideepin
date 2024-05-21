@@ -34,17 +34,21 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.text.MessageFormat;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.POI_DOC_TYPES;
 import static com.moyz.adi.common.cosntant.AdiConstant.SysConfigKey.QUOTA_BY_QA_ASK_DAILY;
+import static com.moyz.adi.common.cosntant.RedisKeyConstant.KB_STATISTIC_RECALCULATE_SIGNAL;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocument;
 
@@ -79,6 +83,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
     @Resource
     private UserDayCostService userDayCostService;
+
+    @Resource
+    private ThreadPoolTaskExecutor mainExecutor;
 
     public KnowledgeBase saveOrUpdate(KbEditReq kbEditReq) {
         String uuid = kbEditReq.getUuid();
@@ -180,6 +187,8 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                         .eq(KnowledgeBaseItem::getId, knowledgeBaseItem.getId())
                         .set(KnowledgeBaseItem::getIsEmbedded, true)
                         .update();
+
+                updateStatistic(knowledgeBase.getUuid());
             }
             return adiFile;
         } catch (Exception e) {
@@ -308,6 +317,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             throw new BaseException(A_QA_ASK_LIMIT);
         }
         stringRedisTemplate.opsForValue().increment(key);
+        stringRedisTemplate.expire(key, Duration.ofDays(1));
     }
 
 
@@ -338,6 +348,27 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 .eq(KnowledgeBase::getUuid, kbUuid)
                 .eq(KnowledgeBase::getIsDeleted, false)
                 .oneOpt().orElseThrow(() -> new BaseException(A_DATA_NOT_FOUND));
+    }
+
+    /**
+     * Set update knowledge base stat signal
+     *
+     * @param kbUuid
+     */
+    public void updateStatistic(String kbUuid) {
+        stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, kbUuid);
+    }
+
+    /**
+     * Update knowledge base stat
+     */
+    @Scheduled(fixedDelay = 60 * 1000)
+    public void asyncUpdateStatistic() {
+        Set<String> kbUuidList = stringRedisTemplate.opsForSet().members(KB_STATISTIC_RECALCULATE_SIGNAL);
+        for (String kbUuid : kbUuidList) {
+            baseMapper.updateStatByUuid(kbUuid);
+            stringRedisTemplate.opsForSet().remove(KB_STATISTIC_RECALCULATE_SIGNAL, kbUuid);
+        }
     }
 
     private void checkPrivilege(Long kbId, String kbUuid) {

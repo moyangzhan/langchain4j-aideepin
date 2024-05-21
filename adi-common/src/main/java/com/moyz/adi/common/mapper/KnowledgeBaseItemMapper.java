@@ -13,4 +13,6 @@ public interface KnowledgeBaseItemMapper extends BaseMapper<KnowledgeBaseItem> {
 
     @InterceptorIgnore(tenantLine = "true")
     Page<KbItemDto> searchByKb(Page<KbItemDto> page, @Param("kbUuid") String kbUuid, @Param("keyword") String keyword);
+
+    KnowledgeBaseItem getByUuid(String uuid);
 }

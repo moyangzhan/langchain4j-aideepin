@@ -11,4 +11,6 @@ public class KbInfoResp {
     private Integer starCount;
     private String ownerUuid;
     private String ownerName;
+    private Integer itemCount;
+    private Integer embeddingCount;
 }

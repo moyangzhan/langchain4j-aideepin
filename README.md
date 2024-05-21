@@ -65,7 +65,7 @@ vue3+typescript+pnpm
 
 * 创建数据库aideepin
 * 执行docs/create.sql
-* 填充各模型的配置(至少设置一个)
+* 填充各AI平台的配置(至少设置一个)
 
 openai的secretKey
 

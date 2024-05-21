@@ -436,18 +436,20 @@ VALUES ('quota_by_qa_item_monthly', '100');
 
 create table adi_knowledge_base
 (
-    id          bigserial primary key,
-    uuid        varchar(32)  default ''::character varying not null,
-    title       varchar(250) default ''::character varying not null,
-    remark      text         default ''::character varying not null,
-    is_public   boolean      default false                 not null,
-    star_count  int          default 0                     not null,
-    owner_id    bigint       default 0                     not null,
-    owner_uuid  varchar(32)  default ''::character varying not null,
-    owner_name  varchar(45)  default ''::character varying not null,
-    create_time timestamp    default CURRENT_TIMESTAMP     not null,
-    update_time timestamp    default CURRENT_TIMESTAMP     not null,
-    is_deleted  boolean      default false                 not null
+    id              bigserial primary key,
+    uuid            varchar(32)  default ''::character varying not null,
+    title           varchar(250) default ''::character varying not null,
+    remark          text         default ''::character varying not null,
+    is_public       boolean      default false                 not null,
+    owner_id        bigint       default 0                     not null,
+    owner_uuid      varchar(32)  default ''::character varying not null,
+    owner_name      varchar(45)  default ''::character varying not null,
+    star_count      int          default 0                     not null,
+    item_count      int          default 0                     not null,
+    embedding_count int          default 0                     not null,
+    create_time     timestamp    default CURRENT_TIMESTAMP     not null,
+    update_time     timestamp    default CURRENT_TIMESTAMP     not null,
+    is_deleted      boolean      default false                 not null
 );
 
 comment on table adi_knowledge_base is '知识库';
@@ -459,6 +461,10 @@ comment on column adi_knowledge_base.remark is '知识库描述';
 comment on column adi_knowledge_base.is_public is '是否公开';
 
 comment on column adi_knowledge_base.star_count is '点赞数';
+
+comment on column adi_knowledge_base.item_count is '知识点数量';
+
+comment on column adi_knowledge_base.embedding_count is '向量数';
 
 comment on column adi_knowledge_base.owner_id is '所属人id';
 

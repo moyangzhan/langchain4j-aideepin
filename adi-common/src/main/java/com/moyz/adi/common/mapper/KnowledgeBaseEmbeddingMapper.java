@@ -14,4 +14,6 @@ public interface KnowledgeBaseEmbeddingMapper extends BaseMapper<KnowledgeBaseEm
     Page<KnowledgeBaseEmbedding> selectByItemUuid(Page<KnowledgeBaseEmbedding> page, @Param("kbItemUuid") String uuid);
 
     boolean deleteByItemUuid(@Param("kbItemUuid") String uuid);
+
+    Integer countByKbUuid(@Param("kbUuid") String kbUuid);
 }
