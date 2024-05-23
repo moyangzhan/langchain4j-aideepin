@@ -7,6 +7,8 @@
 
 > **该项目如对您有帮助，欢迎点赞**
 
+代码仓库地址：[github](https://github.com/moyangzhan/langchain4j-aideepin)  [gitee](https://gitee.com/moyangzhan/langchain4j-aideepin)
+
 ## 体验网址
 
 [http://www.aideepin.com](http://www.aideepin.com/)
