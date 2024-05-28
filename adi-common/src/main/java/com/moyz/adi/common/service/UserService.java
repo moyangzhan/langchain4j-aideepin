@@ -1,15 +1,13 @@
 package com.moyz.adi.common.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.cosntant.RedisKeyConstant;
-import com.moyz.adi.common.dto.ConfigResp;
-import com.moyz.adi.common.dto.LoginReq;
-import com.moyz.adi.common.dto.LoginResp;
-import com.moyz.adi.common.dto.UserUpdateReq;
+import com.moyz.adi.common.dto.*;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.enums.UserStatusEnum;
@@ -18,6 +16,7 @@ import com.moyz.adi.common.helper.AdiMailSender;
 import com.moyz.adi.common.mapper.UserMapper;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.LocalCache;
+import com.moyz.adi.common.util.MPPageUtil;
 import com.moyz.adi.common.vo.CostStat;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +28,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.text.MessageFormat;
+import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -169,12 +169,38 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         User updateUser = new User();
         updateUser.setId(user.getId());
         updateUser.setUserStatus(UserStatusEnum.NORMAL);
+        updateUser.setActiveTime(LocalDateTime.now());
         baseMapper.updateById(updateUser);
 
         setLoginToken(user);
 
         //Create default conversation
         conversationService.createDefault(user.getId());
+    }
+
+    public void activeByUuid(String uuid) {
+        User user = this.getByUuidOrThrow(uuid);
+        User updateUser = new User();
+        updateUser.setId(user.getId());
+        updateUser.setUserStatus(UserStatusEnum.NORMAL);
+        updateUser.setActiveTime(LocalDateTime.now());
+        baseMapper.updateById(updateUser);
+    }
+
+    public void freeze(String uuid) {
+        User user = this.getByUuidOrThrow(uuid);
+        User updateUser = new User();
+        updateUser.setId(user.getId());
+        updateUser.setUserStatus(UserStatusEnum.FREEZE);
+        baseMapper.updateById(updateUser);
+    }
+
+    public void editUser(UserEditReq userEditReq) {
+        User user = this.getByUuidOrThrow(userEditReq.getUuid());
+        User editUser = new User();
+        editUser.setId(user.getId());
+        BeanUtils.copyProperties(userEditReq, editUser);
+        baseMapper.updateById(editUser);
     }
 
     public LoginResp login(LoginReq loginReq) {
@@ -314,10 +340,66 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         adiMailSender.send("欢迎注册AIDeepIn", "激活链接(" + AdiConstant.AUTH_ACTIVE_CODE_EXPIRE + "小时内有效):" + backendUrl + "/auth/active?code=" + activeCode, email);
     }
 
-    public User getByUuid(String uuid){
+    public User getByUuid(String uuid) {
         return ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(User::getUuid, uuid)
                 .one();
     }
 
+    public User getByUuidOrThrow(String uuid) {
+        User user = this.getByUuid(uuid);
+        if (null == user) {
+            throw new BaseException(A_USER_NOT_EXIST);
+        }
+        return user;
+    }
+
+    public Page<UserInfoDto> listUsers(UsersReq usersReq, Integer currentPage, Integer pageSize) {
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        if (StringUtils.isNotBlank(usersReq.getName())) {
+            wrapper.eq(User::getName, usersReq.getName());
+        }
+        if (StringUtils.isNotBlank(usersReq.getUuid())) {
+            wrapper.eq(User::getUuid, usersReq.getUuid());
+        }
+        if (StringUtils.isNotBlank(usersReq.getEmail())) {
+            wrapper.eq(User::getEmail, usersReq.getEmail());
+        }
+        if (null != usersReq.getUserStatus()) {
+            wrapper.eq(User::getUserStatus, usersReq.getUserStatus());
+        }
+        wrapper.orderByDesc(User::getUpdateTime);
+        Page<User> page = baseMapper.selectPage(new Page<>(currentPage, pageSize), wrapper);
+        Page<UserInfoDto> result = new Page<>();
+        return MPPageUtil.convertToPage(page, result, UserInfoDto.class);
+    }
+
+    public UserInfoDto addUser(UserAddReq addUserReq) {
+        User user = this.lambdaQuery()
+                .eq(User::getIsDeleted, false)
+                .eq(User::getEmail, addUserReq.getEmail())
+                .one();
+        if (null != user) {
+            throw new BaseException(A_USER_EXIST);
+        }
+
+        String hashed = BCrypt.hashpw(addUserReq.getPassword(), BCrypt.gensalt());
+        String uuid = UUID.randomUUID().toString().replace("-", "");
+        User newOne = new User();
+        if (StringUtils.isNotBlank(addUserReq.getName())) {
+            newOne.setName(addUserReq.getName());
+        } else {
+            newOne.setName(StringUtils.substringBefore(addUserReq.getEmail(), "@"));
+        }
+        newOne.setUuid(uuid);
+        newOne.setEmail(addUserReq.getEmail());
+        newOne.setPassword(hashed);
+        newOne.setUserStatus(UserStatusEnum.NORMAL);
+        baseMapper.insert(newOne);
+
+        UserInfoDto result = new UserInfoDto();
+        User newUser = this.getByUuid(uuid);
+        BeanUtils.copyProperties(newUser, result);
+        return result;
+    }
 }

@@ -72,6 +72,11 @@ public class TokenFilter extends OncePerRequestFilter {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
+        if (!user.getIsAdmin() && requestUri.startsWith("/admin/")) {
+            log.warn("无管理权限:{}", requestUri);
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
         ThreadContext.setCurrentUser(user);
         ThreadContext.setToken(token);
         log.info("response::" + response);

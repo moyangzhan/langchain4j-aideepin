@@ -83,13 +83,16 @@ public class UserController {
         if(null != user){
             userId = user.getId();
         }
-        Avatar avatar = CatAvatar.newAvatarBuilder().build();
-        BufferedImage bufferedImage = avatar.create(userId);
-        //把图片写给浏览器
         try {
-            ImageIO.write(bufferedImage, "png", response.getOutputStream());
+            writeToResponse(userId, response);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private synchronized void writeToResponse(Long userId, HttpServletResponse response) throws IOException{
+        Avatar avatar = CatAvatar.newAvatarBuilder().size(64, 64).build();
+        BufferedImage bufferedImage = avatar.create(userId);
+        ImageIO.write(bufferedImage, "png", response.getOutputStream());
     }
 }

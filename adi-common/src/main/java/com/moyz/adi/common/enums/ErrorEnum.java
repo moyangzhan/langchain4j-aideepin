@@ -23,6 +23,7 @@ public enum ErrorEnum {
     A_QA_ASK_LIMIT("A0019", "请求次数太多"),
     A_QA_ITEM_LIMIT("A0020", "知识点生成已超额度"),
     A_CONVERSATION_EXIST("A0021", "对话已存在"),
+    A_MODEL_NOT_FOUND("A0022", "模型不存在"),
     B_UNCAUGHT_ERROR("B0001", "未捕捉异常"),
     B_COMMON_ERROR("B0002", "业务出错"),
     B_GLOBAL_ERROR("B0003", "全局异常"),

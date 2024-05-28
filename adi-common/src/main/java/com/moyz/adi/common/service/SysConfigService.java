@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.moyz.adi.common.cosntant.AdiConstant;
+import com.moyz.adi.common.dto.SysConfigDto;
 import com.moyz.adi.common.entity.SysConfig;
 import com.moyz.adi.common.mapper.SysConfigMapper;
 import com.moyz.adi.common.util.JsonUtil;
@@ -11,6 +12,7 @@ import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.vo.RequestRateLimit;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -50,6 +52,23 @@ public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
         LocalCache.IMAGE_RATE_LIMIT_CONFIG = JsonUtil.fromJson(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.REQUEST_IMAGE_RATE_LIMIT), RequestRateLimit.class);
         LocalCache.TEXT_RATE_LIMIT_CONFIG.setType(RequestRateLimit.TYPE_TEXT);
         LocalCache.IMAGE_RATE_LIMIT_CONFIG.setType(RequestRateLimit.TYPE_IMAGE);
+    }
+
+    public void edit(SysConfigDto sysConfigDto) {
+        SysConfig sysConfig = new SysConfig();
+        BeanUtils.copyProperties(sysConfigDto, sysConfig);
+        baseMapper.updateById(sysConfig);
+
+        reload();
+    }
+
+    public void softDelete(Long id) {
+        SysConfig sysConfig = new SysConfig();
+        sysConfig.setIsDeleted(true);
+        sysConfig.setId(id);
+        baseMapper.updateById(sysConfig);
+
+        reload();
     }
 
     public int getConversationMaxNum() {
