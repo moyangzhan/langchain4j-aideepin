@@ -19,6 +19,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.moyz.adi.common.util.LocalCache.MODEL_ID_TO_OBJ;
@@ -90,6 +91,14 @@ public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
         model.setId(id);
         model.setIsEnable(true);
         baseMapper.updateById(model);
+    }
+
+    public List<AiModelDto> listEnable() {
+        List<AiModel> aiModels = ChainWrappers.lambdaQueryChain(baseMapper)
+                .eq(AiModel::getIsEnable, true)
+                .eq(AiModel::getIsDeleted, false)
+                .list();
+        return MPPageUtil.convertToList(aiModels, AiModelDto.class);
     }
 
     public void softDelete(Long id) {

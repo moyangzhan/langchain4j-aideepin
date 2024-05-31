@@ -1,28 +1,19 @@
 package com.moyz.adi.admin.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.UserAddReq;
 import com.moyz.adi.common.dto.UserEditReq;
 import com.moyz.adi.common.dto.UserInfoDto;
-import com.moyz.adi.common.dto.UsersReq;
+import com.moyz.adi.common.dto.UserSearchReq;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.service.UserService;
-import com.talanlabs.avatargenerator.Avatar;
-import com.talanlabs.avatargenerator.cat.CatAvatar;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.Resource;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.BeanUtils;
-import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
 
 @RestController
 @RequestMapping("/admin/user")
@@ -32,9 +23,9 @@ public class AdminUserController {
     @Resource
     private UserService userService;
 
-    @PostMapping("/list")
-    public Page<UserInfoDto> userList(@RequestBody UsersReq usersReq, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
-        return userService.listUsers(usersReq, currentPage, pageSize);
+    @PostMapping("/search")
+    public Page<UserInfoDto> search(@RequestBody UserSearchReq userSearchReq, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
+        return userService.search(userSearchReq, currentPage, pageSize);
     }
 
     @Operation(summary = "用户信息")

@@ -3,6 +3,8 @@ package com.moyz.adi.common.enums;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.util.Arrays;
+
 @Getter
 @AllArgsConstructor
 public enum UserStatusEnum implements BaseEnum {
@@ -13,5 +15,9 @@ public enum UserStatusEnum implements BaseEnum {
 
     private final Integer value;
     private final String desc;
+
+    public static UserStatusEnum getByValue(Integer val) {
+        return Arrays.stream(UserStatusEnum.values()).filter(item -> item.value.equals(val)).findFirst().orElse(null);
+    }
 
 }

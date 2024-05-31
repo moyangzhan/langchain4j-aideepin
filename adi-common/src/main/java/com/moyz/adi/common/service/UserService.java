@@ -16,6 +16,7 @@ import com.moyz.adi.common.helper.AdiMailSender;
 import com.moyz.adi.common.mapper.UserMapper;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.LocalCache;
+import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.moyz.adi.common.util.MPPageUtil;
 import com.moyz.adi.common.vo.CostStat;
 import jakarta.annotation.Resource;
@@ -354,20 +355,27 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         return user;
     }
 
-    public Page<UserInfoDto> listUsers(UsersReq usersReq, Integer currentPage, Integer pageSize) {
+    public Page<UserInfoDto> search(UserSearchReq req, Integer currentPage, Integer pageSize) {
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        if (StringUtils.isNotBlank(usersReq.getName())) {
-            wrapper.eq(User::getName, usersReq.getName());
+        if (StringUtils.isNotBlank(req.getName())) {
+            wrapper.like(User::getName, req.getName());
         }
-        if (StringUtils.isNotBlank(usersReq.getUuid())) {
-            wrapper.eq(User::getUuid, usersReq.getUuid());
+        if (StringUtils.isNotBlank(req.getUuid())) {
+            wrapper.eq(User::getUuid, req.getUuid());
         }
-        if (StringUtils.isNotBlank(usersReq.getEmail())) {
-            wrapper.eq(User::getEmail, usersReq.getEmail());
+        if (StringUtils.isNotBlank(req.getEmail())) {
+            wrapper.eq(User::getEmail, req.getEmail());
         }
-        if (null != usersReq.getUserStatus()) {
-            wrapper.eq(User::getUserStatus, usersReq.getUserStatus());
+        if (null != req.getUserStatus()) {
+            wrapper.eq(User::getUserStatus, UserStatusEnum.getByValue(req.getUserStatus()));
         }
+        if (null != req.getCreateTime() && req.getCreateTime().length == 2) {
+            wrapper.between(User::getCreateTime, LocalDateTimeUtil.parse(req.getCreateTime()[0]), LocalDateTimeUtil.parse(req.getCreateTime()[1]));
+        }
+        if (null != req.getUpdateTime() && req.getUpdateTime().length == 2) {
+            wrapper.between(User::getUpdateTime, LocalDateTimeUtil.parse(req.getUpdateTime()[0]), LocalDateTimeUtil.parse(req.getUpdateTime()[1]));
+        }
+        wrapper.eq(User::getIsDeleted, false);
         wrapper.orderByDesc(User::getUpdateTime);
         Page<User> page = baseMapper.selectPage(new Page<>(currentPage, pageSize), wrapper);
         Page<UserInfoDto> result = new Page<>();
@@ -395,6 +403,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         newOne.setEmail(addUserReq.getEmail());
         newOne.setPassword(hashed);
         newOne.setUserStatus(UserStatusEnum.NORMAL);
+        newOne.setActiveTime(LocalDateTime.now());
         baseMapper.insert(newOne);
 
         UserInfoDto result = new UserInfoDto();

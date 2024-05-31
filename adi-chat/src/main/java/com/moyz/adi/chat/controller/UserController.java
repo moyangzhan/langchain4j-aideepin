@@ -91,6 +91,10 @@ public class UserController {
     }
 
     private synchronized void writeToResponse(Long userId, HttpServletResponse response) throws IOException{
+        response.setHeader("Cache-Control", "max-age=" + 3600 * 24 * 7);
+        // 设置Expires头，指示响应过期的具体日期时间
+        long expiresTime = System.currentTimeMillis() + 3600 * 24 * 7 * 1000;
+        response.setDateHeader("Expires", expiresTime);
         Avatar avatar = CatAvatar.newAvatarBuilder().size(64, 64).build();
         BufferedImage bufferedImage = avatar.create(userId);
         ImageIO.write(bufferedImage, "png", response.getOutputStream());

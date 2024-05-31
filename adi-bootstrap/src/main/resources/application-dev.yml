@@ -24,6 +24,8 @@ spring:
 logging:
   file:
     path: D:/data/logs
+  level:
+    com.baomidou.mybatisplus: DEBUG
 
 adi:
   frontend-url: http://localhost:1002

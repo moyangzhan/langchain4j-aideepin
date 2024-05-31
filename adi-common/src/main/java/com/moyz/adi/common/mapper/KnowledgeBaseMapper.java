@@ -6,6 +6,8 @@ import com.moyz.adi.common.entity.KnowledgeBase;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
+
 @Mapper
 public interface KnowledgeBaseMapper extends BaseMapper<KnowledgeBase> {
 
@@ -32,4 +34,8 @@ public interface KnowledgeBaseMapper extends BaseMapper<KnowledgeBase> {
      * @param uuid
      */
     void updateStatByUuid(@Param("uuid") String uuid);
+
+    Integer countCreatedByTimePeriod(@Param("beginTime") LocalDateTime beginTime, @Param("endTime") LocalDateTime endTime);
+
+    Integer countAllCreated();
 }

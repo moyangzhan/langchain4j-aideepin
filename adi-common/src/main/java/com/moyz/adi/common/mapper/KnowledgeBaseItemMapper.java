@@ -8,6 +8,8 @@ import com.moyz.adi.common.entity.KnowledgeBaseItem;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
+
 @Mapper
 public interface KnowledgeBaseItemMapper extends BaseMapper<KnowledgeBaseItem> {
 
@@ -15,4 +17,8 @@ public interface KnowledgeBaseItemMapper extends BaseMapper<KnowledgeBaseItem> {
     Page<KbItemDto> searchByKb(Page<KbItemDto> page, @Param("kbUuid") String kbUuid, @Param("keyword") String keyword);
 
     KnowledgeBaseItem getByUuid(String uuid);
+
+    Integer countCreatedByTimePeriod(@Param("beginTime") LocalDateTime beginTime, @Param("endTime") LocalDateTime endTime);
+
+    Integer countAllCreated();
 }

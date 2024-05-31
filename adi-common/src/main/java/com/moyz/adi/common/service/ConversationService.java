@@ -18,6 +18,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -182,4 +183,14 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
                 .update();
     }
 
+    public int countTodayCreated() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime beginTime = LocalDateTime.of(now.getYear(), now.getMonth(), now.getDayOfMonth(), 0, 0, 0);
+        LocalDateTime endTime = beginTime.plusDays(1);
+        return baseMapper.countCreatedByTimePeriod(beginTime, endTime);
+    }
+
+    public int countAllCreated() {
+        return baseMapper.countAllCreated();
+    }
 }

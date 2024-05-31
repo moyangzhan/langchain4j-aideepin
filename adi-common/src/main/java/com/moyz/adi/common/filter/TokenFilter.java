@@ -79,7 +79,6 @@ public class TokenFilter extends OncePerRequestFilter {
         }
         ThreadContext.setCurrentUser(user);
         ThreadContext.setToken(token);
-        log.info("response::" + response);
         filterChain.doFilter(request, response);
     }
 

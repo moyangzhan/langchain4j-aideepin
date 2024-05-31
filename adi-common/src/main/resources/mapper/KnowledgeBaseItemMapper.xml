@@ -19,4 +19,17 @@
         from adi_knowledge_base_item a
         where uuid = #{uuid}
     </select>
+
+    <select id="countCreatedByTimePeriod" resultType="Integer">
+        select count(1)
+        from adi_knowledge_base_item
+        where is_deleted = false
+          and create_time between #{beginTime} and #{endTime}
+    </select>
+
+    <select id="countAllCreated" resultType="Integer">
+        select count(1)
+        from adi_knowledge_base_item
+        where is_deleted = false
+    </select>
 </mapper>

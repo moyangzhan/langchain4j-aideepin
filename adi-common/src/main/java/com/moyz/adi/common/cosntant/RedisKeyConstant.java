@@ -97,4 +97,10 @@ public class RedisKeyConstant {
      * 值:知识库uuid
      */
     public static final String KB_STATISTIC_RECALCULATE_SIGNAL = "kb:statistic:recalculate:signal";
+
+    public static final String STATISTIC = "statistic";
+    public static final String STATISTIC_USER = "user";
+    public static final String STATISTIC_KNOWLEDGE_BASE = "kb";
+    public static final String STATISTIC_TOKEN_COST = "token_cost";
+    public static final String STATISTIC_CONVERSATION = "conversation";
 }

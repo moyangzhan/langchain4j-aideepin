@@ -10,6 +10,7 @@ import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.cosntant.RedisKeyConstant;
 import com.moyz.adi.common.dto.KbEditReq;
 import com.moyz.adi.common.dto.KbInfoResp;
+import com.moyz.adi.common.dto.KbSearchReq;
 import com.moyz.adi.common.dto.QAReq;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
@@ -35,7 +36,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -83,9 +83,6 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
     @Resource
     private UserDayCostService userDayCostService;
-
-    @Resource
-    private ThreadPoolTaskExecutor mainExecutor;
 
     public KnowledgeBase saveOrUpdate(KbEditReq kbEditReq) {
         String uuid = kbEditReq.getUuid();
@@ -222,14 +219,28 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         return MPPageUtil.convertToPage(knowledgeBasePage, result, KbInfoResp.class, null);
     }
 
-    public Page<KbInfoResp> searchPublic(String keyword, Integer currentPage, Integer pageSize) {
+    public Page<KbInfoResp> search(KbSearchReq req, Integer currentPage, Integer pageSize) {
         Page<KbInfoResp> result = new Page<>();
         LambdaQueryWrapper<KnowledgeBase> wrapper = new LambdaQueryWrapper();
-        wrapper.eq(KnowledgeBase::getIsPublic, true);
-        wrapper.eq(KnowledgeBase::getIsDeleted, false);
-        if (StringUtils.isNotBlank(keyword)) {
-            wrapper.like(KnowledgeBase::getTitle, keyword);
+        if (StringUtils.isNotBlank(req.getTitle())) {
+            wrapper.like(KnowledgeBase::getTitle, req.getTitle());
         }
+        if (null != req.getIsPublic()) {
+            wrapper.eq(KnowledgeBase::getIsPublic, req.getIsPublic());
+        }
+        if (null != req.getMinItemCount()) {
+            wrapper.ge(KnowledgeBase::getItemCount, req.getMinItemCount());
+        }
+        if (null != req.getMinEmbeddingCount()) {
+            wrapper.ge(KnowledgeBase::getEmbeddingCount, req.getMinEmbeddingCount());
+        }
+        if (null != req.getCreateTime() && req.getCreateTime().length == 2) {
+            wrapper.between(KnowledgeBase::getCreateTime, LocalDateTimeUtil.parse(req.getCreateTime()[0]), LocalDateTimeUtil.parse(req.getCreateTime()[1]));
+        }
+        if (null != req.getUpdateTime() && req.getUpdateTime().length == 2) {
+            wrapper.between(KnowledgeBase::getUpdateTime, LocalDateTimeUtil.parse(req.getUpdateTime()[0]), LocalDateTimeUtil.parse(req.getUpdateTime()[1]));
+        }
+        wrapper.eq(KnowledgeBase::getIsDeleted, false);
         wrapper.orderByDesc(KnowledgeBase::getStarCount, KnowledgeBase::getUpdateTime);
         Page<KnowledgeBase> knowledgeBasePage = baseMapper.selectPage(new Page<>(currentPage, pageSize), wrapper);
         return MPPageUtil.convertToPage(knowledgeBasePage, result, KbInfoResp.class, null);
@@ -357,6 +368,17 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
      */
     public void updateStatistic(String kbUuid) {
         stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, kbUuid);
+    }
+
+    public int countTodayCreated() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime beginTime = LocalDateTime.of(now.getYear(), now.getMonth(), now.getDayOfMonth(), 0, 0, 0);
+        LocalDateTime endTime = beginTime.plusDays(1);
+        return baseMapper.countCreatedByTimePeriod(beginTime, endTime);
+    }
+
+    public int countAllCreated() {
+        return baseMapper.countAllCreated();
     }
 
     /**

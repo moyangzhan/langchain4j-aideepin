@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.KbEditReq;
 import com.moyz.adi.common.dto.KbInfoResp;
+import com.moyz.adi.common.dto.KbSearchReq;
 import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.service.KnowledgeBaseService;
@@ -47,7 +48,7 @@ public class KnowledgeBaseController {
 
     @GetMapping("/searchPublic")
     public Page<KbInfoResp> searchPublic(@RequestParam(defaultValue = "") String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
-        return knowledgeBaseService.searchPublic(keyword, currentPage, pageSize);
+        return knowledgeBaseService.search(KbSearchReq.builder().isPublic(true).title(keyword).build(), currentPage, pageSize);
     }
 
     @GetMapping("/info/{uuid}")

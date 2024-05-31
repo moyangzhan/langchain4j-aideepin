@@ -21,8 +21,8 @@ spring:
   cache:
     type: redis
     redis:
-      key-prefix: CACHE
-      time-to-live: 1d
+      key-prefix: 'AUTO_CACHE\:'
+      time-to-live: 1h
   mail:
     default-encoding: UTF-8
     protocol: smtps

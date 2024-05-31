@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moyz.adi.common.mapper.UserDayCostMapper">
+    <select id="sumCostByDay" resultType="java.lang.Long">
+        select coalesce(sum(tokens),0)
+        from adi_user_day_cost
+        where day = #{day}
+    </select>
+    <select id="sumCostByDayPeriod" resultType="java.lang.Long">
+        select coalesce(sum(tokens), 0)
+        from adi_user_day_cost
+        where day between #{beginDate} and #{endDate}
+    </select>
+</mapper>

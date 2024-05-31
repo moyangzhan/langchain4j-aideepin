@@ -22,6 +22,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -142,7 +143,6 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
         }
         return true;
     }
-
     public int countByKbUuid(String kbUuid) {
         return ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(KnowledgeBaseItem::getKbUuid, kbUuid)
@@ -150,7 +150,15 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                 .count()
                 .intValue();
     }
-
+    public int countTodayCreated() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime beginTime = LocalDateTime.of(now.getYear(), now.getMonth(), now.getDayOfMonth(), 0, 0, 0);
+        LocalDateTime endTime = beginTime.plusDays(1);
+        return baseMapper.countCreatedByTimePeriod(beginTime, endTime);
+    }
+    public int countAllCreated() {
+        return baseMapper.countAllCreated();
+    }
     private boolean checkPrivilege(String uuid) {
         if (StringUtils.isBlank(uuid)) {
             throw new BaseException(A_PARAMS_ERROR);

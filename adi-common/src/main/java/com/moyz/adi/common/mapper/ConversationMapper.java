@@ -1,8 +1,11 @@
 package com.moyz.adi.common.mapper;
 
-import com.moyz.adi.common.entity.Conversation;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.moyz.adi.common.entity.Conversation;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+import java.time.LocalDateTime;
 
 /**
  * <p>
@@ -14,5 +17,7 @@ import org.apache.ibatis.annotations.Mapper;
  */
 @Mapper
 public interface ConversationMapper extends BaseMapper<Conversation> {
+    Integer countCreatedByTimePeriod(@Param("beginTime") LocalDateTime beginTime, @Param("endTime") LocalDateTime endTime);
 
+    Integer countAllCreated();
 }

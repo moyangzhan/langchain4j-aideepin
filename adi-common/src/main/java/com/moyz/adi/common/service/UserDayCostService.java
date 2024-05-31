@@ -73,4 +73,15 @@ public class UserDayCostService extends ServiceImpl<UserDayCostMapper, UserDayCo
                 .eq(UserDayCost::getSecretKeyType, UserUtil.getSecretType(user))
                 .one();
     }
+
+    public Long sumTodayCost() {
+        int today = LocalDateTimeUtil.getToday();
+        return baseMapper.sumCostByDay(today);
+    }
+
+    public Long sumCurrentMonthCost() {
+        int start = LocalDateTimeUtil.getIntDay(LocalDateTime.now().withDayOfMonth(1));
+        int end = LocalDateTimeUtil.getIntDay(LocalDateTime.now().plusMonths(1).withDayOfMonth(1).minusDays(1));
+        return baseMapper.sumCostByDayPeriod(start, end);
+    }
 }

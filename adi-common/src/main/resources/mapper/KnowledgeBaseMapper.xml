@@ -29,6 +29,19 @@
         order by star_count,update_time desc
     </select>
 
+    <select id="countCreatedByTimePeriod" resultType="Integer">
+        select count(1)
+        from adi_knowledge_base
+        where is_deleted = false
+          and create_time between #{beginTime} and #{endTime}
+    </select>
+
+    <select id="countAllCreated" resultType="Integer">
+        select count(1)
+        from adi_knowledge_base
+        where is_deleted = false
+    </select>
+
     <update id="updateStatByUuid">
         update adi_knowledge_base
         set item_count      = (select count(1)
