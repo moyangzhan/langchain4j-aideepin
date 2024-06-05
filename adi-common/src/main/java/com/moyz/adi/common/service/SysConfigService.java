@@ -91,8 +91,9 @@ public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
     public Page<SysConfig> search(String keyword, Integer currentPage, Integer pageSize) {
         LambdaQueryWrapper<SysConfig> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.isNotBlank(keyword)) {
-            wrapper.eq(SysConfig::getName, keyword);
+            wrapper.like(SysConfig::getName, keyword);
         }
+        wrapper.eq(SysConfig::getIsDeleted, false);
         return baseMapper.selectPage(new Page<>(currentPage, pageSize), wrapper);
     }
 

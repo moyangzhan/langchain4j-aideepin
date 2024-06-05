@@ -19,8 +19,8 @@ public class SystemConfigController {
     @Resource
     private SysConfigService sysConfigService;
 
-    @GetMapping("/list")
-    public Page<SysConfig> list(@RequestParam String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
+    @GetMapping("/search")
+    public Page<SysConfig> search(@RequestParam String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
         return sysConfigService.search(keyword, currentPage, pageSize);
     }
 

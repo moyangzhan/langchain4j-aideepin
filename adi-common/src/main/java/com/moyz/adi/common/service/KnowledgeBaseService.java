@@ -84,6 +84,19 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     @Resource
     private UserDayCostService userDayCostService;
 
+    public boolean updateKb(KbEditReq kbEditReq) {
+        KnowledgeBase existKb = getOrThrow(kbEditReq.getUuid());
+        KnowledgeBase knowledgeBase = new KnowledgeBase();
+        knowledgeBase.setTitle(kbEditReq.getTitle());
+        knowledgeBase.setRemark(kbEditReq.getRemark());
+        if (null != kbEditReq.getIsPublic()) {
+            knowledgeBase.setIsPublic(kbEditReq.getIsPublic());
+        }
+        knowledgeBase.setId(existKb.getId());
+        baseMapper.updateById(knowledgeBase);
+        return true;
+    }
+
     public KnowledgeBase saveOrUpdate(KbEditReq kbEditReq) {
         String uuid = kbEditReq.getUuid();
         KnowledgeBase knowledgeBase = new KnowledgeBase();

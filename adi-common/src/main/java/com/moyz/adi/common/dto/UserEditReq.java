@@ -10,6 +10,8 @@ public class UserEditReq {
 
     private String name;
 
+    private String password;
+
     private UserStatusEnum userStatus;
 
     private Integer quotaByTokenDaily;

@@ -1,25 +1,22 @@
 package com.moyz.adi.common.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.moyz.adi.common.dto.AiModelDto;
+import com.moyz.adi.common.dto.AiModelSearchReq;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.AiModelMapper;
 import com.moyz.adi.common.util.MPPageUtil;
-import dev.langchain4j.agent.tool.P;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static com.moyz.adi.common.util.LocalCache.MODEL_ID_TO_OBJ;
@@ -68,10 +65,16 @@ public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
         return existModel;
     }
 
-    public Page<AiModelDto> page(String platform, Integer currentPage, Integer pageSize) {
+    public Page<AiModelDto> page(AiModelSearchReq aiModelSearchReq, Integer currentPage, Integer pageSize) {
         LambdaQueryWrapper<AiModel> lambdaQueryWrapper = new LambdaQueryWrapper<>();
-        if (StringUtils.isNotBlank(platform)) {
-            lambdaQueryWrapper.eq(AiModel::getPlatform, platform);
+        if (StringUtils.isNotBlank(aiModelSearchReq.getPlatform())) {
+            lambdaQueryWrapper.eq(AiModel::getPlatform, aiModelSearchReq.getPlatform());
+        }
+        if (StringUtils.isNotBlank(aiModelSearchReq.getType())) {
+            lambdaQueryWrapper.eq(AiModel::getType, aiModelSearchReq.getType());
+        }
+        if (null != aiModelSearchReq.getIsEnable()) {
+            lambdaQueryWrapper.eq(AiModel::getIsEnable, aiModelSearchReq.getIsEnable());
         }
         lambdaQueryWrapper.eq(AiModel::getIsDeleted, false);
         lambdaQueryWrapper.orderByDesc(AiModel::getUpdateTime);
@@ -99,6 +102,32 @@ public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
                 .eq(AiModel::getIsDeleted, false)
                 .list();
         return MPPageUtil.convertToList(aiModels, AiModelDto.class);
+    }
+
+    public AiModelDto addOne(AiModelDto aiModelDto) {
+        Long count = ChainWrappers.lambdaQueryChain(baseMapper)
+                .eq(AiModel::getName, aiModelDto.getName())
+                .eq(AiModel::getPlatform, aiModelDto.getPlatform())
+                .eq(AiModel::getIsDeleted, false)
+                .count();
+        if (count > 0) {
+            throw new BaseException(ErrorEnum.A_MODEL_ALREADY_EXIST);
+        }
+        AiModel aiModel = new AiModel();
+        BeanUtils.copyProperties(aiModelDto, aiModel);
+        baseMapper.insert(aiModel);
+
+        AiModelDto result = new AiModelDto();
+        BeanUtils.copyProperties(aiModel, result);
+        return result;
+    }
+
+    public void edit(AiModelDto aiModelDto) {
+        getByIdOrThrow(aiModelDto.getId());
+
+        AiModel aiModel = new AiModel();
+        BeanUtils.copyProperties(aiModelDto, aiModel, "createTime", "updateTime");
+        baseMapper.updateById(aiModel);
     }
 
     public void softDelete(Long id) {

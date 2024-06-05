@@ -29,4 +29,8 @@ public class AiModel extends BaseEntity {
     @Schema(title = "状态(1:正常使用,0:不可用)")
     @TableField("is_enable")
     private Boolean isEnable;
+
+    @Schema(title = "上下文长度")
+    @TableField("context_window")
+    private Integer contextWindow;
 }
