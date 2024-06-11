@@ -403,13 +403,13 @@ create trigger trigger_ai_model
 execute procedure update_modified_column();
 
 INSERT INTO adi_sys_config (name, value)
-VALUES ('openai_setting', '{"secret_key":"","models":[]}');
+VALUES ('openai_setting', '{"secret_key":""}');
 INSERT INTO adi_sys_config (name, value)
-VALUES ('dashscope_setting', '{"api_key":"","models":[]}');
+VALUES ('dashscope_setting', '{"api_key":""}');
 INSERT INTO adi_sys_config (name, value)
-VALUES ('qianfan_setting', '{"api_key":"","secret_key":"","models":[]}');
+VALUES ('qianfan_setting', '{"api_key":"","secret_key":""}');
 INSERT INTO adi_sys_config (name, value)
-VALUES ('ollama_setting', '{"base_url":"","models":[]}');
+VALUES ('ollama_setting', '{"base_url":""}');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('google_setting',
         '{"url":"https://www.googleapis.com/customsearch/v1","key":"","cx":""}');

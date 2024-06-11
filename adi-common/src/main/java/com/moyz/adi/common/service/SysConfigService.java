@@ -5,12 +5,18 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.SysConfigDto;
+import com.moyz.adi.common.dto.SysConfigEditDto;
+import com.moyz.adi.common.dto.SysConfigSearchReq;
 import com.moyz.adi.common.entity.SysConfig;
+import com.moyz.adi.common.enums.ErrorEnum;
+import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.SysConfigMapper;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.LocalCache;
+import com.moyz.adi.common.util.MPPageUtil;
 import com.moyz.adi.common.vo.RequestRateLimit;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -54,10 +60,18 @@ public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
         LocalCache.IMAGE_RATE_LIMIT_CONFIG.setType(RequestRateLimit.TYPE_IMAGE);
     }
 
-    public void edit(SysConfigDto sysConfigDto) {
-        SysConfig sysConfig = new SysConfig();
-        BeanUtils.copyProperties(sysConfigDto, sysConfig);
-        baseMapper.updateById(sysConfig);
+    public void edit(SysConfigEditDto sysConfigDto) {
+        LambdaQueryWrapper<SysConfig> lambdaQueryWrapper = new LambdaQueryWrapper();
+        lambdaQueryWrapper.eq(SysConfig::getName, sysConfigDto.getName());
+        lambdaQueryWrapper.eq(SysConfig::getIsDeleted, false);
+        SysConfig existOne = baseMapper.selectOne(lambdaQueryWrapper);
+        if (null == existOne) {
+            throw new BaseException(ErrorEnum.A_DATA_NOT_FOUND);
+        }
+        SysConfig updateOne = new SysConfig();
+        updateOne.setId(existOne.getId());
+        updateOne.setValue(sysConfigDto.getValue());
+        baseMapper.updateById(updateOne);
 
         reload();
     }
@@ -88,13 +102,18 @@ public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
         return null;
     }
 
-    public Page<SysConfig> search(String keyword, Integer currentPage, Integer pageSize) {
+    public Page<SysConfigDto> search(SysConfigSearchReq searchReq, Integer currentPage, Integer pageSize) {
         LambdaQueryWrapper<SysConfig> wrapper = new LambdaQueryWrapper<>();
-        if (StringUtils.isNotBlank(keyword)) {
-            wrapper.like(SysConfig::getName, keyword);
+        if (StringUtils.isNotBlank(searchReq.getKeyword())) {
+            wrapper.like(SysConfig::getName, searchReq.getKeyword());
+        }
+        if (CollectionUtils.isNotEmpty(searchReq.getNames())) {
+            wrapper.in(SysConfig::getName, searchReq.getNames());
         }
         wrapper.eq(SysConfig::getIsDeleted, false);
-        return baseMapper.selectPage(new Page<>(currentPage, pageSize), wrapper);
+        Page<SysConfig> page = baseMapper.selectPage(new Page<>(currentPage, pageSize), wrapper);
+        Page<SysConfigDto> result = new Page<>();
+        return MPPageUtil.convertToPage(page, result, SysConfigDto.class);
     }
 
 }
