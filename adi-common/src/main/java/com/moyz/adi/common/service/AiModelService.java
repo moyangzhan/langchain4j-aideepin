@@ -11,30 +11,24 @@ import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.AiModelMapper;
 import com.moyz.adi.common.util.MPPageUtil;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-
-import static com.moyz.adi.common.util.LocalCache.MODEL_ID_TO_OBJ;
-import static com.moyz.adi.common.util.LocalCache.MODEL_NAME_TO_OBJ;
 
 @Slf4j
 @Service
 public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
 
-    @Scheduled(fixedDelay = 5 * 60 * 1000)
-    public void initAll() {
-        List<AiModel> all = ChainWrappers.lambdaQueryChain(baseMapper)
-                .eq(AiModel::getIsDeleted, false)
-                .list();
-        for (AiModel model : all) {
-            MODEL_NAME_TO_OBJ.put(model.getName(), model);
-            MODEL_ID_TO_OBJ.put(model.getId(), model);
-        }
+    @Resource
+    private AiModelSettingService aiModelSettingService;
+
+    public void init() {
+        List<AiModel> aiModels = ChainWrappers.lambdaQueryChain(baseMapper).eq(AiModel::getIsDeleted, false).list();
+        aiModelSettingService.init(aiModels);
     }
 
     public List<AiModel> listBy(String platform, String type) {
@@ -65,7 +59,7 @@ public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
         return existModel;
     }
 
-    public Page<AiModelDto> page(AiModelSearchReq aiModelSearchReq, Integer currentPage, Integer pageSize) {
+    public Page<AiModelDto> search(AiModelSearchReq aiModelSearchReq, Integer currentPage, Integer pageSize) {
         LambdaQueryWrapper<AiModel> lambdaQueryWrapper = new LambdaQueryWrapper<>();
         if (StringUtils.isNotBlank(aiModelSearchReq.getPlatform())) {
             lambdaQueryWrapper.eq(AiModel::getPlatform, aiModelSearchReq.getPlatform());
@@ -119,15 +113,22 @@ public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
 
         AiModelDto result = new AiModelDto();
         BeanUtils.copyProperties(aiModel, result);
+
+        aiModelSettingService.add(aiModel);
+
         return result;
     }
 
     public void edit(AiModelDto aiModelDto) {
-        getByIdOrThrow(aiModelDto.getId());
+        AiModel oldAiModel = getByIdOrThrow(aiModelDto.getId());
 
         AiModel aiModel = new AiModel();
         BeanUtils.copyProperties(aiModelDto, aiModel, "createTime", "updateTime");
         baseMapper.updateById(aiModel);
+
+        AiModel updatedOne = getByIdOrThrow(aiModelDto.getId());
+        aiModelSettingService.delete(oldAiModel);
+        aiModelSettingService.add(updatedOne);
     }
 
     public void softDelete(Long id) {
@@ -138,7 +139,6 @@ public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
         model.setIsDeleted(true);
         baseMapper.updateById(model);
 
-        MODEL_NAME_TO_OBJ.remove(existModel.getName());
-        MODEL_ID_TO_OBJ.remove(existModel.getId());
+        aiModelSettingService.delete(existModel);
     }
 }

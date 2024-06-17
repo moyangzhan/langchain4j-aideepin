@@ -4,8 +4,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.ConvDto;
 import com.moyz.adi.common.dto.ConvEditReq;
-import com.moyz.adi.common.dto.ConvMsgListResp;
 import com.moyz.adi.common.dto.ConvMsgDto;
+import com.moyz.adi.common.dto.ConvMsgListResp;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.Conversation;
 import com.moyz.adi.common.entity.ConversationMessage;
@@ -21,12 +21,10 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_CONVERSATION_EXIST;
 import static com.moyz.adi.common.enums.ErrorEnum.A_CONVERSATION_NOT_EXIST;
 import static com.moyz.adi.common.util.LocalCache.MODEL_ID_TO_OBJ;
-import static com.moyz.adi.common.util.LocalCache.MODEL_NAME_TO_OBJ;
 
 @Slf4j
 @Service

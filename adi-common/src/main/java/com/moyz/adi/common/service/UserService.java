@@ -204,6 +204,8 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         if (StringUtils.isNotBlank(userEditReq.getPassword())) {
             String hashed = BCrypt.hashpw(userEditReq.getPassword(), BCrypt.gensalt());
             editUser.setPassword(hashed);
+        } else {
+            editUser.setPassword(null);
         }
         baseMapper.updateById(editUser);
     }

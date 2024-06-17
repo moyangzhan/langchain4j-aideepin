@@ -13,7 +13,5 @@ public class LocalCache {
 
     public static RequestRateLimit IMAGE_RATE_LIMIT_CONFIG;
 
-    public static Map<String, AiModel> MODEL_NAME_TO_OBJ = new ConcurrentHashMap<>();
-
     public static Map<Long, AiModel> MODEL_ID_TO_OBJ = new ConcurrentHashMap<>();
 }

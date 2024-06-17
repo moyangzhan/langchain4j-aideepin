@@ -18,8 +18,6 @@ import com.moyz.adi.common.vo.RequestRateLimit;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.BeanUtils;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -29,9 +27,7 @@ import java.util.List;
 @Service
 public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
 
-    @Scheduled(fixedDelay = 20 * 60 * 1000)
-    public void reload() {
-        log.info("reload system config");
+    public void loadAndCache() {
         List<SysConfig> configsFromDB = this.lambdaQuery().eq(SysConfig::getIsDeleted, false).list();
         if (LocalCache.CONFIGS.isEmpty()) {
             configsFromDB.stream().forEach(item -> LocalCache.CONFIGS.put(item.getName(), item.getValue()));
@@ -73,7 +69,7 @@ public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
         updateOne.setValue(sysConfigDto.getValue());
         baseMapper.updateById(updateOne);
 
-        reload();
+        loadAndCache();
     }
 
     public void softDelete(Long id) {
@@ -82,7 +78,7 @@ public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
         sysConfig.setId(id);
         baseMapper.updateById(sysConfig);
 
-        reload();
+        loadAndCache();
     }
 
     public int getConversationMaxNum() {

@@ -25,9 +25,9 @@ public class AdminModelController {
     @Resource
     private AiModelService aiModelService;
 
-    @PostMapping("/list")
+    @PostMapping("/search")
     public Page<AiModelDto> page(@RequestBody AiModelSearchReq aiModelSearchReq, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
-        return aiModelService.page(aiModelSearchReq, currentPage, pageSize);
+        return aiModelService.search(aiModelSearchReq, currentPage, pageSize);
     }
 
     @PostMapping("/addOne")

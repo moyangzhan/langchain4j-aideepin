@@ -9,7 +9,6 @@ import io.micrometer.common.util.StringUtils;
 import jakarta.annotation.Resource;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +19,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.text.MessageFormat;
-import java.util.Arrays;
 
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
@@ -30,7 +28,9 @@ public class TokenFilter extends OncePerRequestFilter {
 
     public static final String[] EXCLUDE_API = {
             "/auth/",
-            "/model/"
+            "/model/",
+            "/user/avatar/",
+            "/user/myAvatar"
     };
 
     @Resource
@@ -46,18 +46,12 @@ public class TokenFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
-        if (null == request.getCookies()) {
+        String token = request.getHeader(AUTHORIZATION);
+        if (StringUtils.isBlank(token)) {
             log.warn("未授权:{}", requestUri);
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
-        Cookie cookie = Arrays.stream(request.getCookies()).filter(item -> item.getName().equals(AUTHORIZATION)).findFirst().orElse(null);
-        if (null == cookie || StringUtils.isBlank(cookie.getValue())) {
-            log.warn("未授权:{}", requestUri);
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
-        }
-        String token = cookie.getValue();
         String tokenKey = MessageFormat.format(RedisKeyConstant.USER_TOKEN, token);
         String userJson = stringRedisTemplate.opsForValue().get(tokenKey);
         if (StringUtils.isBlank(userJson)) {

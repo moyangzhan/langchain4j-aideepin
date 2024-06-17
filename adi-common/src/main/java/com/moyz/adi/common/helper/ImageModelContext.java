@@ -1,12 +1,12 @@
 package com.moyz.adi.common.helper;
 
-import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.interfaces.AbstractImageModelService;
-import com.moyz.adi.common.vo.ImageModelInfo;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.model.openai.OpenAiModelName.DALL_E_2;
 
@@ -19,32 +19,41 @@ public class ImageModelContext {
     /**
      * AI图片模型
      */
-    public static final Map<String, ImageModelInfo> NAME_TO_MODEL = new HashMap<>();
+    public static final Map<String, AbstractImageModelService> NAME_TO_LLM_SERVICE = new HashMap<>();
 
     private AbstractImageModelService modelService;
 
     public ImageModelContext() {
-        modelService = NAME_TO_MODEL.get(DALL_E_2).getModelService();
+        modelService = NAME_TO_LLM_SERVICE.get(DALL_E_2);
     }
 
     public ImageModelContext(String modelName) {
-        if (null == NAME_TO_MODEL.get(modelName)) {
+        if (null == NAME_TO_LLM_SERVICE.get(modelName)) {
             log.warn("︿︿︿ Can not find {}, use the default model DALL_E_2 ︿︿︿", modelName);
-            modelService = NAME_TO_MODEL.get(DALL_E_2).getModelService();
+            modelService = NAME_TO_LLM_SERVICE.get(DALL_E_2);
         } else {
-            modelService = NAME_TO_MODEL.get(modelName).getModelService();
+            modelService = NAME_TO_LLM_SERVICE.get(modelName);
         }
     }
 
     public static void addImageModelService(AbstractImageModelService modelService) {
-        AiModel aiModel = modelService.getAiModel();
-        ImageModelInfo imageModelInfo = new ImageModelInfo();
-        imageModelInfo.setModelId(aiModel.getId());
-        imageModelInfo.setModelService(modelService);
-        imageModelInfo.setModelName(aiModel.getName());
-        imageModelInfo.setModelPlatform(aiModel.getPlatform());
-        imageModelInfo.setEnable(modelService.isEnabled());
-        NAME_TO_MODEL.put(aiModel.getName(), imageModelInfo);
+        NAME_TO_LLM_SERVICE.put(modelService.getAiModel().getName(), modelService);
+    }
+
+    public static void remove(String modelName) {
+        NAME_TO_LLM_SERVICE.remove(modelName);
+    }
+
+    public static void clearByPlatform(String platform) {
+        List<String> needDeleted = NAME_TO_LLM_SERVICE.values()
+                .stream()
+                .filter(item -> item.getAiModel().getPlatform().equalsIgnoreCase(platform))
+                .map(item -> item.getAiModel().getName())
+                .collect(Collectors.toList());
+        for (String key : needDeleted) {
+            log.info("delete image model service,modelName:{}", key);
+            NAME_TO_LLM_SERVICE.remove(key);
+        }
     }
 
     public AbstractImageModelService getModelService() {
