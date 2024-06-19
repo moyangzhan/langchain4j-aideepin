@@ -74,14 +74,14 @@ public class UserDayCostService extends ServiceImpl<UserDayCostMapper, UserDayCo
                 .one();
     }
 
-    public Long sumTodayCost() {
+    public Integer sumTodayCost() {
         int today = LocalDateTimeUtil.getToday();
-        return baseMapper.sumCostByDay(today);
+        return baseMapper.sumCostByDay(today).intValue();
     }
 
-    public Long sumCurrentMonthCost() {
+    public Integer sumCurrentMonthCost() {
         int start = LocalDateTimeUtil.getIntDay(LocalDateTime.now().withDayOfMonth(1));
         int end = LocalDateTimeUtil.getIntDay(LocalDateTime.now().plusMonths(1).withDayOfMonth(1).minusDays(1));
-        return baseMapper.sumCostByDayPeriod(start, end);
+        return baseMapper.sumCostByDayPeriod(start, end).intValue();
     }
 }

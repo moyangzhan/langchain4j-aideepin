@@ -73,6 +73,7 @@ COMMENT ON COLUMN public.adi_ai_model.is_enable IS '1: Normal usage, 0: Not avai
 COMMENT ON COLUMN public.adi_ai_model.create_time IS 'Timestamp of record creation';
 COMMENT ON COLUMN public.adi_ai_model.update_time IS 'Timestamp of record last update, automatically updated on each update';
 
+-- 示例数据
 INSERT INTO adi_ai_model (name, type, platform, context_window, max_tokens, is_enable)
 VALUES ('gpt-3.5-turbo', 'text', 'openai', 16385, 4096, false);
 INSERT INTO adi_ai_model (name, type, platform, is_enable)
@@ -80,7 +81,7 @@ VALUES ('dall-e-2', 'image', 'openai', false);
 INSERT INTO adi_ai_model (name, type, platform, is_enable)
 VALUES ('qwen-turbo', 'text', 'dashscope', false);
 INSERT INTO adi_ai_model (name, type, platform, is_enable)
-VALUES ('ernie-3.5-8k-0205', 'text', 'qianfan', false);
+VALUES ('ernie_speed', 'text', 'qianfan', false);
 INSERT INTO adi_ai_model (name, type, platform, is_enable)
 VALUES ('tinydolphin', 'text', 'ollama', false);
 
@@ -297,6 +298,10 @@ COMMENT ON COLUMN public.adi_user.understand_context_msg_pair_num IS '上下文�
 COMMENT ON COLUMN public.adi_user.quota_by_image_daily IS '每日图片配额';
 
 COMMENT ON COLUMN public.adi_user.quota_by_image_monthly IS '每月图片配额';
+
+-- 管理员账号：catkeeper@aideepin.com  密码：123456
+INSERT INTO adi_user (name, password, uuid, email, user_status, is_admin)
+VALUES ('catkeeper', '$2a$10$z44gncmQk6xCBCeDx55gMe1Zc8uYtOKcoT4/HE2F92VcF7wP2iquG', replace(gen_random_uuid()::text, '-', ''), 'catkeeper@aideepin.com', 2, true);
 
 CREATE TABLE public.adi_user_day_cost
 (

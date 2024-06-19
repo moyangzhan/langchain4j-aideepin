@@ -12,6 +12,6 @@ public class TokenCostStatistic implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private Long todayTokenCost;
-    private Long monthTokenCost;
+    private Integer todayTokenCost;
+    private Integer monthTokenCost;
 }

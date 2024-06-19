@@ -381,6 +381,9 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         if (null != req.getUpdateTime() && req.getUpdateTime().length == 2) {
             wrapper.between(User::getUpdateTime, LocalDateTimeUtil.parse(req.getUpdateTime()[0]), LocalDateTimeUtil.parse(req.getUpdateTime()[1]));
         }
+        if(null != req.getIsAdmin()){
+            wrapper.eq(User::getIsAdmin, req.getIsAdmin());
+        }
         wrapper.eq(User::getIsDeleted, false);
         wrapper.orderByDesc(User::getUpdateTime);
         Page<User> page = baseMapper.selectPage(new Page<>(currentPage, pageSize), wrapper);

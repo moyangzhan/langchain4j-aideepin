@@ -62,8 +62,8 @@ public class StatisticService {
 
     @Cacheable(value = STATISTIC + ":" + STATISTIC_TOKEN_COST)
     public TokenCostStatistic calTokenCostStat() {
-        Long todayCost = userDayCostService.sumTodayCost();
-        Long currentMonthCost = userDayCostService.sumCurrentMonthCost();
+        Integer todayCost = userDayCostService.sumTodayCost();
+        Integer currentMonthCost = userDayCostService.sumCurrentMonthCost();
         TokenCostStatistic aiModelStat = new TokenCostStatistic();
         aiModelStat.setTodayTokenCost(todayCost);
         aiModelStat.setMonthTokenCost(currentMonthCost);
