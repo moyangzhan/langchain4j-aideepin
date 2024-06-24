@@ -238,6 +238,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         if (StringUtils.isNotBlank(req.getTitle())) {
             wrapper.like(KnowledgeBase::getTitle, req.getTitle());
         }
+        if(StringUtils.isNotBlank(req.getOwnerName())){
+            wrapper.like(KnowledgeBase::getOwnerName, req.getOwnerName());
+        }
         if (null != req.getIsPublic()) {
             wrapper.eq(KnowledgeBase::getIsPublic, req.getIsPublic());
         }

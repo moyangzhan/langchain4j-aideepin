@@ -16,4 +16,5 @@ public class KbSearchReq {
     private Integer minEmbeddingCount;
     private Long[] createTime;
     private Long[] updateTime;
+    private String ownerName;
 }
