@@ -1,5 +1,5 @@
 server:
-  port: 9999
+  port: 9998
   context-path: /
   session:
     timeout: 28800
@@ -54,8 +54,8 @@ logging:
   file: /data/logs
 
 adi:
-  frontend-url: http://www.aideepin.com
-  backend-url: http://www.aideepin.com/api
+  frontend-url: http://localhost:1002
+  backend-url: http://localhost:1002/api
   proxy:
     enable: false
     host: 127.0.0.1
