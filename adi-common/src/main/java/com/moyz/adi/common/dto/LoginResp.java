@@ -10,4 +10,5 @@ public class LoginResp {
     private String email;
     private String activeTime;
     private String captchaId;
+    private String uuid;
 }

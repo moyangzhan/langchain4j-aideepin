@@ -1,7 +1,6 @@
 package com.moyz.adi.common.service;
 
 import com.moyz.adi.common.helper.LLMContext;
-import com.moyz.adi.common.util.AdiPgVectorEmbeddingStore;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
@@ -15,9 +14,10 @@ import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
+import dev.langchain4j.store.embedding.*;
+import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
+import dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -83,7 +83,7 @@ public class RAGService {
         } else {
             throw new RuntimeException("parse url error");
         }
-        AdiPgVectorEmbeddingStore embeddingStore = AdiPgVectorEmbeddingStore.builder()
+        PgVectorEmbeddingStore embeddingStore = PgVectorEmbeddingStore.builder()
                 .host(host)
                 .port(Integer.parseInt(port))
                 .database(databaseName)
@@ -143,7 +143,18 @@ public class RAGService {
         // You can play with parameters below to find a sweet spot for your specific use case
         int maxResults = 3;
         double minScore = 0.6;
-        List<EmbeddingMatch<TextSegment>> relevantEmbeddings = ((AdiPgVectorEmbeddingStore) embeddingStore).findRelevantByMetadata(metadataCond, questionEmbedding, maxResults, minScore);
+
+        Filter filter = null;
+        for (String key : metadataCond.keySet()) {
+            if (null == filter) {
+                filter = new IsEqualTo(key, metadataCond.get(key));
+            } else {
+                filter = filter.and(new IsEqualTo(key, metadataCond.get(key)));
+            }
+        }
+        EmbeddingSearchRequest request = new EmbeddingSearchRequest(questionEmbedding, maxResults, minScore, filter);
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(request);
+        List<EmbeddingMatch<TextSegment>> relevantEmbeddings = searchResult.matches();
 
         // Create a prompt that includes question and relevant embeddings
         String information = relevantEmbeddings.stream()

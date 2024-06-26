@@ -29,8 +29,7 @@ public class TokenFilter extends OncePerRequestFilter {
     public static final String[] EXCLUDE_API = {
             "/auth/",
             "/model/",
-            "/user/avatar/",
-            "/user/myAvatar"
+            "/user/avatar/"
     };
 
     @Resource

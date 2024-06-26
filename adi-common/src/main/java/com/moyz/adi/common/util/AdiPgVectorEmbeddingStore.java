@@ -30,7 +30,10 @@ import static java.util.stream.Collectors.toList;
  * <p>
  * Only cosine similarity is used.
  * Only ivfflat index is used.
+ *
+ * @deprecated langchain4j 0.31.0已经支持按metadata过滤,本类废弃
  */
+@Deprecated
 public class AdiPgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final Logger log = LoggerFactory.getLogger(AdiPgVectorEmbeddingStore.class);
