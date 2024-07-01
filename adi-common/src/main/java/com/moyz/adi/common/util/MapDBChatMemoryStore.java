@@ -21,9 +21,16 @@ public class MapDBChatMemoryStore implements ChatMemoryStore {
 
     public static MapDBChatMemoryStore singleton;
 
-    private final DB db = DBMaker.fileDB("chat-memory.db").transactionEnable().make();
+    private final DB db;
 
-    private final Map<String, String> map = db.hashMap("messages", STRING, STRING).createOrOpen();
+    private final Map<String, String> map;
+
+    private MapDBChatMemoryStore() {
+        String memoryDir = SpringUtil.getProperty("local.chat-memory");
+        log.info("chat memory path:{}", memoryDir);
+        db = DBMaker.fileDB(memoryDir + "chat-memory.db").transactionEnable().make();
+        map = db.hashMap("messages", STRING, STRING).createOrOpen();
+    }
 
     @Override
     public List<ChatMessage> getMessages(Object memoryId) {
@@ -45,7 +52,6 @@ public class MapDBChatMemoryStore implements ChatMemoryStore {
             }
         }
         String json = messagesToJson(availableMessage);
-        log.info("updateMessages,{}", json);
         map.put((String) memoryId, json);
         db.commit();
     }

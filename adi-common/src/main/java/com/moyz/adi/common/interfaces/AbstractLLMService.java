@@ -2,7 +2,6 @@ package com.moyz.adi.common.interfaces;
 
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.service.RAGService;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.util.MapDBChatMemoryStore;
@@ -19,6 +18,7 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.transformer.CompressingQueryTransformer;
 import dev.langchain4j.rag.query.transformer.QueryTransformer;
 import dev.langchain4j.service.AiServices;
@@ -37,19 +37,10 @@ import static com.moyz.adi.common.enums.ErrorEnum.B_LLM_SERVICE_DISABLED;
 public abstract class AbstractLLMService<T> {
 
     protected Proxy proxy;
-
     protected AiModel aiModel;
-
     protected T modelPlatformSetting;
-
     protected StreamingChatLanguageModel streamingChatLanguageModel;
     protected ChatLanguageModel chatLanguageModel;
-
-    private IChatAssistant chatAssistant;
-
-    private IChatAssistantWithoutMemory chatAssistantWithoutMemory;
-
-    private RAGService queryCompressingRagService;
 
     public AbstractLLMService(AiModel aiModel, String settingName, Class<T> clazz) {
         this.aiModel = aiModel;
@@ -59,11 +50,6 @@ public abstract class AbstractLLMService<T> {
 
     public AbstractLLMService setProxy(Proxy proxy) {
         this.proxy = proxy;
-        return this;
-    }
-
-    public AbstractLLMService setQueryCompressingRAGService(RAGService ragService) {
-        queryCompressingRagService = ragService;
         return this;
     }
 
@@ -104,45 +90,97 @@ public abstract class AbstractLLMService<T> {
         return getChatLLM().generate(chatMessage);
     }
 
-    public void sseChat(SseAskParams params, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
+    /**
+     * RAG请求，对prompt进行各种增强后发给AI
+     * ps: 挂载了知识库的请求才进行RAG增强
+     *
+     * @param contentRetriever
+     * @param params
+     * @param consumer
+     */
+    public void ragChat(ContentRetriever contentRetriever, SseAskParams params, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
+        if (!isEnabled()) {
+            log.error("llm service is disabled");
+            throw new BaseException(B_LLM_SERVICE_DISABLED);
+        }
+        ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.builder()
+                .id(memoryId)
+                .maxMessages(6)
+                .chatMemoryStore(MapDBChatMemoryStore.getSingleton())
+                .build();
+        QueryTransformer queryTransformer = new CompressingQueryTransformer(getChatLLM());
+        RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
+                .queryTransformer(queryTransformer)
+                .contentRetriever(contentRetriever)
+                .build();
+        IChatAssistant assistant = AiServices.builder(IChatAssistant.class)
+                .streamingChatLanguageModel(getStreamingChatLLM())
+                .retrievalAugmentor(retrievalAugmentor)
+                .chatMemoryProvider(chatMemoryProvider)
+                .build();
+        TokenStream tokenStream;
+        if (StringUtils.isNotBlank(params.getSystemMessage())) {
+            tokenStream = assistant.chat(params.getMessageId(), params.getSystemMessage(), params.getUserMessage());
+        } else {
+            tokenStream = assistant.chatWithoutSystemMessage(params.getMessageId(), params.getUserMessage());
+        }
+        registerTokenStreamCallBack(tokenStream, params, consumer);
+    }
+
+    /**
+     * 普通聊天，直接将用户提问及历史消息发送给AI
+     * （由于RetrievalAugmentor强制要求提供ContentRetriever,并且prompt发给Ai前一定要过一遍本地EmbeddingStore，影响速度，故先暂时不使用Langchain4j提供的查询压缩）
+     *
+     * @param params
+     * @param consumer
+     */
+    public void commonChat(SseAskParams params, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
         if (!isEnabled()) {
             log.error("llm service is disabled");
             throw new BaseException(B_LLM_SERVICE_DISABLED);
         }
         log.info("sseChat,messageId:{}", params.getMessageId());
 
-        //Query compressing
-        QueryTransformer queryTransformer = new CompressingQueryTransformer(getChatLLM());
-
-        RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
-                .queryTransformer(queryTransformer)
-                .contentRetriever(queryCompressingRagService.buildContentRetriever())
-                .build();
-
-        //create chat assistant
-        if (null == chatAssistant && StringUtils.isNotBlank(params.getMessageId())) {
+        TokenStream tokenStream;
+        //chat with memory
+        if (StringUtils.isNotBlank(params.getMessageId())) {
             ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.builder()
                     .id(memoryId)
-                    .maxMessages(6 + 1)
+                    .maxMessages(6)
                     .chatMemoryStore(MapDBChatMemoryStore.getSingleton())
                     .build();
-            chatAssistant = AiServices.builder(IChatAssistant.class)
+            IChatAssistant assistant = AiServices.builder(IChatAssistant.class)
                     .streamingChatLanguageModel(getStreamingChatLLM())
                     .chatMemoryProvider(chatMemoryProvider)
-                    .retrievalAugmentor(retrievalAugmentor)
                     .build();
-        } else if (null == chatAssistantWithoutMemory && StringUtils.isBlank(params.getMessageId())) {
-            chatAssistantWithoutMemory = AiServices.builder(IChatAssistantWithoutMemory.class)
+            if (StringUtils.isNotBlank(params.getSystemMessage())) {
+                tokenStream = assistant.chat(params.getMessageId(), params.getSystemMessage(), params.getUserMessage());
+            } else {
+                tokenStream = assistant.chatWithoutSystemMessage(params.getMessageId(), params.getUserMessage());
+            }
+        }
+        //chat without memory
+        else {
+            IChatAssistantWithoutMemory assistant = AiServices.builder(IChatAssistantWithoutMemory.class)
                     .streamingChatLanguageModel(getStreamingChatLLM())
                     .build();
+            if (StringUtils.isNotBlank(params.getSystemMessage())) {
+                tokenStream = assistant.chat(params.getSystemMessage(), params.getUserMessage());
+            } else {
+                tokenStream = assistant.chatWithoutSystemMessage(params.getUserMessage());
+            }
         }
+        registerTokenStreamCallBack(tokenStream, params, consumer);
+    }
 
-        TokenStream tokenStream;
-        if (StringUtils.isNotBlank(params.getMessageId())) {
-            tokenStream = chatWithMemory(params.getMessageId(), params.getSystemMessage(), params.getUserMessage());
-        } else {
-            tokenStream = chatWithoutMemory(params.getSystemMessage(), params.getUserMessage());
-        }
+    /**
+     * 注册TokenStream的回调
+     *
+     * @param tokenStream
+     * @param params
+     * @param consumer
+     */
+    private void registerTokenStreamCallBack(TokenStream tokenStream, SseAskParams params, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
         tokenStream
                 .onNext((content) -> {
                     log.info("get content:{}", content);
@@ -185,22 +223,6 @@ public abstract class AbstractLLMService<T> {
                     params.getSseEmitter().complete();
                 })
                 .start();
-    }
-
-    public TokenStream chatWithoutMemory(String systemMessage, String userMessage) {
-        if (StringUtils.isNotBlank(systemMessage)) {
-            return chatAssistantWithoutMemory.chat(systemMessage, userMessage);
-        } else {
-            return chatAssistantWithoutMemory.chat(userMessage);
-        }
-    }
-
-    public TokenStream chatWithMemory(String messageId, String systemMessage, String userMessage) {
-        if (StringUtils.isNotBlank(systemMessage)) {
-            return chatAssistant.chat(messageId, systemMessage, userMessage);
-        } else {
-            return chatAssistant.chat(messageId, userMessage);
-        }
     }
 
     public AiModel getAiModel() {

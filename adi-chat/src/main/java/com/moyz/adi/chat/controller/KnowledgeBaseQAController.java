@@ -3,7 +3,6 @@ package com.moyz.adi.chat.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.dto.KbQaRecordDto;
 import com.moyz.adi.common.dto.QAReq;
-import com.moyz.adi.common.entity.KnowledgeBaseQaRecord;
 import com.moyz.adi.common.service.KnowledgeBaseQaRecordService;
 import com.moyz.adi.common.service.KnowledgeBaseService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,11 +25,6 @@ public class KnowledgeBaseQAController {
 
     @Resource
     private KnowledgeBaseQaRecordService knowledgeBaseQaRecordService;
-
-    @PostMapping("/ask/{kbUuid}")
-    public KnowledgeBaseQaRecord ask(@PathVariable String kbUuid, @RequestBody @Validated QAReq req) {
-        return knowledgeBaseService.ask(kbUuid, req.getQuestion(), req.getModelName());
-    }
 
     @Operation(summary = "流式响应")
     @PostMapping(value = "/process/{kbUuid}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)

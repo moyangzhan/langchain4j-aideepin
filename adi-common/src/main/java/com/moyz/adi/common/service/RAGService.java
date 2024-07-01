@@ -1,42 +1,30 @@
 package com.moyz.adi.common.service;
 
-import com.moyz.adi.common.helper.LLMContext;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2EmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
-import dev.langchain4j.store.embedding.*;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 
-import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.moyz.adi.common.cosntant.AdiConstant.PROMPT_TEMPLATE;
+import static com.moyz.adi.common.cosntant.AdiConstant.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
-import static java.util.stream.Collectors.joining;
 
 @Slf4j
 public class RAGService {
-
-    private static final int MAX_RESULTS = 3;
-    private static final double MIN_SCORE = 0.6;
 
     private String dataBaseUrl;
 
@@ -103,7 +91,7 @@ public class RAGService {
      * @param document 知识库文档
      */
     public void ingest(Document document) {
-        DocumentSplitter documentSplitter = DocumentSplitters.recursive(1000, 0, new OpenAiTokenizer(GPT_3_5_TURBO));
+        DocumentSplitter documentSplitter = DocumentSplitters.recursive(RAG_MAX_SEGMENT_SIZE_IN_TOKENS, 0, new OpenAiTokenizer(GPT_3_5_TURBO));
         EmbeddingStoreIngestor embeddingStoreIngestor = EmbeddingStoreIngestor.builder()
                 .documentSplitter(documentSplitter)
                 .embeddingModel(embeddingModel)
@@ -112,38 +100,7 @@ public class RAGService {
         embeddingStoreIngestor.ingest(document);
     }
 
-    /**
-     * There are two methods for retrieve documents:
-     * 1. ContentRetriever.retrieve()
-     * 2. retrieveAndCreatePrompt()
-     *
-     * @return ContentRetriever
-     */
-    public ContentRetriever buildContentRetriever() {
-        return EmbeddingStoreContentRetriever.builder()
-                .embeddingStore(embeddingStore)
-                .embeddingModel(embeddingModel)
-                .maxResults(MAX_RESULTS)
-                .minScore(MIN_SCORE)
-                .build();
-    }
-
-    /**
-     * Retrieve documents and create prompt
-     *
-     * @param metadataCond Query condition
-     * @param question     User's question
-     * @return Document in the vector db
-     */
-    public Prompt retrieveAndCreatePrompt(Map<String, String> metadataCond, String question) {
-        // Embed the question
-        Embedding questionEmbedding = embeddingModel.embed(question).content();
-
-        // Find relevant embeddings in embedding store by semantic similarity
-        // You can play with parameters below to find a sweet spot for your specific use case
-        int maxResults = 3;
-        double minScore = 0.6;
-
+    public ContentRetriever createRetriever(Map<String, String> metadataCond, int maxResults) {
         Filter filter = null;
         for (String key : metadataCond.keySet()) {
             if (null == filter) {
@@ -152,40 +109,35 @@ public class RAGService {
                 filter = filter.and(new IsEqualTo(key, metadataCond.get(key)));
             }
         }
-        EmbeddingSearchRequest request = new EmbeddingSearchRequest(questionEmbedding, maxResults, minScore, filter);
-        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(request);
-        List<EmbeddingMatch<TextSegment>> relevantEmbeddings = searchResult.matches();
-
-        // Create a prompt that includes question and relevant embeddings
-        String information = relevantEmbeddings.stream()
-                .map(match -> match.embedded().text())
-                .collect(joining("\n\n"));
-
-        if (StringUtils.isBlank(information)) {
-            return null;
-        }
-        return PROMPT_TEMPLATE.apply(Map.of("question", question, "information", Matcher.quoteReplacement(information)));
-    }
-
-    /**
-     * 召回并提问
-     *
-     * @param metadataCond metadata condition
-     * @param question     user's question
-     * @param modelName    LLM model name
-     * @return
-     */
-    public Pair<String, Response<AiMessage>> retrieveAndAsk(Map<String, String> metadataCond, String question, String modelName) {
-
-        Prompt prompt = retrieveAndCreatePrompt(metadataCond, question);
-        if (null == prompt) {
-            return null;
-        }
-        Response<AiMessage> response = new LLMContext(modelName).getLLMService().chat(prompt.toUserMessage());
-        return new ImmutablePair<>(prompt.text(), response);
+        return EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(embeddingStore)
+                .embeddingModel(embeddingModel)
+                .maxResults(maxResults)
+                .minScore(RAG_MIN_SCORE)
+                .filter(filter)
+                .build();
     }
 
     public static final String parsePromptTemplate(String question, String information) {
         return PROMPT_TEMPLATE.apply(Map.of("question", question, "information", Matcher.quoteReplacement(information))).text();
+    }
+
+    /**
+     * 根据模型的contentWindow计算使用该模型最多召回的文档数量
+     *
+     * @param userQuestion  用户问题
+     * @param contentWindow AI模型所能容纳的窗口大小
+     * @return
+     */
+    public static int getRetrieveMaxResults(String userQuestion, int contentWindow) {
+        int questionLength = new OpenAiTokenizer(GPT_3_5_TURBO).estimateTokenCountInText(userQuestion);
+        int maxRetrieveDocLength = contentWindow - questionLength;
+        if (maxRetrieveDocLength < RAG_MAX_SEGMENT_SIZE_IN_TOKENS) {
+            return RAG_MAX_RESULTS_DEFAULT;
+        } else if (maxRetrieveDocLength > RAG_NUMBER_RETURN_MAX * RAG_MAX_SEGMENT_SIZE_IN_TOKENS) {
+            return RAG_NUMBER_RETURN_MAX;
+        } else {
+            return (int) Math.ceil(maxRetrieveDocLength / RAG_MAX_SEGMENT_SIZE_IN_TOKENS);
+        }
     }
 }

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
-public class QianFanSetting extends CommonAiPlatformSetting {
+public class QianFanAiPlatformSetting extends CommonAiPlatformSetting {
 
     @JsonProperty("api_key")
     private String apiKey;

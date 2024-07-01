@@ -8,7 +8,6 @@ import com.moyz.adi.common.interfaces.AbstractImageModelService;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
 import com.moyz.adi.common.searchengine.GoogleSearchEngine;
 import com.moyz.adi.common.searchengine.SearchEngineContext;
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.BeanUtils;
@@ -39,9 +38,6 @@ public class AiModelSettingService {
 
     private Proxy proxy;
 
-    @Resource
-    private RAGService queryCompressingRagService;
-
     private List<AiModel> all = new ArrayList<>();
 
     public void init(List<AiModel> allModels) {
@@ -69,16 +65,16 @@ public class AiModelSettingService {
     private synchronized void initLLMServiceList() {
 
         //openai
-        initLLMService(AdiConstant.ModelPlatform.OPENAI, (model) -> new OpenAiLLMService(model).setProxy(proxy).setQueryCompressingRAGService(queryCompressingRagService));
+        initLLMService(AdiConstant.ModelPlatform.OPENAI, (model) -> new OpenAiLLMService(model).setProxy(proxy));
 
         //dashscope
-        initLLMService(AdiConstant.ModelPlatform.DASHSCOPE, (model) -> new DashScopeLLMService(model).setQueryCompressingRAGService(queryCompressingRagService));
+        initLLMService(AdiConstant.ModelPlatform.DASHSCOPE, (model) -> new DashScopeLLMService(model));
 
         //qianfan
-        initLLMService(AdiConstant.ModelPlatform.QIANFAN, (model) -> new QianFanLLMService(model).setQueryCompressingRAGService(queryCompressingRagService));
+        initLLMService(AdiConstant.ModelPlatform.QIANFAN, (model) -> new QianFanLLMService(model));
 
         //ollama
-        initLLMService(AdiConstant.ModelPlatform.OLLAMA, (model) -> new OllamaLLMService(model).setQueryCompressingRAGService(queryCompressingRagService));
+        initLLMService(AdiConstant.ModelPlatform.OLLAMA, (model) -> new OllamaLLMService(model));
     }
 
     /**

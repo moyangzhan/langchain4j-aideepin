@@ -14,6 +14,7 @@ import com.moyz.adi.common.dto.KbSearchReq;
 import com.moyz.adi.common.dto.QAReq;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.util.BizPager;
@@ -24,14 +25,11 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.parser.apache.pdfbox.ApachePdfBoxDocumentParser;
 import dev.langchain4j.data.document.parser.apache.poi.ApachePoiDocumentParser;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.input.Prompt;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
@@ -238,7 +236,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         if (StringUtils.isNotBlank(req.getTitle())) {
             wrapper.like(KnowledgeBase::getTitle, req.getTitle());
         }
-        if(StringUtils.isNotBlank(req.getOwnerName())){
+        if (StringUtils.isNotBlank(req.getOwnerName())) {
             wrapper.like(KnowledgeBase::getOwnerName, req.getOwnerName());
         }
         if (null != req.getIsPublic()) {
@@ -268,19 +266,6 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 .eq(KnowledgeBase::getUuid, uuid)
                 .set(KnowledgeBase::getIsDeleted, true)
                 .update();
-    }
-
-    public KnowledgeBaseQaRecord ask(String kbUuid, String question, String modelName) {
-        checkRequestTimesOrThrow();
-        KnowledgeBase knowledgeBase = getOrThrow(kbUuid);
-        Map<String, String> metadataCond = ImmutableMap.of(AdiConstant.EmbeddingMetadataKey.KB_UUID, kbUuid);
-        Pair<String, Response<AiMessage>> responsePair = ragService.retrieveAndAsk(metadataCond, question, modelName);
-
-        Response<AiMessage> ar = responsePair.getRight();
-        int inputTokenCount = ar.tokenUsage().inputTokenCount();
-        int outputTokenCount = ar.tokenUsage().outputTokenCount();
-        userDayCostService.appendCostToUser(ThreadContext.getCurrentUser(), inputTokenCount + outputTokenCount);
-        return knowledgeBaseQaRecordService.createNewRecord(ThreadContext.getCurrentUser(), knowledgeBase, question, responsePair.getLeft(), inputTokenCount, ar.content().text(), outputTokenCount, modelName);
     }
 
     public SseEmitter sseAsk(String kbUuid, QAReq req) {
@@ -353,19 +338,18 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         log.info("retrieveAndPushToLLM,kbUuid:{},userId:{}", kbUuid, user.getId());
         KnowledgeBase knowledgeBase = getOrThrow(kbUuid);
         Map<String, String> metadataCond = ImmutableMap.of(AdiConstant.EmbeddingMetadataKey.KB_UUID, kbUuid);
-        Prompt prompt = ragService.retrieveAndCreatePrompt(metadataCond, req.getQuestion());
-        if (null == prompt) {
-            sseEmitterHelper.sendAndComplete(user.getId(), sseEmitter, B_NO_ANSWER.getInfo());
-            return;
-        }
-        String promptText = prompt.text();
+        int maxResults = ragService.getRetrieveMaxResults(req.getQuestion(), LLMContext.getAiModel(req.getModelName()).getContextWindow());
+        ContentRetriever contentRetriever = ragService.createRetriever(metadataCond, maxResults);
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setSystemMessage(StringUtils.EMPTY);
         sseAskParams.setSseEmitter(sseEmitter);
-        sseAskParams.setUserMessage(promptText);
+        sseAskParams.setUserMessage(req.getQuestion());
         sseAskParams.setModelName(req.getModelName());
-        sseEmitterHelper.processAndPushToModel(user, sseAskParams, (response, promptMeta, answerMeta) -> {
-            knowledgeBaseQaRecordService.createNewRecord(user, knowledgeBase, req.getQuestion(), promptText, promptMeta.getTokens(), response, answerMeta.getTokens(), req.getModelName());
+        sseAskParams.setMessageId(kbUuid);
+        sseEmitterHelper.ragProcess(contentRetriever, user, sseAskParams, (response, promptMeta, answerMeta) -> {
+            //TODO 经过RAG增强后的Prompt
+            String prompt = "";
+            knowledgeBaseQaRecordService.createNewRecord(user, knowledgeBase, req.getQuestion(), prompt, promptMeta.getTokens(), response, answerMeta.getTokens(), req.getModelName());
             userDayCostService.appendCostToUser(user, promptMeta.getTokens() + answerMeta.getTokens());
         });
     }

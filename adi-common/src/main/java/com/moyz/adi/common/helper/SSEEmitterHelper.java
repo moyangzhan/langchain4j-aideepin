@@ -8,6 +8,7 @@ import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.vo.AnswerMeta;
 import com.moyz.adi.common.vo.PromptMeta;
 import com.moyz.adi.common.vo.SseAskParams;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -57,20 +58,64 @@ public class SSEEmitterHelper {
         try {
             sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.START));
         } catch (IOException e) {
-            log.error("error", e);
+            log.error("startSse error", e);
             sseEmitter.completeWithError(e);
             stringRedisTemplate.delete(askingKey);
         }
     }
 
-
-    public void processAndPushToModel(User user, SseAskParams sseAskParams, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
-        String askingKey = MessageFormat.format(RedisKeyConstant.USER_ASKING, user.getId());
-
-        SseEmitter sseEmitter = sseAskParams.getSseEmitter();
-        sseEmitter.onCompletion(() -> {
-            log.info("response complete,uid:{}", user.getId());
+    /**
+     * 普通提问处理
+     *
+     * @param user
+     * @param sseAskParams
+     * @param consumer
+     */
+    public void commonProcess(User user, SseAskParams sseAskParams, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
+        String askingKey = registerSseEventCallBack(user, sseAskParams);
+        new LLMContext(sseAskParams.getModelName()).getLLMService().commonChat(sseAskParams, (response, promptMeta, answerMeta) -> {
+            try {
+                consumer.accept((String) response, (PromptMeta) promptMeta, (AnswerMeta) answerMeta);
+            } catch (Exception e) {
+                log.error("commonProcess error", e);
+            } finally {
+                stringRedisTemplate.delete(askingKey);
+            }
         });
+    }
+
+    /**
+     * 使用RAG处理提问
+     *
+     * @param contentRetriever
+     * @param user
+     * @param sseAskParams
+     * @param consumer
+     */
+    public void ragProcess(ContentRetriever contentRetriever, User user, SseAskParams sseAskParams, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
+        String askingKey = registerSseEventCallBack(user, sseAskParams);
+        new LLMContext(sseAskParams.getModelName()).getLLMService().ragChat(contentRetriever, sseAskParams, (response, promptMeta, answerMeta) -> {
+            try {
+                consumer.accept((String) response, (PromptMeta) promptMeta, (AnswerMeta) answerMeta);
+            } catch (Exception e) {
+                log.error("ragProcess error", e);
+            } finally {
+                stringRedisTemplate.delete(askingKey);
+            }
+        });
+    }
+
+    /**
+     * 注册SSEEmiiter的回调
+     *
+     * @param user
+     * @param sseAskParams
+     * @return
+     */
+    private String registerSseEventCallBack(User user, SseAskParams sseAskParams) {
+        String askingKey = MessageFormat.format(RedisKeyConstant.USER_ASKING, user.getId());
+        SseEmitter sseEmitter = sseAskParams.getSseEmitter();
+        sseEmitter.onCompletion(() -> log.info("response complete,uid:{}", user.getId()));
         sseEmitter.onTimeout(() -> log.warn("sseEmitter timeout,uid:{},on timeout:{}", user.getId(), sseEmitter.getTimeout()));
         sseEmitter.onError(
                 throwable -> {
@@ -84,15 +129,7 @@ public class SSEEmitterHelper {
                     }
                 }
         );
-        new LLMContext(sseAskParams.getModelName()).getLLMService().sseChat(sseAskParams, (response, promptMeta, answerMeta) -> {
-            try {
-                consumer.accept((String) response, (PromptMeta) promptMeta, (AnswerMeta) answerMeta);
-            } catch (Exception e) {
-                log.error("error:", e);
-            } finally {
-                stringRedisTemplate.delete(askingKey);
-            }
-        });
+        return askingKey;
     }
 
     public void sendAndComplete(long userId, SseEmitter sseEmitter, String msg) {

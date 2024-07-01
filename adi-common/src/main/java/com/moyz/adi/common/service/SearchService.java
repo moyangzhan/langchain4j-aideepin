@@ -8,12 +8,13 @@ import com.moyz.adi.common.dto.SearchResult;
 import com.moyz.adi.common.dto.SearchResultItem;
 import com.moyz.adi.common.entity.AiSearchRecord;
 import com.moyz.adi.common.entity.User;
+import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.searchengine.SearchEngineContext;
 import com.moyz.adi.common.vo.SseAskParams;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.model.input.Prompt;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -130,7 +131,7 @@ public class SearchService {
         sseAskParams.setSseEmitter(sseEmitter);
         sseAskParams.setUserMessage(prompt);
         sseAskParams.setModelName(modelName);
-        sseEmitterHelper.processAndPushToModel(user, sseAskParams, (response, promptMeta, answerMeta) -> {
+        sseEmitterHelper.commonProcess(user, sseAskParams, (response, promptMeta, answerMeta) -> {
             AiSearchRecord newRecord = new AiSearchRecord();
             newRecord.setUuid(UUID.randomUUID().toString().replace("-", ""));
             newRecord.setQuestion(searchText);
@@ -213,16 +214,16 @@ public class SearchService {
         }
 
         log.info("Create prompt");
-        Prompt prompt = searchRagService.retrieveAndCreatePrompt(ImmutableMap.of(AdiConstant.EmbeddingMetadataKey.SEARCH_UUID, searchUuid), searchText);
+        int maxResults = searchRagService.getRetrieveMaxResults(searchText, LLMContext.getAiModel(modelName).getContextWindow());
+        ContentRetriever contentRetriever = searchRagService.createRetriever(ImmutableMap.of(AdiConstant.EmbeddingMetadataKey.SEARCH_UUID, searchUuid), maxResults);
 
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setSystemMessage(StringUtils.EMPTY);
         sseAskParams.setSseEmitter(sseEmitter);
-        sseAskParams.setUserMessage(prompt.text());
+        sseAskParams.setUserMessage(searchText);
         sseAskParams.setModelName(modelName);
-
-        log.info("Push to model");
-        sseEmitterHelper.processAndPushToModel(user, sseAskParams, (response, promptMeta, answerMeta) -> {
+        sseAskParams.setMessageId(user.getUuid() + "-search");
+        sseEmitterHelper.ragProcess(contentRetriever, user, sseAskParams, (response, promptMeta, answerMeta) -> {
 
             AiSearchRecord existRecord = aiSearchRecordService.lambdaQuery().eq(AiSearchRecord::getUuid, searchUuid).one();
 
@@ -230,7 +231,8 @@ public class SearchService {
             updateRecord.setId(existRecord.getId());
             //Update search engine response content.(with html body text)
             updateRecord.setSearchEngineResp(new SearchEngineResp().setItems(resultItems));
-            updateRecord.setPrompt(prompt.text());
+            //TODO 经过RAG增强后的prompt
+            updateRecord.setPrompt("");
             updateRecord.setPromptTokens(promptMeta.getTokens());
             updateRecord.setAnswer(response);
             updateRecord.setAnswerTokens(answerMeta.getTokens());

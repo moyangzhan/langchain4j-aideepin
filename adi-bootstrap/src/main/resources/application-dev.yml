@@ -38,4 +38,5 @@ adi:
 local:
   files: D:/data/files/
   images: D:/data/images/
-  tmp_images: D:/data/tmp_images/
+  tmp-images: D:/data/tmp_images/
+  chat-memory: D:/data/chat_memory/

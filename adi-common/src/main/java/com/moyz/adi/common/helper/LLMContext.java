@@ -1,5 +1,6 @@
 package com.moyz.adi.common.helper;
 
+import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
 import lombok.extern.slf4j.Slf4j;
 
@@ -54,6 +55,10 @@ public class LLMContext {
 
     public static void remove(String modelName) {
         NAME_TO_LLM_SERVICE.remove(modelName);
+    }
+
+    public static AiModel getAiModel(String modelName) {
+        return NAME_TO_LLM_SERVICE.get(modelName).getAiModel();
     }
 
     public AbstractLLMService getLLMService() {

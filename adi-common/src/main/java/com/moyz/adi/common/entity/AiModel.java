@@ -22,6 +22,10 @@ public class AiModel extends BaseEntity {
     @TableField("platform")
     private String platform;
 
+    @Schema(title = "模型配置")
+    @TableField("setting")
+    private String setting;
+
     @Schema(title = "说明")
     @TableField("remark")
     private String remark;

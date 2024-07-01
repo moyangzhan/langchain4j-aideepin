@@ -35,7 +35,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
     @Value("${local.images}")
     private String imagePath;
 
-    @Value("${local.tmp_images}")
+    @Value("${local.tmp-images}")
     private String tmpImagesPath;
 
     public AdiFile writeToLocal(MultipartFile file) {

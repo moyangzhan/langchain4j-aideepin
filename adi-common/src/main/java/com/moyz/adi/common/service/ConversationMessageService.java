@@ -18,13 +18,6 @@ import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.vo.AnswerMeta;
 import com.moyz.adi.common.vo.PromptMeta;
 import com.moyz.adi.common.vo.SseAskParams;
-import com.theokanning.openai.completion.chat.ChatMessageRole;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.TokenWindowChatMemory;
-import dev.langchain4j.model.openai.OpenAiTokenizer;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -34,11 +27,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.util.Comparator;
 import java.util.List;
 
 import static com.moyz.adi.common.enums.ErrorEnum.B_MESSAGE_NOT_FOUND;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 
 @Slf4j
 @Service
@@ -147,7 +138,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                 sseAskParams.setMessageId(askReq.getConversationUuid());
             }
         }
-        sseEmitterHelper.processAndPushToModel(user, sseAskParams, (response, questionMeta, answerMeta) -> {
+        sseEmitterHelper.commonProcess(user, sseAskParams, (response, questionMeta, answerMeta) -> {
             _this.saveAfterAiResponse(user, askReq, response, questionMeta, answerMeta);
         });
     }

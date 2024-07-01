@@ -65,4 +65,5 @@ adi:
 local:
   files: /data/files/
   images: /data/images/
-  tmp_images: /data/tmp_images/
+  tmp-images: /data/tmp_images/
+  chat-memory: /data/chat_memory/

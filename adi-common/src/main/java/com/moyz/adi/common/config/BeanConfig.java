@@ -131,10 +131,10 @@ public class BeanConfig {
         return ragService;
     }
 
-    @Bean(name = "queryCompressingRagService")
-    public RAGService queryCompressingRagService() {
-        RAGService ragService = new RAGService("adi_advanced_rag_query_embedding", dataBaseUrl, dataBaseUserName, dataBasePassword);
-        ragService.init();
-        return ragService;
-    }
+//    @Bean(name = "queryRouterRagService")
+//    public RAGService queryRouterRagService() {
+//        RAGService ragService = new RAGService("adi_advanced_rag_query_embedding", dataBaseUrl, dataBaseUserName, dataBasePassword);
+//        ragService.init();
+//        return ragService;
+//    }
 }

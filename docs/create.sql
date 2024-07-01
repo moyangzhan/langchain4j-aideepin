@@ -52,6 +52,7 @@ CREATE TABLE public.adi_ai_model
     id             bigserial primary key,
     name           varchar(45)   default ''                not null,
     type           varchar(45)   default 'llm'             not null,
+    setting        varchar(500)  default ''                not null,
     remark         varchar(1000) default '',
     platform       varchar(45)   default ''                not null,
     context_window int           default 0                 not null,
@@ -80,8 +81,8 @@ INSERT INTO adi_ai_model (name, type, platform, is_enable)
 VALUES ('dall-e-2', 'image', 'openai', false);
 INSERT INTO adi_ai_model (name, type, platform, is_enable)
 VALUES ('qwen-turbo', 'text', 'dashscope', false);
-INSERT INTO adi_ai_model (name, type, platform, is_enable)
-VALUES ('ernie_speed', 'text', 'qianfan', false);
+INSERT INTO adi_ai_model (name, type, platform, is_enable, setting)
+VALUES ('ERNIE-Speed-8K', 'text', 'qianfan', false, '{"endpoint":"ernie_speed"}');
 INSERT INTO adi_ai_model (name, type, platform, is_enable)
 VALUES ('tinydolphin', 'text', 'ollama', false);
 
@@ -301,7 +302,8 @@ COMMENT ON COLUMN public.adi_user.quota_by_image_monthly IS '每月图片配额'
 
 -- 管理员账号：catkeeper@aideepin.com  密码：123456
 INSERT INTO adi_user (name, password, uuid, email, user_status, is_admin)
-VALUES ('catkeeper', '$2a$10$z44gncmQk6xCBCeDx55gMe1Zc8uYtOKcoT4/HE2F92VcF7wP2iquG', replace(gen_random_uuid()::text, '-', ''), 'catkeeper@aideepin.com', 2, true);
+VALUES ('catkeeper', '$2a$10$z44gncmQk6xCBCeDx55gMe1Zc8uYtOKcoT4/HE2F92VcF7wP2iquG',
+        replace(gen_random_uuid()::text, '-', ''), 'catkeeper@aideepin.com', 2, true);
 
 CREATE TABLE public.adi_user_day_cost
 (
@@ -444,19 +446,21 @@ VALUES ('quota_by_qa_item_monthly', '100');
 create table adi_knowledge_base
 (
     id              bigserial primary key,
-    uuid            varchar(32)  default ''::character varying not null,
-    title           varchar(250) default ''::character varying not null,
-    remark          text         default ''::character varying not null,
-    is_public       boolean      default false                 not null,
-    owner_id        bigint       default 0                     not null,
-    owner_uuid      varchar(32)  default ''::character varying not null,
-    owner_name      varchar(45)  default ''::character varying not null,
-    star_count      int          default 0                     not null,
-    item_count      int          default 0                     not null,
-    embedding_count int          default 0                     not null,
-    create_time     timestamp    default CURRENT_TIMESTAMP     not null,
-    update_time     timestamp    default CURRENT_TIMESTAMP     not null,
-    is_deleted      boolean      default false                 not null
+    uuid            varchar(32)   default ''::character varying not null,
+    title           varchar(250)  default ''::character varying not null,
+    remark          text          default ''::character varying not null,
+    is_public       boolean       default false                 not null,
+    rag_max_results int           default 0                     not null,
+    rag_min_score   numeric(2, 1) default 0                     not null,
+    owner_id        bigint        default 0                     not null,
+    owner_uuid      varchar(32)   default ''::character varying not null,
+    owner_name      varchar(45)   default ''::character varying not null,
+    star_count      int           default 0                     not null,
+    item_count      int           default 0                     not null,
+    embedding_count int           default 0                     not null,
+    create_time     timestamp     default CURRENT_TIMESTAMP     not null,
+    update_time     timestamp     default CURRENT_TIMESTAMP     not null,
+    is_deleted      boolean       default false                 not null
 );
 
 comment on table adi_knowledge_base is '知识库';
@@ -466,6 +470,10 @@ comment on column adi_knowledge_base.title is '知识库名称';
 comment on column adi_knowledge_base.remark is '知识库描述';
 
 comment on column adi_knowledge_base.is_public is '是否公开';
+
+comment on column adi_knowledge_base.rag_max_results is '设置召回向量最大数量,默认为0,表示由系统根据模型的contentWindow自动调整';
+
+comment on column adi_knowledge_base.rag_min_score is '设置向量搜索时命中所需的最低分数,为0表示使用默认';
 
 comment on column adi_knowledge_base.star_count is '点赞数';
 

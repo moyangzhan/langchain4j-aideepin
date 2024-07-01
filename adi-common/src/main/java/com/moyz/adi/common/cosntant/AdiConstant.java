@@ -133,4 +133,24 @@ public class AdiConstant {
 
     public static final int RAG_TYPE_KB = 1;
     public static final int RAG_TYPE_SEARCH = 2;
+
+    /**
+     * 每块文档长度（按token算）
+     */
+    public static final int RAG_MAX_SEGMENT_SIZE_IN_TOKENS = 1000;
+
+    /**
+     * 文档召回默认数量
+     */
+    public static final int RAG_MAX_RESULTS_DEFAULT = 3;
+
+    /**
+     * 文档召回最大数量
+     */
+    public static final int RAG_NUMBER_RETURN_MAX = 20;
+
+    /**
+     * 向量搜索时命中所需的最低分数
+     */
+    public static final double RAG_MIN_SCORE = 0.6;
 }
