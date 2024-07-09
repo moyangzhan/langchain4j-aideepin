@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.KbEditReq;
 import com.moyz.adi.common.dto.KbInfoResp;
+import com.moyz.adi.common.dto.KbItemEmbeddingBatchReq;
 import com.moyz.adi.common.dto.KbSearchReq;
 import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.entity.KnowledgeBase;
@@ -67,6 +68,22 @@ public class KnowledgeBaseController {
     @PostMapping("/embedding/{uuid}")
     public boolean embedding(@PathVariable String uuid, @RequestParam(defaultValue = "false") Boolean forceAll) {
         return knowledgeBaseService.embedding(uuid, forceAll);
+    }
+
+    /**
+     * 知识点向量化
+     *
+     * @param itemUuid 知识点uuid
+     * @return
+     */
+    @PostMapping("/item/embedding/{itemUuid}")
+    public boolean itemEmbedding(@PathVariable String itemUuid) {
+        return knowledgeBaseService.itemEmbedding(itemUuid);
+    }
+
+    @PostMapping("/item/embedding-list")
+    public boolean itemEmbeddingBatch(@RequestBody KbItemEmbeddingBatchReq req) {
+        return knowledgeBaseService.itemsEmbedding(req.getUuids());
     }
 
     /**

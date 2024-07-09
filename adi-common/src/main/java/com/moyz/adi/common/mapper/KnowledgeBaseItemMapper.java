@@ -21,4 +21,13 @@ public interface KnowledgeBaseItemMapper extends BaseMapper<KnowledgeBaseItem> {
     Integer countCreatedByTimePeriod(@Param("beginTime") LocalDateTime beginTime, @Param("endTime") LocalDateTime endTime);
 
     Integer countAllCreated();
+
+    /**
+     * 检查知识点{uuid}是否属于用户{userId}
+     *
+     * @param uuid
+     * @param userId
+     * @return
+     */
+    Integer belongToUser(@Param("uuid") String uuid, @Param("userId") Long userId);
 }

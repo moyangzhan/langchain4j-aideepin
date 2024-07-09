@@ -22,6 +22,8 @@ public class AiModelDto {
     @NotBlank(groups = AiModelAddGroup.class)
     private String name;
 
+    private String setting;
+
     @NotBlank(groups = AiModelAddGroup.class)
     private String platform;
 

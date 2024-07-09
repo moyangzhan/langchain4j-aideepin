@@ -65,13 +65,13 @@ public class RAGService {
             port = matcher.group(2);
             databaseName = matcher.group(3);
 
-            System.out.println("Host: " + host);
-            System.out.println("Port: " + port);
-            System.out.println("Database: " + databaseName);
+            log.info("Host: " + host);
+            log.info("Port: " + port);
+            log.info("Database: " + databaseName);
         } else {
             throw new RuntimeException("parse url error");
         }
-        PgVectorEmbeddingStore embeddingStore = PgVectorEmbeddingStore.builder()
+        return PgVectorEmbeddingStore.builder()
                 .host(host)
                 .port(Integer.parseInt(port))
                 .database(databaseName)
@@ -82,16 +82,16 @@ public class RAGService {
                 .dropTableFirst(false)
                 .table(tableName)
                 .build();
-        return embeddingStore;
     }
 
     /**
      * 对文档切块、向量化并存储到数据库
      *
      * @param document 知识库文档
+     * @param overlap  重叠token数
      */
-    public void ingest(Document document) {
-        DocumentSplitter documentSplitter = DocumentSplitters.recursive(RAG_MAX_SEGMENT_SIZE_IN_TOKENS, 0, new OpenAiTokenizer(GPT_3_5_TURBO));
+    public void ingest(Document document, int overlap) {
+        DocumentSplitter documentSplitter = DocumentSplitters.recursive(RAG_MAX_SEGMENT_SIZE_IN_TOKENS, overlap, new OpenAiTokenizer(GPT_3_5_TURBO));
         EmbeddingStoreIngestor embeddingStoreIngestor = EmbeddingStoreIngestor.builder()
                 .documentSplitter(documentSplitter)
                 .embeddingModel(embeddingModel)
@@ -100,20 +100,22 @@ public class RAGService {
         embeddingStoreIngestor.ingest(document);
     }
 
-    public ContentRetriever createRetriever(Map<String, String> metadataCond, int maxResults) {
+    public ContentRetriever createRetriever(Map<String, String> metadataCond, int maxResults, double minScore) {
         Filter filter = null;
-        for (String key : metadataCond.keySet()) {
+        for (Map.Entry<String, String> entry : metadataCond.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
             if (null == filter) {
-                filter = new IsEqualTo(key, metadataCond.get(key));
+                filter = new IsEqualTo(key, value);
             } else {
-                filter = filter.and(new IsEqualTo(key, metadataCond.get(key)));
+                filter = filter.and(new IsEqualTo(key, value));
             }
         }
         return EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(embeddingStore)
                 .embeddingModel(embeddingModel)
                 .maxResults(maxResults)
-                .minScore(RAG_MIN_SCORE)
+                .minScore(minScore <= 0 ? RAG_MIN_SCORE : minScore)
                 .filter(filter)
                 .build();
     }
@@ -137,7 +139,7 @@ public class RAGService {
         } else if (maxRetrieveDocLength > RAG_NUMBER_RETURN_MAX * RAG_MAX_SEGMENT_SIZE_IN_TOKENS) {
             return RAG_NUMBER_RETURN_MAX;
         } else {
-            return (int) Math.ceil(maxRetrieveDocLength / RAG_MAX_SEGMENT_SIZE_IN_TOKENS);
+            return maxRetrieveDocLength / RAG_MAX_SEGMENT_SIZE_IN_TOKENS;
         }
     }
 }

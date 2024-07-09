@@ -54,4 +54,11 @@
         where uuid = #{uuid}
     </update>
 
+    <select id="getByItemUuid" resultType="com.moyz.adi.common.entity.KnowledgeBase">
+        select a.*
+        from adi_knowledge_base a
+                 inner join adi_knowledge_base_item b on a.id = b.kb_id
+        where a.is_deleted = false
+          and b.uuid = #{itemUuid}
+    </select>
 </mapper>

@@ -30,6 +30,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
@@ -91,6 +92,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             knowledgeBase.setIsPublic(kbEditReq.getIsPublic());
         }
         knowledgeBase.setId(existKb.getId());
+        knowledgeBase.setRagMaxOverlap(kbEditReq.getRagMaxOverlap());
+        knowledgeBase.setRagMaxResults(kbEditReq.getRagMaxResults());
+        knowledgeBase.setRagMinScore(kbEditReq.getRagMinScore());
         baseMapper.updateById(knowledgeBase);
         return true;
     }
@@ -98,8 +102,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     public KnowledgeBase saveOrUpdate(KbEditReq kbEditReq) {
         String uuid = kbEditReq.getUuid();
         KnowledgeBase knowledgeBase = new KnowledgeBase();
-        knowledgeBase.setTitle(kbEditReq.getTitle());
-        knowledgeBase.setRemark(kbEditReq.getRemark());
+        BeanUtils.copyProperties(kbEditReq, knowledgeBase, "id");
         if (null != kbEditReq.getIsPublic()) {
             knowledgeBase.setIsPublic(kbEditReq.getIsPublic());
         }
@@ -188,7 +191,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 docWithoutPath.metadata()
                         .add(AdiConstant.EmbeddingMetadataKey.KB_UUID, knowledgeBase.getUuid())
                         .add(AdiConstant.EmbeddingMetadataKey.KB_ITEM_UUID, knowledgeBaseItem.getUuid());
-                ragService.ingest(docWithoutPath);
+                ragService.ingest(docWithoutPath, knowledgeBase.getRagMaxOverlap());
 
                 knowledgeBaseItemService
                         .lambdaUpdate()
@@ -207,15 +210,29 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
     public boolean embedding(String kbUuid, boolean forceAll) {
         checkPrivilege(null, kbUuid);
+        KnowledgeBase knowledgeBase = this.getOrThrow(kbUuid);
         LambdaQueryWrapper<KnowledgeBaseItem> wrapper = new LambdaQueryWrapper();
         wrapper.eq(KnowledgeBaseItem::getIsDeleted, false);
         wrapper.eq(KnowledgeBaseItem::getUuid, kbUuid);
         BizPager.oneByOneWithAnchor(wrapper, knowledgeBaseItemService, KnowledgeBaseItem::getId, one -> {
             if (forceAll || !one.getIsEmbedded()) {
-                knowledgeBaseItemService.embedding(one);
+                knowledgeBaseItemService.embedding(knowledgeBase, one);
             }
         });
         return true;
+    }
+
+    public boolean itemEmbedding(String itemUuid) {
+        KnowledgeBase knowledgeBase = baseMapper.getByItemUuid(itemUuid);
+        return knowledgeBaseItemService.checkAndEmbedding(knowledgeBase, itemUuid);
+    }
+
+    public boolean itemsEmbedding(String[] itemUuids) {
+        if (itemUuids.length == 0) {
+            return false;
+        }
+        KnowledgeBase knowledgeBase = baseMapper.getByItemUuid(itemUuids[0]);
+        return knowledgeBaseItemService.checkAndEmbedding(knowledgeBase, itemUuids);
     }
 
     public Page<KbInfoResp> searchMine(String keyword, Boolean includeOthersPublic, Integer currentPage, Integer pageSize) {
@@ -338,8 +355,14 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         log.info("retrieveAndPushToLLM,kbUuid:{},userId:{}", kbUuid, user.getId());
         KnowledgeBase knowledgeBase = getOrThrow(kbUuid);
         Map<String, String> metadataCond = ImmutableMap.of(AdiConstant.EmbeddingMetadataKey.KB_UUID, kbUuid);
-        int maxResults = ragService.getRetrieveMaxResults(req.getQuestion(), LLMContext.getAiModel(req.getModelName()).getContextWindow());
-        ContentRetriever contentRetriever = ragService.createRetriever(metadataCond, maxResults);
+
+        int maxResults = knowledgeBase.getRagMaxResults();
+        //maxResults < 1 表示由系统自动计算大小
+        if (maxResults < 1) {
+            maxResults = ragService.getRetrieveMaxResults(req.getQuestion(), LLMContext.getAiModel(req.getModelName()).getContextWindow());
+        }
+        ContentRetriever contentRetriever = ragService.createRetriever(metadataCond, maxResults, knowledgeBase.getRagMinScore());
+
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setSystemMessage(StringUtils.EMPTY);
         sseAskParams.setSseEmitter(sseEmitter);

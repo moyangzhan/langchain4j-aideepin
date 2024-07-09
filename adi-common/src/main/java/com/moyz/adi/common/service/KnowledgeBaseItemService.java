@@ -18,7 +18,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.moyz.adi.common.cosntant.RedisKeyConstant.KB_STATISTIC_RECALCULATE_SIGNAL;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 @Slf4j
@@ -33,14 +34,13 @@ import static com.moyz.adi.common.enums.ErrorEnum.*;
 public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMapper, KnowledgeBaseItem> {
 
     @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
+    @Resource
     private RAGService ragService;
 
     @Resource
     private KnowledgeBaseEmbeddingService knowledgeBaseEmbeddingService;
-
-    @Lazy
-    @Resource
-    private KnowledgeBaseService knowledgeBaseService;
 
     public KnowledgeBaseItem saveOrUpdate(KbItemEditReq itemEditReq) {
         String uuid = itemEditReq.getUuid();
@@ -63,7 +63,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
             baseMapper.updateById(item);
         }
 
-        knowledgeBaseService.updateStatistic(itemEditReq.getKbUuid());
+        stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, itemEditReq.getKbUuid());
 
         return ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(KnowledgeBaseItem::getUuid, uuid)
@@ -81,20 +81,20 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
         return baseMapper.searchByKb(new Page<>(currentPage, pageSize), kbUuid, keyword);
     }
 
-    public boolean checkAndEmbedding(String[] uuids) {
+    public boolean checkAndEmbedding(KnowledgeBase knowledgeBase, String[] uuids) {
         if (ArrayUtils.isEmpty(uuids)) {
             return false;
         }
         for (String uuid : uuids) {
-            checkAndEmbedding(uuid);
+            checkAndEmbedding(knowledgeBase, uuid);
         }
         return true;
     }
 
-    public boolean checkAndEmbedding(String uuid) {
+    public boolean checkAndEmbedding(KnowledgeBase knowledgeBase, String uuid) {
         if (checkPrivilege(uuid)) {
-            KnowledgeBaseItem one = getEnable(uuid);
-            return embedding(one);
+            KnowledgeBaseItem item = getEnable(uuid);
+            return embedding(knowledgeBase, item);
         }
         return false;
     }
@@ -106,21 +106,21 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
      * @param kbItem
      * @return
      */
-    public boolean embedding(KnowledgeBaseItem kbItem) {
+    public boolean embedding(KnowledgeBase knowledgeBase, KnowledgeBaseItem kbItem) {
         knowledgeBaseEmbeddingService.deleteByItemUuid(kbItem.getUuid());
 
         Metadata metadata = new Metadata();
         metadata.add(AdiConstant.EmbeddingMetadataKey.KB_UUID, kbItem.getKbUuid());
         metadata.add(AdiConstant.EmbeddingMetadataKey.KB_ITEM_UUID, kbItem.getUuid());
         Document document = new Document(kbItem.getRemark(), metadata);
-        ragService.ingest(document);
+        ragService.ingest(document, knowledgeBase.getRagMaxOverlap());
 
         ChainWrappers.lambdaUpdateChain(baseMapper)
                 .eq(KnowledgeBaseItem::getId, kbItem.getId())
                 .set(KnowledgeBaseItem::getIsEmbedded, true)
                 .update();
 
-        knowledgeBaseService.updateStatistic(kbItem.getKbUuid());
+        stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, kbItem.getKbUuid());
         return true;
     }
 
@@ -139,10 +139,11 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
 
         KnowledgeBaseItem item = baseMapper.getByUuid(uuid);
         if (null != item) {
-            knowledgeBaseService.updateStatistic(item.getKbUuid());
+            stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, item.getKbUuid());
         }
         return true;
     }
+
     public int countByKbUuid(String kbUuid) {
         return ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(KnowledgeBaseItem::getKbUuid, kbUuid)
@@ -150,15 +151,18 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                 .count()
                 .intValue();
     }
+
     public int countTodayCreated() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime beginTime = LocalDateTime.of(now.getYear(), now.getMonth(), now.getDayOfMonth(), 0, 0, 0);
         LocalDateTime endTime = beginTime.plusDays(1);
         return baseMapper.countCreatedByTimePeriod(beginTime, endTime);
     }
+
     public int countAllCreated() {
         return baseMapper.countAllCreated();
     }
+
     private boolean checkPrivilege(String uuid) {
         if (StringUtils.isBlank(uuid)) {
             throw new BaseException(A_PARAMS_ERROR);
@@ -170,14 +174,9 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
         if (user.getIsAdmin()) {
             return true;
         }
-        Optional<KnowledgeBaseItem> kbItem = ChainWrappers.lambdaQueryChain(baseMapper)
-                .eq(KnowledgeBaseItem::getUuid, uuid)
-                .oneOpt();
-        if (kbItem.isPresent()) {
-            KnowledgeBase kb = knowledgeBaseService.getById(kbItem.get().getKbId());
-            if (null != kb) {
-                return kb.getOwnerId().equals(user.getId());
-            }
+        int belongToUser = baseMapper.belongToUser(uuid, user.getId());
+        if (belongToUser > 0) {
+            return true;
         }
         return false;
     }

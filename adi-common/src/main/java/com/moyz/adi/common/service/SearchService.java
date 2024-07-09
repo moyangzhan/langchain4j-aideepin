@@ -1,6 +1,5 @@
 package com.moyz.adi.common.service;
 
-import com.google.common.collect.ImmutableMap;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.SearchEngineResp;
@@ -30,6 +29,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 
@@ -194,10 +194,10 @@ public class SearchService {
 
                     //embedding
                     Metadata metadata = new Metadata();
-                    metadata.add(AdiConstant.EmbeddingMetadataKey.ENGINE_NAME, engineName);
-                    metadata.add(AdiConstant.EmbeddingMetadataKey.SEARCH_UUID, searchUuid);
+                    metadata.put(AdiConstant.EmbeddingMetadataKey.ENGINE_NAME, engineName);
+                    metadata.put(AdiConstant.EmbeddingMetadataKey.SEARCH_UUID, searchUuid);
                     Document document = new Document(content, metadata);
-                    searchRagService.ingest(document);
+                    searchRagService.ingest(document, 0);
 
                 } catch (Exception e) {
                     log.error("Detail search error,uuid:{}", searchUuid, e);
@@ -210,12 +210,12 @@ public class SearchService {
             countDownLatch.await();
         } catch (InterruptedException e) {
             log.error("CountDownLatch await error,uuid:{}", searchUuid, e);
-            throw new RuntimeException(e);
+            Thread.currentThread().interrupt();
         }
 
         log.info("Create prompt");
-        int maxResults = searchRagService.getRetrieveMaxResults(searchText, LLMContext.getAiModel(modelName).getContextWindow());
-        ContentRetriever contentRetriever = searchRagService.createRetriever(ImmutableMap.of(AdiConstant.EmbeddingMetadataKey.SEARCH_UUID, searchUuid), maxResults);
+        int maxResults = RAGService.getRetrieveMaxResults(searchText, LLMContext.getAiModel(modelName).getContextWindow());
+        ContentRetriever contentRetriever = searchRagService.createRetriever(Map.of(AdiConstant.EmbeddingMetadataKey.SEARCH_UUID, searchUuid), maxResults, 0);
 
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setSystemMessage(StringUtils.EMPTY);
@@ -246,7 +246,7 @@ public class SearchService {
         String result = "";
         try {
             org.jsoup.nodes.Document doc = Jsoup.connect(item.getLink()).ignoreContentType(true).get();
-            if (doc.getElementsByTag("main").size() > 0) {
+            if (!doc.getElementsByTag("main").isEmpty()) {
                 result = doc.getElementsByTag("main").get(0).html();
             } else {
                 result = doc.body().html();

@@ -49,4 +49,16 @@ public class KnowledgeBase extends BaseEntity {
     @Schema(title = "所属人名称")
     @TableField("owner_name")
     private String ownerName;
+
+    @Schema(title = "文档召回最大数量")
+    @TableField("rag_max_results")
+    private Integer ragMaxResults;
+
+    @Schema(title = "文档召回最小分数")
+    @TableField("rag_min_score")
+    private Double ragMinScore;
+
+    @Schema(title = "文档切割时重叠数量(按token来计)")
+    @TableField("rag_max_overlap")
+    private Integer ragMaxOverlap;
 }

@@ -32,4 +32,13 @@
         from adi_knowledge_base_item
         where is_deleted = false
     </select>
+
+    <select id="belongToUser" resultType="Integer">
+        select count(1)
+        from adi_knowledge_base_item a
+                 inner join adi_knowledge_base b on a.kb_id = b.id
+        where a.is_deleted = false
+          and a.uuid = #{uuid}
+          and b.owner_id = #{userId}
+    </select>
 </mapper>

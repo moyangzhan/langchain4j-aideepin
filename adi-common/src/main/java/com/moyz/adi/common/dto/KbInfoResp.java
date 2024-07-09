@@ -1,5 +1,7 @@
 package com.moyz.adi.common.dto;
 
+import com.baomidou.mybatisplus.annotation.TableField;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -12,6 +14,9 @@ public class KbInfoResp {
     private String remark;
     private Boolean isPublic;
     private Integer starCount;
+    private Integer ragMaxResults;
+    private Double ragMinScore;
+    private Integer ragMaxOverlap;
     private String ownerUuid;
     private String ownerName;
     private Integer itemCount;

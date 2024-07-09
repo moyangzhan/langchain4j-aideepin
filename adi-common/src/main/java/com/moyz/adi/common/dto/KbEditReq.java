@@ -18,4 +18,10 @@ public class KbEditReq {
     private String remark;
 
     private Boolean isPublic;
+
+    private Integer ragMaxResults;
+
+    private Double ragMinScore;
+
+    private Integer ragMaxOverlap;
 }

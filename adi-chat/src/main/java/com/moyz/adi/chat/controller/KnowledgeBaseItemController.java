@@ -3,7 +3,6 @@ package com.moyz.adi.chat.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.dto.KbItemDto;
 import com.moyz.adi.common.dto.KbItemEditReq;
-import com.moyz.adi.common.dto.KbItemEmbeddingBatchReq;
 import com.moyz.adi.common.entity.KnowledgeBaseItem;
 import com.moyz.adi.common.service.KnowledgeBaseItemService;
 import jakarta.annotation.Resource;
@@ -36,22 +35,6 @@ public class KnowledgeBaseItemController {
                 .eq(KnowledgeBaseItem::getUuid, uuid)
                 .eq(KnowledgeBaseItem::getIsDeleted, false)
                 .one();
-    }
-
-    /**
-     * 知识点向量化
-     *
-     * @param uuid 知识点uuid
-     * @return
-     */
-    @PostMapping("/embedding/{uuid}")
-    public boolean embedding(@PathVariable String uuid) {
-        return knowledgeBaseItemService.checkAndEmbedding(uuid);
-    }
-
-    @PostMapping("/embedding-list")
-    public boolean embeddingBatch(@RequestBody KbItemEmbeddingBatchReq req) {
-        return knowledgeBaseItemService.checkAndEmbedding(req.getUuids());
     }
 
     @PostMapping("/del/{uuid}")

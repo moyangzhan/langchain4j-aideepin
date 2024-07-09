@@ -29,6 +29,14 @@ public interface KnowledgeBaseMapper extends BaseMapper<KnowledgeBase> {
     Page<KnowledgeBase> searchByUser(Page<KnowledgeBase> page, @Param("ownerId") long ownerId, @Param("keyword") String keyword, @Param("includeOthersPublic") Boolean includeOthersPublic);
 
     /**
+     * 根据知识点获取知识库信息
+     *
+     * @param itemUuid 知识点uuid
+     * @return
+     */
+    KnowledgeBase getByItemUuid(@Param("itemUuid") String itemUuid);
+
+    /**
      * 更新统计数据
      *
      * @param uuid

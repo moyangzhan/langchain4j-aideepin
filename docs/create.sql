@@ -450,8 +450,9 @@ create table adi_knowledge_base
     title           varchar(250)  default ''::character varying not null,
     remark          text          default ''::character varying not null,
     is_public       boolean       default false                 not null,
-    rag_max_results int           default 0                     not null,
-    rag_min_score   numeric(2, 1) default 0                     not null,
+    rag_max_results int           default 3                     not null,
+    rag_min_score   numeric(2, 1) default 0.6                   not null,
+    rag_max_overlap int           default 0                     not null,
     owner_id        bigint        default 0                     not null,
     owner_uuid      varchar(32)   default ''::character varying not null,
     owner_name      varchar(45)   default ''::character varying not null,
@@ -474,6 +475,8 @@ comment on column adi_knowledge_base.is_public is '是否公开';
 comment on column adi_knowledge_base.rag_max_results is '设置召回向量最大数量,默认为0,表示由系统根据模型的contentWindow自动调整';
 
 comment on column adi_knowledge_base.rag_min_score is '设置向量搜索时命中所需的最低分数,为0表示使用默认';
+
+comment on column adi_knowledge_base.rag_max_overlap is '设置文档切块时重叠的最大数量（按token来计），对完整句子切割时才考虑重叠';
 
 comment on column adi_knowledge_base.star_count is '点赞数';
 

@@ -183,7 +183,9 @@ public abstract class AbstractLLMService<T> {
     private void registerTokenStreamCallBack(TokenStream tokenStream, SseAskParams params, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
         tokenStream
                 .onNext((content) -> {
-                    log.info("get content:{}", content);
+                    if(log.isDebugEnabled()){
+                        log.info("get content:{}", content);
+                    }
                     //加空格配合前端的fetchEventSource进行解析，见https://github.com/Azure/fetch-event-source/blob/45ac3cfffd30b05b79fbf95c21e67d4ef59aa56a/src/parse.ts#L129-L133
                     try {
                         params.getSseEmitter().send(" " + content);
