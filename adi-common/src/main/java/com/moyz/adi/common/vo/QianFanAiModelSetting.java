@@ -4,5 +4,5 @@ import lombok.Data;
 
 @Data
 public class QianFanAiModelSetting {
-    private String endPoint;
+    private String endpoint;
 }

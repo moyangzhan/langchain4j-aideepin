@@ -21,16 +21,15 @@ import org.apache.commons.lang3.StringUtils;
 @Accessors(chain = true)
 public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetting> {
 
-    private String endPoint = "";
+    private String endpoint = "";
 
     public QianFanLLMService(AiModel aiModel) {
         super(aiModel, AdiConstant.SysConfigKey.QIANFAN_SETTING, QianFanAiPlatformSetting.class);
-        endPoint = aiModel.getName();
         String ms = aiModel.getSetting();
         if (StringUtils.isNotBlank(ms)) {
             QianFanAiModelSetting aiModelSetting = JsonUtil.fromJson(ms, QianFanAiModelSetting.class);
-            if (StringUtils.isNotBlank(aiModelSetting.getEndPoint())) {
-                endPoint = aiModelSetting.getEndPoint();
+            if (StringUtils.isNotBlank(aiModelSetting.getEndpoint())) {
+                endpoint = aiModelSetting.getEndpoint();
             }
         }
     }
@@ -42,31 +41,35 @@ public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetti
 
     @Override
     protected ChatLanguageModel buildChatLLM() {
-        return QianfanChatModel.builder()
+        QianfanChatModel.QianfanChatModelBuilder builder = QianfanChatModel.builder()
                 .modelName(aiModel.getName())
-                .endpoint(endPoint)
                 .temperature(0.7)
                 .topP(1.0)
                 .maxRetries(1)
                 .apiKey(modelPlatformSetting.getApiKey())
                 .secretKey(modelPlatformSetting.getSecretKey())
                 .logRequests(true)
-                .logResponses(true)
-                .build();
+                .logResponses(true);
+        if (StringUtils.isNotBlank(endpoint)) {
+            builder.endpoint(endpoint);
+        }
+        return builder.build();
     }
 
     @Override
     protected StreamingChatLanguageModel buildStreamingChatLLM() {
-        return QianfanStreamingChatModel.builder()
+        QianfanStreamingChatModel.QianfanStreamingChatModelBuilder builder = QianfanStreamingChatModel.builder()
                 .modelName(aiModel.getName())
-                .endpoint(aiModel.getName())
                 .temperature(0.7)
                 .topP(1.0)
                 .apiKey(modelPlatformSetting.getApiKey())
                 .secretKey(modelPlatformSetting.getSecretKey())
                 .logRequests(true)
-                .logResponses(true)
-                .build();
+                .logResponses(true);
+        if (StringUtils.isNotBlank(endpoint)) {
+            builder.endpoint(endpoint);
+        }
+        return builder.build();
     }
 
     @Override
