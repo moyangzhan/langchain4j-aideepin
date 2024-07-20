@@ -5,6 +5,7 @@ import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
 import com.moyz.adi.common.vo.DashScopeSetting;
+import com.moyz.adi.common.vo.LLMBuilderProperties;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.dashscope.QwenChatModel;
@@ -30,30 +31,40 @@ public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
     }
 
     @Override
-    protected StreamingChatLanguageModel buildStreamingChatLLM() {
+    protected ChatLanguageModel buildChatLLM(LLMBuilderProperties properties) {
         if (StringUtils.isBlank(modelPlatformSetting.getApiKey())) {
             throw new BaseException(B_LLM_SECRET_KEY_NOT_SET);
+        }
+        float temperature = 0.7f;
+        if (null != properties && properties.getTemperature() > 0 && properties.getTemperature() <= 1) {
+            temperature = properties.getTemperature().floatValue();
+        }
+        return QwenChatModel.builder()
+                .apiKey(modelPlatformSetting.getApiKey())
+                .temperature(temperature)
+                .modelName(aiModel.getName())
+                .build();
+    }
+
+    @Override
+    protected StreamingChatLanguageModel buildStreamingChatLLM(LLMBuilderProperties properties) {
+        if (StringUtils.isBlank(modelPlatformSetting.getApiKey())) {
+            throw new BaseException(B_LLM_SECRET_KEY_NOT_SET);
+        }
+        float temperature = 0.7f;
+        if (null != properties && properties.getTemperature() > 0 && properties.getTemperature() <= 1) {
+            temperature = properties.getTemperature().floatValue();
         }
         return QwenStreamingChatModel.builder()
                 .apiKey(modelPlatformSetting.getApiKey())
                 .modelName(aiModel.getName())
+                .temperature(temperature)
                 .build();
     }
 
     @Override
     protected String parseError(Object error) {
         return null;
-    }
-
-    @Override
-    protected ChatLanguageModel buildChatLLM() {
-        if (StringUtils.isBlank(modelPlatformSetting.getApiKey())) {
-            throw new BaseException(B_LLM_SECRET_KEY_NOT_SET);
-        }
-        return QwenChatModel.builder()
-                .apiKey(modelPlatformSetting.getApiKey())
-                .modelName(aiModel.getName())
-                .build();
     }
 
 }

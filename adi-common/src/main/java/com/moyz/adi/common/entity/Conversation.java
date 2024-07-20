@@ -45,4 +45,8 @@ public class Conversation extends BaseEntity {
     @Schema(title = "set the system message to ai, ig: you are a lawyer")
     @TableField("ai_system_message")
     private String aiSystemMessage;
+
+    @Schema(title = "请求LLM时的temperature")
+    @TableField("llm_temperature")
+    private Double llmTemperature;
 }

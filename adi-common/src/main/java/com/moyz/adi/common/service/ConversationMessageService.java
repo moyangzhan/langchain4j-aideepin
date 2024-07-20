@@ -15,9 +15,7 @@ import com.moyz.adi.common.helper.QuotaHelper;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.ConversationMessageMapper;
 import com.moyz.adi.common.util.LocalCache;
-import com.moyz.adi.common.vo.AnswerMeta;
-import com.moyz.adi.common.vo.PromptMeta;
-import com.moyz.adi.common.vo.SseAskParams;
+import com.moyz.adi.common.vo.*;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -29,7 +27,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
-import static com.moyz.adi.common.enums.ErrorEnum.B_MESSAGE_NOT_FOUND;
+import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 @Slf4j
 @Service
@@ -112,32 +110,44 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         if (!checkConversation(sseEmitter, user, askReq)) {
             return;
         }
-
-        SseAskParams sseAskParams = new SseAskParams();
-        sseAskParams.setModelName(askReq.getModelName());
-        String prompt = askReq.getPrompt();
-        if (StringUtils.isNotBlank(askReq.getRegenerateQuestionUuid())) {
-            prompt = getPromptMsgByQuestionUuid(askReq.getRegenerateQuestionUuid()).getRemark();
-        }
-        sseAskParams.setSystemMessage(StringUtils.EMPTY);
-        sseAskParams.setSseEmitter(sseEmitter);
-        sseAskParams.setUserMessage(prompt);
-        sseAskParams.setRegenerateQuestionUuid(askReq.getRegenerateQuestionUuid());
         //questions
         //system message
         Conversation conversation = conversationService.lambdaQuery()
                 .eq(Conversation::getUuid, askReq.getConversationUuid())
                 .oneOpt()
                 .orElse(null);
-        if (null != conversation) {
-            if (StringUtils.isNotBlank(conversation.getAiSystemMessage())) {
-                sseAskParams.setSystemMessage(conversation.getAiSystemMessage());
-            }
-            //history message
-            if (Boolean.TRUE.equals(conversation.getUnderstandContextEnable())) {
-                sseAskParams.setMessageId(askReq.getConversationUuid());
-            }
+        if (null == conversation) {
+            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, A_CONVERSATION_NOT_FOUND.getInfo());
+            return;
         }
+
+        SseAskParams sseAskParams = new SseAskParams();
+
+        sseAskParams.setModelName(askReq.getModelName());
+        sseAskParams.setSseEmitter(sseEmitter);
+        sseAskParams.setRegenerateQuestionUuid(askReq.getRegenerateQuestionUuid());
+
+        //Assistant parameters
+        AssistantChatParams.AssistantChatParamsBuilder assistantBuilder = AssistantChatParams.builder();
+        if (StringUtils.isNotBlank(conversation.getAiSystemMessage())) {
+            assistantBuilder.systemMessage(conversation.getAiSystemMessage());
+        }
+        //history message
+        if (Boolean.TRUE.equals(conversation.getUnderstandContextEnable())) {
+            assistantBuilder.messageId(askReq.getConversationUuid());
+        }
+        String prompt = askReq.getPrompt();
+        if (StringUtils.isNotBlank(askReq.getRegenerateQuestionUuid())) {
+            prompt = getPromptMsgByQuestionUuid(askReq.getRegenerateQuestionUuid()).getRemark();
+        }
+        assistantBuilder.userMessage(prompt);
+        sseAskParams.setAssistantChatParams(assistantBuilder.build());
+
+        sseAskParams.setLlmBuilderProperties(
+                LLMBuilderProperties.builder()
+                        .temperature(conversation.getLlmTemperature())
+                        .build()
+        );
         sseEmitterHelper.commonProcess(user, sseAskParams, (response, questionMeta, answerMeta) -> {
             _this.saveAfterAiResponse(user, askReq, response, questionMeta, answerMeta);
         });

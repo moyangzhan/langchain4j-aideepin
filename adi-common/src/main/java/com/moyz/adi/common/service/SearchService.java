@@ -10,6 +10,7 @@ import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.searchengine.SearchEngineContext;
+import com.moyz.adi.common.vo.AssistantChatParams;
 import com.moyz.adi.common.vo.SseAskParams;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
@@ -127,9 +128,8 @@ public class SearchService {
         SearchEngineResp resp = new SearchEngineResp().setItems(resultItems);
 
         SseAskParams sseAskParams = new SseAskParams();
-        sseAskParams.setSystemMessage(StringUtils.EMPTY);
+        sseAskParams.setAssistantChatParams(AssistantChatParams.builder().systemMessage(StringUtils.EMPTY).userMessage(prompt).build());
         sseAskParams.setSseEmitter(sseEmitter);
-        sseAskParams.setUserMessage(prompt);
         sseAskParams.setModelName(modelName);
         sseEmitterHelper.commonProcess(user, sseAskParams, (response, promptMeta, answerMeta) -> {
             AiSearchRecord newRecord = new AiSearchRecord();
@@ -218,11 +218,15 @@ public class SearchService {
         ContentRetriever contentRetriever = searchRagService.createRetriever(Map.of(AdiConstant.EmbeddingMetadataKey.SEARCH_UUID, searchUuid), maxResults, 0);
 
         SseAskParams sseAskParams = new SseAskParams();
-        sseAskParams.setSystemMessage(StringUtils.EMPTY);
+        sseAskParams.setAssistantChatParams(
+                AssistantChatParams.builder()
+                        .messageId(user.getUuid() + "-search")
+                        .systemMessage(StringUtils.EMPTY)
+                        .userMessage(searchText)
+                        .build()
+        );
         sseAskParams.setSseEmitter(sseEmitter);
-        sseAskParams.setUserMessage(searchText);
         sseAskParams.setModelName(modelName);
-        sseAskParams.setMessageId(user.getUuid() + "-search");
         sseEmitterHelper.ragProcess(contentRetriever, user, sseAskParams, (response, promptMeta, answerMeta) -> {
 
             AiSearchRecord existRecord = aiSearchRecordService.lambdaQuery().eq(AiSearchRecord::getUuid, searchUuid).one();
@@ -231,7 +235,7 @@ public class SearchService {
             updateRecord.setId(existRecord.getId());
             //Update search engine response content.(with html body text)
             updateRecord.setSearchEngineResp(new SearchEngineResp().setItems(resultItems));
-            //TODO 经过RAG增强后的prompt
+            //TODO 增强后的prompt
             updateRecord.setPrompt("");
             updateRecord.setPromptTokens(promptMeta.getTokens());
             updateRecord.setAnswer(response);

@@ -2,6 +2,7 @@ package com.moyz.adi.common.service;
 
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
+import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.OllamaSetting;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -23,19 +24,28 @@ public class OllamaLLMService extends AbstractLLMService<OllamaSetting> {
     }
 
     @Override
-    protected ChatLanguageModel buildChatLLM() {
+    protected ChatLanguageModel buildChatLLM(LLMBuilderProperties properties) {
+        double temperature = 0.7;
+        if (null != properties && properties.getTemperature() > 0 && properties.getTemperature() <= 1) {
+            temperature = properties.getTemperature();
+        }
         return OllamaChatModel.builder()
                 .baseUrl(modelPlatformSetting.getBaseUrl())
                 .modelName(aiModel.getName())
-                .temperature(0.0)
+                .temperature(temperature)
                 .build();
     }
 
     @Override
-    protected StreamingChatLanguageModel buildStreamingChatLLM() {
+    protected StreamingChatLanguageModel buildStreamingChatLLM(LLMBuilderProperties properties) {
+        double temperature = 0.7;
+        if (null != properties && properties.getTemperature() > 0 && properties.getTemperature() <= 1) {
+            temperature = properties.getTemperature();
+        }
         return OllamaStreamingChatModel.builder()
                 .baseUrl(modelPlatformSetting.getBaseUrl())
                 .modelName(aiModel.getName())
+                .temperature(temperature)
                 .build();
     }
 

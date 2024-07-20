@@ -7,7 +7,7 @@ CREATE SCHEMA public;
 CREATE TABLE public.adi_ai_image
 (
     id                 bigserial primary key,
-    user_id            bigint                  DEFAULT '0'::bigint           NOT NULL,
+    user_id            bigint                  DEFAULT 0                     NOT NULL,
     uuid               character varying(32)   DEFAULT ''::character varying NOT NULL,
     prompt             character varying(1024) DEFAULT ''::character varying NOT NULL,
     generate_size      character varying(20)   DEFAULT ''::character varying NOT NULL,
@@ -89,7 +89,7 @@ VALUES ('tinydolphin', 'text', 'ollama', false);
 CREATE TABLE public.adi_conversation
 (
     id                        bigserial primary key,
-    user_id                   bigint                  DEFAULT '0'::bigint           NOT NULL,
+    user_id                   bigint                  DEFAULT 0                     NOT NULL,
     uuid                      character varying(32)   DEFAULT ''::character varying NOT NULL,
     title                     character varying(45)   DEFAULT ''::character varying NOT NULL,
     openai_conversation_id    character varying(32)   DEFAULT ''::character varying NOT NULL,
@@ -97,6 +97,7 @@ CREATE TABLE public.adi_conversation
     ai_system_message         character varying(1000) DEFAULT ''::character varying NOT NULL,
     ai_model                  character varying(45)   DEFAULT ''::character varying NOT NULL,
     understand_context_enable boolean                 DEFAULT false                 NOT NULL,
+    llm_temperature           numeric(2, 1)           DEFAULT 0.7                   not null,
     create_time               timestamp               DEFAULT CURRENT_TIMESTAMP     NOT NULL,
     update_time               timestamp               DEFAULT CURRENT_TIMESTAMP     NOT NULL,
     is_deleted                boolean                 DEFAULT false                 NOT NULL
@@ -110,18 +111,20 @@ COMMENT ON COLUMN public.adi_conversation.ai_model IS '模型名称';
 
 COMMENT ON COLUMN public.adi_conversation.title IS '对话标题';
 
+COMMENT ON COLUMN public.adi_conversation.llm_temperature is '指定LLM响应时的创造性/随机性';
+
 CREATE TABLE public.adi_conversation_message
 (
     id                              bigserial primary key,
-    parent_message_id               bigint                DEFAULT '0'::bigint           NOT NULL,
-    conversation_id                 bigint                DEFAULT '0'::bigint           NOT NULL,
+    parent_message_id               bigint                DEFAULT 0                     NOT NULL,
+    conversation_id                 bigint                DEFAULT 0                     NOT NULL,
     conversation_uuid               character varying(32) DEFAULT ''::character varying NOT NULL,
     remark                          text                                                NOT NULL,
     uuid                            character varying(32) DEFAULT ''::character varying NOT NULL,
     message_role                    integer               DEFAULT 1                     NOT NULL,
     tokens                          integer               DEFAULT 0                     NOT NULL,
-    user_id                         bigint                DEFAULT '0'::bigint           NOT NULL,
-    ai_model_id                     bigint                default 0                     not null,
+    user_id                         bigint                DEFAULT 0                     NOT NULL,
+    ai_model_id                     bigint                DEFAULT 0                     not null,
     secret_key_type                 integer               DEFAULT 1                     NOT NULL,
     understand_context_msg_pair_num integer               DEFAULT 0                     NOT NULL,
     create_time                     timestamp             DEFAULT CURRENT_TIMESTAMP     NOT NULL,
@@ -158,7 +161,7 @@ CREATE TABLE public.adi_file
     name        character varying(36)  DEFAULT ''::character varying NOT NULL,
     uuid        character varying(32)  DEFAULT ''::character varying NOT NULL,
     ext         character varying(36)  DEFAULT ''::character varying NOT NULL,
-    user_id     bigint                 DEFAULT '0'::bigint           NOT NULL,
+    user_id     bigint                 DEFAULT 0                     NOT NULL,
     path        character varying(250) DEFAULT ''::character varying NOT NULL,
     ref_count   integer                DEFAULT 0                     NOT NULL,
     create_time timestamp              DEFAULT CURRENT_TIMESTAMP     NOT NULL,
@@ -192,7 +195,7 @@ COMMENT ON COLUMN public.adi_file.md5 IS 'MD5 hash of the file';
 CREATE TABLE public.adi_prompt
 (
     id          bigserial primary key,
-    user_id     bigint                 DEFAULT '0'::bigint           NOT NULL,
+    user_id     bigint                 DEFAULT 0                     NOT NULL,
     act         character varying(120) DEFAULT ''::character varying NOT NULL,
     prompt      text                                                 NOT NULL,
     create_time timestamp              DEFAULT CURRENT_TIMESTAMP     NOT NULL,
@@ -308,7 +311,7 @@ VALUES ('catkeeper', '$2a$10$z44gncmQk6xCBCeDx55gMe1Zc8uYtOKcoT4/HE2F92VcF7wP2iq
 CREATE TABLE public.adi_user_day_cost
 (
     id              bigserial primary key,
-    user_id         bigint    DEFAULT '0'::bigint       NOT NULL,
+    user_id         bigint    DEFAULT 0                 NOT NULL,
     day             integer   DEFAULT 0                 NOT NULL,
     requests        integer   DEFAULT 0                 NOT NULL,
     tokens          integer   DEFAULT 0                 NOT NULL,
@@ -453,6 +456,7 @@ create table adi_knowledge_base
     rag_max_results int           default 3                     not null,
     rag_min_score   numeric(2, 1) default 0.6                   not null,
     rag_max_overlap int           default 0                     not null,
+    llm_temperature numeric(2, 1) default 0.7                   not null,
     owner_id        bigint        default 0                     not null,
     owner_uuid      varchar(32)   default ''::character varying not null,
     owner_name      varchar(45)   default ''::character varying not null,
@@ -477,6 +481,8 @@ comment on column adi_knowledge_base.rag_max_results is '设置召回向量最�
 comment on column adi_knowledge_base.rag_min_score is '设置向量搜索时命中所需的最低分数,为0表示使用默认';
 
 comment on column adi_knowledge_base.rag_max_overlap is '设置文档切块时重叠的最大数量（按token来计），对完整句子切割时才考虑重叠';
+
+comment on column adi_knowledge_base.llm_temperature is '指定LLM响应时的创造性/随机性';
 
 comment on column adi_knowledge_base.star_count is '点赞数';
 
@@ -506,9 +512,9 @@ create table adi_knowledge_base_item
 (
     id             bigserial primary key,
     uuid           varchar(32)  default ''::character varying not null,
-    kb_id          bigint       DEFAULT '0'::bigint           NOT NULL,
+    kb_id          bigint       DEFAULT 0                     NOT NULL,
     kb_uuid        varchar(32)  default ''::character varying not null,
-    source_file_id bigint       DEFAULT '0'::bigint           NOT NULL,
+    source_file_id bigint       DEFAULT 0                     NOT NULL,
     title          varchar(250) default ''::character varying not null,
     brief          varchar(250) default ''::character varying not null,
     remark         text         default ''::character varying not null,
@@ -547,7 +553,7 @@ execute procedure update_modified_column();
 create table adi_knowledge_base_star_record
 (
     id          bigserial primary key,
-    kb_id       bigint      DEFAULT '0'::bigint           NOT NULL,
+    kb_id       bigint      DEFAULT 0                     NOT NULL,
     kb_uuid     varchar(32) default ''::character varying not null,
     user_id     bigint      default '0'                   NOT NULL,
     user_uuid   varchar(32) default ''::character varying not null,
@@ -583,7 +589,7 @@ create table adi_knowledge_base_qa_record
 (
     id              bigserial primary key,
     uuid            varchar(32)   default ''::character varying not null,
-    kb_id           bigint        DEFAULT '0'::bigint           NOT NULL,
+    kb_id           bigint        DEFAULT 0                     NOT NULL,
     kb_uuid         varchar(32)   default ''::character varying not null,
     question        varchar(1000) default ''::character varying not null,
     prompt          text          default ''::character varying not null,
@@ -591,7 +597,7 @@ create table adi_knowledge_base_qa_record
     answer          text          default ''::character varying not null,
     answer_tokens   integer       DEFAULT 0                     NOT NULL,
     source_file_ids varchar(500)  default ''::character varying not null,
-    user_id         bigint        default '0'                   NOT NULL,
+    user_id         bigint        default 0                     NOT NULL,
     ai_model_id     bigint        default 0                     not null,
     create_time     timestamp     default CURRENT_TIMESTAMP     not null,
     update_time     timestamp     default CURRENT_TIMESTAMP     not null,
@@ -641,7 +647,7 @@ create table adi_ai_search_record
     prompt_tokens          integer       DEFAULT 0                     NOT NULL,
     answer                 text          default ''::character varying not null,
     answer_tokens          integer       DEFAULT 0                     NOT NULL,
-    user_id                bigint        default '0'                   NOT NULL,
+    user_id                bigint        default 0                     NOT NULL,
     user_uuid              varchar(32)   default ''::character varying not null,
     ai_model_id            bigint        default 0                     not null,
     create_time            timestamp     default CURRENT_TIMESTAMP     not null,

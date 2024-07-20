@@ -20,6 +20,8 @@ import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.util.BizPager;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.moyz.adi.common.util.MPPageUtil;
+import com.moyz.adi.common.vo.AssistantChatParams;
+import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.SseAskParams;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
@@ -349,7 +351,14 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         stringRedisTemplate.expire(key, Duration.ofDays(1));
     }
 
-
+    /**
+     * 文档召回并将请求发送给LLM
+     *
+     * @param user       当前提问的用户
+     * @param sseEmitter sse emitter
+     * @param kbUuid     知识库uuid
+     * @param req        请求信息
+     */
     @Async
     public void retrieveAndPushToLLM(User user, SseEmitter sseEmitter, String kbUuid, QAReq req) {
         log.info("retrieveAndPushToLLM,kbUuid:{},userId:{}", kbUuid, user.getId());
@@ -364,13 +373,22 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         ContentRetriever contentRetriever = ragService.createRetriever(metadataCond, maxResults, knowledgeBase.getRagMinScore());
 
         SseAskParams sseAskParams = new SseAskParams();
-        sseAskParams.setSystemMessage(StringUtils.EMPTY);
+        sseAskParams.setAssistantChatParams(
+                AssistantChatParams.builder()
+                        .messageId(kbUuid)
+                        .systemMessage(StringUtils.EMPTY)
+                        .userMessage(req.getQuestion())
+                        .build()
+        );
+        sseAskParams.setLlmBuilderProperties(
+                LLMBuilderProperties.builder()
+                        .temperature(knowledgeBase.getLlmTemperature())
+                        .build()
+        );
         sseAskParams.setSseEmitter(sseEmitter);
-        sseAskParams.setUserMessage(req.getQuestion());
         sseAskParams.setModelName(req.getModelName());
-        sseAskParams.setMessageId(kbUuid);
         sseEmitterHelper.ragProcess(contentRetriever, user, sseAskParams, (response, promptMeta, answerMeta) -> {
-            //TODO 经过RAG增强后的Prompt
+            //TODO 增强后的prompt
             String prompt = "";
             knowledgeBaseQaRecordService.createNewRecord(user, knowledgeBase, req.getQuestion(), prompt, promptMeta.getTokens(), response, answerMeta.getTokens(), req.getModelName());
             userDayCostService.appendCostToUser(user, promptMeta.getTokens() + answerMeta.getTokens());

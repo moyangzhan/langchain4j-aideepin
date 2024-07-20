@@ -61,4 +61,8 @@ public class KnowledgeBase extends BaseEntity {
     @Schema(title = "文档切割时重叠数量(按token来计)")
     @TableField("rag_max_overlap")
     private Integer ragMaxOverlap;
+
+    @Schema(title = "请求LLM时的temperature")
+    @TableField("llm_temperature")
+    private Double llmTemperature;
 }

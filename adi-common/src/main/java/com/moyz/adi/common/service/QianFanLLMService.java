@@ -4,6 +4,7 @@ import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
 import com.moyz.adi.common.util.JsonUtil;
+import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.QianFanAiModelSetting;
 import com.moyz.adi.common.vo.QianFanAiPlatformSetting;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -40,10 +41,14 @@ public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetti
     }
 
     @Override
-    protected ChatLanguageModel buildChatLLM() {
+    protected ChatLanguageModel buildChatLLM(LLMBuilderProperties properties) {
+        double temperature = 0.7;
+        if (null != properties && properties.getTemperature() > 0 && properties.getTemperature() <= 1) {
+            temperature = properties.getTemperature();
+        }
         QianfanChatModel.QianfanChatModelBuilder builder = QianfanChatModel.builder()
                 .modelName(aiModel.getName())
-                .temperature(0.7)
+                .temperature(temperature)
                 .topP(1.0)
                 .maxRetries(1)
                 .apiKey(modelPlatformSetting.getApiKey())
@@ -57,10 +62,14 @@ public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetti
     }
 
     @Override
-    protected StreamingChatLanguageModel buildStreamingChatLLM() {
+    protected StreamingChatLanguageModel buildStreamingChatLLM(LLMBuilderProperties properties) {
+        double temperature = 0.7;
+        if (null != properties && properties.getTemperature() > 0 && properties.getTemperature() <= 1) {
+            temperature = properties.getTemperature();
+        }
         QianfanStreamingChatModel.QianfanStreamingChatModelBuilder builder = QianfanStreamingChatModel.builder()
                 .modelName(aiModel.getName())
-                .temperature(0.7)
+                .temperature(temperature)
                 .topP(1.0)
                 .apiKey(modelPlatformSetting.getApiKey())
                 .secretKey(modelPlatformSetting.getSecretKey())

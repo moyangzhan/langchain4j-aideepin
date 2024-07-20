@@ -19,10 +19,6 @@ public class LLMContext {
     public static final Map<String, AbstractLLMService> NAME_TO_LLM_SERVICE = new LinkedHashMap<>();
     private AbstractLLMService llmService;
 
-    public LLMContext() {
-        llmService = NAME_TO_LLM_SERVICE.get(GPT_3_5_TURBO);
-    }
-
     public LLMContext(String modelName) {
         if (null == NAME_TO_LLM_SERVICE.get(modelName)) {
             log.warn("︿︿︿ Can not find {}, use the default model GPT_3_5_TURBO ︿︿︿", modelName);
