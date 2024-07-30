@@ -17,6 +17,7 @@ public class KbInfoResp {
     private Integer ragMaxResults;
     private Double ragMinScore;
     private Integer ragMaxOverlap;
+    private Double llmTemperature;
     private String ownerUuid;
     private String ownerName;
     private Integer itemCount;
