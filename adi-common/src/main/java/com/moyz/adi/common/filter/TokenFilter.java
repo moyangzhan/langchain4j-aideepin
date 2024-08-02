@@ -45,7 +45,12 @@ public class TokenFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
-        String token = request.getHeader(AUTHORIZATION);
+        String token = "";
+        if (requestUri.contains("/image/") || requestUri.contains("/file/")) {
+            token = request.getParameter("token");
+        } else {
+            token = request.getHeader(AUTHORIZATION);
+        }
         if (StringUtils.isBlank(token)) {
             log.warn("未授权:{}", requestUri);
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
