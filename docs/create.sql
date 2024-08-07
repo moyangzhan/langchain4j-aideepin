@@ -80,6 +80,8 @@ VALUES ('gpt-3.5-turbo', 'text', 'openai', 16385, 4096, false);
 INSERT INTO adi_ai_model (name, type, platform, is_enable)
 VALUES ('dall-e-2', 'image', 'openai', false);
 INSERT INTO adi_ai_model (name, type, platform, is_enable)
+VALUES ('dall-e-3', 'image', 'openai', false);
+INSERT INTO adi_ai_model (name, type, platform, is_enable)
 VALUES ('qwen-turbo', 'text', 'dashscope', false);
 INSERT INTO adi_ai_model (name, type, platform, is_enable, setting)
 VALUES ('ERNIE-Speed-8K', 'text', 'qianfan', false, '{"endpoint":"ernie_speed"}');
