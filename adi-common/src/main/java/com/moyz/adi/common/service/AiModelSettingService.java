@@ -40,10 +40,15 @@ public class AiModelSettingService {
 
     private List<AiModel> all = new ArrayList<>();
 
+    /**
+     * 模型及其配置初始化
+     *
+     * @param allModels
+     */
     public void init(List<AiModel> allModels) {
         this.all = allModels;
         for (AiModel model : all) {
-            if (model.getIsEnable()) {
+            if (Boolean.TRUE.equals(model.getIsEnable())) {
                 MODEL_ID_TO_OBJ.put(model.getId(), model);
             } else {
                 MODEL_ID_TO_OBJ.remove(model.getId());
@@ -65,16 +70,16 @@ public class AiModelSettingService {
     private synchronized void initLLMServiceList() {
 
         //openai
-        initLLMService(AdiConstant.ModelPlatform.OPENAI, (model) -> new OpenAiLLMService(model).setProxy(proxy));
+        initLLMService(AdiConstant.ModelPlatform.OPENAI, model -> new OpenAiLLMService(model).setProxy(proxy));
 
         //dashscope
-        initLLMService(AdiConstant.ModelPlatform.DASHSCOPE, (model) -> new DashScopeLLMService(model));
+        initLLMService(AdiConstant.ModelPlatform.DASHSCOPE, DashScopeLLMService::new);
 
         //qianfan
-        initLLMService(AdiConstant.ModelPlatform.QIANFAN, (model) -> new QianFanLLMService(model));
+        initLLMService(AdiConstant.ModelPlatform.QIANFAN, QianFanLLMService::new);
 
         //ollama
-        initLLMService(AdiConstant.ModelPlatform.OLLAMA, (model) -> new OllamaLLMService(model));
+        initLLMService(AdiConstant.ModelPlatform.OLLAMA, OllamaLLMService::new);
     }
 
     /**
@@ -82,14 +87,14 @@ public class AiModelSettingService {
      */
     private synchronized void initImageModelServiceList() {
         //openai image model
-        initImageModelService(AdiConstant.ModelPlatform.OPENAI, (model) -> new OpenAiImageModelService(model).setProxy(proxy));
+        initImageModelService(AdiConstant.ModelPlatform.OPENAI, model -> new OpenAiImageModelService(model).setProxy(proxy));
 
         //search engine
         SearchEngineContext.addEngine(AdiConstant.SearchEngineName.GOOGLE, new GoogleSearchEngine().setProxy(proxy));
     }
 
     private void initLLMService(String platform, Function<AiModel, AbstractLLMService> function) {
-        List<AiModel> models = all.stream().filter(item -> item.getType().equals(AdiConstant.ModelType.TEXT) && item.getPlatform().equals(platform)).collect(Collectors.toList());
+        List<AiModel> models = all.stream().filter(item -> item.getType().equals(AdiConstant.ModelType.TEXT) && item.getPlatform().equals(platform)).toList();
         if (CollectionUtils.isEmpty(models)) {
             log.warn("{} service is disabled", platform);
         }
@@ -101,7 +106,7 @@ public class AiModelSettingService {
     }
 
     private void initImageModelService(String platform, Function<AiModel, AbstractImageModelService> function) {
-        List<AiModel> models = all.stream().filter(item -> item.getType().equals(AdiConstant.ModelType.IMAGE) && item.getPlatform().equals(platform)).collect(Collectors.toList());
+        List<AiModel> models = all.stream().filter(item -> item.getType().equals(AdiConstant.ModelType.IMAGE) && item.getPlatform().equals(platform)).toList();
         if (CollectionUtils.isEmpty(models)) {
             log.warn("{} service is disabled", platform);
         }

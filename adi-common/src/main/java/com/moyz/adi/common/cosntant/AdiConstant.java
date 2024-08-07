@@ -51,9 +51,14 @@ public class AdiConstant {
     public static final String DEFAULT_MODEL = "gpt-3.5-turbo";
 
     public static final String CREATE_IMAGE_RESP_FORMATS_B64JSON = "b64_json";
+
     public static final String OPENAI_CREATE_IMAGE_RESP_FORMATS_URL = "url";
 
-    public static final List<String> OPENAI_CREATE_IMAGE_SIZES = List.of("256x256", "512x512", "1024x1024");
+    public static final String IMAGE_PATH_PRE = "/image/";
+
+    public static final List<String> DALLE2_CREATE_IMAGE_SIZES = List.of("256x256", "512x512", "1024x1024");
+
+    public static final List<String> DALLE3_CREATE_IMAGE_SIZES = List.of("1024x1024", "1024x1792", "1792x1024");
 
     public static final PromptTemplate PROMPT_TEMPLATE = PromptTemplate.from("""
             根据以下已知信息:

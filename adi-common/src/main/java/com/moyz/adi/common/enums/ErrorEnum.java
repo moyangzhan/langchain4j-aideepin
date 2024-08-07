@@ -26,6 +26,7 @@ public enum ErrorEnum {
     A_MODEL_NOT_FOUND("A0022", "模型不存在"),
     A_MODEL_ALREADY_EXIST("A0023", "模型已存在"),
     A_CONVERSATION_NOT_FOUND("A0024", "会话找不到"),
+    A_AI_IMAGE_NOT_FOUND("A0024", "作图记录找不到"),
     B_UNCAUGHT_ERROR("B0001", "未捕捉异常"),
     B_COMMON_ERROR("B0002", "业务出错"),
     B_GLOBAL_ERROR("B0003", "全局异常"),

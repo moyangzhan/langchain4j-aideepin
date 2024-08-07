@@ -22,8 +22,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.moyz.adi.common.enums.ErrorEnum.A_CONVERSATION_EXIST;
-import static com.moyz.adi.common.enums.ErrorEnum.A_CONVERSATION_NOT_EXIST;
+import static com.moyz.adi.common.enums.ErrorEnum.*;
 import static com.moyz.adi.common.util.LocalCache.MODEL_ID_TO_OBJ;
 
 @Slf4j
@@ -60,7 +59,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
     public ConvMsgListResp detail(String uuid, String maxMsgUuid, int pageSize) {
         Conversation conversation = this.lambdaQuery().eq(Conversation::getUuid, uuid).one();
         if (null == conversation) {
-            throw new RuntimeException("找不到对应的会话");
+            throw new BaseException(A_CONVERSATION_NOT_EXIST);
         }
 
         long maxId = Long.MAX_VALUE;
@@ -71,7 +70,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
                     .eq(ConversationMessage::getIsDeleted, false)
                     .one();
             if (null == maxMsg) {
-                throw new RuntimeException("找不到对应的消息");
+                throw new BaseException(A_DATA_NOT_FOUND);
             }
             maxId = maxMsg.getId();
         }
@@ -103,7 +102,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
         result.getMsgList().forEach(item -> {
             List<ConvMsgDto> children = MPPageUtil.convertToList(idToMessages.get(item.getId()), ConvMsgDto.class);
             if (children.size() > 1) {
-                children = children.stream().sorted(Comparator.comparing(ConvMsgDto::getCreateTime).reversed()).collect(Collectors.toList());
+                children = children.stream().sorted(Comparator.comparing(ConvMsgDto::getCreateTime).reversed()).toList();
             }
 
             for (ConvMsgDto convMsgDto : children) {
@@ -170,7 +169,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
         if (null != convEditReq.getUnderstandContextEnable()) {
             one.setUnderstandContextEnable(convEditReq.getUnderstandContextEnable());
         }
-        return baseMapper.updateById(one) > 0 ? true : false;
+        return baseMapper.updateById(one) > 0;
     }
 
     public boolean softDel(String uuid) {

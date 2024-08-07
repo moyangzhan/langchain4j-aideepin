@@ -21,19 +21,7 @@ public class ImageModelContext {
      */
     public static final Map<String, AbstractImageModelService> NAME_TO_LLM_SERVICE = new HashMap<>();
 
-    private AbstractImageModelService modelService;
-
-    public ImageModelContext() {
-        modelService = NAME_TO_LLM_SERVICE.get(DALL_E_2);
-    }
-
-    public ImageModelContext(String modelName) {
-        if (null == NAME_TO_LLM_SERVICE.get(modelName)) {
-            log.warn("︿︿︿ Can not find {}, use the default model DALL_E_2 ︿︿︿", modelName);
-            modelService = NAME_TO_LLM_SERVICE.get(DALL_E_2);
-        } else {
-            modelService = NAME_TO_LLM_SERVICE.get(modelName);
-        }
+    private ImageModelContext() {
     }
 
     public static void addImageModelService(AbstractImageModelService modelService) {
@@ -56,7 +44,12 @@ public class ImageModelContext {
         }
     }
 
-    public AbstractImageModelService getModelService() {
-        return modelService;
+    public static AbstractImageModelService getModelService(String modelName) {
+        AbstractImageModelService service = NAME_TO_LLM_SERVICE.get(modelName);
+        if (null == service) {
+            log.warn("︿︿︿ Can not find {}, use the default model DALL_E_2 ︿︿︿", modelName);
+            return NAME_TO_LLM_SERVICE.get(DALL_E_2);
+        }
+        return service;
     }
 }

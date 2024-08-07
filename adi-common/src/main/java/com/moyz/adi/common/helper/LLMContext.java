@@ -2,12 +2,12 @@ package com.moyz.adi.common.helper;
 
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
+import com.moyz.adi.common.vo.CommonAiPlatformSetting;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 
@@ -16,19 +16,12 @@ import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
  */
 @Slf4j
 public class LLMContext {
-    public static final Map<String, AbstractLLMService> NAME_TO_LLM_SERVICE = new LinkedHashMap<>();
-    private AbstractLLMService llmService;
+    protected static final Map<String, AbstractLLMService> NAME_TO_LLM_SERVICE = new LinkedHashMap<>();
 
-    public LLMContext(String modelName) {
-        if (null == NAME_TO_LLM_SERVICE.get(modelName)) {
-            log.warn("︿︿︿ Can not find {}, use the default model GPT_3_5_TURBO ︿︿︿", modelName);
-            llmService = NAME_TO_LLM_SERVICE.get(GPT_3_5_TURBO);
-        } else {
-            llmService = NAME_TO_LLM_SERVICE.get(modelName);
-        }
+    private LLMContext() {
     }
 
-    public static void addLLMService(AbstractLLMService llmService) {
+    public static void addLLMService(AbstractLLMService<CommonAiPlatformSetting> llmService) {
         NAME_TO_LLM_SERVICE.put(llmService.getAiModel().getName(), llmService);
     }
 
@@ -42,7 +35,7 @@ public class LLMContext {
                 .stream()
                 .filter(item -> item.getAiModel().getPlatform().equalsIgnoreCase(modelPlatform))
                 .map(item -> item.getAiModel().getName())
-                .collect(Collectors.toList());
+                .toList();
         for (String key : needDeleted) {
             log.info("delete llm model service,modelName:{}", key);
             NAME_TO_LLM_SERVICE.remove(key);
@@ -57,7 +50,16 @@ public class LLMContext {
         return NAME_TO_LLM_SERVICE.get(modelName).getAiModel();
     }
 
-    public AbstractLLMService getLLMService() {
-        return llmService;
+    public static Map<String, AbstractLLMService> getAllServices() {
+        return NAME_TO_LLM_SERVICE;
+    }
+
+    public static AbstractLLMService getLLMService(String modelName) {
+        AbstractLLMService service = NAME_TO_LLM_SERVICE.get(modelName);
+        if (null == service) {
+            log.warn("︿︿︿ Can not find {}, use the default model GPT_3_5_TURBO ︿︿︿", modelName);
+            return NAME_TO_LLM_SERVICE.get(GPT_3_5_TURBO);
+        }
+        return service;
     }
 }

@@ -46,7 +46,7 @@ public class TokenFilter extends OncePerRequestFilter {
             return;
         }
         String token = "";
-        if (requestUri.contains("/image/") || requestUri.contains("/file/")) {
+        if (requestUri.indexOf("/image/") == 0 || requestUri.indexOf("/file/") == 0) {
             token = request.getParameter("token");
         } else {
             token = request.getHeader(AUTHORIZATION);

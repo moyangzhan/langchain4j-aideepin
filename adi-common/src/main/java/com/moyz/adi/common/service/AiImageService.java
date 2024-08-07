@@ -28,14 +28,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.GenerateImage.*;
+import static com.moyz.adi.common.cosntant.AdiConstant.IMAGE_PATH_PRE;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 @Slf4j
@@ -89,7 +87,7 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
         CreateImageDto createImageDto = new CreateImageDto();
         createImageDto.setInteractingMethod(INTERACTING_METHOD_GENERATE_IMAGE);
         BeanUtils.copyProperties(generateImageReq, createImageDto);
-        return _this.createImage(createImageDto);
+        return _this.generate(createImageDto);
     }
 
     /**
@@ -104,7 +102,7 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
         createImageDto.setNumber(editImageReq.getNumber());
         createImageDto.setMaskImage(editImageReq.getMaskImage());
         createImageDto.setOriginalImage(editImageReq.getOriginalImage());
-        return _this.createImage(createImageDto);
+        return _this.generate(createImageDto);
     }
 
     /**
@@ -117,17 +115,25 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
         createImageDto.setSize(variationImageReq.getSize());
         createImageDto.setNumber(variationImageReq.getNumber());
         createImageDto.setOriginalImage(variationImageReq.getOriginalImage());
-        return _this.createImage(createImageDto);
+        return _this.generate(createImageDto);
     }
 
-    public String createImage(CreateImageDto createImageDto) {
+    /**
+     * 根据提示词生成图片
+     *
+     * @param createImageDto
+     * @return
+     */
+    public String generate(CreateImageDto createImageDto) {
         User user = ThreadContext.getCurrentUser();
         int generateNumber = Math.min(createImageDto.getNumber(), user.getQuotaByImageDaily());
         String uuid = UUID.randomUUID().toString().replace("-", "");
         AiImage aiImage = new AiImage();
         aiImage.setGenerateSize(createImageDto.getSize());
+        aiImage.setGenerateQuality(createImageDto.getQuality());
         aiImage.setGenerateNumber(generateNumber);
         aiImage.setUuid(uuid);
+        aiImage.setAiModelName(createImageDto.getModelName());
         aiImage.setUserId(user.getId());
         aiImage.setInteractingMethod(createImageDto.getInteractingMethod());
         aiImage.setProcessStatus(STATUS_DOING);
@@ -155,6 +161,12 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
         _this.createFromRemote(obj, user);
     }
 
+    /**
+     * 异步生成图片
+     *
+     * @param aiImage
+     * @param user
+     */
     @Async("imagesExecutor")
     public void createFromRemote(AiImage aiImage, User user) {
         String drawingKey = MessageFormat.format(RedisKeyConstant.USER_DRAWING, user.getId());
@@ -165,16 +177,15 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
             String requestTimesKey = MessageFormat.format(RedisKeyConstant.USER_REQUEST_TEXT_TIMES, user.getId());
             rateLimitHelper.increaseRequestTimes(requestTimesKey, LocalCache.IMAGE_RATE_LIMIT_CONFIG);
 
-            ImageModelContext modelContext = new ImageModelContext();
             List<String> images = new ArrayList<>();
             if (aiImage.getInteractingMethod() == INTERACTING_METHOD_GENERATE_IMAGE) {
-                images = modelContext.getModelService().createImage(user, aiImage);
+                images = ImageModelContext.getModelService(aiImage.getAiModelName()).generateImage(user, aiImage);
             } else if (aiImage.getInteractingMethod() == INTERACTING_METHOD_EDIT_IMAGE) {
-                images = modelContext.getModelService().editImage(user, aiImage);
+                images = ImageModelContext.getModelService(aiImage.getAiModelName()).editImage(user, aiImage);
             } else if (aiImage.getInteractingMethod() == INTERACTING_METHOD_VARIATION) {
-                images = modelContext.getModelService().createImageVariation(user, aiImage);
+                images = ImageModelContext.getModelService(aiImage.getAiModelName()).createImageVariation(user, aiImage);
             }
-            List<String> imageUuids = new ArrayList();
+            List<String> imageUuids = new ArrayList<>();
             images.forEach(imageUrl -> {
                 String imageUuid = fileService.saveImageToLocal(user, imageUrl);
                 imageUuids.add(imageUuid);
@@ -243,24 +254,55 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
                 .eq(AiImage::getUserId, ThreadContext.getCurrentUserId())
                 .oneOpt()
                 .orElse(null);
-        return convertAiImageToDto(aiImage);
+        if (null != aiImage) {
+            return convertAiImageToDto(aiImage);
+        } else {
+            return null;
+        }
     }
 
+    /**
+     * 删除做图记录
+     *
+     * @param uuid
+     * @return
+     */
     public boolean del(String uuid) {
-        AiImage aiImage = this.lambdaQuery()
-                .eq(AiImage::getUuid, uuid)
-                .eq(AiImage::getUserId, ThreadContext.getCurrentUserId())
-                .oneOpt()
-                .orElse(null);
-        if (null == aiImage) {
-            return false;
-        }
+        AiImage aiImage = checkAndGet(uuid);
         if (StringUtils.isNotBlank(aiImage.getGeneratedImages())) {
-            String uuids[] = aiImage.getGeneratedImages().split(",");
+            String[] uuids = aiImage.getGeneratedImages().split(",");
             for (String fileUuid : uuids) {
                 fileService.removeFileAndSoftDel(fileUuid);
             }
         }
+        _this.softDel(aiImage.getId());
+        return true;
+    }
+
+    /**
+     * 删除做图任务中的一张图片
+     *
+     * @param uuid               adi_ai_image uuid
+     * @param generatedImageUuid
+     * @return
+     */
+    public boolean delGeneratedFile(String uuid, String generatedImageUuid) {
+        AiImage aiImage = checkAndGet(uuid);
+        if (StringUtils.isBlank(aiImage.getGeneratedImages())) {
+            return false;
+        }
+        String[] uuids = aiImage.getGeneratedImages().split(",");
+        for (int i = 0; i < uuids.length; i++) {
+            String fileUuid = uuids[i];
+            if (fileUuid.equals(generatedImageUuid)) {
+                fileService.removeFileAndSoftDel(fileUuid);
+                uuids[i] = "";
+            }
+        }
+        String remainFiles = Arrays.stream(uuids)
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.joining(","));
+        _this.lambdaUpdate().eq(AiImage::getId, aiImage.getId()).set(AiImage::getGeneratedImages, remainFiles).update();
         return true;
     }
 
@@ -269,10 +311,10 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
         BeanUtils.copyProperties(aiImage, dto);
         fillImagesToDto(dto);
         if (StringUtils.isNotBlank(aiImage.getOriginalImage())) {
-            dto.setOriginalImageUrl("/image/" + aiImage.getOriginalImage());
+            dto.setOriginalImageUrl(IMAGE_PATH_PRE + aiImage.getOriginalImage());
         }
         if (StringUtils.isNotBlank(aiImage.getMaskImage())) {
-            dto.setMaskImageUrl("/image/" + aiImage.getMaskImage());
+            dto.setMaskImageUrl(IMAGE_PATH_PRE + aiImage.getMaskImage());
         }
         return dto;
     }
@@ -283,8 +325,34 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
         if (StringUtils.isNotBlank(aiImageDto.getGeneratedImages())) {
             String[] imageUuids = aiImageDto.getGeneratedImages().split(",");
             for (String imageUuid : imageUuids) {
-                images.add("/image/" + imageUuid);
+                images.add(IMAGE_PATH_PRE + imageUuid);
             }
         }
+    }
+
+    private AiImage checkAndGet(String uuid) {
+        AiImage aiImage;
+        if (Boolean.TRUE.equals(ThreadContext.getCurrentUser().getIsAdmin())) {
+            aiImage = this.lambdaQuery()
+                    .eq(AiImage::getUuid, uuid)
+                    .eq(AiImage::getIsDeleted, false)
+                    .oneOpt()
+                    .orElse(null);
+        } else {
+            aiImage = this.lambdaQuery()
+                    .eq(AiImage::getUuid, uuid)
+                    .eq(AiImage::getUserId, ThreadContext.getCurrentUserId())
+                    .eq(AiImage::getIsDeleted, false)
+                    .oneOpt()
+                    .orElse(null);
+        }
+        if (null == aiImage) {
+            throw new BaseException(A_AI_IMAGE_NOT_FOUND);
+        }
+        return aiImage;
+    }
+
+    private void softDel(Long id) {
+        _this.lambdaUpdate().eq(AiImage::getId, id).set(AiImage::getIsDeleted, true).update();
     }
 }

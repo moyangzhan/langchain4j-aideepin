@@ -73,7 +73,7 @@ public class SSEEmitterHelper {
      */
     public void commonProcess(User user, SseAskParams sseAskParams, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
         String askingKey = registerSseEventCallBack(user, sseAskParams);
-        new LLMContext(sseAskParams.getModelName()).getLLMService().commonChat(sseAskParams, (response, promptMeta, answerMeta) -> {
+        LLMContext.getLLMService(sseAskParams.getModelName()).commonChat(sseAskParams, (response, promptMeta, answerMeta) -> {
             try {
                 consumer.accept((String) response, (PromptMeta) promptMeta, (AnswerMeta) answerMeta);
             } catch (Exception e) {
@@ -94,7 +94,7 @@ public class SSEEmitterHelper {
      */
     public void ragProcess(ContentRetriever contentRetriever, User user, SseAskParams sseAskParams, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
         String askingKey = registerSseEventCallBack(user, sseAskParams);
-        new LLMContext(sseAskParams.getModelName()).getLLMService().ragChat(contentRetriever, sseAskParams, (response, promptMeta, answerMeta) -> {
+        LLMContext.getLLMService(sseAskParams.getModelName()).ragChat(contentRetriever, sseAskParams, (response, promptMeta, answerMeta) -> {
             try {
                 consumer.accept((String) response, (PromptMeta) promptMeta, (AnswerMeta) answerMeta);
             } catch (Exception e) {

@@ -52,7 +52,7 @@ mybatis-plus:
     map-underscore-to-camel-case: true
 
 logging:
-  file: /data/logs
+  file: /data/aideepin/logs
 
 adi:
   frontend-url: http://www.aideepin.com
@@ -63,7 +63,7 @@ adi:
     http-port: 1087
 
 local:
-  files: /data/files/
-  images: /data/images/
-  tmp-images: /data/tmp_images/
-  chat-memory: /data/chat_memory/
+  files: /data/aideepin/files/
+  images: /data/aideepin/images/
+  tmp-images: /data/aideepin/tmp_images/
+  chat-memory: /data/aideepin/chat_memory/

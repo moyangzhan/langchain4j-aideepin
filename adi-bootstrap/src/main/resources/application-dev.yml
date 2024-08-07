@@ -23,7 +23,7 @@ spring:
 
 logging:
   file:
-    path: D:/data/logs
+    path: D:/data/aideepin/logs
   level:
     com.baomidou.mybatisplus: DEBUG
 
@@ -36,7 +36,7 @@ adi:
     http-port: 1087
 
 local:
-  files: D:/data/files/
-  images: D:/data/images/
-  tmp-images: D:/data/tmp_images/
-  chat-memory: D:/data/chat_memory/
+  files: D:/data/aideepin/files/
+  images: D:/data/aideepin/images/
+  tmp-images: D:/data/aideepin/tmp_images/
+  chat-memory: D:/data/aideepin/chat_memory/

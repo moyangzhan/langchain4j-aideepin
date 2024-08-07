@@ -34,7 +34,7 @@ public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRec
         LambdaQueryWrapper<KnowledgeBaseQaRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeBaseQaRecord::getKbUuid, kbUuid);
         wrapper.eq(KnowledgeBaseQaRecord::getIsDeleted, false);
-        if (!ThreadContext.getCurrentUser().getIsAdmin()) {
+        if (Boolean.FALSE.equals(ThreadContext.getCurrentUser().getIsAdmin())) {
             wrapper.eq(KnowledgeBaseQaRecord::getUserId, ThreadContext.getCurrentUserId());
         }
         if (StringUtils.isNotBlank(keyword)) {
@@ -85,7 +85,7 @@ public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRec
     }
 
     public boolean softDelete(String uuid) {
-        if (ThreadContext.getCurrentUser().getIsAdmin()) {
+        if (Boolean.TRUE.equals(ThreadContext.getCurrentUser().getIsAdmin())) {
             return ChainWrappers.lambdaUpdateChain(baseMapper)
                     .eq(KnowledgeBaseQaRecord::getUuid, uuid)
                     .set(KnowledgeBaseQaRecord::getIsDeleted, true)

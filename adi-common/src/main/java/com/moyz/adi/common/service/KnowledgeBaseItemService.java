@@ -23,7 +23,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.UUID;
 
 import static com.moyz.adi.common.cosntant.RedisKeyConstant.KB_STATISTIC_RECALCULATE_SIGNAL;
@@ -110,8 +109,8 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
         knowledgeBaseEmbeddingService.deleteByItemUuid(kbItem.getUuid());
 
         Metadata metadata = new Metadata();
-        metadata.add(AdiConstant.EmbeddingMetadataKey.KB_UUID, kbItem.getKbUuid());
-        metadata.add(AdiConstant.EmbeddingMetadataKey.KB_ITEM_UUID, kbItem.getUuid());
+        metadata.put(AdiConstant.EmbeddingMetadataKey.KB_UUID, kbItem.getKbUuid());
+        metadata.put(AdiConstant.EmbeddingMetadataKey.KB_ITEM_UUID, kbItem.getUuid());
         Document document = new Document(kbItem.getRemark(), metadata);
         ragService.ingest(document, knowledgeBase.getRagMaxOverlap());
 
@@ -171,13 +170,10 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
         if (null == user) {
             throw new BaseException(A_USER_NOT_EXIST);
         }
-        if (user.getIsAdmin()) {
+        if (Boolean.TRUE.equals(user.getIsAdmin())) {
             return true;
         }
         int belongToUser = baseMapper.belongToUser(uuid, user.getId());
-        if (belongToUser > 0) {
-            return true;
-        }
-        return false;
+        return belongToUser > 0;
     }
 }

@@ -19,7 +19,7 @@ public class ModelController {
     @Operation(summary = "支持的大语言模型列表")
     @GetMapping(value = "/llms")
     public List<LLMModelInfo> llms() {
-        return LLMContext.NAME_TO_LLM_SERVICE.values().stream().map(item -> {
+        return LLMContext.getAllServices().values().stream().map(item -> {
             AiModel aiModel = item.getAiModel();
             LLMModelInfo modelInfo = new LLMModelInfo();
             modelInfo.setModelId(aiModel.getId());

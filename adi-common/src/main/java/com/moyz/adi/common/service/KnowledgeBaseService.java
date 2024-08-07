@@ -191,8 +191,8 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 //向量化
                 Document docWithoutPath = new Document(document.text());
                 docWithoutPath.metadata()
-                        .add(AdiConstant.EmbeddingMetadataKey.KB_UUID, knowledgeBase.getUuid())
-                        .add(AdiConstant.EmbeddingMetadataKey.KB_ITEM_UUID, knowledgeBaseItem.getUuid());
+                        .put(AdiConstant.EmbeddingMetadataKey.KB_UUID, knowledgeBase.getUuid())
+                        .put(AdiConstant.EmbeddingMetadataKey.KB_ITEM_UUID, knowledgeBaseItem.getUuid());
                 ragService.ingest(docWithoutPath, knowledgeBase.getRagMaxOverlap());
 
                 knowledgeBaseItemService
@@ -213,11 +213,11 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     public boolean embedding(String kbUuid, boolean forceAll) {
         checkPrivilege(null, kbUuid);
         KnowledgeBase knowledgeBase = this.getOrThrow(kbUuid);
-        LambdaQueryWrapper<KnowledgeBaseItem> wrapper = new LambdaQueryWrapper();
+        LambdaQueryWrapper<KnowledgeBaseItem> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeBaseItem::getIsDeleted, false);
         wrapper.eq(KnowledgeBaseItem::getUuid, kbUuid);
         BizPager.oneByOneWithAnchor(wrapper, knowledgeBaseItemService, KnowledgeBaseItem::getId, one -> {
-            if (forceAll || !one.getIsEmbedded()) {
+            if (forceAll || Boolean.FALSE.equals(one.getIsEmbedded())) {
                 knowledgeBaseItemService.embedding(knowledgeBase, one);
             }
         });
@@ -241,7 +241,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         Page<KbInfoResp> result = new Page<>();
         User user = ThreadContext.getCurrentUser();
         Page<KnowledgeBase> knowledgeBasePage;
-        if (user.getIsAdmin()) {
+        if (Boolean.TRUE.equals(user.getIsAdmin())) {
             knowledgeBasePage = baseMapper.searchByAdmin(new Page<>(currentPage, pageSize), keyword);
         } else {
             knowledgeBasePage = baseMapper.searchByUser(new Page<>(currentPage, pageSize), user.getId(), keyword, includeOthersPublic);
@@ -251,7 +251,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
     public Page<KbInfoResp> search(KbSearchReq req, Integer currentPage, Integer pageSize) {
         Page<KbInfoResp> result = new Page<>();
-        LambdaQueryWrapper<KnowledgeBase> wrapper = new LambdaQueryWrapper();
+        LambdaQueryWrapper<KnowledgeBase> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.isNotBlank(req.getTitle())) {
             wrapper.like(KnowledgeBase::getTitle, req.getTitle());
         }
@@ -363,12 +363,12 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     public void retrieveAndPushToLLM(User user, SseEmitter sseEmitter, String kbUuid, QAReq req) {
         log.info("retrieveAndPushToLLM,kbUuid:{},userId:{}", kbUuid, user.getId());
         KnowledgeBase knowledgeBase = getOrThrow(kbUuid);
-        Map<String, String> metadataCond = ImmutableMap.of(AdiConstant.EmbeddingMetadataKey.KB_UUID, kbUuid);
+        Map<String, String> metadataCond = Map.of(AdiConstant.EmbeddingMetadataKey.KB_UUID, kbUuid);
 
         int maxResults = knowledgeBase.getRagMaxResults();
         //maxResults < 1 表示由系统自动计算大小
         if (maxResults < 1) {
-            maxResults = ragService.getRetrieveMaxResults(req.getQuestion(), LLMContext.getAiModel(req.getModelName()).getContextWindow());
+            maxResults = RAGService.getRetrieveMaxResults(req.getQuestion(), LLMContext.getAiModel(req.getModelName()).getContextWindow());
         }
         ContentRetriever contentRetriever = ragService.createRetriever(metadataCond, maxResults, knowledgeBase.getRagMinScore());
 
@@ -446,7 +446,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         if (privilege) {
             return;
         }
-        LambdaQueryWrapper<KnowledgeBase> wrapper = new LambdaQueryWrapper();
+        LambdaQueryWrapper<KnowledgeBase> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeBase::getOwnerId, user.getId());
         if (null != kbId) {
             wrapper = wrapper.eq(KnowledgeBase::getId, kbId);

@@ -35,6 +35,9 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
     @Value("${local.images}")
     private String imagePath;
 
+    @Value("${local.files}")
+    private String filePath;
+
     @Value("${local.tmp-images}")
     private String tmpImagesPath;
 
@@ -48,7 +51,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
             return existFile.get();
         }
         String uuid = UUID.randomUUID().toString().replace("-", "");
-        Pair<String, String> originalFile = FileUtil.saveToLocal(file, imagePath, uuid);
+        Pair<String, String> originalFile = FileUtil.saveToLocal(file, filePath, uuid);
         AdiFile adiFile = new AdiFile();
         adiFile.setName(file.getOriginalFilename());
         adiFile.setUuid(uuid);

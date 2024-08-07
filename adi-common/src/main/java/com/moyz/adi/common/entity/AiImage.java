@@ -16,11 +16,17 @@ public class AiImage extends BaseEntity {
     @TableField("uuid")
     private String uuid;
 
+    @TableField("ai_model_name")
+    private String AiModelName;
+
     @TableField("prompt")
     private String prompt;
 
     @TableField("generate_size")
     private String generateSize;
+
+    @TableField("generate_quality")
+    private String generateQuality;
 
     @TableField("generate_number")
     private Integer generateNumber;
