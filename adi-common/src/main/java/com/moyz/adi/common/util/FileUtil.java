@@ -10,9 +10,12 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
-import static com.moyz.adi.common.enums.ErrorEnum.A_FILE_NOT_EXIST;
+import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 @Slf4j
 public class FileUtil {
@@ -31,6 +34,7 @@ public class FileUtil {
             file.transferTo(new File(pathName));
         } catch (IOException e) {
             log.error("save to local error", e);
+            throw new BaseException(B_SAVE_FILE_ERROR);
         }
         return new ImmutablePair<>(pathName, fileExt);
     }
@@ -54,5 +58,10 @@ public class FileUtil {
         } else {
             return fileName.substring(dotIndex + 1);
         }
+    }
+
+    public static boolean checkIfExist(String filePath) {
+        Path path = Paths.get(filePath);
+        return Files.exists(path);
     }
 }

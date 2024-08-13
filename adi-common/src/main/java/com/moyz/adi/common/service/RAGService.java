@@ -1,5 +1,6 @@
 package com.moyz.adi.common.service;
 
+import com.moyz.adi.common.util.AdiEmbeddingStoreContentRetriever;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
@@ -100,7 +101,14 @@ public class RAGService {
         embeddingStoreIngestor.ingest(document);
     }
 
-    public ContentRetriever createRetriever(Map<String, String> metadataCond, int maxResults, double minScore) {
+    /**
+     * @param metadataCond
+     * @param maxResults
+     * @param minScore
+     * @param breakIfSearchMissed 如果向量数据库中搜索不到数据，是否强行中断该搜索，不继续往下执行（即不继续请求LLM进行回答）
+     * @return
+     */
+    public AdiEmbeddingStoreContentRetriever createRetriever(Map<String, String> metadataCond, int maxResults, double minScore, boolean breakIfSearchMissed) {
         Filter filter = null;
         for (Map.Entry<String, String> entry : metadataCond.entrySet()) {
             String key = entry.getKey();
@@ -111,12 +119,13 @@ public class RAGService {
                 filter = filter.and(new IsEqualTo(key, value));
             }
         }
-        return EmbeddingStoreContentRetriever.builder()
+        return AdiEmbeddingStoreContentRetriever.builder()
                 .embeddingStore(embeddingStore)
                 .embeddingModel(embeddingModel)
                 .maxResults(maxResults)
                 .minScore(minScore <= 0 ? RAG_MIN_SCORE : minScore)
                 .filter(filter)
+                .breakIfSearchMissed(breakIfSearchMissed)
                 .build();
     }
 

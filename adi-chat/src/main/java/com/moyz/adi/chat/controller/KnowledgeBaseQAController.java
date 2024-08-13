@@ -2,6 +2,7 @@ package com.moyz.adi.chat.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.dto.KbQaRecordDto;
+import com.moyz.adi.common.dto.KbQaRecordReferenceDto;
 import com.moyz.adi.common.dto.QAReq;
 import com.moyz.adi.common.service.KnowledgeBaseQaRecordService;
 import com.moyz.adi.common.service.KnowledgeBaseService;
@@ -14,6 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.util.List;
 
 @Tag(name = "知识库问答controller")
 @RequestMapping("/knowledge-base/qa/")
@@ -40,5 +43,10 @@ public class KnowledgeBaseQAController {
     @PostMapping("/record/del/{uuid}")
     public boolean recordDel(@PathVariable String uuid) {
         return knowledgeBaseQaRecordService.softDelete(uuid);
+    }
+
+    @GetMapping("/record/reference/{uuid}")
+    public List<KbQaRecordReferenceDto> reference(@PathVariable String uuid) {
+        return knowledgeBaseQaRecordService.listReferences(uuid);
     }
 }

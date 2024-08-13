@@ -215,7 +215,7 @@ public class SearchService {
 
         log.info("Create prompt");
         int maxResults = RAGService.getRetrieveMaxResults(searchText, LLMContext.getAiModel(modelName).getContextWindow());
-        ContentRetriever contentRetriever = searchRagService.createRetriever(Map.of(AdiConstant.EmbeddingMetadataKey.SEARCH_UUID, searchUuid), maxResults, 0);
+        ContentRetriever contentRetriever = searchRagService.createRetriever(Map.of(AdiConstant.EmbeddingMetadataKey.SEARCH_UUID, searchUuid), maxResults, 0, false);
 
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setAssistantChatParams(

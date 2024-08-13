@@ -25,6 +25,9 @@ public class UserDayCostService extends ServiceImpl<UserDayCostMapper, UserDayCo
      * @param tokens The number of tokens
      */
     public void appendCostToUser(User user, int tokens) {
+        if (tokens <= 0) {
+            return;
+        }
         UserDayCost userDayCost = getTodayCost(user);
         UserDayCost saveOrUpdateInst = new UserDayCost();
         if (null == userDayCost) {

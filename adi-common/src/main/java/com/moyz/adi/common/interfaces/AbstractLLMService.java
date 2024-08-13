@@ -1,5 +1,6 @@
 package com.moyz.adi.common.interfaces;
 
+import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.JsonUtil;
@@ -28,6 +29,7 @@ import java.io.IOException;
 import java.net.Proxy;
 import java.util.UUID;
 
+import static com.moyz.adi.common.enums.ErrorEnum.B_BREAK_SEARCH;
 import static com.moyz.adi.common.enums.ErrorEnum.B_LLM_SERVICE_DISABLED;
 
 @Slf4j
@@ -166,7 +168,7 @@ public abstract class AbstractLLMService<T> {
     private void registerTokenStreamCallBack(TokenStream tokenStream, SseAskParams params, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
         tokenStream
                 .onNext((content) -> {
-                    if(log.isDebugEnabled()){
+                    if (log.isDebugEnabled()) {
                         log.info("get content:{}", content);
                     }
                     //加空格配合前端的fetchEventSource进行解析，见https://github.com/Azure/fetch-event-source/blob/45ac3cfffd30b05b79fbf95c21e67d4ef59aa56a/src/parse.ts#L129-L133
@@ -185,7 +187,7 @@ public abstract class AbstractLLMService<T> {
                     String meta = JsonUtil.toJson(chatMeta).replaceAll("\r\n", "");
                     log.info("meta:" + meta);
                     try {
-                        params.getSseEmitter().send(SseEmitter.event().name("[DONE]").data(" [META]" + meta));
+                        params.getSseEmitter().send(SseEmitter.event().name(AdiConstant.SSEEventName.DONE).data(" [META]" + meta));
                     } catch (IOException e) {
                         log.error("stream onComplete error", e);
                         throw new RuntimeException(e);
@@ -201,7 +203,7 @@ public abstract class AbstractLLMService<T> {
                         if (StringUtils.isBlank(errorMsg)) {
                             errorMsg = error.getMessage();
                         }
-                        params.getSseEmitter().send(SseEmitter.event().name("[ERROR]").data(errorMsg));
+                        params.getSseEmitter().send(SseEmitter.event().name(AdiConstant.SSEEventName.ERROR).data(errorMsg));
                     } catch (IOException e) {
                         log.error("sse error", e);
                     }

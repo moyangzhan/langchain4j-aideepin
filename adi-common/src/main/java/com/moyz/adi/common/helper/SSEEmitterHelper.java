@@ -3,6 +3,7 @@ package com.moyz.adi.common.helper;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.cosntant.RedisKeyConstant;
 import com.moyz.adi.common.entity.User;
+import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.interfaces.TriConsumer;
 import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.vo.AnswerMeta;
@@ -19,6 +20,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.concurrent.TimeUnit;
+
+import static com.moyz.adi.common.enums.ErrorEnum.B_BREAK_SEARCH;
 
 @Slf4j
 @Service
@@ -94,15 +97,25 @@ public class SSEEmitterHelper {
      */
     public void ragProcess(ContentRetriever contentRetriever, User user, SseAskParams sseAskParams, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
         String askingKey = registerSseEventCallBack(user, sseAskParams);
-        LLMContext.getLLMService(sseAskParams.getModelName()).ragChat(contentRetriever, sseAskParams, (response, promptMeta, answerMeta) -> {
-            try {
-                consumer.accept((String) response, (PromptMeta) promptMeta, (AnswerMeta) answerMeta);
-            } catch (Exception e) {
-                log.error("ragProcess error", e);
-            } finally {
-                stringRedisTemplate.delete(askingKey);
+        try {
+            LLMContext.getLLMService(sseAskParams.getModelName()).ragChat(contentRetriever, sseAskParams, (response, promptMeta, answerMeta) -> {
+                try {
+                    consumer.accept((String) response, (PromptMeta) promptMeta, (AnswerMeta) answerMeta);
+                } catch (Exception e) {
+                    log.error("ragProcess error", e);
+                } finally {
+                    stringRedisTemplate.delete(askingKey);
+                }
+            });
+        } catch (Exception baseException) {
+            if (baseException.getCause() instanceof BaseException && B_BREAK_SEARCH.getCode().equals(((BaseException) baseException.getCause()).getCode())) {
+                this.sendAndComplete(user.getId(), sseAskParams.getSseEmitter(), "");
+                consumer.accept("", PromptMeta.builder().tokens(0).build(), AnswerMeta.builder().tokens(0).build());
+            } else {
+                log.error("ragProcess error", baseException);
             }
-        });
+        }
+
     }
 
     /**

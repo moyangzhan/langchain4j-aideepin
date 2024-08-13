@@ -17,6 +17,7 @@ import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
+import com.moyz.adi.common.util.AdiEmbeddingStoreContentRetriever;
 import com.moyz.adi.common.util.BizPager;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.moyz.adi.common.util.MPPageUtil;
@@ -84,6 +85,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
     @Resource
     private UserDayCostService userDayCostService;
+
+    @Resource
+    private AiModelService aiModelService;
 
     public boolean updateKb(KbEditReq kbEditReq) {
         KnowledgeBase existKb = getOrThrow(kbEditReq.getUuid());
@@ -370,7 +374,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         if (maxResults < 1) {
             maxResults = RAGService.getRetrieveMaxResults(req.getQuestion(), LLMContext.getAiModel(req.getModelName()).getContextWindow());
         }
-        ContentRetriever contentRetriever = ragService.createRetriever(metadataCond, maxResults, knowledgeBase.getRagMinScore());
+        AdiEmbeddingStoreContentRetriever contentRetriever = ragService.createRetriever(metadataCond, maxResults, knowledgeBase.getRagMinScore(), true);
 
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setAssistantChatParams(
@@ -390,7 +394,14 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         sseEmitterHelper.ragProcess(contentRetriever, user, sseAskParams, (response, promptMeta, answerMeta) -> {
             //TODO 增强后的prompt
             String prompt = "";
-            knowledgeBaseQaRecordService.createNewRecord(user, knowledgeBase, req.getQuestion(), prompt, promptMeta.getTokens(), response, answerMeta.getTokens(), req.getModelName());
+            KnowledgeBaseQaRecord newRecord = new KnowledgeBaseQaRecord();
+            newRecord.setAiModelId(aiModelService.getIdByName(req.getModelName()));
+            newRecord.setQuestion(req.getQuestion());
+            newRecord.setPrompt(prompt);
+            newRecord.setPromptTokens(promptMeta.getTokens());
+            newRecord.setAnswer(response);
+            newRecord.setAnswerTokens(answerMeta.getTokens());
+            knowledgeBaseQaRecordService.createRecordAndReferences(user, knowledgeBase, newRecord, contentRetriever.getRetrievedEmbeddingToScore());
             userDayCostService.appendCostToUser(user, promptMeta.getTokens() + answerMeta.getTokens());
         });
     }

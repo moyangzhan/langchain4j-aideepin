@@ -6,13 +6,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Builder
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Data
-public class KbItemEmbeddingDto {
+public class KbQaRecordReferenceDto {
     private String embeddingId;
-
-    private float[] embedding;
-
     private String text;
 }

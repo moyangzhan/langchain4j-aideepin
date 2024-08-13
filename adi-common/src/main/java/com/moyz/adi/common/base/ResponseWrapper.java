@@ -30,7 +30,6 @@ public class ResponseWrapper implements ResponseBodyAdvice<Object> {
         } else if (result instanceof org.springframework.core.io.Resource) {
             return result;
         }
-        log.info("result:" + result);
         return new BaseResponse(true, result);
     }
 

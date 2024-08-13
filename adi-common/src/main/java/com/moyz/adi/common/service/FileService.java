@@ -48,7 +48,14 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
                 .eq(AdiFile::getIsDeleted, false)
                 .oneOpt();
         if (existFile.isPresent()) {
-            return existFile.get();
+            AdiFile adiFile = existFile.get();
+            boolean exist = FileUtil.checkIfExist(adiFile.getPath());
+            if (exist) {
+                return adiFile;
+            } else {
+                log.warn("文件不存在,删除记录以便后续重新生成,fileId:{},uuid:{},md5:{}", adiFile.getId(), adiFile.getUuid(), adiFile.getMd5());
+                this.lambdaUpdate().eq(AdiFile::getId, adiFile.getId()).set(AdiFile::getIsDeleted, true).update();
+            }
         }
         String uuid = UUID.randomUUID().toString().replace("-", "");
         Pair<String, String> originalFile = FileUtil.saveToLocal(file, filePath, uuid);

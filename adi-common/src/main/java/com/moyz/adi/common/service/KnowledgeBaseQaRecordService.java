@@ -5,20 +5,20 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.moyz.adi.common.base.ThreadContext;
+import com.moyz.adi.common.dto.KbItemEmbeddingDto;
 import com.moyz.adi.common.dto.KbQaRecordDto;
-import com.moyz.adi.common.entity.AiModel;
-import com.moyz.adi.common.entity.KnowledgeBase;
-import com.moyz.adi.common.entity.KnowledgeBaseQaRecord;
-import com.moyz.adi.common.entity.User;
+import com.moyz.adi.common.dto.KbQaRecordReferenceDto;
+import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.KnowledgeBaseQaRecordMapper;
 import com.moyz.adi.common.util.MPPageUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
-import java.util.UUID;
+import java.util.*;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_DATA_NOT_FOUND;
 import static com.moyz.adi.common.util.LocalCache.MODEL_ID_TO_OBJ;
@@ -28,7 +28,10 @@ import static com.moyz.adi.common.util.LocalCache.MODEL_ID_TO_OBJ;
 public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRecordMapper, KnowledgeBaseQaRecord> {
 
     @Resource
-    private AiModelService aiModelService;
+    private KnowledgeBaseQaRecordReferenceService knowledgeBaseQaRecordReferenceService;
+
+    @Resource
+    private KnowledgeBaseEmbeddingService knowledgeBaseEmbeddingService;
 
     public Page<KbQaRecordDto> search(String kbUuid, String keyword, Integer currentPage, Integer pageSize) {
         LambdaQueryWrapper<KnowledgeBaseQaRecord> wrapper = new LambdaQueryWrapper<>();
@@ -53,35 +56,50 @@ public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRec
     }
 
     /**
-     * 创建新的QA记录
+     * 创建新的QA及引用记录
      *
-     * @param knowledgeBase 所属的知识库
-     * @param question      用户的原始问题
-     * @param prompt        根据{question}生成的最终提示词
-     * @param promptTokens  提示词消耗的token
-     * @param answer        答案
-     * @param answerTokens  答案消耗的token
-     * @param modelName     ai model name
-     * @return
+     * @param user
+     * @param knowledgeBase    所属的知识库
+     * @param newRecord
+     * @param embeddingToScore
      */
-    public KnowledgeBaseQaRecord createNewRecord(User user, KnowledgeBase knowledgeBase, String question, String prompt, int promptTokens, String answer, int answerTokens, String modelName) {
+    public void createRecordAndReferences(User user, KnowledgeBase knowledgeBase, KnowledgeBaseQaRecord newRecord, Map<String, Double> embeddingToScore) {
         String uuid = UUID.randomUUID().toString().replace("-", "");
-        KnowledgeBaseQaRecord newObj = new KnowledgeBaseQaRecord();
-        newObj.setKbId(knowledgeBase.getId());
-        newObj.setKbUuid((knowledgeBase.getUuid()));
-        newObj.setUuid(uuid);
-        newObj.setUserId(user.getId());
-        newObj.setQuestion(question);
-        newObj.setPrompt(prompt);
-        newObj.setPromptTokens(promptTokens);
-        newObj.setAnswer(answer);
-        newObj.setAnswerTokens(answerTokens);
-        newObj.setAiModelId(aiModelService.getIdByName(modelName));
-        baseMapper.insert(newObj);
+        newRecord.setKbId(knowledgeBase.getId());
+        newRecord.setKbUuid((knowledgeBase.getUuid()));
+        newRecord.setUuid(uuid);
+        newRecord.setUserId(user.getId());
+        baseMapper.insert(newRecord);
 
-        LambdaQueryWrapper<KnowledgeBaseQaRecord> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(KnowledgeBaseQaRecord::getUuid, uuid);
-        return baseMapper.selectOne(wrapper);
+        for (String embeddingId : embeddingToScore.keySet()) {
+            KnowledgeBaseQaRecordReference recordReference = new KnowledgeBaseQaRecordReference();
+            recordReference.setQaRecordId(newRecord.getId());
+            recordReference.setEmbeddingId(embeddingId);
+            recordReference.setScore(embeddingToScore.get(embeddingId));
+            recordReference.setUserId(user.getId());
+            knowledgeBaseQaRecordReferenceService.save(recordReference);
+        }
+    }
+
+    public List<KbQaRecordReferenceDto> listReferences(String uuid) {
+        List<KnowledgeBaseQaRecordReference> recordReferences = knowledgeBaseQaRecordReferenceService.listByQaUuid(uuid);
+        if (CollectionUtils.isEmpty(recordReferences)) {
+            return Collections.emptyList();
+        }
+        List<String> embeddingIds = recordReferences.stream().map(KnowledgeBaseQaRecordReference::getEmbeddingId).toList();
+        if (CollectionUtils.isEmpty(embeddingIds)) {
+            return Collections.emptyList();
+        }
+        List<KnowledgeBaseEmbedding> embeddings = knowledgeBaseEmbeddingService.listByEmbeddingIds(embeddingIds);
+        List<KbQaRecordReferenceDto> result = new ArrayList<>();
+        for (KnowledgeBaseEmbedding embedding : embeddings) {
+            KbQaRecordReferenceDto newOne = KbQaRecordReferenceDto.builder()
+                    .embeddingId(embedding.getEmbeddingId().toString())
+                    .text(embedding.getText())
+                    .build();
+            result.add(newOne);
+        }
+        return result;
     }
 
     public boolean softDelete(String uuid) {

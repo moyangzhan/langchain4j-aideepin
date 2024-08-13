@@ -82,8 +82,6 @@ VALUES ('gpt-3.5-turbo', 'text', 'openai', 16385, 4096, false);
 INSERT INTO adi_ai_model (name, type, platform, is_enable)
 VALUES ('dall-e-2', 'image', 'openai', false);
 INSERT INTO adi_ai_model (name, type, platform, is_enable)
-VALUES ('dall-e-3', 'image', 'openai', false);
-INSERT INTO adi_ai_model (name, type, platform, is_enable)
 VALUES ('qwen-turbo', 'text', 'dashscope', false);
 INSERT INTO adi_ai_model (name, type, platform, is_enable, setting)
 VALUES ('ERNIE-Speed-8K', 'text', 'qianfan', false, '{"endpoint":"ernie_speed"}');
@@ -639,6 +637,25 @@ create trigger trigger_kb_qa_record_update_time
     on adi_knowledge_base_qa_record
     for each row
 execute procedure update_modified_column();
+
+create table adi_knowledge_base_qa_record_reference
+(
+    id           bigserial primary key,
+    qa_record_id bigint        DEFAULT 0                     NOT NULL,
+    embedding_id varchar(36)   DEFAULT ''::character varying NOT NULL,
+    score        numeric(3, 2) default 0                     not null,
+    user_id      bigint        DEFAULT 0                     NOT NULL
+);
+
+comment on table adi_knowledge_base_qa_record_reference is '知识库-提问记录-引用列表';
+
+comment on column adi_knowledge_base_qa_record_reference.qa_record_id is '提问记录id';
+
+comment on column adi_knowledge_base_qa_record_reference.embedding_id is '向量uuid';
+
+comment on column adi_knowledge_base_qa_record_reference.score is '评分';
+
+comment on column adi_knowledge_base_qa_record_reference.user_id is '所属用户';
 
 -- ai search
 create table adi_ai_search_record

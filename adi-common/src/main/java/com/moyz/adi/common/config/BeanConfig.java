@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.moyz.adi.common.base.SearchEngineRespTypeHandler;
+import com.moyz.adi.common.base.UUIDTypeHandler;
 import com.moyz.adi.common.dto.SearchEngineResp;
 import com.moyz.adi.common.service.RAGService;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
@@ -30,6 +31,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.client.RestTemplate;
 
 import javax.sql.DataSource;
+import java.util.UUID;
 
 @Slf4j
 @Configuration
@@ -113,6 +115,7 @@ public class BeanConfig {
         }
         bean.getConfiguration().getTypeHandlerRegistry().register(PGvector.class, PostgresVectorTypeHandler.class);
         bean.getConfiguration().getTypeHandlerRegistry().register(SearchEngineResp.class, SearchEngineRespTypeHandler.class);
+        bean.getConfiguration().getTypeHandlerRegistry().register(UUID.class, UUIDTypeHandler.class);
         return bean.getObject();
     }
 
