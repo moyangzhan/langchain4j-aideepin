@@ -4,14 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
-import com.google.common.collect.ImmutableMap;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.cosntant.RedisKeyConstant;
 import com.moyz.adi.common.dto.KbEditReq;
 import com.moyz.adi.common.dto.KbInfoResp;
 import com.moyz.adi.common.dto.KbSearchReq;
-import com.moyz.adi.common.dto.QAReq;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.LLMContext;
@@ -28,7 +26,6 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.parser.apache.pdfbox.ApachePdfBoxDocumentParser;
 import dev.langchain4j.data.document.parser.apache.poi.ApachePoiDocumentParser;
-import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ArrayUtils;
@@ -291,7 +288,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 .update();
     }
 
-    public SseEmitter sseAsk(String kbUuid, QAReq req) {
+    public SseEmitter sseAsk(String qaRecordUuid) {
         checkRequestTimesOrThrow();
         SseEmitter sseEmitter = new SseEmitter();
         User user = ThreadContext.getCurrentUser();
@@ -299,7 +296,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             return sseEmitter;
         }
         sseEmitterHelper.startSse(user, sseEmitter);
-        _this.retrieveAndPushToLLM(user, sseEmitter, kbUuid, req);
+        _this.retrieveAndPushToLLM(user, sseEmitter, qaRecordUuid);
         return sseEmitter;
     }
 
@@ -358,30 +355,31 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     /**
      * 文档召回并将请求发送给LLM
      *
-     * @param user       当前提问的用户
-     * @param sseEmitter sse emitter
-     * @param kbUuid     知识库uuid
-     * @param req        请求信息
+     * @param user         当前提问的用户
+     * @param sseEmitter   sse emitter
+     * @param qaRecordUuid 知识库uuid
      */
     @Async
-    public void retrieveAndPushToLLM(User user, SseEmitter sseEmitter, String kbUuid, QAReq req) {
-        log.info("retrieveAndPushToLLM,kbUuid:{},userId:{}", kbUuid, user.getId());
-        KnowledgeBase knowledgeBase = getOrThrow(kbUuid);
-        Map<String, String> metadataCond = Map.of(AdiConstant.EmbeddingMetadataKey.KB_UUID, kbUuid);
+    public void retrieveAndPushToLLM(User user, SseEmitter sseEmitter, String qaRecordUuid) {
+        log.info("retrieveAndPushToLLM,qaRecordUuid:{},userId:{}", qaRecordUuid, user.getId());
+        KnowledgeBaseQaRecord qaRecord = knowledgeBaseQaRecordService.getOrThrow(qaRecordUuid);
+        KnowledgeBase knowledgeBase = getOrThrow(qaRecord.getKbUuid());
+        AiModel aiModel = aiModelService.getByIdOrThrow(qaRecord.getAiModelId());
 
+        Map<String, String> metadataCond = Map.of(AdiConstant.EmbeddingMetadataKey.KB_UUID, qaRecord.getKbUuid());
         int maxResults = knowledgeBase.getRagMaxResults();
         //maxResults < 1 表示由系统自动计算大小
         if (maxResults < 1) {
-            maxResults = RAGService.getRetrieveMaxResults(req.getQuestion(), LLMContext.getAiModel(req.getModelName()).getContextWindow());
+            maxResults = RAGService.getRetrieveMaxResults(qaRecord.getQuestion(), LLMContext.getAiModel(aiModel.getName()).getContextWindow());
         }
         AdiEmbeddingStoreContentRetriever contentRetriever = ragService.createRetriever(metadataCond, maxResults, knowledgeBase.getRagMinScore(), true);
 
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setAssistantChatParams(
                 AssistantChatParams.builder()
-                        .messageId(kbUuid)
+                        .messageId(qaRecord.getKbUuid())
                         .systemMessage(StringUtils.EMPTY)
-                        .userMessage(req.getQuestion())
+                        .userMessage(qaRecord.getQuestion())
                         .build()
         );
         sseAskParams.setLlmBuilderProperties(
@@ -390,18 +388,18 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                         .build()
         );
         sseAskParams.setSseEmitter(sseEmitter);
-        sseAskParams.setModelName(req.getModelName());
+        sseAskParams.setModelName(aiModel.getName());
         sseEmitterHelper.ragProcess(contentRetriever, user, sseAskParams, (response, promptMeta, answerMeta) -> {
             //TODO 增强后的prompt
             String prompt = "";
-            KnowledgeBaseQaRecord newRecord = new KnowledgeBaseQaRecord();
-            newRecord.setAiModelId(aiModelService.getIdByName(req.getModelName()));
-            newRecord.setQuestion(req.getQuestion());
-            newRecord.setPrompt(prompt);
-            newRecord.setPromptTokens(promptMeta.getTokens());
-            newRecord.setAnswer(response);
-            newRecord.setAnswerTokens(answerMeta.getTokens());
-            knowledgeBaseQaRecordService.createRecordAndReferences(user, knowledgeBase, newRecord, contentRetriever.getRetrievedEmbeddingToScore());
+            KnowledgeBaseQaRecord updateRecord = new KnowledgeBaseQaRecord();
+            updateRecord.setId(qaRecord.getId());
+            updateRecord.setPrompt(prompt);
+            updateRecord.setPromptTokens(promptMeta.getTokens());
+            updateRecord.setAnswer(response);
+            updateRecord.setAnswerTokens(answerMeta.getTokens());
+            knowledgeBaseQaRecordService.updateById(updateRecord);
+            knowledgeBaseQaRecordService.createReferences(user, qaRecord.getId(), contentRetriever.getRetrievedEmbeddingToScore());
             userDayCostService.appendCostToUser(user, promptMeta.getTokens() + answerMeta.getTokens());
         });
     }

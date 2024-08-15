@@ -6,11 +6,10 @@ import org.springframework.validation.annotation.Validated;
 
 @Validated
 @Data
-public class QAReq {
+public class QARecordReq {
 
     @NotBlank
-    private String qaRecordUuid;
-    
-    @NotBlank
+    private String question;
+
     private String modelName;
 }

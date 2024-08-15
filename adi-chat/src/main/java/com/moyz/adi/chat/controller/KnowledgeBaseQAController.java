@@ -3,7 +3,9 @@ package com.moyz.adi.chat.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.dto.KbQaRecordDto;
 import com.moyz.adi.common.dto.KbQaRecordReferenceDto;
+import com.moyz.adi.common.dto.QARecordReq;
 import com.moyz.adi.common.dto.QAReq;
+import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.service.KnowledgeBaseQaRecordService;
 import com.moyz.adi.common.service.KnowledgeBaseService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,10 +31,16 @@ public class KnowledgeBaseQAController {
     @Resource
     private KnowledgeBaseQaRecordService knowledgeBaseQaRecordService;
 
+    @PostMapping("/record/add/{kbUuid}")
+    public KbQaRecordDto add(@PathVariable String kbUuid, @RequestBody @Validated QARecordReq req) {
+        KnowledgeBase knowledgeBase = knowledgeBaseService.getOrThrow(kbUuid);
+        return knowledgeBaseQaRecordService.add(knowledgeBase, req);
+    }
+
     @Operation(summary = "流式响应")
-    @PostMapping(value = "/process/{kbUuid}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter sseAsk(@PathVariable String kbUuid, @RequestBody @Validated QAReq req) {
-        return knowledgeBaseService.sseAsk(kbUuid, req);
+    @PostMapping(value = "/process/{qaRecordUuid}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter sseAsk(@PathVariable String qaRecordUuid) {
+        return knowledgeBaseService.sseAsk(qaRecordUuid);
     }
 
     @GetMapping("/record/search")
