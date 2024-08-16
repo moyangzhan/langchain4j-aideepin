@@ -6,7 +6,7 @@
         from adi_knowledge_base
         where is_deleted = false
         <if test="keyword != null and keyword != ''">
-            and title like "%"#{keyword}"%"
+            and title like CONCAT('%', #{keyword}, '%')
         </if>
         order by update_time desc
     </select>
@@ -24,7 +24,7 @@
             </otherwise>
         </choose>
         <if test="keyword != null and keyword != ''">
-            and title like "%"#{keyword}"%"
+            and title like CONCAT('%', #{keyword}, '%')
         </if>
         order by star_count,update_time desc
     </select>
