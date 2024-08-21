@@ -103,4 +103,5 @@ public class RedisKeyConstant {
     public static final String STATISTIC_KNOWLEDGE_BASE = "kb";
     public static final String STATISTIC_TOKEN_COST = "token_cost";
     public static final String STATISTIC_CONVERSATION = "conversation";
+    public static final String STATISTIC_IMAGE_COST = "image_cost";
 }

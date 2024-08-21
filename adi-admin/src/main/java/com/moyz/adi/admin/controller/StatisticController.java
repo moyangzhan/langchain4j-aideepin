@@ -23,6 +23,7 @@ public class StatisticController {
         result.setUserStatistic(statisticService.calUserStat());
         result.setTokenCostStatistic(statisticService.calTokenCostStat());
         result.setConvStatistic(statisticService.calConvStatistic());
+        result.setImageCostStatistic(statisticService.calImageCostStat());
         return result;
     }
 }

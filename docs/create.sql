@@ -455,6 +455,7 @@ create table adi_knowledge_base
     title           varchar(250)  default ''::character varying not null,
     remark          text          default ''::character varying not null,
     is_public       boolean       default false                 not null,
+    is_strict       boolean       default true                  not null,
     rag_max_results int           default 3                     not null,
     rag_min_score   numeric(2, 1) default 0.6                   not null,
     rag_max_overlap int           default 0                     not null,
@@ -477,6 +478,8 @@ comment on column adi_knowledge_base.title is '知识库名称';
 comment on column adi_knowledge_base.remark is '知识库描述';
 
 comment on column adi_knowledge_base.is_public is '是否公开';
+
+comment on column adi_knowledge_base.is_strict is '是否严格模式,严格模式：严格匹配知识库，知识库中如无搜索结果，直接返回无答案;非严格模式：非严格匹配知识库，知识库中如无搜索结果，将用户提问传给LLM继续请求答案';
 
 comment on column adi_knowledge_base.rag_max_results is '设置召回向量最大数量,默认为0,表示由系统根据模型的contentWindow自动调整';
 

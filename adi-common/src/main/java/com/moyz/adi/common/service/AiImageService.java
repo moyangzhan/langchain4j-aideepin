@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.text.MessageFormat;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -354,5 +355,27 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
 
     private void softDel(Long id) {
         _this.lambdaUpdate().eq(AiImage::getId, id).set(AiImage::getIsDeleted, true).update();
+    }
+
+    public int sumTodayCost() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime begin = LocalDateTime.of(now.getYear(), now.getMonth(), now.getDayOfMonth(), 0, 0);
+        LocalDateTime end = LocalDateTime.of(now.getYear(), now.getMonth(), now.getDayOfMonth(), 23, 59, 59);
+        return this.lambdaQuery()
+                .between(AiImage::getCreateTime, begin, end)
+                .eq(AiImage::getIsDeleted, false)
+                .count()
+                .intValue();
+    }
+
+    public int sumCurrMonthCost() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime begin = LocalDateTime.of(now.getYear(), now.getMonth(), 1, 0, 0);
+        LocalDateTime end = LocalDateTime.of(now.getYear(), now.getMonth(), 1, 23, 59, 59).plusMonths(1).minusDays(1);
+        return this.lambdaQuery()
+                .between(AiImage::getCreateTime, begin, end)
+                .eq(AiImage::getIsDeleted, false)
+                .count()
+                .intValue();
     }
 }

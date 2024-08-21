@@ -103,16 +103,11 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     }
 
     public KnowledgeBase saveOrUpdate(KbEditReq kbEditReq) {
-        String uuid = kbEditReq.getUuid();
         KnowledgeBase knowledgeBase = new KnowledgeBase();
-        BeanUtils.copyProperties(kbEditReq, knowledgeBase, "id");
-        if (null != kbEditReq.getIsPublic()) {
-            knowledgeBase.setIsPublic(kbEditReq.getIsPublic());
-        }
+        BeanUtils.copyProperties(kbEditReq, knowledgeBase, "id", "uuid");
         if (null == kbEditReq.getId() || kbEditReq.getId() < 1) {
             User user = ThreadContext.getCurrentUser();
-            uuid = UUID.randomUUID().toString().replace("-", "");
-            knowledgeBase.setUuid(uuid);
+            knowledgeBase.setUuid(UUID.randomUUID().toString().replace("-", ""));
             knowledgeBase.setOwnerId(user.getId());
             knowledgeBase.setOwnerUuid(user.getUuid());
             knowledgeBase.setOwnerName(user.getName());
@@ -123,7 +118,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             baseMapper.updateById(knowledgeBase);
         }
         return ChainWrappers.lambdaQueryChain(baseMapper)
-                .eq(KnowledgeBase::getUuid, uuid)
+                .eq(KnowledgeBase::getId, kbEditReq.getId())
                 .one();
     }
 
@@ -372,7 +367,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         if (maxResults < 1) {
             maxResults = RAGService.getRetrieveMaxResults(qaRecord.getQuestion(), LLMContext.getAiModel(aiModel.getName()).getContextWindow());
         }
-        AdiEmbeddingStoreContentRetriever contentRetriever = ragService.createRetriever(metadataCond, maxResults, knowledgeBase.getRagMinScore(), true);
+        AdiEmbeddingStoreContentRetriever contentRetriever = ragService.createRetriever(metadataCond, maxResults, knowledgeBase.getRagMinScore(), knowledgeBase.getIsStrict());
 
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setAssistantChatParams(

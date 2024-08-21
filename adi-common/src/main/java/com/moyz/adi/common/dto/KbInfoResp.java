@@ -13,6 +13,7 @@ public class KbInfoResp {
     private String title;
     private String remark;
     private Boolean isPublic;
+    private Boolean isStrict;
     private Integer starCount;
     private Integer ragMaxResults;
     private Double ragMinScore;

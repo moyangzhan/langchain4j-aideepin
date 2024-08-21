@@ -26,6 +26,10 @@ public class KnowledgeBase extends BaseEntity {
     @TableField("is_public")
     private Boolean isPublic;
 
+    @Schema(title = "是否严格模式")
+    @TableField("is_strict")
+    private Boolean isStrict;
+
     @Schema(title = "点赞数")
     @TableField("star_count")
     private Integer starCount;

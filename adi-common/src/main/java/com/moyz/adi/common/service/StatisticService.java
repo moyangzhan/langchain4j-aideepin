@@ -2,10 +2,7 @@ package com.moyz.adi.common.service;
 
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.UserStatusEnum;
-import com.moyz.adi.common.vo.ConvStatistic;
-import com.moyz.adi.common.vo.KbStatistic;
-import com.moyz.adi.common.vo.TokenCostStatistic;
-import com.moyz.adi.common.vo.UserStatistic;
+import com.moyz.adi.common.vo.*;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -33,6 +30,9 @@ public class StatisticService {
 
     @Resource
     private ConversationService conversationService;
+
+    @Resource
+    private AiImageService aiImageService;
 
     @Cacheable(value = STATISTIC + ":" + STATISTIC_USER)
     public UserStatistic calUserStat() {
@@ -68,6 +68,14 @@ public class StatisticService {
         aiModelStat.setTodayTokenCost(todayCost);
         aiModelStat.setMonthTokenCost(currentMonthCost);
         return aiModelStat;
+    }
+
+    @Cacheable(value = STATISTIC + ":" + STATISTIC_IMAGE_COST)
+    public ImageCostStatistic calImageCostStat() {
+        return ImageCostStatistic.builder()
+                .todayCost(aiImageService.sumTodayCost())
+                .monthCost(aiImageService.sumCurrMonthCost())
+                .build();
     }
 
     @Cacheable(value = STATISTIC + ":" + STATISTIC_KNOWLEDGE_BASE)
