@@ -45,11 +45,9 @@ public class TokenFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
-        String token = "";
-        if (requestUri.indexOf("/image/") == 0 || requestUri.indexOf("/file/") == 0) {
+        String token = request.getHeader(AUTHORIZATION);
+        if (StringUtils.isBlank(token) && (requestUri.indexOf("/image/") == 0 || requestUri.indexOf("/file/") == 0)) {
             token = request.getParameter("token");
-        } else {
-            token = request.getHeader(AUTHORIZATION);
         }
         if (StringUtils.isBlank(token)) {
             log.warn("未授权:{}", requestUri);

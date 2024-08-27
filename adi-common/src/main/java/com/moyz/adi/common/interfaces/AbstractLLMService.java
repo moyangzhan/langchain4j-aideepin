@@ -3,6 +3,7 @@ package com.moyz.adi.common.interfaces;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.util.AdiDefaultRetrievalAugmentor;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.util.MapDBChatMemoryStore;
@@ -29,7 +30,6 @@ import java.io.IOException;
 import java.net.Proxy;
 import java.util.UUID;
 
-import static com.moyz.adi.common.enums.ErrorEnum.B_BREAK_SEARCH;
 import static com.moyz.adi.common.enums.ErrorEnum.B_LLM_SERVICE_DISABLED;
 
 @Slf4j
@@ -39,7 +39,7 @@ public abstract class AbstractLLMService<T> {
     protected AiModel aiModel;
     protected T modelPlatformSetting;
 
-    public AbstractLLMService(AiModel aiModel, String settingName, Class<T> clazz) {
+    protected AbstractLLMService(AiModel aiModel, String settingName, Class<T> clazz) {
         this.aiModel = aiModel;
         String st = LocalCache.CONFIGS.get(settingName);
         modelPlatformSetting = JsonUtil.fromJson(st, clazz);
@@ -84,35 +84,46 @@ public abstract class AbstractLLMService<T> {
             log.error("llm service is disabled");
             throw new BaseException(B_LLM_SERVICE_DISABLED);
         }
-        ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.builder()
-                .id(memoryId)
-                .maxMessages(6)
-                .chatMemoryStore(MapDBChatMemoryStore.getSingleton())
-                .build();
-        QueryTransformer queryTransformer = new CompressingQueryTransformer(buildChatLLM(params.getLlmBuilderProperties()));
-        RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
-                .queryTransformer(queryTransformer)
-                .contentRetriever(contentRetriever)
-                .build();
-        IChatAssistant assistant = AiServices.builder(IChatAssistant.class)
-                .streamingChatLanguageModel(buildStreamingChatLLM(params.getLlmBuilderProperties()))
-                .retrievalAugmentor(retrievalAugmentor)
-                .chatMemoryProvider(chatMemoryProvider)
-                .build();
-
-        AssistantChatParams assistantChatParams = params.getAssistantChatParams();
         TokenStream tokenStream;
-        if (StringUtils.isNotBlank(assistantChatParams.getSystemMessage())) {
-            tokenStream = assistant.chat(assistantChatParams.getMessageId(), assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage());
+        AssistantChatParams assistantChatParams = params.getAssistantChatParams();
+        //TODO 待计算历史对话内容耗费的TOKEN数量，并判断LLM的contextWindow是否容纳[历史对话+用户问题+召回文档]的长度
+        if (StringUtils.isNotBlank(assistantChatParams.getMessageId())) {
+            ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.builder()
+                    .id(memoryId)
+                    .maxMessages(2)
+                    .chatMemoryStore(MapDBChatMemoryStore.getSingleton())
+                    .build();
+            QueryTransformer queryTransformer = new CompressingQueryTransformer(buildChatLLM(params.getLlmBuilderProperties()));
+            RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
+                    .queryTransformer(queryTransformer)
+                    .contentRetriever(contentRetriever)
+                    .build();
+            IChatAssistant assistant = AiServices.builder(IChatAssistant.class)
+                    .streamingChatLanguageModel(buildStreamingChatLLM(params.getLlmBuilderProperties()))
+                    .retrievalAugmentor(retrievalAugmentor)
+                    .chatMemoryProvider(chatMemoryProvider)
+                    .build();
+            if (StringUtils.isNotBlank(assistantChatParams.getSystemMessage())) {
+                tokenStream = assistant.chatWith(assistantChatParams.getMessageId(), assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage());
+            } else {
+                tokenStream = assistant.chatWithMemory(assistantChatParams.getMessageId(), assistantChatParams.getUserMessage());
+            }
         } else {
-            tokenStream = assistant.chatWithoutSystemMessage(assistantChatParams.getMessageId(), assistantChatParams.getUserMessage());
+            IChatAssistant assistant = AiServices.builder(IChatAssistant.class)
+                    .streamingChatLanguageModel(buildStreamingChatLLM(params.getLlmBuilderProperties()))
+                    .contentRetriever(contentRetriever)
+                    .build();
+            if (StringUtils.isNotBlank(assistantChatParams.getSystemMessage())) {
+                tokenStream = assistant.chatWithSystem(assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage());
+            } else {
+                tokenStream = assistant.chatSimple(assistantChatParams.getUserMessage());
+            }
         }
         registerTokenStreamCallBack(tokenStream, params, consumer);
     }
 
     /**
-     * 普通聊天，直接将用户提问及历史消息发送给AI
-     * （由于RetrievalAugmentor强制要求提供ContentRetriever,并且prompt发给Ai前一定要过一遍本地EmbeddingStore，影响速度，故先暂时不使用Langchain4j提供的查询压缩）
+     * 普通聊天，将压缩过的用户提问及历史消息发送给AI
      *
      * @param params
      * @param consumer
@@ -127,6 +138,7 @@ public abstract class AbstractLLMService<T> {
         log.info("sseChat,messageId:{}", assistantChatParams.getMessageId());
 
         TokenStream tokenStream;
+        //TODO 待计算历史对话内容耗费的TOKEN数量，并判断LLM的contextWindow是否容纳[历史对话+用户问题+召回文档]的长度
         //chat with memory
         if (StringUtils.isNotBlank(assistantChatParams.getMessageId())) {
             ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.builder()
@@ -134,25 +146,30 @@ public abstract class AbstractLLMService<T> {
                     .maxMessages(6)
                     .chatMemoryStore(MapDBChatMemoryStore.getSingleton())
                     .build();
+            QueryTransformer queryTransformer = new CompressingQueryTransformer(buildChatLLM(params.getLlmBuilderProperties()));
+            RetrievalAugmentor retrievalAugmentor = AdiDefaultRetrievalAugmentor.builder()
+                    .queryTransformer(queryTransformer)
+                    .build();
             IChatAssistant assistant = AiServices.builder(IChatAssistant.class)
                     .streamingChatLanguageModel(buildStreamingChatLLM(params.getLlmBuilderProperties()))
                     .chatMemoryProvider(chatMemoryProvider)
+                    .retrievalAugmentor(retrievalAugmentor)
                     .build();
             if (StringUtils.isNotBlank(assistantChatParams.getSystemMessage())) {
-                tokenStream = assistant.chat(assistantChatParams.getMessageId(), assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage());
+                tokenStream = assistant.chatWith(assistantChatParams.getMessageId(), assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage());
             } else {
-                tokenStream = assistant.chatWithoutSystemMessage(assistantChatParams.getMessageId(), assistantChatParams.getUserMessage());
+                tokenStream = assistant.chatWithMemory(assistantChatParams.getMessageId(), assistantChatParams.getUserMessage());
             }
         }
         //chat without memory
         else {
-            IChatAssistantWithoutMemory assistant = AiServices.builder(IChatAssistantWithoutMemory.class)
+            IChatAssistant assistant = AiServices.builder(IChatAssistant.class)
                     .streamingChatLanguageModel(buildStreamingChatLLM(params.getLlmBuilderProperties()))
                     .build();
             if (StringUtils.isNotBlank(assistantChatParams.getSystemMessage())) {
-                tokenStream = assistant.chat(assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage());
+                tokenStream = assistant.chatWithSystem(assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage());
             } else {
-                tokenStream = assistant.chatWithoutSystemMessage(assistantChatParams.getUserMessage());
+                tokenStream = assistant.chatSimple(assistantChatParams.getUserMessage());
             }
         }
         registerTokenStreamCallBack(tokenStream, params, consumer);
@@ -184,7 +201,7 @@ public abstract class AbstractLLMService<T> {
                     PromptMeta questionMeta = new PromptMeta(response.tokenUsage().inputTokenCount(), questionUuid);
                     AnswerMeta answerMeta = new AnswerMeta(response.tokenUsage().outputTokenCount(), UUID.randomUUID().toString().replace("-", ""));
                     ChatMeta chatMeta = new ChatMeta(questionMeta, answerMeta);
-                    String meta = JsonUtil.toJson(chatMeta).replaceAll("\r\n", "");
+                    String meta = JsonUtil.toJson(chatMeta).replace("\r\n", "");
                     log.info("meta:" + meta);
                     try {
                         params.getSseEmitter().send(SseEmitter.event().name(AdiConstant.SSEEventName.DONE).data(" [META]" + meta));

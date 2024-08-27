@@ -1,5 +1,7 @@
 package com.moyz.adi.common.service;
 
+import com.moyz.adi.common.enums.ErrorEnum;
+import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.AdiEmbeddingStoreContentRetriever;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
@@ -8,8 +10,6 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2EmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
-import dev.langchain4j.rag.content.retriever.ContentRetriever;
-import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.filter.Filter;
@@ -136,17 +136,21 @@ public class RAGService {
     /**
      * 根据模型的contentWindow计算使用该模型最多召回的文档数量
      *
-     * @param userQuestion  用户问题
+     * @param userQuestion  用户的问题
      * @param contentWindow AI模型所能容纳的窗口大小
      * @return
      */
     public static int getRetrieveMaxResults(String userQuestion, int contentWindow) {
+        if (contentWindow == 0) {
+            throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
+        }
         int questionLength = new OpenAiTokenizer(GPT_3_5_TURBO).estimateTokenCountInText(userQuestion);
         int maxRetrieveDocLength = contentWindow - questionLength;
         if (maxRetrieveDocLength < RAG_MAX_SEGMENT_SIZE_IN_TOKENS) {
-            return RAG_MAX_RESULTS_DEFAULT;
-        } else if (maxRetrieveDocLength > RAG_NUMBER_RETURN_MAX * RAG_MAX_SEGMENT_SIZE_IN_TOKENS) {
-            return RAG_NUMBER_RETURN_MAX;
+            log.warn("用户问题太长了，没有足够的token数量留给知识库召回的内容");
+            return 0;
+        } else if (maxRetrieveDocLength > RAG_RETRIEVE_NUMBER_MAX * RAG_MAX_SEGMENT_SIZE_IN_TOKENS) {
+            return RAG_RETRIEVE_NUMBER_MAX;
         } else {
             return maxRetrieveDocLength / RAG_MAX_SEGMENT_SIZE_IN_TOKENS;
         }

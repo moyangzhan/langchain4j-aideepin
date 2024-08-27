@@ -45,6 +45,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 
+import static com.moyz.adi.common.cosntant.AdiConstant.LLM_CONTEXT_WINDOW_DEFAULT;
 import static com.moyz.adi.common.cosntant.AdiConstant.POI_DOC_TYPES;
 import static com.moyz.adi.common.cosntant.AdiConstant.SysConfigKey.QUOTA_BY_QA_ASK_DAILY;
 import static com.moyz.adi.common.cosntant.RedisKeyConstant.KB_STATISTIC_RECALCULATE_SIGNAL;
@@ -362,17 +363,23 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         AiModel aiModel = aiModelService.getByIdOrThrow(qaRecord.getAiModelId());
 
         Map<String, String> metadataCond = Map.of(AdiConstant.EmbeddingMetadataKey.KB_UUID, qaRecord.getKbUuid());
+        int contextWindow = aiModel.getContextWindow() > 0 ? aiModel.getContextWindow(): LLM_CONTEXT_WINDOW_DEFAULT;
         int maxResults = knowledgeBase.getRagMaxResults();
-        //maxResults < 1 表示由系统自动计算大小
+        //maxResults < 1 表示由系统根据设置的模型contextWindow自动计算大小
         if (maxResults < 1) {
-            maxResults = RAGService.getRetrieveMaxResults(qaRecord.getQuestion(), LLMContext.getAiModel(aiModel.getName()).getContextWindow());
+            maxResults = RAGService.getRetrieveMaxResults(qaRecord.getQuestion(), contextWindow);
+        }
+        //用户的问题内容过长，无需再召回文档，严格模式下直接返回异常提示
+        if (maxResults == 0 && knowledgeBase.getIsStrict()) {
+            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "提问内容过长，最多不超过" + contextWindow + "Token");
+            return;
         }
         AdiEmbeddingStoreContentRetriever contentRetriever = ragService.createRetriever(metadataCond, maxResults, knowledgeBase.getRagMinScore(), knowledgeBase.getIsStrict());
 
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setAssistantChatParams(
                 AssistantChatParams.builder()
-                        .messageId(qaRecord.getKbUuid())
+                        .messageId(qaRecord.getKbUuid() + "_" + user.getUuid())
                         .systemMessage(StringUtils.EMPTY)
                         .userMessage(qaRecord.getQuestion())
                         .build()

@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 
+import static com.moyz.adi.common.cosntant.AdiConstant.LLM_CONTEXT_WINDOW_DEFAULT;
 import static com.moyz.adi.common.enums.ErrorEnum.B_NO_ANSWER;
 
 /**
@@ -214,7 +215,11 @@ public class SearchService {
         }
 
         log.info("Create prompt");
-        int maxResults = RAGService.getRetrieveMaxResults(searchText, LLMContext.getAiModel(modelName).getContextWindow());
+        int contextWindow = LLMContext.getAiModel(modelName).getContextWindow();
+        if (contextWindow < 0) {
+            contextWindow = LLM_CONTEXT_WINDOW_DEFAULT;
+        }
+        int maxResults = RAGService.getRetrieveMaxResults(searchText, contextWindow);
         ContentRetriever contentRetriever = searchRagService.createRetriever(Map.of(AdiConstant.EmbeddingMetadataKey.SEARCH_UUID, searchUuid), maxResults, 0, false);
 
         SseAskParams sseAskParams = new SseAskParams();

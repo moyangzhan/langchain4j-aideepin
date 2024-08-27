@@ -171,6 +171,11 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
     @Override
     public List<Content> retrieve(Query query) {
 
+        int maxResults = maxResultsProvider.apply(query);
+        if(maxResults == 0){
+            return Collections.emptyList();
+        }
+
         Embedding embeddedQuery = embeddingModel.embed(query.text()).content();
 
         EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()

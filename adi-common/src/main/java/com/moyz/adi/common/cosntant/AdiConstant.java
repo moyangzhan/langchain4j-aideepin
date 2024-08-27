@@ -147,15 +147,20 @@ public class AdiConstant {
     /**
      * 文档召回默认数量
      */
-    public static final int RAG_MAX_RESULTS_DEFAULT = 3;
+    public static final int RAG_RETRIEVE_NUMBER_DEFAULT = 3;
 
     /**
      * 文档召回最大数量
      */
-    public static final int RAG_NUMBER_RETURN_MAX = 20;
+    public static final int RAG_RETRIEVE_NUMBER_MAX = 10;
 
     /**
      * 向量搜索时命中所需的最低分数
      */
     public static final double RAG_MIN_SCORE = 0.6;
+
+    /**
+     * 默认的窗口长度
+     */
+    public static final int LLM_CONTEXT_WINDOW_DEFAULT = 5000;
 }
