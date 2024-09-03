@@ -12,6 +12,7 @@ import com.moyz.adi.common.entity.KnowledgeBaseItem;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.KnowledgeBaseItemMapper;
+import com.moyz.adi.common.util.UuidUtil;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
 import jakarta.annotation.Resource;
@@ -52,7 +53,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
         }
         item.setRemark(itemEditReq.getRemark());
         if (null == itemEditReq.getId() || itemEditReq.getId() < 1) {
-            uuid = UUID.randomUUID().toString().replace("-", "");
+            uuid = UuidUtil.createShort();
             item.setUuid(uuid);
             item.setKbId(itemEditReq.getKbId());
             item.setKbUuid(itemEditReq.getKbUuid());

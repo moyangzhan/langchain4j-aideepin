@@ -51,18 +51,19 @@ COMMENT ON COLUMN public.adi_ai_image.is_deleted IS 'Flag indicating whether the
 
 CREATE TABLE public.adi_ai_model
 (
-    id             bigserial primary key,
-    name           varchar(45)   default ''                not null,
-    type           varchar(45)   default 'llm'             not null,
-    setting        varchar(500)  default ''                not null,
-    remark         varchar(1000) default '',
-    platform       varchar(45)   default ''                not null,
-    context_window int           default 0                 not null,
-    max_tokens     int           default 0                 not null,
-    is_enable      boolean       default false             NOT NULL,
-    create_time    timestamp     DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    update_time    timestamp     DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    is_deleted     boolean       DEFAULT false             NOT NULL
+    id                bigserial primary key,
+    name              varchar(45)   default ''                not null,
+    type              varchar(45)   default 'llm'             not null,
+    setting           varchar(500)  default ''                not null,
+    remark            varchar(1000) default '',
+    platform          varchar(45)   default ''                not null,
+    context_window    int           default 0                 not null,
+    max_input_tokens  int           default 0                 not null,
+    max_output_tokens int           default 0                 not null,
+    is_enable         boolean       default false             NOT NULL,
+    create_time       timestamp     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    update_time       timestamp     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    is_deleted        boolean       DEFAULT false             NOT NULL
 );
 
 COMMENT ON TABLE public.adi_ai_model IS 'ai模型';
@@ -71,20 +72,24 @@ COMMENT ON COLUMN public.adi_ai_model.name IS 'The name of the AI model';
 COMMENT ON COLUMN public.adi_ai_model.remark IS 'Additional remarks about the AI model';
 COMMENT ON COLUMN public.adi_ai_model.platform IS 'eg: openai,dashscope,qianfan,ollama';
 COMMENT ON COLUMN public.adi_ai_model.context_window IS 'LLM context window';
-COMMENT ON COLUMN public.adi_ai_model.max_tokens IS 'The maximum number of tokens that can be generated';
 COMMENT ON COLUMN public.adi_ai_model.is_enable IS '1: Normal usage, 0: Not available';
 COMMENT ON COLUMN public.adi_ai_model.create_time IS 'Timestamp of record creation';
 COMMENT ON COLUMN public.adi_ai_model.update_time IS 'Timestamp of record last update, automatically updated on each update';
 
 -- 示例数据
-INSERT INTO adi_ai_model (name, type, platform, context_window, max_tokens, is_enable)
-VALUES ('gpt-3.5-turbo', 'text', 'openai', 16385, 4096, false);
+-- https://platform.openai.com/docs/models/gpt-3-5-turbo
+INSERT INTO adi_ai_model (name, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
+VALUES ('gpt-3.5-turbo', 'text', 'openai', 16385, 12385, 4096, false);
 INSERT INTO adi_ai_model (name, type, platform, is_enable)
 VALUES ('dall-e-2', 'image', 'openai', false);
 INSERT INTO adi_ai_model (name, type, platform, is_enable)
-VALUES ('qwen-turbo', 'text', 'dashscope', false);
-INSERT INTO adi_ai_model (name, type, platform, is_enable, setting)
-VALUES ('ERNIE-Speed-8K', 'text', 'qianfan', false, '{"endpoint":"ernie_speed"}');
+VALUES ('dall-e-3', 'image', 'openai', false);
+-- https://help.aliyun.com/zh/dashscope/developer-reference/model-introduction?spm=a2c4g.11186623.0.i39
+INSERT INTO adi_ai_model (name, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
+VALUES ('qwen-turbo', 'text', 'dashscope', 8192, 6144, 1536, false);
+-- https://console.bce.baidu.com/qianfan/modelcenter/model/buildIn/detail/am-bg7n2rn2gsbb
+INSERT INTO adi_ai_model (name, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable, setting)
+VALUES ('ERNIE-Speed-8K', 'text', 'qianfan', 131072, 126976, 4096, false, '{"endpoint":"ernie-speed-128k"}');
 INSERT INTO adi_ai_model (name, type, platform, is_enable)
 VALUES ('tinydolphin', 'text', 'ollama', false);
 

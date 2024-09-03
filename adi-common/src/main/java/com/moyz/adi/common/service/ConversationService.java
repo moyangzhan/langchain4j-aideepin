@@ -12,6 +12,7 @@ import com.moyz.adi.common.entity.ConversationMessage;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.ConversationMapper;
 import com.moyz.adi.common.util.MPPageUtil;
+import com.moyz.adi.common.util.UuidUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -115,9 +116,8 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
     }
 
     public int createDefault(Long userId) {
-        String uuid = UUID.randomUUID().toString().replace("-", "");
         Conversation conversation = new Conversation();
-        conversation.setUuid(uuid);
+        conversation.setUuid(UuidUtil.createShort());
         conversation.setUserId(userId);
         conversation.setTitle("New Chat");
         return baseMapper.insert(conversation);
@@ -142,7 +142,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
         if (null != conversation) {
             throw new BaseException(A_CONVERSATION_EXIST);
         }
-        String uuid = UUID.randomUUID().toString().replace("-", "");
+        String uuid = UuidUtil.createShort();
         Conversation one = new Conversation();
         one.setUuid(uuid);
         one.setTitle(title);

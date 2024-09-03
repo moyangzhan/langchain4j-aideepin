@@ -2,6 +2,7 @@ package com.moyz.adi.common.aop;
 
 import com.moyz.adi.common.annotation.DistributeLock;
 import com.moyz.adi.common.util.RedisTemplateUtil;
+import com.moyz.adi.common.util.UuidUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -63,7 +64,7 @@ public class DistributeLockAspect {
             throw new Exception("加锁参数有误，请确认后再操作");
         }
         if (StringUtils.isBlank(clientId)) {
-            clientId = UUID.randomUUID().toString().replace("-", "");
+            clientId = UuidUtil.createShort();
         }
         boolean lock = redisTemplateUtil.lock(key, clientId, expireInSeconds);
         if (!lock && !continueIfAcquireFail) {

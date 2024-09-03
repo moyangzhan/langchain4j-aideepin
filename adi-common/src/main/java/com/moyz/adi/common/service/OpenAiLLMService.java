@@ -40,7 +40,7 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
     }
 
     @Override
-    protected ChatLanguageModel buildChatLLM(LLMBuilderProperties properties) {
+    protected ChatLanguageModel doBuildChatLLM(LLMBuilderProperties properties) {
         if (StringUtils.isBlank(modelPlatformSetting.getSecretKey())) {
             throw new BaseException(ErrorEnum.B_LLM_SECRET_KEY_NOT_SET);
         }

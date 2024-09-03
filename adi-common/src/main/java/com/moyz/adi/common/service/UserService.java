@@ -14,10 +14,7 @@ import com.moyz.adi.common.enums.UserStatusEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.AdiMailSender;
 import com.moyz.adi.common.mapper.UserMapper;
-import com.moyz.adi.common.util.JsonUtil;
-import com.moyz.adi.common.util.LocalCache;
-import com.moyz.adi.common.util.LocalDateTimeUtil;
-import com.moyz.adi.common.util.MPPageUtil;
+import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.vo.CostStat;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -79,7 +76,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
 
     public void forgotPassword(String email) {
         User user = getByEmail(email);
-        String code = UUID.randomUUID().toString().replace("-", "");
+        String code = UuidUtil.createShort();
         String key = MessageFormat.format(FIND_MY_PASSWORD, code);
         stringRedisTemplate.opsForValue().set(key, user.getId().toString(), 8, TimeUnit.HOURS);
         adiMailSender.send(appName + "重置密码", "点击链接将密码重置为" + AdiConstant.DEFAULT_PASSWORD + "，链接(" + AdiConstant.AUTH_ACTIVE_CODE_EXPIRE + "小时内有效):" + backendUrl + "/auth/password/reset?code=" + code, email);
@@ -114,7 +111,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         //创建用户
         User newOne = new User();
         newOne.setName(StringUtils.substringBefore(email, "@"));
-        newOne.setUuid(UUID.randomUUID().toString().replace("-", ""));
+        newOne.setUuid(UuidUtil.createShort());
         newOne.setEmail(email);
         newOne.setPassword(hashed);
         newOne.setUserStatus(UserStatusEnum.WAIT_CONFIRM);
@@ -260,7 +257,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
     }
 
     public String setAndGetLoginCaptchaId() {
-        String captchaId = UUID.randomUUID().toString().replace("-", "");
+        String captchaId = UuidUtil.createShort();
         String captchaIdKey = MessageFormat.format(AUTH_LOGIN_CAPTCHA_ID, captchaId);
         stringRedisTemplate.opsForValue().set(captchaIdKey, captchaId, AdiConstant.AUTH_CAPTCHA_ID_EXPIRE, TimeUnit.HOURS);
         return captchaId;
@@ -327,7 +324,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         if (user.getQuotaByImageMonthly() == 0) {
             user.setQuotaByImageMonthly(Integer.parseInt(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.QUOTA_BY_IMAGE_MONTHLY)));
         }
-        String token = UUID.randomUUID().toString().replace("-", "");
+        String token = UuidUtil.createShort();
         String tokenKey = MessageFormat.format(USER_TOKEN, token);
         String jsonUser = JsonUtil.toJson(user);
         log.info("jsonUser:{}", jsonUser);
@@ -341,7 +338,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
      * @param email
      */
     public void sendActiveEmail(String email) {
-        String activeCode = UUID.randomUUID().toString().replace("-", "");
+        String activeCode = UuidUtil.createShort();
         String activeCodeKey = MessageFormat.format(AUTH_ACTIVE_CODE, activeCode);
         stringRedisTemplate.opsForValue().set(activeCodeKey, email, AdiConstant.AUTH_ACTIVE_CODE_EXPIRE, TimeUnit.HOURS);
         adiMailSender.send("欢迎注册AIDeepIn", "激活链接(" + AdiConstant.AUTH_ACTIVE_CODE_EXPIRE + "小时内有效):" + backendUrl + "/auth/active?code=" + activeCode, email);
@@ -401,7 +398,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         }
 
         String hashed = BCrypt.hashpw(addUserReq.getPassword(), BCrypt.gensalt());
-        String uuid = UUID.randomUUID().toString().replace("-", "");
+        String uuid = UuidUtil.createShort();
         User newOne = new User();
         if (StringUtils.isNotBlank(addUserReq.getName())) {
             newOne.setName(addUserReq.getName());

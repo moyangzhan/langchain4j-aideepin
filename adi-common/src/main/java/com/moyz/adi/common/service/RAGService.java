@@ -3,6 +3,8 @@ package com.moyz.adi.common.service;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.AdiEmbeddingStoreContentRetriever;
+import com.moyz.adi.common.util.InputAdaptor;
+import com.moyz.adi.common.vo.InputAdaptorMsg;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
@@ -22,6 +24,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.*;
+import static com.moyz.adi.common.vo.InputAdaptorMsg.TOKEN_TOO_MUCH_QUESTION;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 
 @Slf4j
@@ -135,24 +138,28 @@ public class RAGService {
 
     /**
      * 根据模型的contentWindow计算使用该模型最多召回的文档数量
+     * <br/>以分块时的最大文本段对应的token数量{maxSegmentSizeInTokens}为计算因子
      *
      * @param userQuestion  用户的问题
-     * @param contentWindow AI模型所能容纳的窗口大小
+     * @param maxInputTokens AI模型所能容纳的窗口大小
      * @return
      */
-    public static int getRetrieveMaxResults(String userQuestion, int contentWindow) {
-        if (contentWindow == 0) {
+    public static int getRetrieveMaxResults(String userQuestion, int maxInputTokens) {
+        if (maxInputTokens == 0) {
             throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
         }
-        int questionLength = new OpenAiTokenizer(GPT_3_5_TURBO).estimateTokenCountInText(userQuestion);
-        int maxRetrieveDocLength = contentWindow - questionLength;
-        if (maxRetrieveDocLength < RAG_MAX_SEGMENT_SIZE_IN_TOKENS) {
+        InputAdaptorMsg inputAdaptorMsg = InputAdaptor.isQuestionValid(userQuestion, maxInputTokens);
+        if (inputAdaptorMsg.getTokenTooMuch() == TOKEN_TOO_MUCH_QUESTION) {
             log.warn("用户问题太长了，没有足够的token数量留给知识库召回的内容");
             return 0;
-        } else if (maxRetrieveDocLength > RAG_RETRIEVE_NUMBER_MAX * RAG_MAX_SEGMENT_SIZE_IN_TOKENS) {
-            return RAG_RETRIEVE_NUMBER_MAX;
         } else {
-            return maxRetrieveDocLength / RAG_MAX_SEGMENT_SIZE_IN_TOKENS;
+            int maxRetrieveDocLength = maxInputTokens - inputAdaptorMsg.getUserQuestionTokenCount();
+            if (maxRetrieveDocLength > RAG_RETRIEVE_NUMBER_MAX * RAG_MAX_SEGMENT_SIZE_IN_TOKENS) {
+                return RAG_RETRIEVE_NUMBER_MAX;
+            } else {
+                return maxRetrieveDocLength / RAG_MAX_SEGMENT_SIZE_IN_TOKENS;
+            }
         }
+
     }
 }

@@ -25,6 +25,7 @@ public class UserDayCostService extends ServiceImpl<UserDayCostMapper, UserDayCo
      * @param tokens The number of tokens
      */
     public void appendCostToUser(User user, int tokens) {
+        log.info("用户{}增加消耗token数量:{}", user.getName(), tokens);
         if (tokens <= 0) {
             return;
         }

@@ -24,7 +24,7 @@ public class OllamaLLMService extends AbstractLLMService<OllamaSetting> {
     }
 
     @Override
-    protected ChatLanguageModel buildChatLLM(LLMBuilderProperties properties) {
+    protected ChatLanguageModel doBuildChatLLM(LLMBuilderProperties properties) {
         double temperature = 0.7;
         if (null != properties && properties.getTemperature() > 0 && properties.getTemperature() <= 1) {
             temperature = properties.getTemperature();

@@ -57,4 +57,9 @@ public class KnowledgeBaseQAController {
     public List<KbQaRecordReferenceDto> reference(@PathVariable String uuid) {
         return knowledgeBaseQaRecordService.listReferences(uuid);
     }
+
+    @PostMapping("/record/clear")
+    public void recordDel() {
+        knowledgeBaseQaRecordService.clearByCurrentUser();
+    }
 }

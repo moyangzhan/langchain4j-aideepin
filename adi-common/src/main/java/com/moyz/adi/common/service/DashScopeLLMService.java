@@ -31,7 +31,7 @@ public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
     }
 
     @Override
-    protected ChatLanguageModel buildChatLLM(LLMBuilderProperties properties) {
+    protected ChatLanguageModel doBuildChatLLM(LLMBuilderProperties properties) {
         if (StringUtils.isBlank(modelPlatformSetting.getApiKey())) {
             throw new BaseException(B_LLM_SECRET_KEY_NOT_SET);
         }

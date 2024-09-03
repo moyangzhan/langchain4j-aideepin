@@ -9,6 +9,9 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Data
 public class SseAskParams {
 
+    //请求标识,如:知识库的记录uuid,搜索记录uuid
+    private String uuid;
+
     private String modelName;
 
     private User user;

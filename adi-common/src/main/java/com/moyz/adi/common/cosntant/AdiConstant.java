@@ -132,6 +132,7 @@ public class AdiConstant {
         public static final String START = "[START]";
         public static final String DONE = "[DONE]";
         public static final String ERROR = "[ERROR]";
+        public static final String META = "[META]";
 
         public static final String AI_SEARCH_SOURCE_LINKS = "[SOURCE_LINKS]";
     }
@@ -160,7 +161,7 @@ public class AdiConstant {
     public static final double RAG_MIN_SCORE = 0.6;
 
     /**
-     * 默认的窗口长度
+     * 默认的最大输入token数
      */
-    public static final int LLM_CONTEXT_WINDOW_DEFAULT = 5000;
+    public static final int LLM_MAX_INPUT_TOKENS_DEFAULT = 4096;
 }

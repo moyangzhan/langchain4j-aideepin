@@ -10,6 +10,7 @@ import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.searchengine.SearchEngineContext;
+import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.AssistantChatParams;
 import com.moyz.adi.common.vo.SseAskParams;
 import dev.langchain4j.data.document.Document;
@@ -31,10 +32,9 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 
-import static com.moyz.adi.common.cosntant.AdiConstant.LLM_CONTEXT_WINDOW_DEFAULT;
+import static com.moyz.adi.common.cosntant.AdiConstant.LLM_MAX_INPUT_TOKENS_DEFAULT;
 import static com.moyz.adi.common.enums.ErrorEnum.B_NO_ANSWER;
 
 /**
@@ -129,12 +129,13 @@ public class SearchService {
         SearchEngineResp resp = new SearchEngineResp().setItems(resultItems);
 
         SseAskParams sseAskParams = new SseAskParams();
+        sseAskParams.setUuid(UuidUtil.createShort());
         sseAskParams.setAssistantChatParams(AssistantChatParams.builder().systemMessage(StringUtils.EMPTY).userMessage(prompt).build());
         sseAskParams.setSseEmitter(sseEmitter);
         sseAskParams.setModelName(modelName);
         sseEmitterHelper.commonProcess(user, sseAskParams, (response, promptMeta, answerMeta) -> {
             AiSearchRecord newRecord = new AiSearchRecord();
-            newRecord.setUuid(UUID.randomUUID().toString().replace("-", ""));
+            newRecord.setUuid(sseAskParams.getUuid());
             newRecord.setQuestion(searchText);
             newRecord.setSearchEngineResp(resp);
             newRecord.setPrompt(prompt);
@@ -168,7 +169,7 @@ public class SearchService {
         //Save to DB
         SearchEngineResp resp = new SearchEngineResp().setItems(resultItems);
         AiSearchRecord newRecord = new AiSearchRecord();
-        String searchUuid = UUID.randomUUID().toString().replace("-", "");
+        String searchUuid = UuidUtil.createShort();
         newRecord.setUuid(searchUuid);
         newRecord.setQuestion(searchText);
         newRecord.setSearchEngineResp(resp);
@@ -215,14 +216,12 @@ public class SearchService {
         }
 
         log.info("Create prompt");
-        int contextWindow = LLMContext.getAiModel(modelName).getContextWindow();
-        if (contextWindow < 0) {
-            contextWindow = LLM_CONTEXT_WINDOW_DEFAULT;
-        }
-        int maxResults = RAGService.getRetrieveMaxResults(searchText, contextWindow);
+        int maxInputTokens = LLMContext.getAiModel(modelName).getMaxInputTokens();
+        int maxResults = RAGService.getRetrieveMaxResults(searchText, maxInputTokens);
         ContentRetriever contentRetriever = searchRagService.createRetriever(Map.of(AdiConstant.EmbeddingMetadataKey.SEARCH_UUID, searchUuid), maxResults, 0, false);
 
         SseAskParams sseAskParams = new SseAskParams();
+        sseAskParams.setUuid(searchUuid);
         sseAskParams.setAssistantChatParams(
                 AssistantChatParams.builder()
                         .messageId(user.getUuid() + "-search")

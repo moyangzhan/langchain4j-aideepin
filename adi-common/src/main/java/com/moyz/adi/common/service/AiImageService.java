@@ -17,6 +17,7 @@ import com.moyz.adi.common.mapper.AiImageMapper;
 import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.moyz.adi.common.util.UserUtil;
+import com.moyz.adi.common.util.UuidUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -128,7 +129,7 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
     public String generate(CreateImageDto createImageDto) {
         User user = ThreadContext.getCurrentUser();
         int generateNumber = Math.min(createImageDto.getNumber(), user.getQuotaByImageDaily());
-        String uuid = UUID.randomUUID().toString().replace("-", "");
+        String uuid = UuidUtil.createShort();
         AiImage aiImage = new AiImage();
         aiImage.setGenerateSize(createImageDto.getSize());
         aiImage.setGenerateQuality(createImageDto.getQuality());

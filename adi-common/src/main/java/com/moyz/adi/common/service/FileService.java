@@ -8,6 +8,7 @@ import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.FileMapper;
 import com.moyz.adi.common.util.FileUtil;
 import com.moyz.adi.common.util.MD5Utils;
+import com.moyz.adi.common.util.UuidUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -57,7 +58,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
                 this.lambdaUpdate().eq(AdiFile::getId, adiFile.getId()).set(AdiFile::getIsDeleted, true).update();
             }
         }
-        String uuid = UUID.randomUUID().toString().replace("-", "");
+        String uuid = UuidUtil.createShort();
         Pair<String, String> originalFile = FileUtil.saveToLocal(file, filePath, uuid);
         AdiFile adiFile = new AdiFile();
         adiFile.setName(file.getOriginalFilename());
@@ -71,7 +72,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
     }
 
     public String saveImageToLocal(User user, String sourceImageUrl) {
-        String uuid = UUID.randomUUID().toString().replace("-", "");
+        String uuid = UuidUtil.createShort();
         String localPath = imagePath + uuid + ".png";
         File target = new File(localPath);
         try {

@@ -37,4 +37,12 @@ public class AiModel extends BaseEntity {
     @Schema(title = "上下文长度")
     @TableField("context_window")
     private Integer contextWindow;
+
+    @Schema(title = "最大输入长度")
+    @TableField("max_input_tokens")
+    private Integer maxInputTokens;
+
+    @Schema(title = "最大输出长度")
+    @TableField("max_output_tokens")
+    private Integer maxOutputTokens;
 }

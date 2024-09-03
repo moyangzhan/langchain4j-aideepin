@@ -10,6 +10,7 @@ import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.KnowledgeBaseQaRecordMapper;
 import com.moyz.adi.common.util.MPPageUtil;
+import com.moyz.adi.common.util.UuidUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -41,7 +42,7 @@ public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRec
         newRecord.setQuestion(req.getQuestion());
         newRecord.setKbId(knowledgeBase.getId());
         newRecord.setKbUuid((knowledgeBase.getUuid()));
-        newRecord.setUuid(UUID.randomUUID().toString().replace("-", ""));
+        newRecord.setUuid(UuidUtil.createShort());
         newRecord.setUserId(ThreadContext.getCurrentUserId());
         baseMapper.insert(newRecord);
 
@@ -120,6 +121,13 @@ public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRec
             throw new BaseException(A_DATA_NOT_FOUND);
         }
         return exist;
+    }
+
+    public void clearByCurrentUser() {
+        ChainWrappers.lambdaUpdateChain(baseMapper)
+                .eq(KnowledgeBaseQaRecord::getUserId, ThreadContext.getCurrentUserId())
+                .set(KnowledgeBaseQaRecord::getIsDeleted, true)
+                .update();
     }
 
     public boolean softDelete(String uuid) {

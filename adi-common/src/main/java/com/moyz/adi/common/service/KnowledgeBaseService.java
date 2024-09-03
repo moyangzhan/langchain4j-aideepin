@@ -12,13 +12,9 @@ import com.moyz.adi.common.dto.KbInfoResp;
 import com.moyz.adi.common.dto.KbSearchReq;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
-import com.moyz.adi.common.util.AdiEmbeddingStoreContentRetriever;
-import com.moyz.adi.common.util.BizPager;
-import com.moyz.adi.common.util.LocalDateTimeUtil;
-import com.moyz.adi.common.util.MPPageUtil;
+import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.vo.AssistantChatParams;
 import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.SseAskParams;
@@ -28,6 +24,7 @@ import dev.langchain4j.data.document.parser.apache.pdfbox.ApachePdfBoxDocumentPa
 import dev.langchain4j.data.document.parser.apache.poi.ApachePoiDocumentParser;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
@@ -45,10 +42,10 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 
-import static com.moyz.adi.common.cosntant.AdiConstant.LLM_CONTEXT_WINDOW_DEFAULT;
 import static com.moyz.adi.common.cosntant.AdiConstant.POI_DOC_TYPES;
 import static com.moyz.adi.common.cosntant.AdiConstant.SysConfigKey.QUOTA_BY_QA_ASK_DAILY;
 import static com.moyz.adi.common.cosntant.RedisKeyConstant.KB_STATISTIC_RECALCULATE_SIGNAL;
+import static com.moyz.adi.common.cosntant.RedisKeyConstant.TOKEN_USAGE_KEY;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocument;
 
@@ -108,7 +105,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         BeanUtils.copyProperties(kbEditReq, knowledgeBase, "id", "uuid");
         if (null == kbEditReq.getId() || kbEditReq.getId() < 1) {
             User user = ThreadContext.getCurrentUser();
-            knowledgeBase.setUuid(UUID.randomUUID().toString().replace("-", ""));
+            knowledgeBase.setUuid(UuidUtil.createShort());
             knowledgeBase.setOwnerId(user.getId());
             knowledgeBase.setOwnerUuid(user.getUuid());
             knowledgeBase.setOwnerName(user.getName());
@@ -171,7 +168,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 return adiFile;
             }
             //创建知识库条目
-            String uuid = UUID.randomUUID().toString().replace("-", "");
+            String uuid = UuidUtil.createShort();
             KnowledgeBaseItem knowledgeBaseItem = new KnowledgeBaseItem();
             knowledgeBaseItem.setUuid(uuid);
             knowledgeBaseItem.setKbId(knowledgeBase.getId());
@@ -363,20 +360,15 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         AiModel aiModel = aiModelService.getByIdOrThrow(qaRecord.getAiModelId());
 
         Map<String, String> metadataCond = Map.of(AdiConstant.EmbeddingMetadataKey.KB_UUID, qaRecord.getKbUuid());
-        int contextWindow = aiModel.getContextWindow() > 0 ? aiModel.getContextWindow(): LLM_CONTEXT_WINDOW_DEFAULT;
+        int maxInputTokens = aiModel.getMaxInputTokens();
         int maxResults = knowledgeBase.getRagMaxResults();
-        //maxResults < 1 表示由系统根据设置的模型contextWindow自动计算大小
+        //maxResults < 1 表示由系统根据设置的模型maxInputTokens自动计算大小
         if (maxResults < 1) {
-            maxResults = RAGService.getRetrieveMaxResults(qaRecord.getQuestion(), contextWindow);
+            maxResults = RAGService.getRetrieveMaxResults(qaRecord.getQuestion(), maxInputTokens);
         }
-        //用户的问题内容过长，无需再召回文档，严格模式下直接返回异常提示
-        if (maxResults == 0 && knowledgeBase.getIsStrict()) {
-            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "提问内容过长，最多不超过" + contextWindow + "Token");
-            return;
-        }
-        AdiEmbeddingStoreContentRetriever contentRetriever = ragService.createRetriever(metadataCond, maxResults, knowledgeBase.getRagMinScore(), knowledgeBase.getIsStrict());
 
         SseAskParams sseAskParams = new SseAskParams();
+        sseAskParams.setUuid(qaRecord.getUuid());
         sseAskParams.setAssistantChatParams(
                 AssistantChatParams.builder()
                         .messageId(qaRecord.getKbUuid() + "_" + user.getUuid())
@@ -391,19 +383,51 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         );
         sseAskParams.setSseEmitter(sseEmitter);
         sseAskParams.setModelName(aiModel.getName());
-        sseEmitterHelper.ragProcess(contentRetriever, user, sseAskParams, (response, promptMeta, answerMeta) -> {
-            //TODO 增强后的prompt
-            String prompt = "";
-            KnowledgeBaseQaRecord updateRecord = new KnowledgeBaseQaRecord();
-            updateRecord.setId(qaRecord.getId());
-            updateRecord.setPrompt(prompt);
-            updateRecord.setPromptTokens(promptMeta.getTokens());
-            updateRecord.setAnswer(response);
-            updateRecord.setAnswerTokens(answerMeta.getTokens());
-            knowledgeBaseQaRecordService.updateById(updateRecord);
+
+        //用户问题过长，无需再召回文档，严格模式下直接返回异常提示,非严格模式请求LLM
+        if (maxResults == 0) {
+            log.info("用户问题过长，无需再召回文档，严格模式下直接返回异常提示,非严格模式请求LLM");
+            if (knowledgeBase.getIsStrict()) {
+                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "提问内容过长，最多不超过 " + maxInputTokens + " tokens");
+            } else {
+                sseEmitterHelper.commonProcess(user, sseAskParams, (response, questionMeta, answerMeta) -> {
+                    updateQaRecord(user, qaRecord, sseAskParams, null, response);
+                });
+            }
+        } else {
+            log.info("进行RAG请求,maxResults:{}", maxResults);
+            AdiEmbeddingStoreContentRetriever contentRetriever = ragService.createRetriever(metadataCond, maxResults, knowledgeBase.getRagMinScore(), knowledgeBase.getIsStrict());
+            sseEmitterHelper.ragProcess(contentRetriever, user, sseAskParams, (response, promptMeta, answerMeta) -> {
+                updateQaRecord(user, qaRecord, sseAskParams, contentRetriever, response);
+            });
+        }
+    }
+
+    private void updateQaRecord(User user, KnowledgeBaseQaRecord qaRecord, SseAskParams sseAskParams, AdiEmbeddingStoreContentRetriever contentRetriever, String response) {
+
+        List<String> tokenCountList = stringRedisTemplate.opsForList().range(MessageFormat.format(TOKEN_USAGE_KEY, sseAskParams.getUuid()), 0, -1);
+        int inputTokenCount = 0;
+        int outputTokenCount = 0;
+        if (!CollectionUtils.isEmpty(tokenCountList) && tokenCountList.size() > 1) {
+            inputTokenCount = Integer.parseInt(tokenCountList.get(tokenCountList.size() - 2));
+            outputTokenCount = Integer.parseInt(tokenCountList.get(tokenCountList.size() - 1));
+        }
+
+        KnowledgeBaseQaRecord updateRecord = new KnowledgeBaseQaRecord();
+        updateRecord.setId(qaRecord.getId());
+        updateRecord.setPrompt(sseAskParams.getAssistantChatParams().getUserMessage());
+        updateRecord.setPromptTokens(inputTokenCount);
+        updateRecord.setAnswer(response);
+        updateRecord.setAnswerTokens(outputTokenCount);
+        knowledgeBaseQaRecordService.updateById(updateRecord);
+        if (null != contentRetriever) {
             knowledgeBaseQaRecordService.createReferences(user, qaRecord.getId(), contentRetriever.getRetrievedEmbeddingToScore());
-            userDayCostService.appendCostToUser(user, promptMeta.getTokens() + answerMeta.getTokens());
-        });
+        }
+
+        //用户本次请求消耗的token数指的是整个RAG过程中消耗的token数量，其中可能涉及到多次LLM请求
+        int allToken = tokenCountList.stream().map(Integer::parseInt).reduce(0, Integer::sum);
+        log.info("用户{}本次请示消耗总token:{}", user.getName(), allToken);
+        userDayCostService.appendCostToUser(user, allToken);
     }
 
     public KnowledgeBase getOrThrow(String kbUuid) {

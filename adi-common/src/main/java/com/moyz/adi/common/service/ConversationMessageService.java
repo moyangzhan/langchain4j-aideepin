@@ -15,6 +15,7 @@ import com.moyz.adi.common.helper.QuotaHelper;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.ConversationMessageMapper;
 import com.moyz.adi.common.util.LocalCache;
+import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.*;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
+import java.util.UUID;
 
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 
@@ -121,8 +123,9 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             return;
         }
 
+        String questionUuid = StringUtils.isNotBlank(askReq.getRegenerateQuestionUuid()) ? askReq.getRegenerateQuestionUuid() : UuidUtil.createShort();
         SseAskParams sseAskParams = new SseAskParams();
-
+        sseAskParams.setUuid(questionUuid);
         sseAskParams.setModelName(askReq.getModelName());
         sseAskParams.setSseEmitter(sseEmitter);
         sseAskParams.setRegenerateQuestionUuid(askReq.getRegenerateQuestionUuid());
