@@ -201,12 +201,29 @@ public abstract class AbstractLLMService<T> {
     private void registerTokenStreamCallBack(TokenStream tokenStream, SseAskParams params, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
         tokenStream
                 .onNext((content) -> {
-                    if (log.isDebugEnabled()) {
-                        log.info("get content:{}", content);
-                    }
+                    log.info("get content:{}", content);
                     //加空格配合前端的fetchEventSource进行解析，见https://github.com/Azure/fetch-event-source/blob/45ac3cfffd30b05b79fbf95c21e67d4ef59aa56a/src/parse.ts#L129-L133
                     try {
-                        params.getSseEmitter().send(" " + content);
+//                        String parsedContent = content;
+//                        if (content.matches("(?s)\\r?\\n")) {
+//                            log.info("parsedContent");
+//                            parsedContent = parsedContent.replaceAll("(?m)(\\r?\\n)", "$0__");
+//                        }
+                        String[] lines = content.split("[\\r\\n]", -1);
+                        if (lines.length > 1) {
+                            params.getSseEmitter().send(" " + lines[0]);
+                            for (int i = 1; i < lines.length; i++) {
+                                /**
+                                 * 当响应结果的content中包含有多行文本时，
+                                 * 前端的fetch-event-source框架的BUG会将包含有换行符的那一行内容替换为空字符串，
+                                 * 故需要先将换行符与后面的内容拆分并转成，前端碰到换行标志时转成换行符处理
+                                 */
+                                params.getSseEmitter().send("-_-_wrap_-_-");
+                                params.getSseEmitter().send(" " + lines[i]);
+                            }
+                        } else {
+                            params.getSseEmitter().send(" " + content);
+                        }
                     } catch (IOException e) {
                         log.error("stream onNext error", e);
                     }

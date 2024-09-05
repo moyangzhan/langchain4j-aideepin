@@ -169,14 +169,16 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             }
             //创建知识库条目
             String uuid = UuidUtil.createShort();
+            //postgresql不支持\u0000
+            String content = document.text().replaceAll("\u0000", "");
             KnowledgeBaseItem knowledgeBaseItem = new KnowledgeBaseItem();
             knowledgeBaseItem.setUuid(uuid);
             knowledgeBaseItem.setKbId(knowledgeBase.getId());
             knowledgeBaseItem.setKbUuid(knowledgeBase.getUuid());
             knowledgeBaseItem.setSourceFileId(adiFile.getId());
             knowledgeBaseItem.setTitle(fileName);
-            knowledgeBaseItem.setBrief(StringUtils.substring(document.text(), 0, 200));
-            knowledgeBaseItem.setRemark(document.text());
+            knowledgeBaseItem.setBrief(StringUtils.substring(content, 0, 200));
+            knowledgeBaseItem.setRemark(content);
             knowledgeBaseItem.setIsEmbedded(true);
             boolean success = knowledgeBaseItemService.save(knowledgeBaseItem);
             if (success && Boolean.TRUE.equals(embedding)) {
