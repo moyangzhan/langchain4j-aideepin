@@ -1,11 +1,11 @@
 ## Getting Started
 
-[READ THIS IN ENGLISH](README_en.md)
-
 **LangChain4j-AIDeepin**
 基于 ChatGPT 等大语言模型与 Langchain4j 等应用框架实现，开源、可离线部署的检索增强生成(RAG)项目。
 
-> **该项目如对您有帮助，欢迎点赞**
+> **该项目如对您有帮助，欢迎点赞🌟**
+
+👉[详细文档](https://github.com/moyangzhan/langchain4j-aideepin/wiki)
 
 代码仓库地址：[github](https://github.com/moyangzhan/langchain4j-aideepin)  [gitee](https://gitee.com/moyangzhan/langchain4j-aideepin)
 
