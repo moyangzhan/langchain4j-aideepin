@@ -9,9 +9,12 @@
 ## 系统组成及文档
 
 AIDEEPIN
-  |__ 服务端(langchain4j-aideepin)
-  |__ 用户端WEB(langchain4j-aideepin-web)
-  |__ 管理端WEB(langchain4j-aideepin-admin)
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|__ 服务端(langchain4j-aideepin)
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|__ 用户端WEB(langchain4j-aideepin-web)
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|__ 管理端WEB(langchain4j-aideepin-admin)
 
 👉[详细文档](https://github.com/moyangzhan/langchain4j-aideepin/wiki)
 
