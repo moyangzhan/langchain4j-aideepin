@@ -13,9 +13,14 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.moyz.adi.common.base.SearchEngineRespTypeHandler;
 import com.moyz.adi.common.base.UUIDTypeHandler;
 import com.moyz.adi.common.dto.SearchEngineResp;
-import com.moyz.adi.common.service.RAGService;
+import com.moyz.adi.common.rag.ApacheAgeGraphStore;
+import com.moyz.adi.common.rag.EmbeddingRAG;
+import com.moyz.adi.common.rag.GraphRAG;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.pgvector.PGvector;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +37,8 @@ import org.springframework.web.client.RestTemplate;
 
 import javax.sql.DataSource;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Configuration
@@ -119,19 +126,127 @@ public class BeanConfig {
         return bean.getObject();
     }
 
-    @Bean(name = "kbRagService")
+    @Bean(name = "kbEmbeddingStore")
     @Primary
-    public RAGService initKnowledgeBaseRAGService() {
-        RAGService ragService = new RAGService("adi_knowledge_base_embedding", dataBaseUrl, dataBaseUserName, dataBasePassword);
+    public EmbeddingStore<TextSegment> initKbEmbeddingStore() {
+        // 正则表达式匹配
+        String regex = "jdbc:postgresql://([^:/]+):(\\d+)/(\\w+).+";
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(dataBaseUrl);
+
+        String host = "";
+        String port = "";
+        String databaseName = "";
+        if (matcher.matches()) {
+            host = matcher.group(1);
+            port = matcher.group(2);
+            databaseName = matcher.group(3);
+
+            log.info("Host: " + host);
+            log.info("Port: " + port);
+            log.info("Database: " + databaseName);
+        } else {
+            throw new RuntimeException("parse url error");
+        }
+        return PgVectorEmbeddingStore.builder()
+                .host(host)
+                .port(Integer.parseInt(port))
+                .database(databaseName)
+                .user(dataBaseUserName)
+                .password(dataBasePassword)
+                .dimension(384)
+                .createTable(true)
+                .dropTableFirst(false)
+                .table("adi_knowledge_base_embedding")
+                .build();
+    }
+
+    @Bean
+    @Primary
+    public EmbeddingRAG initKnowledgeBaseRAGService(EmbeddingStore<TextSegment> kbEmbeddingStore) {
+        EmbeddingRAG ragService = new EmbeddingRAG(kbEmbeddingStore);
         ragService.init();
         return ragService;
     }
 
+    @Bean(name = "searchEmbeddingStore")
+    public EmbeddingStore<TextSegment> initSearchEmbeddingStore() {
+        // 正则表达式匹配
+        String regex = "jdbc:postgresql://([^:/]+):(\\d+)/(\\w+).+";
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(dataBaseUrl);
+
+        String host = "";
+        String port = "";
+        String databaseName = "";
+        if (matcher.matches()) {
+            host = matcher.group(1);
+            port = matcher.group(2);
+            databaseName = matcher.group(3);
+
+            log.info("Host: " + host);
+            log.info("Port: " + port);
+            log.info("Database: " + databaseName);
+        } else {
+            throw new RuntimeException("parse url error");
+        }
+        return PgVectorEmbeddingStore.builder()
+                .host(host)
+                .port(Integer.parseInt(port))
+                .database(databaseName)
+                .user(dataBaseUserName)
+                .password(dataBasePassword)
+                .dimension(384)
+                .createTable(true)
+                .dropTableFirst(false)
+                .table("adi_ai_search_embedding")
+                .build();
+    }
+
     @Bean(name = "searchRagService")
-    public RAGService initSearchRAGService() {
-        RAGService ragService = new RAGService("adi_ai_search_embedding", dataBaseUrl, dataBaseUserName, dataBasePassword);
+    public EmbeddingRAG initSearchRAG(EmbeddingStore<TextSegment> searchEmbeddingStore) {
+        EmbeddingRAG ragService = new EmbeddingRAG(searchEmbeddingStore);
         ragService.init();
         return ragService;
+    }
+
+    @Bean(name = "kbGraphStore")
+    @Primary
+    public ApacheAgeGraphStore initApacheAgeGraphStore() {
+        String regex = "jdbc:postgresql://([^:/]+):(\\d+)/(\\w+).+";
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(dataBaseUrl);
+
+        String host = "";
+        String port = "";
+        String databaseName = "";
+        if (matcher.matches()) {
+            host = matcher.group(1);
+            port = matcher.group(2);
+            databaseName = matcher.group(3);
+
+            log.info("Host: " + host);
+            log.info("Port: " + port);
+            log.info("Database: " + databaseName);
+        } else {
+            throw new RuntimeException("parse url error");
+        }
+        return ApacheAgeGraphStore.builder()
+                .host(host)
+                .port(Integer.parseInt(port))
+                .database(databaseName)
+                .user(dataBaseUserName)
+                .password(dataBasePassword)
+                .createGraph(true)
+                .dropGraphFirst(false)
+                .graphName("adi_knowledge_base_graph")
+                .build();
+    }
+
+    @Bean(name = "graphRag")
+    @Primary
+    public GraphRAG initGraphRAG(ApacheAgeGraphStore kbGraphStore) {
+        return new GraphRAG(kbGraphStore);
     }
 
 //    @Bean(name = "queryRouterRagService")

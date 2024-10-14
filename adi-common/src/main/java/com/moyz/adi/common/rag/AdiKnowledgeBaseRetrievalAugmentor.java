@@ -1,5 +1,6 @@
-package com.moyz.adi.common.util;
+package com.moyz.adi.common.rag;
 
+import com.moyz.adi.common.util.InputAdaptor;
 import com.moyz.adi.common.vo.InputAdaptorMsg;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;

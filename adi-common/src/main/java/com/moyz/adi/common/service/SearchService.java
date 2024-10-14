@@ -9,6 +9,8 @@ import com.moyz.adi.common.entity.AiSearchRecord;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
+import com.moyz.adi.common.rag.CompositeRAG;
+import com.moyz.adi.common.rag.EmbeddingRAG;
 import com.moyz.adi.common.searchengine.SearchEngineContext;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.AssistantChatParams;
@@ -34,7 +36,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-import static com.moyz.adi.common.cosntant.AdiConstant.LLM_MAX_INPUT_TOKENS_DEFAULT;
 import static com.moyz.adi.common.enums.ErrorEnum.B_NO_ANSWER;
 
 /**
@@ -49,7 +50,10 @@ public class SearchService {
     private SearchService _this;
 
     @Resource
-    private RAGService searchRagService;
+    private EmbeddingRAG searchRagService;
+
+    @Resource
+    private CompositeRAG compositeRAG;
 
     @Resource
     private SSEEmitterHelper sseEmitterHelper;
@@ -124,7 +128,7 @@ public class SearchService {
             builder.append(item.getSnippet()).append("\n\n");
         }
         String ragQuestion = builder.toString();
-        String prompt = RAGService.parsePromptTemplate(searchText, ragQuestion);
+        String prompt = EmbeddingRAG.parsePromptTemplate(searchText, ragQuestion);
 
         SearchEngineResp resp = new SearchEngineResp().setItems(resultItems);
 
@@ -133,7 +137,8 @@ public class SearchService {
         sseAskParams.setAssistantChatParams(AssistantChatParams.builder().systemMessage(StringUtils.EMPTY).userMessage(prompt).build());
         sseAskParams.setSseEmitter(sseEmitter);
         sseAskParams.setModelName(modelName);
-        sseEmitterHelper.commonProcess(user, sseAskParams, (response, promptMeta, answerMeta) -> {
+        sseAskParams.setUser(user);
+        sseEmitterHelper.commonProcess(sseAskParams, (response, promptMeta, answerMeta) -> {
             AiSearchRecord newRecord = new AiSearchRecord();
             newRecord.setUuid(sseAskParams.getUuid());
             newRecord.setQuestion(searchText);
@@ -196,10 +201,10 @@ public class SearchService {
 
                     //embedding
                     Metadata metadata = new Metadata();
-                    metadata.put(AdiConstant.EmbeddingMetadataKey.ENGINE_NAME, engineName);
-                    metadata.put(AdiConstant.EmbeddingMetadataKey.SEARCH_UUID, searchUuid);
+                    metadata.put(AdiConstant.MetadataKey.ENGINE_NAME, engineName);
+                    metadata.put(AdiConstant.MetadataKey.SEARCH_UUID, searchUuid);
                     Document document = new Document(content, metadata);
-                    searchRagService.ingest(document, 0);
+                    searchRagService.ingest(document, 0, null);
 
                 } catch (Exception e) {
                     log.error("Detail search error,uuid:{}", searchUuid, e);
@@ -217,11 +222,12 @@ public class SearchService {
 
         log.info("Create prompt");
         int maxInputTokens = LLMContext.getAiModel(modelName).getMaxInputTokens();
-        int maxResults = RAGService.getRetrieveMaxResults(searchText, maxInputTokens);
-        ContentRetriever contentRetriever = searchRagService.createRetriever(Map.of(AdiConstant.EmbeddingMetadataKey.SEARCH_UUID, searchUuid), maxResults, 0, false);
+        int maxResults = EmbeddingRAG.getRetrieveMaxResults(searchText, maxInputTokens);
+        ContentRetriever contentRetriever = searchRagService.createRetriever(Map.of(AdiConstant.MetadataKey.SEARCH_UUID, searchUuid), maxResults, 0, false);
 
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setUuid(searchUuid);
+        sseAskParams.setUser(user);
         sseAskParams.setAssistantChatParams(
                 AssistantChatParams.builder()
                         .messageId(user.getUuid() + "-search")
@@ -231,7 +237,7 @@ public class SearchService {
         );
         sseAskParams.setSseEmitter(sseEmitter);
         sseAskParams.setModelName(modelName);
-        sseEmitterHelper.ragProcess(contentRetriever, user, sseAskParams, (response, promptMeta, answerMeta) -> {
+        compositeRAG.ragChat(List.of(contentRetriever), sseAskParams, (response, promptMeta, answerMeta) -> {
 
             AiSearchRecord existRecord = aiSearchRecordService.lambdaQuery().eq(AiSearchRecord::getUuid, searchUuid).one();
 

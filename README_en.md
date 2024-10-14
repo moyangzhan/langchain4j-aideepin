@@ -49,7 +49,7 @@ springboot3.0.5
 
 [langchain4j(Java version of LangChain)](https://github.com/langchain4j/langchain4j)
 
-**Postgresql(需要安装[pgvector](https://github.com/pgvector/pgvector)扩展)**
+**Postgresql(Need plugin [pgvector](https://github.com/pgvector/pgvector))**
 
 Frontend：
 
@@ -141,7 +141,7 @@ docker run -d \
 
 ## TODO：
 
-Enhance RAG
+Advanced RAG
 
 More search engine（BING、百度）
 

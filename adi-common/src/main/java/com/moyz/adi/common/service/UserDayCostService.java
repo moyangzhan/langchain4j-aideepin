@@ -1,13 +1,11 @@
 package com.moyz.adi.common.service;
 
-import com.moyz.adi.common.cosntant.AdiConstant;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.moyz.adi.common.entity.User;
-import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.moyz.adi.common.entity.UserDayCost;
 import com.moyz.adi.common.mapper.UserDayCostMapper;
+import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.moyz.adi.common.vo.CostStat;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.moyz.adi.common.util.UserUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -36,7 +34,6 @@ public class UserDayCostService extends ServiceImpl<UserDayCostMapper, UserDayCo
             saveOrUpdateInst.setDay(LocalDateTimeUtil.getToday());
             saveOrUpdateInst.setTokens(tokens);
             saveOrUpdateInst.setRequests(1);
-            saveOrUpdateInst.setSecretKeyType(UserUtil.getSecretType(user));
         } else {
             saveOrUpdateInst.setId(userDayCost.getId());
             saveOrUpdateInst.setTokens(userDayCost.getTokens() + tokens);
@@ -54,7 +51,6 @@ public class UserDayCostService extends ServiceImpl<UserDayCostMapper, UserDayCo
 
         List<UserDayCost> userDayCostList = this.lambdaQuery()
                 .eq(UserDayCost::getUserId, userId)
-                .eq(UserDayCost::getSecretKeyType, AdiConstant.SECRET_KEY_TYPE_SYSTEM)
                 .between(UserDayCost::getDay, start, end)
                 .list();
         for (UserDayCost userDayCost : userDayCostList) {
@@ -74,7 +70,6 @@ public class UserDayCostService extends ServiceImpl<UserDayCostMapper, UserDayCo
         return this.lambdaQuery()
                 .eq(UserDayCost::getUserId, user.getId())
                 .eq(UserDayCost::getDay, LocalDateTimeUtil.getToday())
-                .eq(UserDayCost::getSecretKeyType, UserUtil.getSecretType(user))
                 .one();
     }
 

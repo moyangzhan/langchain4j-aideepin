@@ -1,4 +1,4 @@
-package com.moyz.adi.common.util;
+package com.moyz.adi.common.rag;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;

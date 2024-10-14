@@ -12,9 +12,17 @@ import com.moyz.adi.common.dto.KbInfoResp;
 import com.moyz.adi.common.dto.KbSearchReq;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
-import com.moyz.adi.common.util.*;
+import com.moyz.adi.common.rag.AdiEmbeddingStoreContentRetriever;
+import com.moyz.adi.common.rag.CompositeRAG;
+import com.moyz.adi.common.rag.EmbeddingRAG;
+import com.moyz.adi.common.rag.GraphStoreContentRetriever;
+import com.moyz.adi.common.util.BizPager;
+import com.moyz.adi.common.util.LocalDateTimeUtil;
+import com.moyz.adi.common.util.MPPageUtil;
+import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.AssistantChatParams;
 import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.SseAskParams;
@@ -22,6 +30,8 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.parser.apache.pdfbox.ApachePdfBoxDocumentParser;
 import dev.langchain4j.data.document.parser.apache.poi.ApachePoiDocumentParser;
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -44,8 +54,7 @@ import java.util.*;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.POI_DOC_TYPES;
 import static com.moyz.adi.common.cosntant.AdiConstant.SysConfigKey.QUOTA_BY_QA_ASK_DAILY;
-import static com.moyz.adi.common.cosntant.RedisKeyConstant.KB_STATISTIC_RECALCULATE_SIGNAL;
-import static com.moyz.adi.common.cosntant.RedisKeyConstant.TOKEN_USAGE_KEY;
+import static com.moyz.adi.common.cosntant.RedisKeyConstant.*;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocument;
 
@@ -61,7 +70,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     private StringRedisTemplate stringRedisTemplate;
 
     @Resource
-    private RAGService ragService;
+    private CompositeRAG compositeRAG;
 
     @Resource
     private KnowledgeBaseItemService knowledgeBaseItemService;
@@ -83,22 +92,6 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
     @Resource
     private AiModelService aiModelService;
-
-    public boolean updateKb(KbEditReq kbEditReq) {
-        KnowledgeBase existKb = getOrThrow(kbEditReq.getUuid());
-        KnowledgeBase knowledgeBase = new KnowledgeBase();
-        knowledgeBase.setTitle(kbEditReq.getTitle());
-        knowledgeBase.setRemark(kbEditReq.getRemark());
-        if (null != kbEditReq.getIsPublic()) {
-            knowledgeBase.setIsPublic(kbEditReq.getIsPublic());
-        }
-        knowledgeBase.setId(existKb.getId());
-        knowledgeBase.setRagMaxOverlap(kbEditReq.getRagMaxOverlap());
-        knowledgeBase.setRagMaxResults(kbEditReq.getRagMaxResults());
-        knowledgeBase.setRagMinScore(kbEditReq.getRagMinScore());
-        baseMapper.updateById(knowledgeBase);
-        return true;
-    }
 
     public KnowledgeBase saveOrUpdate(KbEditReq kbEditReq) {
         KnowledgeBase knowledgeBase = new KnowledgeBase();
@@ -141,16 +134,16 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         return result;
     }
 
-    public AdiFile uploadDoc(String kbUuid, Boolean embedding, MultipartFile doc) {
+    public AdiFile uploadDoc(String kbUuid, Boolean indexAfterUpload, MultipartFile doc) {
         KnowledgeBase knowledgeBase = ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(KnowledgeBase::getUuid, kbUuid)
                 .eq(KnowledgeBase::getIsDeleted, false)
                 .oneOpt()
                 .orElseThrow(() -> new BaseException(A_DATA_NOT_FOUND));
-        return uploadDoc(knowledgeBase, doc, embedding);
+        return uploadDoc(knowledgeBase, doc, indexAfterUpload);
     }
 
-    private AdiFile uploadDoc(KnowledgeBase knowledgeBase, MultipartFile doc, Boolean embedding) {
+    private AdiFile uploadDoc(KnowledgeBase knowledgeBase, MultipartFile doc, Boolean indexAfterUpload) {
         try {
             String fileName = doc.getOriginalFilename();
             AdiFile adiFile = fileService.writeToLocal(doc);
@@ -179,25 +172,13 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             knowledgeBaseItem.setTitle(fileName);
             knowledgeBaseItem.setBrief(StringUtils.substring(content, 0, 200));
             knowledgeBaseItem.setRemark(content);
-            knowledgeBaseItem.setIsEmbedded(true);
             boolean success = knowledgeBaseItemService.save(knowledgeBaseItem);
-            if (success && Boolean.TRUE.equals(embedding)) {
-                knowledgeBaseItem = knowledgeBaseItemService.getEnable(uuid);
-
-                //向量化
-                Document docWithoutPath = new Document(document.text());
-                docWithoutPath.metadata()
-                        .put(AdiConstant.EmbeddingMetadataKey.KB_UUID, knowledgeBase.getUuid())
-                        .put(AdiConstant.EmbeddingMetadataKey.KB_ITEM_UUID, knowledgeBaseItem.getUuid());
-                ragService.ingest(docWithoutPath, knowledgeBase.getRagMaxOverlap());
-
-                knowledgeBaseItemService
-                        .lambdaUpdate()
-                        .eq(KnowledgeBaseItem::getId, knowledgeBaseItem.getId())
-                        .set(KnowledgeBaseItem::getIsEmbedded, true)
-                        .update();
-
-                updateStatistic(knowledgeBase.getUuid());
+            if (success && Boolean.TRUE.equals(indexAfterUpload)) {
+                try {
+                    indexItems(List.of(uuid));
+                } catch (BaseException e) {
+                    log.error("indexAfterUpload error", e);
+                }
             }
             return adiFile;
         } catch (Exception e) {
@@ -206,31 +187,52 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         }
     }
 
-    public boolean embedding(String kbUuid, boolean forceAll) {
+    /**
+     * 索引（向量化、图谱化）
+     *
+     * @param kbUuid 知识库uuid
+     * @return
+     */
+    public boolean indexing(String kbUuid) {
         checkPrivilege(null, kbUuid);
         KnowledgeBase knowledgeBase = this.getOrThrow(kbUuid);
         LambdaQueryWrapper<KnowledgeBaseItem> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeBaseItem::getIsDeleted, false);
         wrapper.eq(KnowledgeBaseItem::getUuid, kbUuid);
-        BizPager.oneByOneWithAnchor(wrapper, knowledgeBaseItemService, KnowledgeBaseItem::getId, one -> {
-            if (forceAll || Boolean.FALSE.equals(one.getIsEmbedded())) {
-                knowledgeBaseItemService.embedding(knowledgeBase, one);
-            }
+        BizPager.oneByOneWithAnchor(wrapper, knowledgeBaseItemService, KnowledgeBaseItem::getId, kbItem -> {
+            knowledgeBaseItemService.asyncIndex(ThreadContext.getCurrentUser(), knowledgeBase, kbItem);
         });
         return true;
     }
 
-    public boolean itemEmbedding(String itemUuid) {
-        KnowledgeBase knowledgeBase = baseMapper.getByItemUuid(itemUuid);
-        return knowledgeBaseItemService.checkAndEmbedding(knowledgeBase, itemUuid);
-    }
-
-    public boolean itemsEmbedding(String[] itemUuids) {
-        if (itemUuids.length == 0) {
+    /**
+     * 索引知识点（同一知识库下）
+     *
+     * @param itemUuids 知识点uuid列表
+     * @return
+     */
+    public boolean indexItems(List<String> itemUuids) {
+        if (CollectionUtils.isEmpty(itemUuids)) {
             return false;
         }
-        KnowledgeBase knowledgeBase = baseMapper.getByItemUuid(itemUuids[0]);
-        return knowledgeBaseItemService.checkAndEmbedding(knowledgeBase, itemUuids);
+        KnowledgeBase knowledgeBase = baseMapper.getByItemUuid(itemUuids.get(0));
+        String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
+        boolean exist = stringRedisTemplate.hasKey(userIndexKey);
+        if (exist) {
+            log.warn("文档正在索引中,请忽频繁操作,userId:{}", knowledgeBase.getOwnerId());
+            throw new BaseException(A_DOC_INDEX_DOING);
+        }
+        return knowledgeBaseItemService.checkAndIndexing(knowledgeBase, itemUuids);
+    }
+
+    /**
+     * 检查当前用户下的索引任务是否已经结束
+     *
+     * @return
+     */
+    public boolean checkIndexIsFinish() {
+        String userIndexKey = MessageFormat.format(USER_INDEXING, ThreadContext.getCurrentUserId());
+        return !stringRedisTemplate.hasKey(userIndexKey);
     }
 
     public Page<KbInfoResp> searchMine(String keyword, Boolean includeOthersPublic, Integer currentPage, Integer pageSize) {
@@ -361,12 +363,12 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         KnowledgeBase knowledgeBase = getOrThrow(qaRecord.getKbUuid());
         AiModel aiModel = aiModelService.getByIdOrThrow(qaRecord.getAiModelId());
 
-        Map<String, String> metadataCond = Map.of(AdiConstant.EmbeddingMetadataKey.KB_UUID, qaRecord.getKbUuid());
+        Map<String, String> metadataCond = Map.of(AdiConstant.MetadataKey.KB_UUID, qaRecord.getKbUuid());
         int maxInputTokens = aiModel.getMaxInputTokens();
-        int maxResults = knowledgeBase.getRagMaxResults();
+        int maxResults = knowledgeBase.getRetrieveMaxResults();
         //maxResults < 1 表示由系统根据设置的模型maxInputTokens自动计算大小
         if (maxResults < 1) {
-            maxResults = RAGService.getRetrieveMaxResults(qaRecord.getQuestion(), maxInputTokens);
+            maxResults = EmbeddingRAG.getRetrieveMaxResults(qaRecord.getQuestion(), maxInputTokens);
         }
 
         SseAskParams sseAskParams = new SseAskParams();
@@ -380,39 +382,49 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         );
         sseAskParams.setLlmBuilderProperties(
                 LLMBuilderProperties.builder()
-                        .temperature(knowledgeBase.getLlmTemperature())
+                        .temperature(knowledgeBase.getQueryLlmTemperature())
                         .build()
         );
         sseAskParams.setSseEmitter(sseEmitter);
         sseAskParams.setModelName(aiModel.getName());
-
+        sseAskParams.setUser(user);
         //用户问题过长，无需再召回文档，严格模式下直接返回异常提示,非严格模式请求LLM
         if (maxResults == 0) {
             log.info("用户问题过长，无需再召回文档，严格模式下直接返回异常提示,非严格模式请求LLM");
             if (knowledgeBase.getIsStrict()) {
                 sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "提问内容过长，最多不超过 " + maxInputTokens + " tokens");
             } else {
-                sseEmitterHelper.commonProcess(user, sseAskParams, (response, questionMeta, answerMeta) -> {
+                sseEmitterHelper.commonProcess(sseAskParams, (response, questionMeta, answerMeta) -> {
                     updateQaRecord(user, qaRecord, sseAskParams, null, response);
                 });
             }
         } else {
             log.info("进行RAG请求,maxResults:{}", maxResults);
-            AdiEmbeddingStoreContentRetriever contentRetriever = ragService.createRetriever(metadataCond, maxResults, knowledgeBase.getRagMinScore(), knowledgeBase.getIsStrict());
-            sseEmitterHelper.ragProcess(contentRetriever, user, sseAskParams, (response, promptMeta, answerMeta) -> {
-                updateQaRecord(user, qaRecord, sseAskParams, contentRetriever, response);
+            ChatLanguageModel chatLanguageModel = LLMContext.getLLMService(knowledgeBase.getIngestModelName()).buildChatLLM(
+                    LLMBuilderProperties.builder()
+                            .temperature(knowledgeBase.getQueryLlmTemperature())
+                            .build()
+                    , qaRecordUuid);
+            List<ContentRetriever> retrievers = compositeRAG.createRetriever(chatLanguageModel, metadataCond, maxResults, knowledgeBase.getRetrieveMinScore(), knowledgeBase.getIsStrict());
+            compositeRAG.ragChat(retrievers, sseAskParams, (response, promptMeta, answerMeta) -> {
+                updateQaRecord(user, qaRecord, sseAskParams, retrievers, response);
             });
         }
     }
 
-    private void updateQaRecord(User user, KnowledgeBaseQaRecord qaRecord, SseAskParams sseAskParams, AdiEmbeddingStoreContentRetriever contentRetriever, String response) {
+    private void updateQaRecord(User user, KnowledgeBaseQaRecord qaRecord, SseAskParams sseAskParams, List<ContentRetriever> retrievers, String response) {
 
         List<String> tokenCountList = stringRedisTemplate.opsForList().range(MessageFormat.format(TOKEN_USAGE_KEY, sseAskParams.getUuid()), 0, -1);
         int inputTokenCount = 0;
         int outputTokenCount = 0;
         if (!CollectionUtils.isEmpty(tokenCountList) && tokenCountList.size() > 1) {
-            inputTokenCount = Integer.parseInt(tokenCountList.get(tokenCountList.size() - 2));
-            outputTokenCount = Integer.parseInt(tokenCountList.get(tokenCountList.size() - 1));
+            for (int i = 0; i < tokenCountList.size(); i++) {
+                inputTokenCount += Integer.parseInt(tokenCountList.get(i));
+                i++;
+                if (i < tokenCountList.size()) {
+                    outputTokenCount += Integer.parseInt(tokenCountList.get(i));
+                }
+            }
         }
 
         KnowledgeBaseQaRecord updateRecord = new KnowledgeBaseQaRecord();
@@ -422,8 +434,12 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         updateRecord.setAnswer(response);
         updateRecord.setAnswerTokens(outputTokenCount);
         knowledgeBaseQaRecordService.updateById(updateRecord);
-        if (null != contentRetriever) {
-            knowledgeBaseQaRecordService.createReferences(user, qaRecord.getId(), contentRetriever.getRetrievedEmbeddingToScore());
+        for (ContentRetriever retriever : retrievers) {
+            if (retriever instanceof AdiEmbeddingStoreContentRetriever embeddingRetriever) {
+                knowledgeBaseQaRecordService.createEmbeddingRefs(user, qaRecord.getId(), embeddingRetriever.getRetrievedEmbeddingToScore());
+            } else if (retriever instanceof GraphStoreContentRetriever graphRetriever) {
+                knowledgeBaseQaRecordService.createGraphRefs(user, qaRecord.getId(), graphRetriever.getGraphRef());
+            }
         }
 
         //用户本次请求消耗的token数指的是整个RAG过程中消耗的token数量，其中可能涉及到多次LLM请求

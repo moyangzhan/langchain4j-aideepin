@@ -27,6 +27,8 @@ public enum ErrorEnum {
     A_MODEL_ALREADY_EXIST("A0023", "模型已存在"),
     A_CONVERSATION_NOT_FOUND("A0024", "会话找不到"),
     A_AI_IMAGE_NOT_FOUND("A0024", "作图记录找不到"),
+    A_ENABLE_MODEL_NOT_FOUND("A0025", "没有可用的模型"),
+    A_DOC_INDEX_DOING("A0026", "文档索引正在进行中，请稍后重试"),
     B_UNCAUGHT_ERROR("B0001", "未捕捉异常"),
     B_COMMON_ERROR("B0002", "业务出错"),
     B_GLOBAL_ERROR("B0003", "全局异常"),
@@ -42,7 +44,7 @@ public enum ErrorEnum {
     B_NO_ANSWER("B0011", "[无答案]"),
     B_SAVE_FILE_ERROR("B0012", "保存文件异常"),
     B_BREAK_SEARCH("B0013", "中断搜索"),
-    ;
+    B_GRAPH_FILTER_NOT_FOUND("B0014", "图过滤器未定义");
 
     private String code;
     private String info;

@@ -78,7 +78,7 @@ public class AdiConstant {
         public static final int STATUS_SUCCESS = 3;
     }
 
-    public static class EmbeddingMetadataKey {
+    public static class MetadataKey {
         public static final String KB_UUID = "kb_uuid";
         public static final String KB_ITEM_UUID = "kb_item_uuid";
         public static final String ENGINE_NAME = "engine_name";
@@ -164,4 +164,20 @@ public class AdiConstant {
      * 默认的最大输入token数
      */
     public static final int LLM_MAX_INPUT_TOKENS_DEFAULT = 4096;
+
+    public static final String[] GRAPH_ENTITY_EXTRACTION_ENTITY_TYPES = {"organization", "person", "geo", "event"};
+    public static final String GRAPH_TUPLE_DELIMITER = "<|>";
+    public static final String GRAPH_RECORD_DELIMITER = "##";
+    public static final String GRAPH_COMPLETION_DELIMITER = "<|COMPLETE|>";
+
+    /**
+     * 唯一标识字段，如果该字段有指定，则根据该配置判断Vertex或Edge是否唯一，如知识库中根据 name、metadata->>kb_uuid 来做判断
+     */
+    public static final String GRAPH_METADATA_IDENTIFY_COLUMNS = "graph_metadata_identify_columns";
+
+    /**
+     * 内容追加字段
+     * 更新数据时，如遇到该标识中的字段，追加内容而不是替换
+     */
+    public static final String GRAPH_METADATA_APPEND_COLUMNS = "graph_metadata_append_columns_if_exist";
 }

@@ -44,10 +44,6 @@ public class QuotaHelper {
      * @return
      */
     public ErrorEnum checkImageQuota(User user) {
-        if (StringUtils.isNotBlank(user.getSecretKey())) {
-            log.info("Custom secret key,dont need to check image quota,userId:{}", user.getId());
-            return null;
-        }
         int userDailyQuota = user.getQuotaByImageDaily();
         int userMonthlyQuota = user.getQuotaByImageMonthly();
         CostStat costStat = userDayCostService.costStatByUser(user.getId());

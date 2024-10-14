@@ -4,14 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.moyz.adi.common.dto.KbItemEmbeddingDto;
-import com.moyz.adi.common.dto.KbQaRecordReferenceDto;
 import com.moyz.adi.common.entity.KnowledgeBaseEmbedding;
 import com.moyz.adi.common.mapper.KnowledgeBaseEmbeddingMapper;
 import com.moyz.adi.common.util.MPPageUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 

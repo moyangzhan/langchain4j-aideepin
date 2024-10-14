@@ -47,7 +47,7 @@ public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
     }
 
     @Override
-    protected StreamingChatLanguageModel buildStreamingChatLLM(LLMBuilderProperties properties) {
+    public StreamingChatLanguageModel buildStreamingChatLLM(LLMBuilderProperties properties) {
         if (StringUtils.isBlank(modelPlatformSetting.getApiKey())) {
             throw new BaseException(B_LLM_SECRET_KEY_NOT_SET);
         }

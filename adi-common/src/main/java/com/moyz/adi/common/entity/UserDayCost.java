@@ -29,7 +29,4 @@ public class UserDayCost extends BaseEntity {
     @TableField(value = "images_number")
     private Integer imagesNumber;
 
-    @Schema(title = "secret key type(1:system secret key,2:custom secret key)")
-    @TableField(value = "secret_key_type")
-    private Integer secretKeyType;
 }

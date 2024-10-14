@@ -1,10 +1,7 @@
 package com.moyz.adi.common.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonGenerationException;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.*;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,6 +14,8 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -31,7 +30,7 @@ public class JsonUtil {
         objectMapper.registerModules(LocalDateTimeUtil.getSimpleModule(), new JavaTimeModule(), new Jdk8Module());
     }
 
-    public static String toJsonString(Object obj) {
+    public static String toJson(Object obj) {
         String resp = null;
         try {
             resp = objectMapper.writeValueAsString(obj);
@@ -53,7 +52,7 @@ public class JsonUtil {
      * @return
      */
     private static JsonParser getParser(String content) {
-        if(StringUtils.isNotBlank(content)){
+        if (StringUtils.isNotBlank(content)) {
             try {
                 return objectMapper.getFactory().createParser(content);
             } catch (IOException ioe) {
@@ -78,36 +77,6 @@ public class JsonUtil {
     }
 
     /**
-     * JSON对象序列化
-     */
-    public static String toJson(Object obj) {
-        StringWriter sw = new StringWriter();
-        JsonGenerator jsonGen = getGenerator(sw);
-        if (jsonGen == null) {
-            try {
-                sw.close();
-            } catch (IOException e) {
-                log.error("JsonUtil toJSON error", e);
-            }
-            return null;
-        }
-        try {
-            //由于在getGenerator方法中指定了OutputStream为sw
-            //因此调用writeObject会将数据输出到sw
-            jsonGen.writeObject(obj == null ? "" : obj);
-            //由于采用流式输出 在输出完毕后务必清空缓冲区并关闭输出流
-            jsonGen.flush();
-            jsonGen.close();
-            return sw.toString();
-        } catch (JsonGenerationException jge) {
-            log.error("JSON生成错误", jge);
-        } catch (IOException ioe) {
-            log.error("JSON输入输出错误", ioe);
-        }
-        return null;
-    }
-
-    /**
      * JSON对象反序列化
      */
     public static <T> T fromJson(String json, Class<T> clazz) {
@@ -122,6 +91,26 @@ public class JsonUtil {
             log.error("反序列化失败", ioe);
         }
         return null;
+    }
+
+    public static Map<String, Object> toMap(String json) {
+        Map<String, Object> result;
+        try {
+            result = objectMapper.readValue(json, Map.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        return result;
+    }
+
+    public static Map<String, Object> toMap(Object obj) {
+        Map<String, Object> result;
+        try {
+            result = objectMapper.convertValue(obj, Map.class);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return result;
     }
 
 }

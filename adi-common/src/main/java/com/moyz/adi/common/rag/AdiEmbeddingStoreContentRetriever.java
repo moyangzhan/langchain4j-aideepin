@@ -1,4 +1,4 @@
-package com.moyz.adi.common.util;
+package com.moyz.adi.common.rag;
 
 import com.moyz.adi.common.exception.BaseException;
 import dev.langchain4j.data.embedding.Embedding;
@@ -196,7 +196,7 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
                 .map(Content::from)
                 .collect(toList());
 
-        //判断是否要强行中断查询，没有命中则不再请求LLM，直接抛出异常中断流程
+        //判断是否要强行中断查询，没有命中则不再进行下一步操作（比如说请求LLM），直接抛出异常中断流程
         if (breakIfSearchMissed && CollectionUtils.isEmpty(result)) {
             throw new BaseException(B_BREAK_SEARCH);
         }

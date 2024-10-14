@@ -2,7 +2,7 @@ package com.moyz.adi.common.service;
 
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.util.AdiEmbeddingStoreContentRetriever;
+import com.moyz.adi.common.rag.AdiEmbeddingStoreContentRetriever;
 import com.moyz.adi.common.util.InputAdaptor;
 import com.moyz.adi.common.vo.InputAdaptorMsg;
 import dev.langchain4j.data.document.Document;

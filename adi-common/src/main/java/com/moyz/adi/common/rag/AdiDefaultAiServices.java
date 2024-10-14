@@ -1,5 +1,6 @@
-package com.moyz.adi.common.util;
+package com.moyz.adi.common.rag;
 
+import com.moyz.adi.common.util.InputAdaptor;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutor;
 import dev.langchain4j.data.message.AiMessage;

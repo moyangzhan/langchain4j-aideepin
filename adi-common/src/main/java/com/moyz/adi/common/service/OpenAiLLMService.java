@@ -58,7 +58,7 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
     }
 
     @Override
-    protected StreamingChatLanguageModel buildStreamingChatLLM(LLMBuilderProperties properties) {
+    public StreamingChatLanguageModel buildStreamingChatLLM(LLMBuilderProperties properties) {
         if (StringUtils.isBlank(modelPlatformSetting.getSecretKey())) {
             throw new BaseException(ErrorEnum.B_LLM_SECRET_KEY_NOT_SET);
         }

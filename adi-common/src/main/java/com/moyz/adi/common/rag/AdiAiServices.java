@@ -1,12 +1,8 @@
-package com.moyz.adi.common.util;
+package com.moyz.adi.common.rag;
 
-import com.moyz.adi.common.interfaces.IChatAssistant;
-import com.moyz.adi.common.vo.InputAdaptorMsg;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.spi.services.AiServicesFactory;
-
-import java.util.function.Consumer;
 
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 

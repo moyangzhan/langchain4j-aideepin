@@ -207,7 +207,6 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
                 saveOrUpdateInst.setUserId(user.getId());
                 saveOrUpdateInst.setDay(LocalDateTimeUtil.getToday());
                 saveOrUpdateInst.setImagesNumber(images.size());
-                saveOrUpdateInst.setSecretKeyType(UserUtil.getSecretType(user));
             } else {
                 saveOrUpdateInst.setId(userDayCost.getId());
                 saveOrUpdateInst.setImagesNumber(userDayCost.getImagesNumber() + images.size());

@@ -21,11 +21,13 @@ public class KbEditReq {
 
     private Boolean isStrict;
 
-    private Integer ragMaxResults;
+    private Integer retrieveMaxResults;
 
-    private Double ragMinScore;
+    private Double retrieveMinScore;
 
-    private Integer ragMaxOverlap;
+    private Integer ingestMaxOverlap;
 
-    private Double llmTemperature;
+    private String ingestModelName;
+
+    private Double queryLlmTemperature;
 }

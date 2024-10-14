@@ -1,13 +1,21 @@
 ## Getting Started
 
-**LangChain4j-AIDeepin**
-基于 ChatGPT 等大语言模型与 Langchain4j 等应用框架实现，开源、可离线部署的检索增强生成(RAG)项目。
+**LangChain4j-AIDeepin 是基于AI的企业内部提效工具。**
 
-> **该项目如对您有帮助，欢迎点赞🌟**
+ *可用于辅助技术研发、产品设计、规章制度咨询、系统或商品咨询、客服话术支撑等工作*
+
+> **🌟该项目如对您有帮助，欢迎点赞🌟**
+
+## 系统组成及文档
+
+AIDEEPIN
+  |__ 服务端(langchain4j-aideepin)
+  |__ 用户端WEB(langchain4j-aideepin-web)
+  |__ 管理端WEB(langchain4j-aideepin-admin)
 
 👉[详细文档](https://github.com/moyangzhan/langchain4j-aideepin/wiki)
 
-代码仓库地址：[github](https://github.com/moyangzhan/langchain4j-aideepin)  [gitee](https://gitee.com/moyangzhan/langchain4j-aideepin)
+服务端代码地址：[github](https://github.com/moyangzhan/langchain4j-aideepin)  [gitee](https://gitee.com/moyangzhan/langchain4j-aideepin)
 
 前端项目：
 
@@ -30,6 +38,8 @@
 * 提示词
 * 额度控制
 * 基于大模型的知识库（RAG）
+  * 向量搜索
+  * 图搜索
 * 基于大模型的搜索（RAG）
 * 多模型随意切换
 * 多搜索引擎随意切换
@@ -41,6 +51,7 @@
 * 文心一言
 * ollama
 * DALL-E 2
+* DALL-E 3
 
 ## 接入的搜索引擎
 
@@ -59,7 +70,9 @@ Bing (TODO)
 * jdk17
 * springboot3.0.5
 * [langchain4j(Java version of LangChain)](https://github.com/langchain4j/langchain4j)
-* Postgresql(需要安装[pgvector](https://github.com/pgvector/pgvector)扩展)
+* Postgresql
+  * pgvector扩展：https://github.com/pgvector/pgvector
+  * Apage AGE扩展：https://github.com/apache/age
 
 前端技术栈：
 
@@ -158,11 +171,16 @@ Bing (TODO)
   * 查询压缩  √
   * 查询路由
   * Re-rank：支持本地rerank模型
+* AI聊天
+  * 多角色  √
+  * 预设通用角色（管理后台创建）
 * 图片模型：
-  * DALL-E 2 / DALL-E 3 √
+  * DALL-E 2 & DALL-E 3 √
   * 聊天视图  √
   * 画廊视图  √
 * 知识库：
+  * 向量  √
+  * 知识图谱  √
   * 文档召回数量可设置
     * 自动调整（根据LLM的上下文窗口大小）  √
     * 手动调整  √
@@ -171,11 +189,13 @@ Bing (TODO)
   * 请求模型时temperature可设置  √
   * 严格模式与非严格模式  √
   * 答案来源  √
-  * 知识图谱
   * 支持拉取在线文档
   * FAQ
   * 评论
 * 多模态支持
+  * 图片
+  * 音频
+  * 视频
 * 工具
   * FAQ提取
   * 文档对话
@@ -184,6 +204,11 @@ Bing (TODO)
   * Google  √
   * Bing
   * 百度
+* 额度统计及控制
+  * 免费额度统计及限制
+  * 计费额度统计及限制
+  * 总额度统计
+* 开放接口
 
 ## 截图
 
@@ -192,7 +217,9 @@ Bing (TODO)
 
 **AI画图：**
 
-![1691583124744](image/README/1691583124744.png "AI绘图")
+![draw_001](image/README/draw_001.png "AI绘图")
+
+![draw_002](image/README/draw_002.png "AI绘图")
 
 **知识库：**
 ![kbindex](image/README/kbidx.png)
@@ -205,6 +232,12 @@ Bing (TODO)
 
 ![kb03](image/README/kb03.png)
 
+**知识图谱：**
+
+![kb_graph_01](image/README/kb_graph_01.png)
+
+![kb_graph_02](image/README/kb_graph_02.png)
+
 **额度统计：**
 
-!![1691583329105.png](image%2FREADME%2F1691583329105.png)
+![1691583329105.png](image%2FREADME%2F1691583329105.png)

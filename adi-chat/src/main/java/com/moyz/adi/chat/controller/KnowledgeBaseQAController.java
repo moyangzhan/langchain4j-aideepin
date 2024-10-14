@@ -1,11 +1,9 @@
 package com.moyz.adi.chat.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.moyz.adi.common.dto.KbQaRecordDto;
-import com.moyz.adi.common.dto.KbQaRecordReferenceDto;
-import com.moyz.adi.common.dto.QARecordReq;
-import com.moyz.adi.common.dto.QAReq;
+import com.moyz.adi.common.dto.*;
 import com.moyz.adi.common.entity.KnowledgeBase;
+import com.moyz.adi.common.service.KnowledgeBaseQaRecordRefGraphService;
 import com.moyz.adi.common.service.KnowledgeBaseQaRecordService;
 import com.moyz.adi.common.service.KnowledgeBaseService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,6 +29,9 @@ public class KnowledgeBaseQAController {
     @Resource
     private KnowledgeBaseQaRecordService knowledgeBaseQaRecordService;
 
+    @Resource
+    private KnowledgeBaseQaRecordRefGraphService knowledgeBaseQaRecordRefGraphService;
+
     @PostMapping("/record/add/{kbUuid}")
     public KbQaRecordDto add(@PathVariable String kbUuid, @RequestBody @Validated QARecordReq req) {
         KnowledgeBase knowledgeBase = knowledgeBaseService.getOrThrow(kbUuid);
@@ -54,8 +55,13 @@ public class KnowledgeBaseQAController {
     }
 
     @GetMapping("/record/reference/{uuid}")
-    public List<KbQaRecordReferenceDto> reference(@PathVariable String uuid) {
+    public List<KbQaRecordReferenceDto> embeddingRef(@PathVariable String uuid) {
         return knowledgeBaseQaRecordService.listReferences(uuid);
+    }
+
+    @GetMapping("/record/graph-ref/{uuid}")
+    public KbQaRecordRefGraphDto graphRef(@PathVariable String uuid) {
+        return knowledgeBaseQaRecordRefGraphService.getByQaUuid(uuid);
     }
 
     @PostMapping("/record/clear")

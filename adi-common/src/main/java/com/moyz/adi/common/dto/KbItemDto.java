@@ -1,5 +1,7 @@
 package com.moyz.adi.common.dto;
 
+import com.moyz.adi.common.enums.EmbeddingStatusEnum;
+import com.moyz.adi.common.enums.GraphicalStatusEnum;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -13,6 +15,8 @@ public class KbItemDto {
 
     private Long sourceFileId;
 
+    private Long id;
+
     private String uuid;
 
     private String title;
@@ -21,7 +25,13 @@ public class KbItemDto {
 
     private String remark;
 
-    private Boolean isEmbedded;
+    private EmbeddingStatusEnum embeddingStatus;
+
+    private LocalDateTime embeddingStatusChangeTime;
+
+    private GraphicalStatusEnum graphicalStatus;
+
+    private LocalDateTime graphicalStatusChangeTime;
 
     private String sourceFileName;
 

@@ -1,8 +1,8 @@
 package com.moyz.adi.common.entity;
 
-import com.moyz.adi.common.enums.UserStatusEnum;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.moyz.adi.common.enums.UserStatusEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -25,10 +25,6 @@ public class User extends BaseEntity {
 
     @TableField("uuid")
     private String uuid;
-
-    @Schema(name = "openai secret key")
-    @TableField("secret_key")
-    private String secretKey;
 
     @Schema(name = "上下文理解中需要携带的消息对数量（提示词及回复）")
     @TableField("understand_context_msg_pair_num")

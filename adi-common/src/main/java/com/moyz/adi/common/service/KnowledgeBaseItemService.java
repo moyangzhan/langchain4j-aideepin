@@ -10,23 +10,32 @@ import com.moyz.adi.common.dto.KbItemEditReq;
 import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.entity.KnowledgeBaseItem;
 import com.moyz.adi.common.entity.User;
+import com.moyz.adi.common.enums.EmbeddingStatusEnum;
+import com.moyz.adi.common.enums.GraphicalStatusEnum;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.mapper.KnowledgeBaseItemMapper;
+import com.moyz.adi.common.rag.CompositeRAG;
 import com.moyz.adi.common.util.UuidUtil;
+import com.moyz.adi.common.vo.LLMBuilderProperties;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.model.chat.ChatLanguageModel;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.MessageFormat;
 import java.time.LocalDateTime;
-import java.util.UUID;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static com.moyz.adi.common.cosntant.RedisKeyConstant.KB_STATISTIC_RECALCULATE_SIGNAL;
+import static com.moyz.adi.common.cosntant.RedisKeyConstant.USER_INDEXING;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 @Slf4j
@@ -37,7 +46,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
     private StringRedisTemplate stringRedisTemplate;
 
     @Resource
-    private RAGService ragService;
+    private CompositeRAG compositeRAG;
 
     @Resource
     private KnowledgeBaseEmbeddingService knowledgeBaseEmbeddingService;
@@ -81,47 +90,103 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
         return baseMapper.searchByKb(new Page<>(currentPage, pageSize), kbUuid, keyword);
     }
 
-    public boolean checkAndEmbedding(KnowledgeBase knowledgeBase, String[] uuids) {
-        if (ArrayUtils.isEmpty(uuids)) {
-            return false;
-        }
-        for (String uuid : uuids) {
-            checkAndEmbedding(knowledgeBase, uuid);
-        }
-        return true;
-    }
-
-    public boolean checkAndEmbedding(KnowledgeBase knowledgeBase, String uuid) {
-        if (checkPrivilege(uuid)) {
-            KnowledgeBaseItem item = getEnable(uuid);
-            return embedding(knowledgeBase, item);
-        }
-        return false;
-    }
-
-
     /**
-     * 知识点向量化，如向量已存在，则先删除
+     * 批量索引知识点
      *
-     * @param kbItem
+     * @param knowledgeBase
+     * @param kbItemUuids   知识点uuid列表
      * @return
      */
-    public boolean embedding(KnowledgeBase knowledgeBase, KnowledgeBaseItem kbItem) {
-        knowledgeBaseEmbeddingService.deleteByItemUuid(kbItem.getUuid());
-
-        Metadata metadata = new Metadata();
-        metadata.put(AdiConstant.EmbeddingMetadataKey.KB_UUID, kbItem.getKbUuid());
-        metadata.put(AdiConstant.EmbeddingMetadataKey.KB_ITEM_UUID, kbItem.getUuid());
-        Document document = new Document(kbItem.getRemark(), metadata);
-        ragService.ingest(document, knowledgeBase.getRagMaxOverlap());
-
-        ChainWrappers.lambdaUpdateChain(baseMapper)
-                .eq(KnowledgeBaseItem::getId, kbItem.getId())
-                .set(KnowledgeBaseItem::getIsEmbedded, true)
-                .update();
-
-        stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, kbItem.getKbUuid());
+    public boolean checkAndIndexing(KnowledgeBase knowledgeBase, List<String> kbItemUuids) {
+        for (String kbItemUuid : kbItemUuids) {
+            if (checkPrivilege(kbItemUuid)) {
+                KnowledgeBaseItem item = getEnable(kbItemUuid);
+                asyncIndex(ThreadContext.getCurrentUser(),knowledgeBase, item);
+            }
+        }
         return true;
+    }
+
+    /**
+     * 对文档进行索引(向量化、图谱化)
+     *
+     * @param user
+     * @param knowledgeBase
+     * @param kbItem
+     */
+    @Async
+    public void asyncIndex(User user, KnowledgeBase knowledgeBase, KnowledgeBaseItem kbItem) {
+        stringRedisTemplate.opsForValue().set(MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId()), "", 10, TimeUnit.MINUTES);
+        try {
+            if (kbItem.getEmbeddingStatus() != EmbeddingStatusEnum.DOING) {
+                Metadata metadata = new Metadata();
+                metadata.put(AdiConstant.MetadataKey.KB_UUID, kbItem.getKbUuid());
+                metadata.put(AdiConstant.MetadataKey.KB_ITEM_UUID, kbItem.getUuid());
+                Document document = new Document(kbItem.getRemark(), metadata);
+                knowledgeBaseEmbeddingService.deleteByItemUuid(kbItem.getUuid());
+                indexingEmbedding(knowledgeBase, kbItem, document);
+            }
+            if (kbItem.getGraphicalStatus() != GraphicalStatusEnum.DOING) {
+                Metadata metadata = new Metadata();
+                metadata.put(AdiConstant.MetadataKey.KB_UUID, kbItem.getKbUuid());
+                metadata.put(AdiConstant.MetadataKey.KB_ITEM_UUID, kbItem.getUuid());
+                Document document = new Document(kbItem.getRemark(), metadata);
+                indexingGraph(user, knowledgeBase, kbItem, document);
+            }
+        } finally {
+            stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, kbItem.getKbUuid());
+            stringRedisTemplate.delete(MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId()));
+        }
+
+    }
+
+    private void indexingEmbedding(KnowledgeBase knowledgeBase, KnowledgeBaseItem kbItem, Document document) {
+        try {
+            ChainWrappers.lambdaUpdateChain(baseMapper)
+                    .eq(KnowledgeBaseItem::getId, kbItem.getId())
+                    .set(KnowledgeBaseItem::getEmbeddingStatusChangeTime, LocalDateTime.now())
+                    .set(KnowledgeBaseItem::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
+                    .update();
+            compositeRAG.getEmbeddingRAGService().ingest(document, knowledgeBase.getIngestMaxOverlap(), null);
+            ChainWrappers.lambdaUpdateChain(baseMapper)
+                    .eq(KnowledgeBaseItem::getId, kbItem.getId())
+                    .set(KnowledgeBaseItem::getEmbeddingStatus, EmbeddingStatusEnum.DONE)
+                    .update();
+        } catch (Exception e) {
+            log.error("ingestForEmbedding error", e);
+            ChainWrappers.lambdaUpdateChain(baseMapper)
+                    .eq(KnowledgeBaseItem::getId, kbItem.getId())
+                    .set(KnowledgeBaseItem::getEmbeddingStatusChangeTime, LocalDateTime.now())
+                    .set(KnowledgeBaseItem::getEmbeddingStatus, EmbeddingStatusEnum.FAIL)
+                    .update();
+        }
+    }
+
+    private void indexingGraph(User user, KnowledgeBase knowledgeBase, KnowledgeBaseItem kbItem, Document document) {
+        try {
+            ChainWrappers.lambdaUpdateChain(baseMapper)
+                    .eq(KnowledgeBaseItem::getId, kbItem.getId())
+                    .set(KnowledgeBaseItem::getGraphicalStatusChangeTime, LocalDateTime.now())
+                    .set(KnowledgeBaseItem::getGraphicalStatus, GraphicalStatusEnum.DOING)
+                    .update();
+            ChatLanguageModel chatLanguageModel = LLMContext.getLLMService(knowledgeBase.getIngestModelName()).buildChatLLM(
+                    LLMBuilderProperties.builder()
+                            .temperature(knowledgeBase.getQueryLlmTemperature())
+                            .build()
+                    , kbItem.getUuid());
+            compositeRAG.getGraphRAGService().ingest(user, document, knowledgeBase.getIngestMaxOverlap(), chatLanguageModel, List.of(AdiConstant.MetadataKey.KB_UUID), List.of(AdiConstant.MetadataKey.KB_ITEM_UUID));
+            ChainWrappers.lambdaUpdateChain(baseMapper)
+                    .eq(KnowledgeBaseItem::getId, kbItem.getId())
+                    .set(KnowledgeBaseItem::getGraphicalStatus, GraphicalStatusEnum.DONE)
+                    .update();
+        } catch (Exception e) {
+            log.error("ingestForGraph error", e);
+            ChainWrappers.lambdaUpdateChain(baseMapper)
+                    .eq(KnowledgeBaseItem::getId, kbItem.getId())
+                    .set(KnowledgeBaseItem::getGraphicalStatusChangeTime, LocalDateTime.now())
+                    .set(KnowledgeBaseItem::getGraphicalStatus, GraphicalStatusEnum.FAIL)
+                    .update();
+        }
     }
 
     @Transactional

@@ -27,9 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
-import java.util.UUID;
 
-import static com.moyz.adi.common.enums.ErrorEnum.*;
+import static com.moyz.adi.common.enums.ErrorEnum.A_CONVERSATION_NOT_FOUND;
+import static com.moyz.adi.common.enums.ErrorEnum.B_MESSAGE_NOT_FOUND;
 
 @Slf4j
 @Service
@@ -125,6 +125,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
 
         String questionUuid = StringUtils.isNotBlank(askReq.getRegenerateQuestionUuid()) ? askReq.getRegenerateQuestionUuid() : UuidUtil.createShort();
         SseAskParams sseAskParams = new SseAskParams();
+        sseAskParams.setUser(user);
         sseAskParams.setUuid(questionUuid);
         sseAskParams.setModelName(askReq.getModelName());
         sseAskParams.setSseEmitter(sseEmitter);
@@ -151,7 +152,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                         .temperature(conversation.getLlmTemperature())
                         .build()
         );
-        sseEmitterHelper.commonProcess(user, sseAskParams, (response, questionMeta, answerMeta) -> {
+        sseEmitterHelper.commonProcess(sseAskParams, (response, questionMeta, answerMeta) -> {
             _this.saveAfterAiResponse(user, askReq, response, questionMeta, answerMeta);
         });
     }
@@ -170,7 +171,6 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
     @Transactional
     public void saveAfterAiResponse(User user, AskReq askReq, String response, PromptMeta questionMeta, AnswerMeta answerMeta) {
 
-        int secretKeyType = StringUtils.isNotBlank(user.getSecretKey()) ? AdiConstant.SECRET_KEY_TYPE_CUSTOM : AdiConstant.SECRET_KEY_TYPE_SYSTEM;
         Conversation conversation;
         String prompt = askReq.getPrompt();
         String convUuid = askReq.getConversationUuid();
@@ -193,7 +193,6 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             question.setMessageRole(ChatMessageRoleEnum.USER.getValue());
             question.setRemark(prompt);
             question.setTokens(questionMeta.getTokens());
-            question.setSecretKeyType(secretKeyType);
             question.setUnderstandContextMsgPairNum(user.getUnderstandContextMsgPairNum());
             baseMapper.insert(question);
 
@@ -210,7 +209,6 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         aiAnswer.setRemark(response);
         aiAnswer.setTokens(answerMeta.getTokens());
         aiAnswer.setParentMessageId(promptMsg.getId());
-        aiAnswer.setSecretKeyType(secretKeyType);
         aiAnswer.setAiModelId(aiModelService.getIdByName(askReq.getModelName()));
         baseMapper.insert(aiAnswer);
 

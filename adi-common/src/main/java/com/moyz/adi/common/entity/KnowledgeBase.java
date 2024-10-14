@@ -54,19 +54,23 @@ public class KnowledgeBase extends BaseEntity {
     @TableField("owner_name")
     private String ownerName;
 
+    @Schema(title = "文档切割时重叠数量(按token来计)")
+    @TableField("ingest_max_overlap")
+    private Integer ingestMaxOverlap;
+
+    @Schema(title = "索引(图谱化)文档时使用的LLM,如不指定的话则使用第1个可用的LLM")
+    @TableField("ingest_model_name")
+    private String ingestModelName;
+
     @Schema(title = "文档召回最大数量")
-    @TableField("rag_max_results")
-    private Integer ragMaxResults;
+    @TableField("retrieve_max_results")
+    private Integer retrieveMaxResults;
 
     @Schema(title = "文档召回最小分数")
-    @TableField("rag_min_score")
-    private Double ragMinScore;
-
-    @Schema(title = "文档切割时重叠数量(按token来计)")
-    @TableField("rag_max_overlap")
-    private Integer ragMaxOverlap;
+    @TableField("retrieve_min_score")
+    private Double retrieveMinScore;
 
     @Schema(title = "请求LLM时的temperature")
-    @TableField("llm_temperature")
-    private Double llmTemperature;
+    @TableField("query_llm_temperature")
+    private Double queryLlmTemperature;
 }

@@ -1,5 +1,7 @@
--- 需要先安装pgvector这个扩展（https://github.com/pgvector/pgvector）
--- CREATE EXTENSION vector;
+-- 安装pgvector扩展（https://github.com/pgvector/pgvector）
+-- 安装Apache AGE扩展（https://github.com/apache/age）
+-- CREATE EXTENSION IF NOT EXISTS vector;
+-- CREATE EXTENSION IF NOT EXISTS age;
 
 SET client_encoding = 'UTF8';
 CREATE SCHEMA public;
@@ -7,22 +9,22 @@ CREATE SCHEMA public;
 CREATE TABLE public.adi_ai_image
 (
     id                 bigserial primary key,
-    user_id            bigint                  DEFAULT 0                     NOT NULL,
-    uuid               character varying(32)   DEFAULT ''::character varying NOT NULL,
-    ai_model_name      character varying(45)   DEFAULT ''::character varying NOT NULL,
-    prompt             character varying(1024) DEFAULT ''::character varying NOT NULL,
-    generate_size      character varying(20)   DEFAULT ''::character varying NOT NULL,
-    generate_quality   character varying(20)   DEFAULT ''::character varying NOT NULL,
-    generate_number    integer                 DEFAULT 1                     NOT NULL,
-    original_image     character varying(1000) DEFAULT ''::character varying NOT NULL,
-    mask_image         character varying(1000) DEFAULT ''::character varying NOT NULL,
-    resp_images_path   character varying(2048) DEFAULT ''::character varying NOT NULL,
-    generated_images   character varying(2048) DEFAULT ''::character varying NOT NULL,
-    interacting_method smallint                DEFAULT '1'::smallint         NOT NULL,
-    process_status     smallint                DEFAULT '1'::smallint         NOT NULL,
-    create_time        timestamp               DEFAULT CURRENT_TIMESTAMP     NOT NULL,
-    update_time        timestamp               DEFAULT CURRENT_TIMESTAMP     NOT NULL,
-    is_deleted         boolean                 DEFAULT false                 NOT NULL,
+    user_id            bigint                  default 0                     not null,
+    uuid               character varying(32)   default ''::character varying not null,
+    ai_model_name      character varying(45)   default ''::character varying not null,
+    prompt             character varying(1024) default ''::character varying not null,
+    generate_size      character varying(20)   default ''::character varying not null,
+    generate_quality   character varying(20)   default ''::character varying not null,
+    generate_number    integer                 default 1                     not null,
+    original_image     character varying(1000) default ''::character varying not null,
+    mask_image         character varying(1000) default ''::character varying not null,
+    resp_images_path   character varying(2048) default ''::character varying not null,
+    generated_images   character varying(2048) default ''::character varying not null,
+    interacting_method smallint                default '1'::smallint         not null,
+    process_status     smallint                default '1'::smallint         not null,
+    create_time        timestamp               default CURRENT_TIMESTAMP     not null,
+    update_time        timestamp               default CURRENT_TIMESTAMP     not null,
+    is_deleted         boolean                 default false                 not null,
     CONSTRAINT adi_ai_image_generate_number_check CHECK (((generate_number >= 1) AND (generate_number <= 10))),
     CONSTRAINT adi_ai_image_interacting_method_check CHECK ((interacting_method = ANY (ARRAY [1, 2, 3]))),
     CONSTRAINT adi_ai_image_process_status_check CHECK ((process_status = ANY (ARRAY [1, 2, 3]))),
@@ -37,7 +39,7 @@ COMMENT ON COLUMN public.adi_ai_image.ai_model_name IS 'Image model name';
 COMMENT ON COLUMN public.adi_ai_image.prompt IS 'The prompt for generating images';
 COMMENT ON COLUMN public.adi_ai_image.generate_size IS 'DALL·E 2:256x256, 512x512 or 1024x1024;DALL·E 3:1024x1024, 1024x1792 or 1792x1024';
 COMMENT ON COLUMN public.adi_ai_image.generate_quality IS 'Only DALL·E 3:hd,standard';
-COMMENT ON COLUMN public.adi_ai_image.generate_number IS 'The number of images to generate. Must be between 1 and 10. Defaults to 1.';
+COMMENT ON COLUMN public.adi_ai_image.generate_number IS 'The number of images to generate. Must be between 1 and 10. defaults to 1.';
 COMMENT ON COLUMN public.adi_ai_image.original_image IS 'The path of the original image (local path or http path), interacting_method must be 2/3';
 COMMENT ON COLUMN public.adi_ai_image.mask_image IS 'The path of the mask image (local path or http path), interacting_method must be 2';
 COMMENT ON COLUMN public.adi_ai_image.resp_images_path IS 'The url of the generated images which from openai response, separated by commas';
@@ -60,10 +62,10 @@ CREATE TABLE public.adi_ai_model
     context_window    int           default 0                 not null,
     max_input_tokens  int           default 0                 not null,
     max_output_tokens int           default 0                 not null,
-    is_enable         boolean       default false             NOT NULL,
-    create_time       timestamp     DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    update_time       timestamp     DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    is_deleted        boolean       DEFAULT false             NOT NULL
+    is_enable         boolean       default false             not null,
+    create_time       timestamp     default CURRENT_TIMESTAMP not null,
+    update_time       timestamp     default CURRENT_TIMESTAMP not null,
+    is_deleted        boolean       default false             not null
 );
 
 COMMENT ON TABLE public.adi_ai_model IS 'ai模型';
@@ -96,18 +98,18 @@ VALUES ('tinydolphin', 'text', 'ollama', false);
 CREATE TABLE public.adi_conversation
 (
     id                        bigserial primary key,
-    user_id                   bigint                  DEFAULT 0                     NOT NULL,
-    uuid                      character varying(32)   DEFAULT ''::character varying NOT NULL,
-    title                     character varying(45)   DEFAULT ''::character varying NOT NULL,
-    openai_conversation_id    character varying(32)   DEFAULT ''::character varying NOT NULL,
-    tokens                    integer                 DEFAULT 0                     NOT NULL,
-    ai_system_message         character varying(1000) DEFAULT ''::character varying NOT NULL,
-    ai_model                  character varying(45)   DEFAULT ''::character varying NOT NULL,
-    understand_context_enable boolean                 DEFAULT false                 NOT NULL,
-    llm_temperature           numeric(2, 1)           DEFAULT 0.7                   not null,
-    create_time               timestamp               DEFAULT CURRENT_TIMESTAMP     NOT NULL,
-    update_time               timestamp               DEFAULT CURRENT_TIMESTAMP     NOT NULL,
-    is_deleted                boolean                 DEFAULT false                 NOT NULL
+    user_id                   bigint                  default 0                     not null,
+    uuid                      character varying(32)   default ''::character varying not null,
+    title                     character varying(45)   default ''::character varying not null,
+    openai_conversation_id    character varying(32)   default ''::character varying not null,
+    tokens                    integer                 default 0                     not null,
+    ai_system_message         character varying(1000) default ''::character varying not null,
+    ai_model                  character varying(45)   default ''::character varying not null,
+    understand_context_enable boolean                 default false                 not null,
+    llm_temperature           numeric(2, 1)           default 0.7                   not null,
+    create_time               timestamp               default CURRENT_TIMESTAMP     not null,
+    update_time               timestamp               default CURRENT_TIMESTAMP     not null,
+    is_deleted                boolean                 default false                 not null
 );
 
 COMMENT ON TABLE public.adi_conversation IS '对话表';
@@ -123,20 +125,19 @@ COMMENT ON COLUMN public.adi_conversation.llm_temperature is '指定LLM响应时
 CREATE TABLE public.adi_conversation_message
 (
     id                              bigserial primary key,
-    parent_message_id               bigint                DEFAULT 0                     NOT NULL,
-    conversation_id                 bigint                DEFAULT 0                     NOT NULL,
-    conversation_uuid               character varying(32) DEFAULT ''::character varying NOT NULL,
-    remark                          text                                                NOT NULL,
-    uuid                            character varying(32) DEFAULT ''::character varying NOT NULL,
-    message_role                    integer               DEFAULT 1                     NOT NULL,
-    tokens                          integer               DEFAULT 0                     NOT NULL,
-    user_id                         bigint                DEFAULT 0                     NOT NULL,
-    ai_model_id                     bigint                DEFAULT 0                     not null,
-    secret_key_type                 integer               DEFAULT 1                     NOT NULL,
-    understand_context_msg_pair_num integer               DEFAULT 0                     NOT NULL,
-    create_time                     timestamp             DEFAULT CURRENT_TIMESTAMP     NOT NULL,
-    update_time                     timestamp             DEFAULT CURRENT_TIMESTAMP     NOT NULL,
-    is_deleted                      boolean               DEFAULT false                 NOT NULL
+    parent_message_id               bigint                default 0                     not null,
+    conversation_id                 bigint                default 0                     not null,
+    conversation_uuid               character varying(32) default ''::character varying not null,
+    remark                          text                                                not null,
+    uuid                            character varying(32) default ''::character varying not null,
+    message_role                    integer               default 1                     not null,
+    tokens                          integer               default 0                     not null,
+    user_id                         bigint                default 0                     not null,
+    ai_model_id                     bigint                default 0                     not null,
+    understand_context_msg_pair_num integer               default 0                     not null,
+    create_time                     timestamp             default CURRENT_TIMESTAMP     not null,
+    update_time                     timestamp             default CURRENT_TIMESTAMP     not null,
+    is_deleted                      boolean               default false                 not null
 );
 COMMENT ON TABLE public.adi_conversation_message IS '对话消息表';
 
@@ -158,23 +159,21 @@ COMMENT ON COLUMN public.adi_conversation_message.user_id IS '用户ID';
 
 COMMENT ON COLUMN public.adi_conversation_message.ai_model_id IS 'adi_ai_model id';
 
-COMMENT ON COLUMN public.adi_conversation_message.secret_key_type IS '加密密钥类型';
-
 COMMENT ON COLUMN public.adi_conversation_message.understand_context_msg_pair_num IS '上下文消息对数量';
 
 CREATE TABLE public.adi_file
 (
     id          bigserial primary key,
-    name        character varying(36)  DEFAULT ''::character varying NOT NULL,
-    uuid        character varying(32)  DEFAULT ''::character varying NOT NULL,
-    ext         character varying(36)  DEFAULT ''::character varying NOT NULL,
-    user_id     bigint                 DEFAULT 0                     NOT NULL,
-    path        character varying(250) DEFAULT ''::character varying NOT NULL,
-    ref_count   integer                DEFAULT 0                     NOT NULL,
-    create_time timestamp              DEFAULT CURRENT_TIMESTAMP     NOT NULL,
-    update_time timestamp              DEFAULT CURRENT_TIMESTAMP     NOT NULL,
-    is_deleted  boolean                DEFAULT false                 NOT NULL,
-    md5         character varying(128) DEFAULT ''::character varying NOT NULL
+    name        character varying(36)  default ''::character varying not null,
+    uuid        character varying(32)  default ''::character varying not null,
+    ext         character varying(36)  default ''::character varying not null,
+    user_id     bigint                 default 0                     not null,
+    path        character varying(250) default ''::character varying not null,
+    ref_count   integer                default 0                     not null,
+    create_time timestamp              default CURRENT_TIMESTAMP     not null,
+    update_time timestamp              default CURRENT_TIMESTAMP     not null,
+    is_deleted  boolean                default false                 not null,
+    md5         character varying(128) default ''::character varying not null
 );
 
 COMMENT ON TABLE public.adi_file IS '文件';
@@ -202,12 +201,12 @@ COMMENT ON COLUMN public.adi_file.md5 IS 'MD5 hash of the file';
 CREATE TABLE public.adi_prompt
 (
     id          bigserial primary key,
-    user_id     bigint                 DEFAULT 0                     NOT NULL,
-    act         character varying(120) DEFAULT ''::character varying NOT NULL,
-    prompt      text                                                 NOT NULL,
-    create_time timestamp              DEFAULT CURRENT_TIMESTAMP     NOT NULL,
-    update_time timestamp              DEFAULT CURRENT_TIMESTAMP     NOT NULL,
-    is_deleted  boolean                DEFAULT false                 NOT NULL
+    user_id     bigint                 default 0                     not null,
+    act         character varying(120) default ''::character varying not null,
+    prompt      text                                                 not null,
+    create_time timestamp              default CURRENT_TIMESTAMP     not null,
+    update_time timestamp              default CURRENT_TIMESTAMP     not null,
+    is_deleted  boolean                default false                 not null
 );
 
 COMMENT ON TABLE public.adi_prompt IS '提示词';
@@ -227,11 +226,11 @@ COMMENT ON COLUMN public.adi_prompt.is_deleted IS '0:未删除；1：已删除';
 CREATE TABLE public.adi_sys_config
 (
     id          bigserial primary key,
-    name        character varying(100)  DEFAULT ''::character varying NOT NULL,
-    value       character varying(1000) DEFAULT ''::character varying NOT NULL,
-    create_time timestamp               DEFAULT localtimestamp        NOT NULL,
-    update_time timestamp               DEFAULT localtimestamp        NOT NULL,
-    is_deleted  boolean                 DEFAULT false                 NOT NULL
+    name        character varying(100)  default ''::character varying not null,
+    value       character varying(1000) default ''::character varying not null,
+    create_time timestamp               default localtimestamp        not null,
+    update_time timestamp               default localtimestamp        not null,
+    is_deleted  boolean                 default false                 not null
 );
 
 COMMENT ON TABLE public.adi_sys_config IS '系统配置表';
@@ -249,25 +248,24 @@ COMMENT ON COLUMN public.adi_sys_config.is_deleted IS '0：未删除；1：已�
 CREATE TABLE public.adi_user
 (
     id                              bigserial primary key,
-    name                            character varying(45)  DEFAULT ''::character varying NOT NULL,
-    password                        character varying(120) DEFAULT ''::character varying NOT NULL,
-    uuid                            character varying(32)  DEFAULT ''::character varying NOT NULL,
-    email                           character varying(120) DEFAULT ''::character varying NOT NULL,
+    name                            character varying(45)  default ''::character varying not null,
+    password                        character varying(120) default ''::character varying not null,
+    uuid                            character varying(32)  default ''::character varying not null,
+    email                           character varying(120) default ''::character varying not null,
     active_time                     timestamp,
-    user_status                     smallint               DEFAULT '1'::smallint         NOT NULL,
-    is_admin                        boolean                DEFAULT false                 NOT NULL,
-    quota_by_token_daily            integer                DEFAULT 0                     NOT NULL,
-    quota_by_token_monthly          integer                DEFAULT 0                     NOT NULL,
-    quota_by_request_daily          integer                DEFAULT 0                     NOT NULL,
-    quota_by_request_monthly        integer                DEFAULT 0                     NOT NULL,
-    secret_key                      character varying(120) DEFAULT ''::character varying NOT NULL,
-    understand_context_enable       smallint               DEFAULT '0'::smallint         NOT NULL,
-    understand_context_msg_pair_num integer                DEFAULT 3                     NOT NULL,
-    quota_by_image_daily            integer                DEFAULT 0                     NOT NULL,
-    quota_by_image_monthly          integer                DEFAULT 0                     NOT NULL,
-    create_time                     timestamp              DEFAULT CURRENT_TIMESTAMP     NOT NULL,
-    update_time                     timestamp              DEFAULT CURRENT_TIMESTAMP     NOT NULL,
-    is_deleted                      boolean                DEFAULT false                 NOT NULL
+    user_status                     smallint               default '1'::smallint         not null,
+    is_admin                        boolean                default false                 not null,
+    quota_by_token_daily            integer                default 0                     not null,
+    quota_by_token_monthly          integer                default 0                     not null,
+    quota_by_request_daily          integer                default 0                     not null,
+    quota_by_request_monthly        integer                default 0                     not null,
+    understand_context_enable       smallint               default '0'::smallint         not null,
+    understand_context_msg_pair_num integer                default 3                     not null,
+    quota_by_image_daily            integer                default 0                     not null,
+    quota_by_image_monthly          integer                default 0                     not null,
+    create_time                     timestamp              default CURRENT_TIMESTAMP     not null,
+    update_time                     timestamp              default CURRENT_TIMESTAMP     not null,
+    is_deleted                      boolean                default false                 not null
 );
 
 COMMENT ON TABLE public.adi_user IS '用户表';
@@ -300,8 +298,6 @@ COMMENT ON COLUMN public.adi_user.quota_by_request_daily IS '每日请求配额'
 
 COMMENT ON COLUMN public.adi_user.quota_by_request_monthly IS '每月请求配额';
 
-COMMENT ON COLUMN public.adi_user.secret_key IS '用户密钥';
-
 COMMENT ON COLUMN public.adi_user.understand_context_enable IS '上下文理解开关';
 
 COMMENT ON COLUMN public.adi_user.understand_context_msg_pair_num IS '上下文消息对数量';
@@ -318,15 +314,14 @@ VALUES ('catkeeper', '$2a$10$z44gncmQk6xCBCeDx55gMe1Zc8uYtOKcoT4/HE2F92VcF7wP2iq
 CREATE TABLE public.adi_user_day_cost
 (
     id              bigserial primary key,
-    user_id         bigint    DEFAULT 0                 NOT NULL,
-    day             integer   DEFAULT 0                 NOT NULL,
-    requests        integer   DEFAULT 0                 NOT NULL,
-    tokens          integer   DEFAULT 0                 NOT NULL,
-    create_time     timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    update_time     timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    secret_key_type integer   DEFAULT 0                 NOT NULL,
-    images_number   integer   DEFAULT 0                 NOT NULL,
-    is_deleted      boolean   DEFAULT false             NOT NULL
+    user_id         bigint    default 0                 not null,
+    day             integer   default 0                 not null,
+    requests        integer   default 0                 not null,
+    tokens          integer   default 0                 not null,
+    create_time     timestamp default CURRENT_TIMESTAMP not null,
+    update_time     timestamp default CURRENT_TIMESTAMP not null,
+    images_number   integer   default 0                 not null,
+    is_deleted      boolean   default false             not null
 );
 
 COMMENT ON TABLE public.adi_user_day_cost IS '用户每天消耗总量表';
@@ -342,8 +337,6 @@ COMMENT ON COLUMN public.adi_user_day_cost.tokens IS '消耗的token数量';
 COMMENT ON COLUMN public.adi_user_day_cost.create_time IS 'Timestamp of record creation';
 
 COMMENT ON COLUMN public.adi_user_day_cost.update_time IS 'Timestamp of record last update, automatically updated on each update';
-
-COMMENT ON COLUMN public.adi_user_day_cost.secret_key_type IS '加密密钥类型';
 
 COMMENT ON COLUMN public.adi_user_day_cost.images_number IS '图片数量';
 
@@ -455,25 +448,26 @@ VALUES ('quota_by_qa_item_monthly', '100');
 
 create table adi_knowledge_base
 (
-    id              bigserial primary key,
-    uuid            varchar(32)   default ''::character varying not null,
-    title           varchar(250)  default ''::character varying not null,
-    remark          text          default ''::character varying not null,
-    is_public       boolean       default false                 not null,
-    is_strict       boolean       default true                  not null,
-    rag_max_results int           default 3                     not null,
-    rag_min_score   numeric(2, 1) default 0.6                   not null,
-    rag_max_overlap int           default 0                     not null,
-    llm_temperature numeric(2, 1) default 0.7                   not null,
-    owner_id        bigint        default 0                     not null,
-    owner_uuid      varchar(32)   default ''::character varying not null,
-    owner_name      varchar(45)   default ''::character varying not null,
-    star_count      int           default 0                     not null,
-    item_count      int           default 0                     not null,
-    embedding_count int           default 0                     not null,
-    create_time     timestamp     default CURRENT_TIMESTAMP     not null,
-    update_time     timestamp     default CURRENT_TIMESTAMP     not null,
-    is_deleted      boolean       default false                 not null
+    id                    bigserial primary key,
+    uuid                  varchar(32)   default ''::character varying not null,
+    title                 varchar(250)  default ''::character varying not null,
+    remark                text          default ''::character varying not null,
+    is_public             boolean       default false                 not null,
+    is_strict             boolean       default true                  not null,
+    ingest_max_overlap    int           default 0                     not null,
+    ingest_model_name     varchar(45)   default ''::character varying not null,
+    retrieve_max_results  int           default 3                     not null,
+    retrieve_min_score    numeric(2, 1) default 0.6                   not null,
+    query_llm_temperature numeric(2, 1) default 0.7                   not null,
+    owner_id              bigint        default 0                     not null,
+    owner_uuid            varchar(32)   default ''::character varying not null,
+    owner_name            varchar(45)   default ''::character varying not null,
+    star_count            int           default 0                     not null,
+    item_count            int           default 0                     not null,
+    embedding_count       int           default 0                     not null,
+    create_time           timestamp     default CURRENT_TIMESTAMP     not null,
+    update_time           timestamp     default CURRENT_TIMESTAMP     not null,
+    is_deleted            boolean       default false                 not null
 );
 
 comment on table adi_knowledge_base is '知识库';
@@ -486,13 +480,15 @@ comment on column adi_knowledge_base.is_public is '是否公开';
 
 comment on column adi_knowledge_base.is_strict is '是否严格模式,严格模式：严格匹配知识库，知识库中如无搜索结果，直接返回无答案;非严格模式：非严格匹配知识库，知识库中如无搜索结果，将用户提问传给LLM继续请求答案';
 
-comment on column adi_knowledge_base.rag_max_results is '设置召回向量最大数量,默认为0,表示由系统根据模型的contentWindow自动调整';
+comment on column adi_knowledge_base.ingest_max_overlap is '设置文档切块时重叠的最大数量（按token来计），对完整句子切割时才考虑重叠';
 
-comment on column adi_knowledge_base.rag_min_score is '设置向量搜索时命中所需的最低分数,为0表示使用默认';
+comment on column adi_knowledge_base.ingest_model_name is '索引(图谱化)文档时使用的LLM,不指定时使用第1个可用的LLM';
 
-comment on column adi_knowledge_base.rag_max_overlap is '设置文档切块时重叠的最大数量（按token来计），对完整句子切割时才考虑重叠';
+comment on column adi_knowledge_base.retrieve_max_results is '设置召回向量最大数量,默认为0,表示由系统根据模型的contentWindow自动调整';
 
-comment on column adi_knowledge_base.llm_temperature is '指定LLM响应时的创造性/随机性';
+comment on column adi_knowledge_base.retrieve_min_score is '设置向量搜索时命中所需的最低分数,为0表示使用默认';
+
+comment on column adi_knowledge_base.query_llm_temperature is '用户查询时指定LLM响应时的创造性/随机性';
 
 comment on column adi_knowledge_base.star_count is '点赞数';
 
@@ -520,18 +516,22 @@ execute procedure update_modified_column();
 
 create table adi_knowledge_base_item
 (
-    id             bigserial primary key,
-    uuid           varchar(32)  default ''::character varying not null,
-    kb_id          bigint       DEFAULT 0                     NOT NULL,
-    kb_uuid        varchar(32)  default ''::character varying not null,
-    source_file_id bigint       DEFAULT 0                     NOT NULL,
-    title          varchar(250) default ''::character varying not null,
-    brief          varchar(250) default ''::character varying not null,
-    remark         text         default ''::character varying not null,
-    is_embedded    boolean      default false                 not null,
-    create_time    timestamp    default CURRENT_TIMESTAMP     not null,
-    update_time    timestamp    default CURRENT_TIMESTAMP     not null,
-    is_deleted     boolean      default false                 not null
+    id                           bigserial primary key,
+    uuid                         varchar(32)  default ''::character varying not null,
+    kb_id                        bigint       default 0                     not null,
+    kb_uuid                      varchar(32)  default ''::character varying not null,
+    source_file_id               bigint       default 0                     not null,
+    title                        varchar(250) default ''::character varying not null,
+    brief                        varchar(250) default ''::character varying not null,
+    remark                       text         default ''::character varying not null,
+    is_embedded                  boolean      default false                 not null,
+    embedding_status             int          default 1                     not null,
+    embedding_status_change_time timestamp    default CURRENT_TIMESTAMP     not null,
+    graphical_status             int          default 1                     not null,
+    graphical_status_change_time timestamp    default CURRENT_TIMESTAMP     not null,
+    create_time                  timestamp    default CURRENT_TIMESTAMP     not null,
+    update_time                  timestamp    default CURRENT_TIMESTAMP     not null,
+    is_deleted                   boolean      default false                 not null
 );
 
 comment on table adi_knowledge_base_item is '知识库-条目';
@@ -546,7 +546,15 @@ comment on column adi_knowledge_base_item.brief is '条目内容摘要';
 
 comment on column adi_knowledge_base_item.remark is '条目内容';
 
-comment on column adi_knowledge_base_item.is_embedded is '是否已向量化,0:否,1:是';
+comment on column adi_knowledge_base_item.is_embedded is 'Deprecated.使用embedding_status代替。-- 是否已向量化,true:否,false:是';
+
+comment on column adi_knowledge_base_item.embedding_status is '向量化状态, 1:未向量化,2:正在向量化,3:已向量化,4:失败';
+
+comment on column adi_knowledge_base_item.embedding_status_change_time is '向量化状态变更时间';
+
+comment on column adi_knowledge_base_item.graphical_status is '图谱化状态, 1:未图谱化,2:正在图谱化;3:已图谱化,4:失败';
+
+comment on column adi_knowledge_base_item.graphical_status_change_time is '图谱化状态变更时间';
 
 comment on column adi_knowledge_base_item.create_time is '创建时间';
 
@@ -563,9 +571,9 @@ execute procedure update_modified_column();
 create table adi_knowledge_base_star_record
 (
     id          bigserial primary key,
-    kb_id       bigint      DEFAULT 0                     NOT NULL,
+    kb_id       bigint      default 0                     not null,
     kb_uuid     varchar(32) default ''::character varying not null,
-    user_id     bigint      default '0'                   NOT NULL,
+    user_id     bigint      default '0'                   not null,
     user_uuid   varchar(32) default ''::character varying not null,
     create_time timestamp   default CURRENT_TIMESTAMP     not null,
     update_time timestamp   default CURRENT_TIMESTAMP     not null,
@@ -599,15 +607,15 @@ create table adi_knowledge_base_qa_record
 (
     id              bigserial primary key,
     uuid            varchar(32)   default ''::character varying not null,
-    kb_id           bigint        DEFAULT 0                     NOT NULL,
+    kb_id           bigint        default 0                     not null,
     kb_uuid         varchar(32)   default ''::character varying not null,
     question        varchar(1000) default ''::character varying not null,
     prompt          text          default ''::character varying not null,
-    prompt_tokens   integer       DEFAULT 0                     NOT NULL,
+    prompt_tokens   integer       default 0                     not null,
     answer          text          default ''::character varying not null,
-    answer_tokens   integer       DEFAULT 0                     NOT NULL,
+    answer_tokens   integer       default 0                     not null,
     source_file_ids varchar(500)  default ''::character varying not null,
-    user_id         bigint        default 0                     NOT NULL,
+    user_id         bigint        default 0                     not null,
     ai_model_id     bigint        default 0                     not null,
     create_time     timestamp     default CURRENT_TIMESTAMP     not null,
     update_time     timestamp     default CURRENT_TIMESTAMP     not null,
@@ -649,13 +657,13 @@ execute procedure update_modified_column();
 create table adi_knowledge_base_qa_record_reference
 (
     id           bigserial primary key,
-    qa_record_id bigint        DEFAULT 0                     NOT NULL,
-    embedding_id varchar(36)   DEFAULT ''::character varying NOT NULL,
+    qa_record_id bigint        default 0                     not null,
+    embedding_id varchar(36)   default ''::character varying not null,
     score        numeric(3, 2) default 0                     not null,
-    user_id      bigint        DEFAULT 0                     NOT NULL
+    user_id      bigint        default 0                     not null
 );
 
-comment on table adi_knowledge_base_qa_record_reference is '知识库-提问记录-引用列表';
+comment on table adi_knowledge_base_qa_record_reference is '知识库-提问记录-向量引用列表';
 
 comment on column adi_knowledge_base_qa_record_reference.qa_record_id is '提问记录id';
 
@@ -665,6 +673,55 @@ comment on column adi_knowledge_base_qa_record_reference.score is '评分';
 
 comment on column adi_knowledge_base_qa_record_reference.user_id is '所属用户';
 
+create trigger trigger_kb_qa_record_reference_update_time
+    before update
+    on adi_knowledge_base_qa_record_reference
+    for each row
+execute procedure update_modified_column();
+
+-- Graph RAG
+create table adi_knowledge_base_graph_segment
+(
+    id           bigserial primary key,
+    uuid         varchar(32) default ''::character varying not null,
+    kb_uuid      varchar(32) default ''::character varying not null,
+    kb_item_uuid varchar(32) default ''::character varying not null,
+    remark       text        default ''::character varying not null,
+    user_id      bigint      default 0                     not null,
+    create_time  timestamp   default CURRENT_TIMESTAMP     not null,
+    update_time  timestamp   default CURRENT_TIMESTAMP     not null,
+    is_deleted   boolean     default false                 not null
+);
+
+comment on table adi_knowledge_base_graph_segment is '知识库-图谱-文本块';
+
+comment on column adi_knowledge_base_graph_segment.kb_uuid is '所属知识库uuid';
+
+comment on column adi_knowledge_base_graph_segment.kb_item_uuid is '所属知识点uuid';
+
+comment on column adi_knowledge_base_graph_segment.remark is '内容';
+
+comment on column adi_knowledge_base_graph_segment.user_id is '所属用户';
+
+create table adi_knowledge_base_qa_record_ref_graph
+(
+    id               bigserial primary key,
+    qa_record_id     bigint default 0                     not null,
+    graph_from_llm   text   default ''::character varying not null,
+    graph_from_store text   default ''::character varying not null,
+    user_id          bigint default 0                     not null
+);
+
+comment on table adi_knowledge_base_qa_record_ref_graph is '知识库-提问记录-图谱引用记录';
+
+comment on column adi_knowledge_base_qa_record_ref_graph.qa_record_id is '提问记录id';
+
+comment on column adi_knowledge_base_qa_record_ref_graph.graph_from_llm is 'LLM解析出来的图谱: vertexName1,vertexName2';
+
+comment on column adi_knowledge_base_qa_record_ref_graph.graph_from_store is '从图数据库中查找得到的图谱: {vertices:[{id:"111",name:"vertexName1"},{id:"222",name:"vertexName2"}],edges:[{id:"333",name:"edgeName1",start:"111",end:"222"}]';
+
+comment on column adi_knowledge_base_qa_record_ref_graph.user_id is '所属用户';
+
 -- ai search
 create table adi_ai_search_record
 (
@@ -673,10 +730,10 @@ create table adi_ai_search_record
     question               varchar(1000) default ''::character varying not null,
     search_engine_response jsonb                                       not null,
     prompt                 text          default ''::character varying not null,
-    prompt_tokens          integer       DEFAULT 0                     NOT NULL,
+    prompt_tokens          integer       default 0                     not null,
     answer                 text          default ''::character varying not null,
-    answer_tokens          integer       DEFAULT 0                     NOT NULL,
-    user_id                bigint        default 0                     NOT NULL,
+    answer_tokens          integer       default 0                     not null,
+    user_id                bigint        default 0                     not null,
     user_uuid              varchar(32)   default ''::character varying not null,
     ai_model_id            bigint        default 0                     not null,
     create_time            timestamp     default CURRENT_TIMESTAMP     not null,

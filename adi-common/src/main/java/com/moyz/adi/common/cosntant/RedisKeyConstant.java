@@ -93,7 +93,7 @@ public class RedisKeyConstant {
     public static final String qa_item_create_limit = "aq:item:create:{0}";
 
     /**
-     * 重新统计知识库信号
+     * 信号(重新生成知识库统计数据)
      * 值:知识库uuid
      */
     public static final String KB_STATISTIC_RECALCULATE_SIGNAL = "kb:statistic:recalculate:signal";
@@ -106,4 +106,10 @@ public class RedisKeyConstant {
     public static final String STATISTIC_IMAGE_COST = "image-cost";
 
     public static final String TOKEN_USAGE_KEY = "token:usage:{0}";
+
+    /**
+     * 用户正在对文档进行索引
+     * 值：用户id
+     */
+    public static final String USER_INDEXING = "user:indexing:{0}";
 }

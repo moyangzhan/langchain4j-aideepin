@@ -50,10 +50,6 @@ public class ConversationMessage extends BaseEntity {
     @TableField("tokens")
     private Integer tokens;
 
-    @Schema(title = "secret key type(1:system secret key,2:custom secret key)")
-    @TableField(value = "secret_key_type")
-    private Integer secretKeyType;
-
     @Schema(name = "上下文理解中携带的消息对数量（提示词及回复）")
     @TableField("understand_context_msg_pair_num")
     private Integer understandContextMsgPairNum;

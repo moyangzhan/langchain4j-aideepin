@@ -9,6 +9,7 @@ import com.moyz.adi.common.dto.*;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.KnowledgeBaseQaRecordMapper;
+import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.MPPageUtil;
 import com.moyz.adi.common.util.UuidUtil;
 import jakarta.annotation.Resource;
@@ -29,6 +30,9 @@ public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRec
 
     @Resource
     private KnowledgeBaseQaRecordReferenceService knowledgeBaseQaRecordReferenceService;
+
+    @Resource
+    private KnowledgeBaseQaRecordRefGraphService knowledgeBaseQaRecordRefGraphService;
 
     @Resource
     private KnowledgeBaseEmbeddingService knowledgeBaseEmbeddingService;
@@ -74,13 +78,14 @@ public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRec
     }
 
     /**
-     * 增加引用记录
+     * 增加嵌入引用记录
      *
      * @param user
      * @param qaRecordId       qa记录id
      * @param embeddingToScore
      */
-    public void createReferences(User user, Long qaRecordId, Map<String, Double> embeddingToScore) {
+    public void createEmbeddingRefs(User user, Long qaRecordId, Map<String, Double> embeddingToScore) {
+        log.info("更新向量引用,userId:{},qaRecordId:{},embeddingToScore.size:{}", user.getId(), qaRecordId, embeddingToScore.size());
         for (String embeddingId : embeddingToScore.keySet()) {
             KnowledgeBaseQaRecordReference recordReference = new KnowledgeBaseQaRecordReference();
             recordReference.setQaRecordId(qaRecordId);
@@ -89,6 +94,27 @@ public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRec
             recordReference.setUserId(user.getId());
             knowledgeBaseQaRecordReferenceService.save(recordReference);
         }
+    }
+
+    /**
+     * 增加图谱引用记录
+     *
+     * @param user
+     * @param qaRecordId
+     * @param graphDto
+     */
+    public void createGraphRefs(User user, Long qaRecordId, KbQaRecordRefGraphDto graphDto) {
+        log.info("更新图谱引用,userId:{},qaRecordId:{},vertices.Size:{},edges.size:{}", user.getId(), qaRecordId, graphDto.getVertices().size(), graphDto.getEdges().size());
+        String entities = null == graphDto.getEntitiesFromLlm() ? "" : String.join(",", graphDto.getEntitiesFromLlm());
+        Map<String, Object> graphFromStore = new HashMap<>();
+        graphFromStore.put("vertices", graphDto.getVertices());
+        graphFromStore.put("edges", graphDto.getEdges());
+        KnowledgeBaseQaRecordRefGraph refGraph = new KnowledgeBaseQaRecordRefGraph();
+        refGraph.setQaRecordId(qaRecordId);
+        refGraph.setUserId(user.getId());
+        refGraph.setGraphFromLlm(entities);
+        refGraph.setGraphFromStore(JsonUtil.toJson(graphFromStore));
+        knowledgeBaseQaRecordRefGraphService.save(refGraph);
     }
 
     public List<KbQaRecordReferenceDto> listReferences(String uuid) {

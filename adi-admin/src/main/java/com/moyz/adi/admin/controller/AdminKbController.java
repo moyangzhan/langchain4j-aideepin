@@ -34,6 +34,7 @@ public class AdminKbController {
 
     @PostMapping("/edit")
     public boolean edit(@RequestBody KbEditReq kbEditReq) {
-        return knowledgeBaseService.updateKb(kbEditReq);
+        knowledgeBaseService.saveOrUpdate(kbEditReq);
+        return true;
     }
 }
