@@ -15,6 +15,7 @@ public class KbInfoResp {
     private Integer starCount;
     private Integer ingestMaxOverlap;
     private String ingestModelName;
+    private Long ingestModelId;
     private Integer retrieveMaxResults;
     private Double retrieveMinScore;
     private Double queryLlmTemperature;

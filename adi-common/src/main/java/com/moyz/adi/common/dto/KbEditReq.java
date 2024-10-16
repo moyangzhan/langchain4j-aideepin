@@ -27,7 +27,7 @@ public class KbEditReq {
 
     private Integer ingestMaxOverlap;
 
-    private String ingestModelName;
+    private Long ingestModelId;
 
     private Double queryLlmTemperature;
 }
