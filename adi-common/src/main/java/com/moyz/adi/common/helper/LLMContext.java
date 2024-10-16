@@ -55,7 +55,7 @@ public class LLMContext {
         return NAME_TO_LLM_SERVICE;
     }
 
-    public static AbstractLLMService getLLMService(String modelName) {
+    public static AbstractLLMService getLLMServiceByName(String modelName) {
         AbstractLLMService service = NAME_TO_LLM_SERVICE.get(modelName);
         if (null == service) {
             Optional<AbstractLLMService> serviceOptional = NAME_TO_LLM_SERVICE.values().stream().filter(AbstractLLMService::isEnabled).findFirst();
@@ -67,5 +67,13 @@ public class LLMContext {
             throw new BaseException(ErrorEnum.A_ENABLE_MODEL_NOT_FOUND);
         }
         return service;
+    }
+
+    public static AbstractLLMService getLLMServiceById(Long modelId) {
+        AiModel aiModel = NAME_TO_LLM_SERVICE.values().stream()
+                .map(AbstractLLMService::getAiModel)
+                .filter(item -> item.getId().equals(modelId))
+                .findFirst().orElse(null);
+        return LLMContext.getLLMServiceByName(null == aiModel ? "" : aiModel.getName());
     }
 }

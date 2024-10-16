@@ -101,7 +101,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
         for (String kbItemUuid : kbItemUuids) {
             if (checkPrivilege(kbItemUuid)) {
                 KnowledgeBaseItem item = getEnable(kbItemUuid);
-                asyncIndex(ThreadContext.getCurrentUser(),knowledgeBase, item);
+                asyncIndex(ThreadContext.getCurrentUser(), knowledgeBase, item);
             }
         }
         return true;
@@ -169,7 +169,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                     .set(KnowledgeBaseItem::getGraphicalStatusChangeTime, LocalDateTime.now())
                     .set(KnowledgeBaseItem::getGraphicalStatus, GraphicalStatusEnum.DOING)
                     .update();
-            ChatLanguageModel chatLanguageModel = LLMContext.getLLMService(knowledgeBase.getIngestModelName()).buildChatLLM(
+            ChatLanguageModel chatLanguageModel = LLMContext.getLLMServiceById(knowledgeBase.getIngestModelId()).buildChatLLM(
                     LLMBuilderProperties.builder()
                             .temperature(knowledgeBase.getQueryLlmTemperature())
                             .build()

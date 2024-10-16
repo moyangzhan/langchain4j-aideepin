@@ -62,6 +62,10 @@ public class KnowledgeBase extends BaseEntity {
     @TableField("ingest_model_name")
     private String ingestModelName;
 
+    @Schema(title = "索引(图谱化)文档时使用的LLM,如不指定的话则使用第1个可用的LLM")
+    @TableField("ingest_model_id")
+    private Long ingestModelId;
+
     @Schema(title = "文档召回最大数量")
     @TableField("retrieve_max_results")
     private Integer retrieveMaxResults;

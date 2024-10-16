@@ -96,6 +96,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     public KnowledgeBase saveOrUpdate(KbEditReq kbEditReq) {
         KnowledgeBase knowledgeBase = new KnowledgeBase();
         BeanUtils.copyProperties(kbEditReq, knowledgeBase, "id", "uuid");
+        if (null != kbEditReq.getIngestModelId()) {
+            knowledgeBase.setIngestModelName(aiModelService.getByIdOrThrow(kbEditReq.getIngestModelId()).getName());
+        }
         if (null == kbEditReq.getId() || kbEditReq.getId() < 1) {
             User user = ThreadContext.getCurrentUser();
             knowledgeBase.setUuid(UuidUtil.createShort());
@@ -400,7 +403,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             }
         } else {
             log.info("进行RAG请求,maxResults:{}", maxResults);
-            ChatLanguageModel chatLanguageModel = LLMContext.getLLMService(knowledgeBase.getIngestModelName()).buildChatLLM(
+            ChatLanguageModel chatLanguageModel = LLMContext.getLLMServiceById(knowledgeBase.getIngestModelId()).buildChatLLM(
                     LLMBuilderProperties.builder()
                             .temperature(knowledgeBase.getQueryLlmTemperature())
                             .build()

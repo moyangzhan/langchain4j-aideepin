@@ -313,15 +313,15 @@ VALUES ('catkeeper', '$2a$10$z44gncmQk6xCBCeDx55gMe1Zc8uYtOKcoT4/HE2F92VcF7wP2iq
 
 CREATE TABLE public.adi_user_day_cost
 (
-    id              bigserial primary key,
-    user_id         bigint    default 0                 not null,
-    day             integer   default 0                 not null,
-    requests        integer   default 0                 not null,
-    tokens          integer   default 0                 not null,
-    create_time     timestamp default CURRENT_TIMESTAMP not null,
-    update_time     timestamp default CURRENT_TIMESTAMP not null,
-    images_number   integer   default 0                 not null,
-    is_deleted      boolean   default false             not null
+    id            bigserial primary key,
+    user_id       bigint    default 0                 not null,
+    day           integer   default 0                 not null,
+    requests      integer   default 0                 not null,
+    tokens        integer   default 0                 not null,
+    create_time   timestamp default CURRENT_TIMESTAMP not null,
+    update_time   timestamp default CURRENT_TIMESTAMP not null,
+    images_number integer   default 0                 not null,
+    is_deleted    boolean   default false             not null
 );
 
 COMMENT ON TABLE public.adi_user_day_cost IS '用户每天消耗总量表';
@@ -456,6 +456,7 @@ create table adi_knowledge_base
     is_strict             boolean       default true                  not null,
     ingest_max_overlap    int           default 0                     not null,
     ingest_model_name     varchar(45)   default ''::character varying not null,
+    ingest_model_id       bigint        default 0                     not null,
     retrieve_max_results  int           default 3                     not null,
     retrieve_min_score    numeric(2, 1) default 0.6                   not null,
     query_llm_temperature numeric(2, 1) default 0.7                   not null,
@@ -483,6 +484,8 @@ comment on column adi_knowledge_base.is_strict is '是否严格模式,严格模�
 comment on column adi_knowledge_base.ingest_max_overlap is '设置文档切块时重叠的最大数量（按token来计），对完整句子切割时才考虑重叠';
 
 comment on column adi_knowledge_base.ingest_model_name is '索引(图谱化)文档时使用的LLM,不指定时使用第1个可用的LLM';
+
+comment on column adi_knowledge_base.ingest_model_id is '索引(图谱化)文档时使用的LLM,不指定时使用第1个可用的LLM';
 
 comment on column adi_knowledge_base.retrieve_max_results is '设置召回向量最大数量,默认为0,表示由系统根据模型的contentWindow自动调整';
 

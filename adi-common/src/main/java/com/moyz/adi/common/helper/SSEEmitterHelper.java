@@ -80,7 +80,7 @@ public class SSEEmitterHelper {
      */
     public void commonProcess(SseAskParams sseAskParams, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
         String askingKey = registerSseEventCallBack(sseAskParams);
-        LLMContext.getLLMService(sseAskParams.getModelName()).commonChat(sseAskParams, (response, promptMeta, answerMeta) -> {
+        LLMContext.getLLMServiceByName(sseAskParams.getModelName()).commonChat(sseAskParams, (response, promptMeta, answerMeta) -> {
             try {
                 consumer.accept((String) response, (PromptMeta) promptMeta, (AnswerMeta) answerMeta);
             } catch (Exception e) {
