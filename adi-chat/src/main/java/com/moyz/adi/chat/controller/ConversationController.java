@@ -12,6 +12,8 @@ import jakarta.annotation.Resource;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import org.hibernate.validator.constraints.Length;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,6 +26,7 @@ import java.util.List;
 @Tag(name = "对话controller", description = "对话controller")
 @RequestMapping("/conversation")
 @RestController
+@Validated
 public class ConversationController {
 
     @Resource
@@ -47,6 +50,12 @@ public class ConversationController {
     @PostMapping("/add")
     public ConvDto add(@RequestBody @Validated ConvAddReq convAddReq) {
         return conversationService.add(convAddReq.getTitle(), convAddReq.getAiSystemMessage());
+    }
+
+    @Operation(summary = "根据预设会话创建用户自己的会话")
+    @PostMapping("/addByPreset")
+    public ConvDto addByPreset(@Length(min = 32, max = 32) @RequestParam String presetUuid) {
+        return conversationService.addByPresetConv(presetUuid);
     }
 
     @PostMapping("/edit/{uuid}")

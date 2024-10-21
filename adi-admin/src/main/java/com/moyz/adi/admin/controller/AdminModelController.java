@@ -42,7 +42,7 @@ public class AdminModelController {
         aiModelService.edit(aiModelDto);
     }
 
-    @PostMapping("/delete/{id}")
+    @PostMapping("/del/{id}")
     public void delete(@PathVariable Long id) {
         aiModelService.softDelete(id);
     }

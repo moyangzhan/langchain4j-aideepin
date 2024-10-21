@@ -68,6 +68,10 @@ public class AdiConstant {
             注意,回答的内容不能让用户感知到已知信息的存在
             """);
 
+    public static class ConversationConstant {
+        public static final String DEFAULT_NAME = "通用智能助手";
+    }
+
     public static class GenerateImage {
         public static final int INTERACTING_METHOD_GENERATE_IMAGE = 1;
         public static final int INTERACTING_METHOD_EDIT_IMAGE = 2;

@@ -34,10 +34,6 @@ public class Conversation extends BaseEntity {
     @TableField("tokens")
     private Integer tokens;
 
-    @Schema(title = "ai model name")
-    @TableField("ai_model")
-    private String aiModel;
-
     @Schema(name = "是否开启理解上下文的功能")
     @TableField("understand_context_enable")
     private Boolean understandContextEnable;

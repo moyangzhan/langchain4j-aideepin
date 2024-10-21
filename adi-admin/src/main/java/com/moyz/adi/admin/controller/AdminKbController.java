@@ -27,7 +27,7 @@ public class AdminKbController {
         return knowledgeBaseService.search(kbSearchReq, currentPage, pageSize);
     }
 
-    @PostMapping("/delete/{uuid}")
+    @PostMapping("/del/{uuid}")
     public boolean delete(@PathVariable String uuid) {
         return knowledgeBaseService.softDelete(uuid);
     }

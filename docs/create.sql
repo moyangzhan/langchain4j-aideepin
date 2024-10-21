@@ -6,6 +6,16 @@
 SET client_encoding = 'UTF8';
 CREATE SCHEMA public;
 
+-- update_time trigger
+CREATE OR REPLACE FUNCTION update_modified_column()
+    RETURNS TRIGGER AS
+$$
+BEGIN
+    NEW.update_time = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
 CREATE TABLE public.adi_ai_image
 (
     id                 bigserial primary key,
@@ -95,16 +105,46 @@ VALUES ('ERNIE-Speed-8K', 'text', 'qianfan', 131072, 126976, 4096, false, '{"end
 INSERT INTO adi_ai_model (name, type, platform, is_enable)
 VALUES ('tinydolphin', 'text', 'ollama', false);
 
+CREATE TABLE public.adi_conversation_preset
+(
+    id                bigserial primary key,
+    uuid              varchar(32)   default ''                not null,
+    title             varchar(45)   default ''                not null,
+    remark            varchar(1000) default ''                not null,
+    ai_system_message varchar(1000) default ''                not null,
+    create_time       timestamp     default CURRENT_TIMESTAMP not null,
+    update_time       timestamp     default CURRENT_TIMESTAMP not null,
+    is_deleted        boolean       default false             not null
+);
+COMMENT ON TABLE public.adi_conversation_preset IS '预设会话(角色)表';
+
+COMMENT ON COLUMN public.adi_conversation_preset.title IS '标题';
+
+COMMENT ON COLUMN public.adi_conversation_preset.remark IS '描述';
+
+COMMENT ON COLUMN public.adi_conversation_preset.ai_system_message IS '提供给LLM的系统信息';
+
+create trigger trigger_conversation_preset
+    before update
+    on adi_conversation_preset
+    for each row
+execute procedure update_modified_column();
+
+-- 示例数据
+INSERT INTO adi_conversation_preset (uuid, title, remark, ai_system_message)
+VALUES ('26a8f54c560948d6b2d4969f08f3f2fb', '开发工程师', '技术好', '你是一个经验丰富的开发工程师,开发技能极其熟练');
+INSERT INTO adi_conversation_preset (uuid, title, remark, ai_system_message)
+VALUES ('16a8f54c560949d6b2d4969f08f3f2fc', '财务专家', '算数很厉害,相关法律知识也很了解',
+        '你是一个经验丰富的财务专家,精通财务分析、预算编制、财务报告、税务法规等领域知识');
+
 CREATE TABLE public.adi_conversation
 (
     id                        bigserial primary key,
     user_id                   bigint                  default 0                     not null,
     uuid                      character varying(32)   default ''::character varying not null,
     title                     character varying(45)   default ''::character varying not null,
-    openai_conversation_id    character varying(32)   default ''::character varying not null,
     tokens                    integer                 default 0                     not null,
     ai_system_message         character varying(1000) default ''::character varying not null,
-    ai_model                  character varying(45)   default ''::character varying not null,
     understand_context_enable boolean                 default false                 not null,
     llm_temperature           numeric(2, 1)           default 0.7                   not null,
     create_time               timestamp               default CURRENT_TIMESTAMP     not null,
@@ -112,15 +152,39 @@ CREATE TABLE public.adi_conversation
     is_deleted                boolean                 default false                 not null
 );
 
-COMMENT ON TABLE public.adi_conversation IS '对话表';
+COMMENT ON TABLE public.adi_conversation IS '用户会话(角色)表';
 
 COMMENT ON COLUMN public.adi_conversation.user_id IS '用户id';
 
 COMMENT ON COLUMN public.adi_conversation.ai_model IS '模型名称';
 
-COMMENT ON COLUMN public.adi_conversation.title IS '对话标题';
+COMMENT ON COLUMN public.adi_conversation.title IS '标题';
 
 COMMENT ON COLUMN public.adi_conversation.llm_temperature is '指定LLM响应时的创造性/随机性';
+
+
+CREATE TABLE public.adi_conversation_preset_rel
+(
+    id             bigserial primary key,
+    uuid           varchar(32) default ''                not null,
+    user_id        bigint      default 0                 not null,
+    preset_conv_id bigint      default 0                 not null,
+    user_conv_id   bigint      default 0                 not null,
+    create_time    timestamp   default CURRENT_TIMESTAMP not null,
+    update_time    timestamp   default CURRENT_TIMESTAMP not null,
+    is_deleted     boolean     default false             not null
+);
+
+COMMENT ON TABLE public.adi_conversation_preset_rel IS '预设会话与用户会话关系表';
+COMMENT ON COLUMN public.adi_conversation_preset_rel.user_id IS '用户id';
+COMMENT ON COLUMN public.adi_conversation_preset_rel.preset_conv_id IS '预设会话id';
+COMMENT ON COLUMN public.adi_conversation_preset_rel.user_conv_id IS '用户会话id';
+
+create trigger trigger_conversation_preset_rel
+    before update
+    on adi_conversation_preset_rel
+    for each row
+execute procedure update_modified_column();
 
 CREATE TABLE public.adi_conversation_message
 (
@@ -341,17 +405,6 @@ COMMENT ON COLUMN public.adi_user_day_cost.update_time IS 'Timestamp of record l
 COMMENT ON COLUMN public.adi_user_day_cost.images_number IS '图片数量';
 
 
--- update_time trigger
-
-CREATE OR REPLACE FUNCTION update_modified_column()
-    RETURNS TRIGGER AS
-$$
-BEGIN
-    NEW.update_time = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
 CREATE TRIGGER trigger_ai_image_update_time
     BEFORE UPDATE
     ON adi_ai_image
@@ -411,6 +464,7 @@ create trigger trigger_ai_model
     on adi_ai_model
     for each row
 execute procedure update_modified_column();
+
 
 INSERT INTO adi_sys_config (name, value)
 VALUES ('openai_setting', '{"secret_key":""}');

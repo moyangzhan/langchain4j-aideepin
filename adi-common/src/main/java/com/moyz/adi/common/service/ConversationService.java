@@ -1,14 +1,11 @@
 package com.moyz.adi.common.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.moyz.adi.common.base.ThreadContext;
-import com.moyz.adi.common.dto.ConvDto;
-import com.moyz.adi.common.dto.ConvEditReq;
-import com.moyz.adi.common.dto.ConvMsgDto;
-import com.moyz.adi.common.dto.ConvMsgListResp;
-import com.moyz.adi.common.entity.AiModel;
-import com.moyz.adi.common.entity.Conversation;
-import com.moyz.adi.common.entity.ConversationMessage;
+import com.moyz.adi.common.cosntant.AdiConstant;
+import com.moyz.adi.common.dto.*;
+import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.ConversationMapper;
 import com.moyz.adi.common.util.MPPageUtil;
@@ -17,10 +14,14 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.moyz.adi.common.enums.ErrorEnum.*;
@@ -30,6 +31,10 @@ import static com.moyz.adi.common.util.LocalCache.MODEL_ID_TO_OBJ;
 @Service
 public class ConversationService extends ServiceImpl<ConversationMapper, Conversation> {
 
+    @Lazy
+    @Resource
+    private ConversationService _this;
+
     @Resource
     private SysConfigService sysConfigService;
 
@@ -37,7 +42,19 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
     private ConversationMessageService conversationMessageService;
 
     @Resource
-    private AiModelService aiModelService;
+    private ConversationPresetService conversationPresetService;
+
+    @Resource
+    private ConversationPresetRelService conversationPresetRelService;
+
+    public Page<ConvDto> search(ConvSearchReq convSearchReq, int currentPage, int pageSize) {
+        Page<Conversation> page = this.lambdaQuery()
+                .eq(Conversation::getIsDeleted, false)
+                .like(StringUtils.isBlank(convSearchReq.getTitle()) ? false : true, Conversation::getTitle, convSearchReq.getTitle())
+                .orderByDesc(Conversation::getId)
+                .page(new Page<>(currentPage, pageSize));
+        return MPPageUtil.convertToPage(page, ConvDto.class);
+    }
 
     public List<ConvDto> listByUser() {
         List<Conversation> list = this.lambdaQuery()
@@ -119,7 +136,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
         Conversation conversation = new Conversation();
         conversation.setUuid(UuidUtil.createShort());
         conversation.setUserId(userId);
-        conversation.setTitle("New Chat");
+        conversation.setTitle(AdiConstant.ConversationConstant.DEFAULT_NAME);
         return baseMapper.insert(conversation);
     }
 
@@ -140,7 +157,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
                 .eq(Conversation::getIsDeleted, false)
                 .one();
         if (null != conversation) {
-            throw new BaseException(A_CONVERSATION_EXIST);
+            throw new BaseException(A_CONVERSATION_TITLE_EXIST);
         }
         String uuid = UuidUtil.createShort();
         Conversation one = new Conversation();
@@ -154,15 +171,40 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
         return MPPageUtil.convertTo(conv, ConvDto.class);
     }
 
-    public boolean edit(String uuid, ConvEditReq convEditReq) {
-        Conversation conversation = this.lambdaQuery()
-                .eq(Conversation::getUuid, uuid)
-                .eq(Conversation::getUserId, ThreadContext.getCurrentUserId())
-                .eq(Conversation::getIsDeleted, false)
-                .one();
-        if (null == conversation) {
-            throw new BaseException(A_CONVERSATION_NOT_EXIST);
+    /**
+     * 根据预设会话创建当前用户会话
+     *
+     * @param presetConvUuid
+     */
+    public ConvDto addByPresetConv(String presetConvUuid) {
+        ConversationPreset presetConv = this.conversationPresetService.lambdaQuery()
+                .eq(ConversationPreset::getUuid, presetConvUuid)
+                .eq(ConversationPreset::getIsDeleted, false)
+                .oneOpt()
+                .orElseThrow(() -> new BaseException(A_PRESET_CONVERSATION_NOT_EXIST));
+        ConversationPresetRel presetRel = this.conversationPresetRelService.lambdaQuery()
+                .eq(ConversationPresetRel::getUserId, ThreadContext.getCurrentUserId())
+                .eq(ConversationPresetRel::getUserConvId, presetConv.getId())
+                .eq(ConversationPresetRel::getIsDeleted, false)
+                .oneOpt()
+                .orElse(null);
+        if (null != presetRel) {
+            Conversation conv = this.getById(presetRel.getUserConvId());
+            return MPPageUtil.convertTo(conv, ConvDto.class);
         }
+        ConvDto convDto = _this.add(presetConv.getTitle(), presetConv.getAiSystemMessage());
+        conversationPresetRelService.save(
+                ConversationPresetRel.builder()
+                        .presetConvId(presetConv.getId())
+                        .userConvId(convDto.getId())
+                        .userId(ThreadContext.getCurrentUserId())
+                        .build()
+        );
+        return convDto;
+    }
+
+    public boolean edit(String uuid, ConvEditReq convEditReq) {
+        Conversation conversation = getOrThrow(uuid);
         Conversation one = new Conversation();
         BeanUtils.copyProperties(convEditReq, one);
         one.setId(conversation.getId());
@@ -173,9 +215,9 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
     }
 
     public boolean softDel(String uuid) {
+        Conversation conversation = getOrThrow(uuid);
         return this.lambdaUpdate()
-                .eq(Conversation::getUuid, uuid)
-                .eq(Conversation::getUserId, ThreadContext.getCurrentUserId())
+                .eq(Conversation::getId, conversation.getId())
                 .set(Conversation::getIsDeleted, true)
                 .update();
     }
@@ -189,5 +231,19 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
 
     public int countAllCreated() {
         return baseMapper.countAllCreated();
+    }
+
+    private Conversation getOrThrow(String uuid) {
+        Conversation conversation = this.lambdaQuery()
+                .eq(Conversation::getUuid, uuid)
+                .eq(Conversation::getIsDeleted, false)
+                .one();
+        if (null == conversation) {
+            throw new BaseException(A_CONVERSATION_NOT_EXIST);
+        }
+        if (!conversation.getUserId().equals(ThreadContext.getCurrentUserId()) && !ThreadContext.getCurrentUser().getIsAdmin()) {
+            throw new BaseException(A_USER_NOT_AUTH);
+        }
+        return conversation;
     }
 }

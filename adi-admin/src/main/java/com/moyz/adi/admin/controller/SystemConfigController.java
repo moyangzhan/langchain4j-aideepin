@@ -32,7 +32,7 @@ public class SystemConfigController {
         sysConfigService.edit(sysConfigDto);
     }
 
-    @PostMapping("/delete/{id}")
+    @PostMapping("/del/{id}")
     public void delete(@PathVariable Long id) {
         sysConfigService.softDelete(id);
     }

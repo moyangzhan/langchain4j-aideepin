@@ -4,9 +4,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 @Data
 public class ConvDto {
 
+    private Long id;
     private String uuid;
 
     @NotBlank
@@ -18,4 +22,7 @@ public class ConvDto {
     private String aiSystemMessage;
 
     private Boolean understandContextEnable;
+
+    private LocalDateTime createTime;
+    private LocalDateTime updateTime;
 }

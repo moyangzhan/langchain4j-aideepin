@@ -14,6 +14,10 @@ import java.util.function.BiFunction;
 @Slf4j
 public class MPPageUtil {
 
+    public static <T, U> Page<U> convertToPage(Page<T> source, Class<U> targetRecordClass) {
+        return MPPageUtil.convertToPage(source, new Page<>(), targetRecordClass, null);
+    }
+
     public static <T, U> Page<U> convertToPage(Page<T> source, Page<U> target, Class<U> targetRecordClass) {
         return MPPageUtil.convertToPage(source, target, targetRecordClass, null);
     }
