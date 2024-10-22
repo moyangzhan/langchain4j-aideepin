@@ -157,7 +157,7 @@ public class AdiConstant {
     /**
      * 文档召回最大数量
      */
-    public static final int RAG_RETRIEVE_NUMBER_MAX = 10;
+    public static final int RAG_RETRIEVE_NUMBER_MAX = 5;
 
     /**
      * 向量搜索时命中所需的最低分数
