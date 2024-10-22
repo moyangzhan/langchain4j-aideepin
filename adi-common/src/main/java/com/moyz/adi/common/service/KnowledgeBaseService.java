@@ -96,7 +96,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     public KnowledgeBase saveOrUpdate(KbEditReq kbEditReq) {
         KnowledgeBase knowledgeBase = new KnowledgeBase();
         BeanUtils.copyProperties(kbEditReq, knowledgeBase, "id", "uuid");
-        if (null != kbEditReq.getIngestModelId()) {
+        if (null != kbEditReq.getIngestModelId() && kbEditReq.getIngestModelId() > 0) {
             knowledgeBase.setIngestModelName(aiModelService.getByIdOrThrow(kbEditReq.getIngestModelId()).getName());
         }
         if (null == kbEditReq.getId() || kbEditReq.getId() < 1) {
