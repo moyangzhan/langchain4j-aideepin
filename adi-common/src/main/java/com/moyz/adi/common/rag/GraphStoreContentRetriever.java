@@ -12,6 +12,7 @@ import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.filter.Filter;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.*;
@@ -65,8 +66,16 @@ public class GraphStoreContentRetriever implements ContentRetriever {
     @Override
     public List<Content> retrieve(Query query) {
         log.info("Graph retrieve,query:{}", query);
+        String response = "";
+        try {
+            response = chatLanguageModel.generate(GraphExtractPrompt.GRAPH_EXTRACTION_PROMPT_CN.replace("{input_text}", query.text()));
+        } catch (Exception e) {
+            log.error("Graph retrieve. extract graph error", e);
+        }
+        if (StringUtils.isBlank(response)) {
+            return Collections.emptyList();
+        }
         Set<String> entities = new HashSet<>();
-        String response = chatLanguageModel.generate(GraphExtractPrompt.GRAPH_EXTRACTION_PROMPT_CN.replace("{input_text}", query.text()));
         String[] records = response.split(AdiConstant.GRAPH_RECORD_DELIMITER);
         for (String record : records) {
             String newRecord = record.replaceAll("^\\(|\\)$", "");
