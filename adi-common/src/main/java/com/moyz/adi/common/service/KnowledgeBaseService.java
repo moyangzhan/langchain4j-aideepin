@@ -14,6 +14,7 @@ import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
+import com.moyz.adi.common.interfaces.AbstractLLMService;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.rag.AdiEmbeddingStoreContentRetriever;
 import com.moyz.adi.common.rag.CompositeRAG;
@@ -98,6 +99,12 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         BeanUtils.copyProperties(kbEditReq, knowledgeBase, "id", "uuid");
         if (null != kbEditReq.getIngestModelId() && kbEditReq.getIngestModelId() > 0) {
             knowledgeBase.setIngestModelName(aiModelService.getByIdOrThrow(kbEditReq.getIngestModelId()).getName());
+        } else {
+            //没有指定抽取图谱知识时的LLM时，自动指定第一个可用的
+            LLMContext.getFirstEnable().ifPresent(llmService -> {
+                knowledgeBase.setIngestModelName(llmService.getAiModel().getName());
+                knowledgeBase.setIngestModelId(llmService.getAiModel().getId());
+            });
         }
         if (null == kbEditReq.getId() || kbEditReq.getId() < 1) {
             User user = ThreadContext.getCurrentUser();

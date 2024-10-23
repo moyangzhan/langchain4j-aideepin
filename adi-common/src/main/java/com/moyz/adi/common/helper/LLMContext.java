@@ -58,7 +58,7 @@ public class LLMContext {
     public static AbstractLLMService getLLMServiceByName(String modelName) {
         AbstractLLMService service = NAME_TO_LLM_SERVICE.get(modelName);
         if (null == service) {
-            Optional<AbstractLLMService> serviceOptional = NAME_TO_LLM_SERVICE.values().stream().filter(AbstractLLMService::isEnabled).findFirst();
+            Optional<AbstractLLMService> serviceOptional = getFirstEnable();
             if (serviceOptional.isPresent()) {
                 log.warn("︿︿︿ 找不到 {},使用第1个可用的模型 {} ︿︿︿", modelName, serviceOptional.get().getAiModel().getName());
                 return serviceOptional.get();
@@ -75,5 +75,9 @@ public class LLMContext {
                 .filter(item -> item.getId().equals(modelId))
                 .findFirst().orElse(null);
         return LLMContext.getLLMServiceByName(null == aiModel ? "" : aiModel.getName());
+    }
+
+    public static Optional<AbstractLLMService> getFirstEnable() {
+        return NAME_TO_LLM_SERVICE.values().stream().filter(item -> item.getAiModel().getIsEnable()).findFirst();
     }
 }
