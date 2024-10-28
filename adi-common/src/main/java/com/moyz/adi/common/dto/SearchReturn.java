@@ -5,7 +5,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class SearchResult {
+public class SearchReturn {
     private String errorMessage;
-    private List<SearchResultItem> items;
+    private List<SearchReturnWebPage> items;
 }

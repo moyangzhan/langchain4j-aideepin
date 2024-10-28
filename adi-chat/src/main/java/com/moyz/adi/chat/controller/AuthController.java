@@ -3,7 +3,7 @@ package com.moyz.adi.chat.controller;
 import com.moyz.adi.common.dto.LoginReq;
 import com.moyz.adi.common.dto.LoginResp;
 import com.moyz.adi.common.dto.RegisterReq;
-import com.moyz.adi.common.searchengine.SearchEngineContext;
+import com.moyz.adi.common.searchengine.SearchEngineServiceContext;
 import com.moyz.adi.common.service.UserService;
 import com.moyz.adi.common.vo.SearchEngineInfo;
 import com.ramostear.captcha.HappyCaptcha;
@@ -130,6 +130,11 @@ public class AuthController {
     @Operation(summary = "Search engine list")
     @GetMapping(value = "/search-engine/list")
     public List<SearchEngineInfo> engines() {
-        return SearchEngineContext.NAME_TO_ENGINE.values().stream().collect(Collectors.toList());
+        return SearchEngineServiceContext.getAllService().values().stream().map(item -> {
+            SearchEngineInfo info = new SearchEngineInfo();
+            info.setEnable(item.isEnabled());
+            info.setName(item.getEngineName());
+            return info;
+        }).collect(Collectors.toList());
     }
 }

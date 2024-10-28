@@ -3,15 +3,15 @@ package com.moyz.adi.common.service;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.SearchEngineResp;
-import com.moyz.adi.common.dto.SearchResult;
-import com.moyz.adi.common.dto.SearchResultItem;
+import com.moyz.adi.common.dto.SearchReturn;
+import com.moyz.adi.common.dto.SearchReturnWebPage;
 import com.moyz.adi.common.entity.AiSearchRecord;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.rag.CompositeRAG;
 import com.moyz.adi.common.rag.EmbeddingRAG;
-import com.moyz.adi.common.searchengine.SearchEngineContext;
+import com.moyz.adi.common.searchengine.SearchEngineServiceContext;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.AssistantChatParams;
 import com.moyz.adi.common.vo.SseAskParams;
@@ -82,8 +82,8 @@ public class SearchService {
     }
 
     @Async
-    public void asyncSearch(User user, SseEmitter sseEmitter, boolean isBriefSearch, String searchText, String engineName, String modelName) {
-        SearchResult searchResult = new SearchEngineContext(engineName).getEngine().search(searchText);
+    public void asyncSearch(User user, SseEmitter sseEmitter, boolean isBriefSearch, String searchText, String searchName, String modelName) {
+        SearchReturn searchResult = SearchEngineServiceContext.getService(searchName).search(searchText);
         if (StringUtils.isNotBlank(searchResult.getErrorMessage())) {
             sseEmitterHelper.sendAndComplete(user.getId(), sseEmitter, searchResult.getErrorMessage());
             return;
@@ -106,7 +106,7 @@ public class SearchService {
         if (isBriefSearch) {
             briefSearch(user, searchText, modelName, searchResult.getItems(), sseEmitter);
         } else {
-            detailSearch(user, searchText, engineName, modelName, searchResult.getItems(), sseEmitter);
+            detailSearch(user, searchText, searchName, modelName, searchResult.getItems(), sseEmitter);
         }
     }
 
@@ -121,10 +121,10 @@ public class SearchService {
      * @param resultItems
      * @param sseEmitter
      */
-    public void briefSearch(User user, String searchText, String modelName, List<SearchResultItem> resultItems, SseEmitter sseEmitter) {
+    public void briefSearch(User user, String searchText, String modelName, List<SearchReturnWebPage> resultItems, SseEmitter sseEmitter) {
         log.info("briefSearch,searchText:{}", searchText);
         StringBuilder builder = new StringBuilder();
-        for (SearchResultItem item : resultItems) {
+        for (SearchReturnWebPage item : resultItems) {
             builder.append(item.getSnippet()).append("\n\n");
         }
         String ragQuestion = builder.toString();
@@ -169,7 +169,7 @@ public class SearchService {
      * @param resultItems
      * @param sseEmitter
      */
-    public void detailSearch(User user, String searchText, String engineName, String modelName, List<SearchResultItem> resultItems, SseEmitter sseEmitter) {
+    public void detailSearch(User user, String searchText, String engineName, String modelName, List<SearchReturnWebPage> resultItems, SseEmitter sseEmitter) {
         log.info("detailSearch,searchText:{}", searchText);
         //Save to DB
         SearchEngineResp resp = new SearchEngineResp().setItems(resultItems);
@@ -188,7 +188,7 @@ public class SearchService {
             int finalI = i;
             mainExecutor.execute(() -> {
                 try {
-                    SearchResultItem item = resultItems.get(finalI);
+                    SearchReturnWebPage item = resultItems.get(finalI);
                     String content;
                     if (finalI < 2) {
                         content = getContentFromRemote(item);
@@ -200,12 +200,13 @@ public class SearchService {
                     }
 
                     //embedding
-                    Metadata metadata = new Metadata();
-                    metadata.put(AdiConstant.MetadataKey.ENGINE_NAME, engineName);
-                    metadata.put(AdiConstant.MetadataKey.SEARCH_UUID, searchUuid);
-                    Document document = new Document(content, metadata);
-                    searchRagService.ingest(document, 0, null);
-
+                    if (StringUtils.isNotBlank(content)) {
+                        Metadata metadata = new Metadata();
+                        metadata.put(AdiConstant.MetadataKey.ENGINE_NAME, engineName);
+                        metadata.put(AdiConstant.MetadataKey.SEARCH_UUID, searchUuid);
+                        Document document = new Document(content, metadata);
+                        searchRagService.ingest(document, 0, null);
+                    }
                 } catch (Exception e) {
                     log.error("Detail search error,uuid:{}", searchUuid, e);
                 } finally {
@@ -256,10 +257,14 @@ public class SearchService {
         });
     }
 
-    private String getContentFromRemote(SearchResultItem item) {
+    private String getContentFromRemote(SearchReturnWebPage item) {
         String result = "";
         try {
-            org.jsoup.nodes.Document doc = Jsoup.connect(item.getLink()).ignoreContentType(true).get();
+            String url = item.getLink();
+            if (StringUtils.isBlank(url) || !url.startsWith("http")) {
+                return result;
+            }
+            org.jsoup.nodes.Document doc = Jsoup.connect(url).ignoreContentType(true).get();
             if (!doc.getElementsByTag("main").isEmpty()) {
                 result = doc.getElementsByTag("main").get(0).html();
             } else {

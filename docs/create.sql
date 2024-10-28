@@ -65,7 +65,7 @@ CREATE TABLE public.adi_ai_model
 (
     id                bigserial primary key,
     name              varchar(45)   default ''                not null,
-    type              varchar(45)   default 'llm'             not null,
+    type              varchar(45)   default 'text'            not null,
     setting           varchar(500)  default ''                not null,
     remark            varchar(1000) default '',
     platform          varchar(45)   default ''                not null,
@@ -79,7 +79,7 @@ CREATE TABLE public.adi_ai_model
 );
 
 COMMENT ON TABLE public.adi_ai_model IS 'ai模型';
-COMMENT ON COLUMN public.adi_ai_model.type IS 'The type of the AI model,eg: text,image,embedding,rerank';
+COMMENT ON COLUMN public.adi_ai_model.type IS '模型类型(以输出类型或使用目的做判断，如dalle2可文本和图像输入，但使用方关注的是输出的图片，所以属于image类型),eg: text,image,embedding,rerank';
 COMMENT ON COLUMN public.adi_ai_model.name IS 'The name of the AI model';
 COMMENT ON COLUMN public.adi_ai_model.remark IS 'Additional remarks about the AI model';
 COMMENT ON COLUMN public.adi_ai_model.platform IS 'eg: openai,dashscope,qianfan,ollama';

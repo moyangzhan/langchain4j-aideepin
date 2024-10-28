@@ -6,8 +6,8 @@ import com.moyz.adi.common.helper.ImageModelContext;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.interfaces.AbstractImageModelService;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
-import com.moyz.adi.common.searchengine.GoogleSearchEngine;
-import com.moyz.adi.common.searchengine.SearchEngineContext;
+import com.moyz.adi.common.searchengine.GoogleSearchEngineService;
+import com.moyz.adi.common.searchengine.SearchEngineServiceContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.BeanUtils;
@@ -19,7 +19,6 @@ import java.net.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static com.moyz.adi.common.util.LocalCache.MODEL_ID_TO_OBJ;
 
@@ -90,7 +89,7 @@ public class AiModelSettingService {
         initImageModelService(AdiConstant.ModelPlatform.OPENAI, model -> new OpenAiImageModelService(model).setProxy(proxy));
 
         //search engine
-        SearchEngineContext.addEngine(AdiConstant.SearchEngineName.GOOGLE, new GoogleSearchEngine().setProxy(proxy));
+        SearchEngineServiceContext.addWebSearcher(AdiConstant.SearchEngineName.GOOGLE, new GoogleSearchEngineService(proxy));
     }
 
     private void initLLMService(String platform, Function<AiModel, AbstractLLMService> function) {
