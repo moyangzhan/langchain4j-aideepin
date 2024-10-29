@@ -104,6 +104,7 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
         createImageDto.setNumber(editImageReq.getNumber());
         createImageDto.setMaskImage(editImageReq.getMaskImage());
         createImageDto.setOriginalImage(editImageReq.getOriginalImage());
+        createImageDto.setModelName(editImageReq.getModelName());
         return _this.generate(createImageDto);
     }
 
