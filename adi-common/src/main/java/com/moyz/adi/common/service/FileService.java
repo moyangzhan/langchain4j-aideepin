@@ -42,7 +42,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
     @Value("${local.tmp-images}")
     private String tmpImagesPath;
 
-    public AdiFile writeToLocal(MultipartFile file) {
+    public AdiFile writeToLocal(MultipartFile file, boolean image) {
         String md5 = MD5Utils.md5ByMultipartFile(file);
         Optional<AdiFile> existFile = this.lambdaQuery()
                 .eq(AdiFile::getMd5, md5)
@@ -59,7 +59,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
             }
         }
         String uuid = UuidUtil.createShort();
-        Pair<String, String> originalFile = FileUtil.saveToLocal(file, filePath, uuid);
+        Pair<String, String> originalFile = FileUtil.saveToLocal(file, image ? imagePath : filePath, uuid);
         AdiFile adiFile = new AdiFile();
         adiFile.setName(file.getOriginalFilename());
         adiFile.setUuid(uuid);

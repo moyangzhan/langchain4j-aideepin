@@ -64,7 +64,14 @@ public class FileController {
     @PostMapping(path = "/file/upload", headers = "content-type=multipart/form-data", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, String> upload(@RequestPart(value = "file") MultipartFile file) {
         Map<String, String> result = new HashMap<>();
-        result.put("uuid", fileService.writeToLocal(file).getUuid());
+        result.put("uuid", fileService.writeToLocal(file, false).getUuid());
+        return result;
+    }
+
+    @PostMapping(path = "/image/upload", headers = "content-type=multipart/form-data", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Map<String, String> imageUpload(@RequestPart(value = "file") MultipartFile file) {
+        Map<String, String> result = new HashMap<>();
+        result.put("uuid", fileService.writeToLocal(file, true).getUuid());
         return result;
     }
 

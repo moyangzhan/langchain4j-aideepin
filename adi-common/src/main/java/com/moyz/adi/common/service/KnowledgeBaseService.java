@@ -156,7 +156,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     private AdiFile uploadDoc(KnowledgeBase knowledgeBase, MultipartFile doc, Boolean indexAfterUpload) {
         try {
             String fileName = doc.getOriginalFilename();
-            AdiFile adiFile = fileService.writeToLocal(doc);
+            AdiFile adiFile = fileService.writeToLocal(doc, false);
 
             //解析文档
             Document document;
