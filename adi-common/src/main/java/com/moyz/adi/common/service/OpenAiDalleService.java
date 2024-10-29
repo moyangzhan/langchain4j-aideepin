@@ -1,6 +1,5 @@
 package com.moyz.adi.common.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiImage;
 import com.moyz.adi.common.entity.AiModel;
@@ -9,6 +8,7 @@ import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.interfaces.AbstractImageModelService;
 import com.moyz.adi.common.util.ImageUtil;
+import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.vo.ImageModelBuilderProperties;
 import com.moyz.adi.common.vo.OpenAiSetting;
 import com.theokanning.openai.OpenAiApi;
@@ -19,7 +19,6 @@ import com.theokanning.openai.image.ImageResult;
 import com.theokanning.openai.service.OpenAiService;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openai.OpenAiImageModel;
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import org.apache.commons.lang3.StringUtils;
@@ -32,7 +31,6 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.*;
 import static com.theokanning.openai.service.OpenAiService.defaultClient;
@@ -42,15 +40,9 @@ import static dev.langchain4j.model.openai.OpenAiModelName.DALL_E_2;
 import static dev.langchain4j.model.openai.OpenAiModelName.DALL_E_3;
 
 @Slf4j
-public class OpenAiImageModelService extends AbstractImageModelService<OpenAiSetting> {
+public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting> {
 
-    @Resource
-    private FileService fileService;
-
-    @Resource
-    private ObjectMapper objectMapper;
-
-    public OpenAiImageModelService(AiModel aiModel) {
+    public OpenAiDalleService(AiModel aiModel) {
         super(aiModel, AdiConstant.SysConfigKey.OPENAI_SETTING, OpenAiSetting.class);
     }
 
@@ -154,19 +146,19 @@ public class OpenAiImageModelService extends AbstractImageModelService<OpenAiSet
     }
 
     @Override
-    public List<String> editImage(User user, AiImage aiImage) {
-        File originalFile = new File(fileService.getImagePath(aiImage.getOriginalImage()));
+    public List<String> editImage(User user, AiImage aiImageEntity) {
+        File originalFile = new File(getFileService().getImagePath(aiImageEntity.getOriginalImage()));
         File maskFile = null;
-        if (StringUtils.isNotBlank(aiImage.getMaskImage())) {
-            maskFile = new File(fileService.getImagePath(aiImage.getMaskImage()));
+        if (StringUtils.isNotBlank(aiImageEntity.getMaskImage())) {
+            maskFile = new File(getFileService().getImagePath(aiImageEntity.getMaskImage()));
         }
         //如果不是RGBA类型的图片，先转成RGBA
-        File rgbaOriginalImage = ImageUtil.rgbConvertToRgba(originalFile, fileService.getTmpImagesPath(aiImage.getOriginalImage()));
+        File rgbaOriginalImage = ImageUtil.rgbConvertToRgba(originalFile, getFileService().getTmpImagesPath(aiImageEntity.getOriginalImage()));
         OpenAiService service = getOpenAiService();
         CreateImageEditRequest request = new CreateImageEditRequest();
-        request.setPrompt(aiImage.getPrompt());
-        request.setN(aiImage.getGenerateNumber());
-        request.setSize(aiImage.getGenerateSize());
+        request.setPrompt(aiImageEntity.getPrompt());
+        request.setN(aiImageEntity.getGenerateNumber());
+        request.setSize(aiImageEntity.getGenerateSize());
         request.setResponseFormat(OPENAI_CREATE_IMAGE_RESP_FORMATS_URL);
         request.setUser(user.getUuid());
         try {
@@ -181,7 +173,7 @@ public class OpenAiImageModelService extends AbstractImageModelService<OpenAiSet
 
     @Override
     public List<String> createImageVariation(User user, AiImage aiImage) {
-        File imagePath = new File(fileService.getImagePath(aiImage.getOriginalImage()));
+        File imagePath = new File(getFileService().getImagePath(aiImage.getOriginalImage()));
         OpenAiService service = getOpenAiService();
         CreateImageVariationRequest request = new CreateImageVariationRequest();
         request.setN(aiImage.getGenerateNumber());
@@ -206,7 +198,7 @@ public class OpenAiImageModelService extends AbstractImageModelService<OpenAiSet
                     .newBuilder()
                     .proxy(proxy)
                     .build();
-            Retrofit retrofit = defaultRetrofit(client, objectMapper);
+            Retrofit retrofit = defaultRetrofit(client, JsonUtil.getObjectMapper());
             OpenAiApi api = retrofit.create(OpenAiApi.class);
             return new OpenAiService(api);
         }

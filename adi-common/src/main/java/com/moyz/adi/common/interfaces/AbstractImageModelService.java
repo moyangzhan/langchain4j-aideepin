@@ -3,8 +3,10 @@ package com.moyz.adi.common.interfaces;
 import com.moyz.adi.common.entity.AiImage;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.User;
+import com.moyz.adi.common.service.FileService;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.LocalCache;
+import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.vo.ImageModelBuilderProperties;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.image.ImageModel;
@@ -24,6 +26,8 @@ public abstract class AbstractImageModelService<T> {
     protected AiModel aiModel;
 
     protected T setting;
+
+    private FileService fileService;
 
     @Value("${adi.proxy.enable:false}")
     protected boolean proxyEnable;
@@ -100,5 +104,12 @@ public abstract class AbstractImageModelService<T> {
 
     public AiModel getAiModel() {
         return aiModel;
+    }
+
+    public FileService getFileService() {
+        if (null == fileService) {
+            fileService = SpringUtil.getBean(FileService.class);
+        }
+        return fileService;
     }
 }

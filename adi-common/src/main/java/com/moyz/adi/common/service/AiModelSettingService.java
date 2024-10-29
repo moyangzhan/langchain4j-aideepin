@@ -82,11 +82,11 @@ public class AiModelSettingService {
     }
 
     /**
-     * 初始化生图模型列表
+     * 初始化文生图模型、搜索服务
      */
     private synchronized void initImageModelServiceList() {
         //openai image model
-        initImageModelService(AdiConstant.ModelPlatform.OPENAI, model -> new OpenAiImageModelService(model).setProxy(proxy));
+        initImageModelService(AdiConstant.ModelPlatform.OPENAI, model -> new OpenAiDalleService(model).setProxy(proxy));
 
         //search engine
         SearchEngineServiceContext.addWebSearcher(AdiConstant.SearchEngineName.GOOGLE, new GoogleSearchEngineService(proxy));

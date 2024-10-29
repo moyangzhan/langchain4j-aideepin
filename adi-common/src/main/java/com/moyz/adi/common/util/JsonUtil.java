@@ -10,15 +10,12 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.StringWriter;
-import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
-@Component
 public class JsonUtil {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -28,6 +25,10 @@ public class JsonUtil {
         objectMapper.configure(SerializationFeature.INDENT_OUTPUT, Boolean.FALSE);
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         objectMapper.registerModules(LocalDateTimeUtil.getSimpleModule(), new JavaTimeModule(), new Jdk8Module());
+    }
+
+    public static final ObjectMapper getObjectMapper() {
+        return objectMapper;
     }
 
     public static String toJson(Object obj) {
