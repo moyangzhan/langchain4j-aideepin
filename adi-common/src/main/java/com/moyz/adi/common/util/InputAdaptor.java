@@ -1,8 +1,7 @@
 package com.moyz.adi.common.util;
 
 import com.moyz.adi.common.vo.InputAdaptorMsg;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.content.Content;
@@ -124,28 +123,37 @@ public class InputAdaptor {
         List<ChatMessage> result = new ArrayList<>();
         //最新一条消息（即当前用户的提问）必须留下
         result.add(latestMessage);
-        int allTokenCount = tokenizer.estimateTokenCountInText(latestMessage.text());
+        int allTokenCount = 0;
+        if (latestMessage instanceof UserMessage userMessage && userMessage.contents().get(0) instanceof TextContent textContent) {
+            allTokenCount += tokenizer.estimateTokenCountInText(textContent.text());
+        }
         for (int i = messageSize - 1 - 1; i >= 0; i--) {
             log.info("messageSize i:{}", i);
-            log.info("messageSize allTokenCount:{}", allTokenCount);
             ChatMessage curMsg = messages.get(i);
-            int currentMessageTokenCount = tokenizer.estimateTokenCountInText(curMsg.text());
-            if (allTokenCount + currentMessageTokenCount < maxInputTokens) {
-                allTokenCount += currentMessageTokenCount;
+            //多模态时，先不计算token
+            if (curMsg instanceof UserMessage && ((UserMessage) curMsg).contents().stream().anyMatch(item -> item instanceof ImageContent)) {
                 result.add(curMsg);
             } else {
-                log.warn("消息过长,丢弃\n>>>>> {} <<<<<", curMsg.text().substring(0, Math.min(curMsg.text().length(), 30)));
-                //如果当前是AI的回复，把对应的用户提问也丢弃
-                if (curMsg instanceof AiMessage) {
-                    i--;
-                    curMsg = messages.get(i);
-                    if (null != curMsg) {
-                        log.warn("对应的用户问题一并丢弃\n>>>>> {} <<<<<", curMsg.text().substring(0, Math.min(curMsg.text().length(), 30)));
+
+                log.info("messageSize allTokenCount:{}", allTokenCount);
+                int currentMessageTokenCount = tokenizer.estimateTokenCountInText(curMsg.text());
+                if (allTokenCount + currentMessageTokenCount < maxInputTokens) {
+                    allTokenCount += currentMessageTokenCount;
+                    result.add(curMsg);
+                } else {
+                    log.warn("消息过长,丢弃\n>>>>> {} <<<<<", curMsg.text().substring(0, Math.min(curMsg.text().length(), 30)));
+                    //如果当前是AI的回复，把对应的用户提问也丢弃
+                    if (curMsg instanceof AiMessage) {
+                        i--;
+                        curMsg = messages.get(i);
+                        if (null != curMsg) {
+                            log.warn("对应的用户问题一并丢弃\n>>>>> {} <<<<<", curMsg.text().substring(0, Math.min(curMsg.text().length(), 30)));
+                        }
                     }
                 }
             }
+
         }
-        log.info("Message input token count:{}", allTokenCount);
         Collections.reverse(result);
         return result;
     }

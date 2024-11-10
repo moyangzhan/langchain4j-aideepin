@@ -5,11 +5,9 @@ import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.rag.AdiAiServices;
 import com.moyz.adi.common.rag.AdiChatLanguageModelImpl;
-import com.moyz.adi.common.util.JsonUtil;
-import com.moyz.adi.common.util.LocalCache;
-import com.moyz.adi.common.util.MapDBChatMemoryStore;
-import com.moyz.adi.common.util.SpringUtil;
+import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.vo.*;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -23,9 +21,11 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import java.net.Proxy;
 import java.text.MessageFormat;
 import java.time.Duration;
+import java.util.List;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.LLM_MAX_INPUT_TOKENS_DEFAULT;
 import static com.moyz.adi.common.cosntant.RedisKeyConstant.TOKEN_USAGE_KEY;
+import static com.moyz.adi.common.enums.ErrorEnum.A_PARAMS_ERROR;
 import static com.moyz.adi.common.enums.ErrorEnum.B_LLM_SERVICE_DISABLED;
 
 @Slf4j
@@ -70,6 +70,10 @@ public abstract class AbstractLLMService<T> {
      */
     public abstract boolean isEnabled();
 
+    protected boolean checkBeforeChat(SseAskParams params) {
+        return true;
+    }
+
     public ChatLanguageModel buildChatLLM(LLMBuilderProperties properties, String uuid) {
         return new AdiChatLanguageModelImpl(doBuildChatLLM(properties), response -> {
             String redisKey = MessageFormat.format(TOKEN_USAGE_KEY, uuid);
@@ -98,7 +102,11 @@ public abstract class AbstractLLMService<T> {
             log.error("llm service is disabled");
             throw new BaseException(B_LLM_SERVICE_DISABLED);
         }
-
+        if (!checkBeforeChat(params)) {
+            log.error("对话参数校验不通过");
+            throw new BaseException(A_PARAMS_ERROR);
+        }
+        List<ImageContent> imageContents = ImageUtil.urlsToImageContent(params.getAssistantChatParams().getImageUrls());
         AssistantChatParams assistantChatParams = params.getAssistantChatParams();
         log.info("sseChat,messageId:{}", assistantChatParams.getMessageId());
 
@@ -115,20 +123,20 @@ public abstract class AbstractLLMService<T> {
                     .chatMemoryProvider(chatMemoryProvider)
                     .build();
             if (StringUtils.isNotBlank(assistantChatParams.getSystemMessage())) {
-                tokenStream = assistant.chatWith(assistantChatParams.getMessageId(), assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage());
+                tokenStream = assistant.chatWith(assistantChatParams.getMessageId(), assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage(), imageContents);
             } else {
-                tokenStream = assistant.chatWithMemory(assistantChatParams.getMessageId(), assistantChatParams.getUserMessage());
+                tokenStream = assistant.chatWithMemory(assistantChatParams.getMessageId(), assistantChatParams.getUserMessage(), imageContents);
             }
         }
         //chat without memory
         else {
-            IChatAssistant assistant = AiServices.builder(IChatAssistant.class)
+            IChatAssistant assistant = AdiAiServices.builder(IChatAssistant.class, aiModel.getMaxInputTokens())
                     .streamingChatLanguageModel(buildStreamingChatLLM(params.getLlmBuilderProperties()))
                     .build();
             if (StringUtils.isNotBlank(assistantChatParams.getSystemMessage())) {
-                tokenStream = assistant.chatWithSystem(assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage());
+                tokenStream = assistant.chatWithSystem(assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage(), imageContents);
             } else {
-                tokenStream = assistant.chatSimple(assistantChatParams.getUserMessage());
+                tokenStream = assistant.chatSimple(assistantChatParams.getUserMessage(), imageContents);
             }
         }
         SSEEmitterHelper.registerTokenStreamCallBack(tokenStream, params, consumer);

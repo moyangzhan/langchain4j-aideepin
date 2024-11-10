@@ -39,6 +39,9 @@ public class ConvMsgDto {
     @Schema(title = "model platform name")
     private String aiModelPlatform;
 
+    @Schema(title = "附件地址，目前只接收图片,值为uuid,交由前端组装图片地址")
+    private List<String> attachments;
+
     @Schema(title = "子级消息（一般指的是AI的响应）")
     private List<ConvMsgDto> children;
 }

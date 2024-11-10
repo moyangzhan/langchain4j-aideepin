@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_CONVERSATION_NOT_FOUND;
 import static com.moyz.adi.common.enums.ErrorEnum.B_MESSAGE_NOT_FOUND;
@@ -145,6 +146,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             prompt = getPromptMsgByQuestionUuid(askReq.getRegenerateQuestionUuid()).getRemark();
         }
         assistantBuilder.userMessage(prompt);
+        assistantBuilder.imageUrls(askReq.getImageUrls());
         sseAskParams.setAssistantChatParams(assistantBuilder.build());
 
         sseAskParams.setLlmBuilderProperties(
@@ -179,6 +181,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                 .eq(Conversation::getUserId, user.getId())
                 .oneOpt()
                 .orElseGet(() -> conversationService.createByFirstMessage(user.getId(), convUuid, prompt));
+        Long modelId = aiModelService.getIdByName(askReq.getModelName());
         //Check if regenerate question
         ConversationMessage promptMsg;
         if (StringUtils.isNotBlank(askReq.getRegenerateQuestionUuid())) {
@@ -192,8 +195,10 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             question.setConversationUuid(convUuid);
             question.setMessageRole(ChatMessageRoleEnum.USER.getValue());
             question.setRemark(prompt);
+            question.setAiModelId(modelId);
             question.setTokens(questionMeta.getTokens());
             question.setUnderstandContextMsgPairNum(user.getUnderstandContextMsgPairNum());
+            question.setAttachments(askReq.getImageUrls().stream().collect(Collectors.joining(",")));
             baseMapper.insert(question);
 
             promptMsg = this.lambdaQuery().eq(ConversationMessage::getUuid, questionMeta.getUuid()).one();
@@ -209,7 +214,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         aiAnswer.setRemark(response);
         aiAnswer.setTokens(answerMeta.getTokens());
         aiAnswer.setParentMessageId(promptMsg.getId());
-        aiAnswer.setAiModelId(aiModelService.getIdByName(askReq.getModelName()));
+        aiAnswer.setAiModelId(modelId);
         baseMapper.insert(aiAnswer);
 
         calcTodayCost(user, conversation, questionMeta, answerMeta);

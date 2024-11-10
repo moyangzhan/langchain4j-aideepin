@@ -28,6 +28,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -145,9 +146,9 @@ public class CompositeRAG {
                     .chatMemoryProvider(chatMemoryProvider)
                     .build();
             if (StringUtils.isNotBlank(assistantChatParams.getSystemMessage())) {
-                tokenStream = assistant.chatWith(assistantChatParams.getMessageId(), assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage());
+                tokenStream = assistant.chatWith(assistantChatParams.getMessageId(), assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage(), new ArrayList<>());
             } else {
-                tokenStream = assistant.chatWithMemory(assistantChatParams.getMessageId(), assistantChatParams.getUserMessage());
+                tokenStream = assistant.chatWithMemory(assistantChatParams.getMessageId(), assistantChatParams.getUserMessage(), new ArrayList<>());
             }
         } else {
             IChatAssistant assistant = AiServices.builder(IChatAssistant.class)
@@ -155,9 +156,9 @@ public class CompositeRAG {
                     .retrievalAugmentor(AdiKnowledgeBaseRetrievalAugmentor.builder().queryRouter(queryRouter).build())
                     .build();
             if (StringUtils.isNotBlank(assistantChatParams.getSystemMessage())) {
-                tokenStream = assistant.chatWithSystem(assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage());
+                tokenStream = assistant.chatWithSystem(assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage(), new ArrayList<>());
             } else {
-                tokenStream = assistant.chatSimple(assistantChatParams.getUserMessage());
+                tokenStream = assistant.chatSimple(assistantChatParams.getUserMessage(), new ArrayList<>());
             }
         }
         SSEEmitterHelper.registerTokenStreamCallBack(tokenStream, params, consumer);

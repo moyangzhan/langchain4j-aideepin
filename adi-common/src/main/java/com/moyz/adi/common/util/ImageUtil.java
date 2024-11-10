@@ -1,12 +1,21 @@
 package com.moyz.adi.common.util;
 
+import com.moyz.adi.common.service.FileService;
+import dev.langchain4j.data.message.ImageContent;
+import jakarta.activation.MimetypesFileTypeMap;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.List;
 
 @Slf4j
 public class ImageUtil {
@@ -71,5 +80,40 @@ public class ImageUtil {
             throw new RuntimeException(e);
         }
         return file;
+    }
+
+    /**
+     * 图片地址转ImageContent
+     * 如果是本地图片则转成base64，其他网站的图片使用url
+     *
+     * @param imageUrls
+     * @return
+     */
+    public static List<ImageContent> urlsToImageContent(List<String> imageUrls) {
+        if (CollectionUtils.isEmpty(imageUrls)) {
+            return Collections.emptyList();
+        }
+        List<ImageContent> result = new ArrayList<>();
+        try {
+            for (String imageUrl : imageUrls) {
+                log.info("urlsToImageContent,imageUrl:{}", imageUrl);
+                if (imageUrl.indexOf("http") == -1 && imageUrl.length() == 32) {
+                    String absolutePath = SpringUtil.getBean(FileService.class).getImagePath(imageUrl);
+                    File file = new File(absolutePath);
+                    MimetypesFileTypeMap mimetypesFileTypeMap = new MimetypesFileTypeMap();
+                    String mimeType = mimetypesFileTypeMap.getContentType(file);
+                    try (FileInputStream fileInputStream = new FileInputStream(file)) {
+                        byte[] fileBytes = new byte[(int) file.length()];
+                        fileInputStream.read(fileBytes);
+                        result.add(ImageContent.from(Base64.getEncoder().encodeToString(fileBytes), mimeType));
+                    }
+                } else {
+                    result.add(ImageContent.from(imageUrl));
+                }
+            }
+        } catch (IOException e) {
+            log.error("urlsToImageContent error", e);
+        }
+        return result;
     }
 }

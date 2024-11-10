@@ -3,11 +3,10 @@ package com.moyz.adi.common.rag;
 import com.moyz.adi.common.util.InputAdaptor;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -30,25 +29,16 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.InputStream;
-import java.lang.reflect.Array;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.Proxy;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Scanner;
-import java.util.Set;
+import java.lang.reflect.*;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
@@ -63,6 +53,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 /**
  * 复制dev.langchain4j.service.DefaultAiServices并增加输入token的计算及回调
  */
+@Slf4j
 class AdiDefaultAiServices<T> extends AiServices<T> {
 
     private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 100;
@@ -159,6 +150,13 @@ class AdiDefaultAiServices<T> extends AiServices<T> {
                         if ((!supportsJsonSchema || !jsonSchema.isPresent()) && !streaming) {
                             // TODO append after storing in the memory?
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);
+                        }
+
+                        if (userMessage.contents().stream().filter(content -> content instanceof TextContent).count() > 1) {
+                            throw illegalConfiguration("Error: The method '%s' has multiple text contents. Please use only one.", method.getName());
+                        }
+                        if (userMessage.contents().size() > 1 && !(userMessage.contents().get(0) instanceof TextContent)) {
+                            throw illegalConfiguration("Error: The first content should be text content.", method.getName());
                         }
 
                         if (context.hasChatMemory()) {
@@ -428,13 +426,16 @@ class AdiDefaultAiServices<T> extends AiServices<T> {
     private static UserMessage prepareUserMessage(Method method, Object[] args) {
 
         String template = getUserMessageTemplate(method, args);
+        List<Content> imageContents = findImagesContentInParameters(method, args);
         Map<String, Object> variables = findTemplateVariables(template, method, args);
 
         Prompt prompt = PromptTemplate.from(template).apply(variables);
 
         Optional<String> maybeUserName = findUserName(method.getParameters(), args);
-        return maybeUserName.map(userName -> UserMessage.from(userName, prompt.text()))
-                .orElseGet(prompt::toUserMessage);
+//        return maybeUserName.map(userName -> UserMessage.from(userName, prompt.text()))
+//                .orElseGet(prompt::toUserMessage);
+        return maybeUserName.map(userName -> UserMessage.from(userName, promptAndImages(prompt, imageContents)))
+                .orElseGet(() -> UserMessage.from(promptAndImages(prompt, imageContents)));
     }
 
     private static String getUserMessageTemplate(Method method, Object[] args) {
@@ -443,10 +444,12 @@ class AdiDefaultAiServices<T> extends AiServices<T> {
         Optional<String> templateFromParameterAnnotation = findUserMessageTemplateFromAnnotatedParameter(method.getParameters(), args);
 
         if (templateFromMethodAnnotation.isPresent() && templateFromParameterAnnotation.isPresent()) {
-            throw illegalConfiguration(
-                    "Error: The method '%s' has multiple @UserMessage annotations. Please use only one.",
-                    method.getName()
-            );
+            if (findImagesContentInParameters(method, args).isEmpty()) {
+                throw illegalConfiguration(
+                        "Error: The method '%s' has multiple @UserMessage annotations. Please use only one.",
+                        method.getName()
+                );
+            }
         }
 
         if (templateFromMethodAnnotation.isPresent()) {
@@ -566,5 +569,35 @@ class AdiDefaultAiServices<T> extends AiServices<T> {
         }
         sb.append("]");
         return sb.toString();
+    }
+
+    private static List<Content> findImagesContentInParameters(Method method, Object[] args) {
+        return Arrays.stream(method.getParameters())
+                .filter(AdiDefaultAiServices::isImageParameter)
+                .flatMap(parameter -> {
+                    List<ImageContent> imageContents = new ArrayList<>();
+                    Object arg = args[Arrays.asList(method.getParameters()).indexOf(parameter)];
+                    if (arg instanceof List imageList) {
+                        for (Object ic : imageList) {
+                            if (ic instanceof ImageContent imageContent) imageContents.add(imageContent);
+                        }
+                    }
+                    return imageContents.stream();
+                })
+                .collect(Collectors.toList());
+    }
+
+    private static boolean isImageParameter(Parameter parameter) {
+        return parameter.isAnnotationPresent(dev.langchain4j.service.UserMessage.class) &&
+                (
+                        parameter.getType().equals(Image.class)
+                                || parameter.getType().equals(ImageContent.class)
+                                || parameter.getType().equals(List.class)
+                );
+    }
+
+    private static List<Content> promptAndImages(Prompt prompt, List<Content> imageContent) {
+        return Stream.concat(Stream.of(TextContent.from(prompt.text())), imageContent.stream())
+                .collect(Collectors.toList());
     }
 }

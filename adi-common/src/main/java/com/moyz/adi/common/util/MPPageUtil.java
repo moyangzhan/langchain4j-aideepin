@@ -45,6 +45,10 @@ public class MPPageUtil {
     }
 
     public static <T, U> List<U> convertToList(List<T> source, Class<U> targetRecordClass) {
+        return convertToList(source, targetRecordClass, null);
+    }
+
+    public static <T, U> List<U> convertToList(List<T> source, Class<U> targetRecordClass, BiFunction<T, U, U> biFunction) {
         if (CollectionUtils.isEmpty(source)) {
             return Collections.emptyList();
         }
@@ -53,6 +57,9 @@ public class MPPageUtil {
             try {
                 U u = targetRecordClass.getDeclaredConstructor().newInstance();
                 BeanUtils.copyProperties(t, u);
+                if (null != biFunction) {
+                    biFunction.apply(t, u);
+                }
                 result.add(u);
             } catch (NoSuchMethodException e1) {
                 log.error("convertTo error1", e1);

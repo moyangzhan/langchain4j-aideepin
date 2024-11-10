@@ -18,10 +18,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.moyz.adi.common.enums.ErrorEnum.*;
@@ -104,7 +101,14 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
             return b;
         }).getUuid();
         //Wrap question content
-        List<ConvMsgDto> userMessages = MPPageUtil.convertToList(questions, ConvMsgDto.class);
+        List<ConvMsgDto> userMessages = MPPageUtil.convertToList(questions, ConvMsgDto.class, (source, target) -> {
+            if (StringUtils.isNotBlank(source.getAttachments())) {
+                target.setAttachments(Arrays.stream(source.getAttachments().split(",")).toList());
+            } else {
+                target.setAttachments(Collections.emptyList());
+            }
+            return target;
+        });
         ConvMsgListResp result = new ConvMsgListResp(minUuid, userMessages);
 
         //Wrap answer content

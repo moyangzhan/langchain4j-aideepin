@@ -57,4 +57,8 @@ public class ConversationMessage extends BaseEntity {
     @Schema(name = "adi_ai_model id")
     @TableField("ai_model_id")
     private Long aiModelId;
+
+    @Schema(name = "附件列表")
+    @TableField("attachments")
+    private String attachments;
 }

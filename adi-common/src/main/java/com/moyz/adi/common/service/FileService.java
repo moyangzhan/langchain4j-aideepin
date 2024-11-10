@@ -158,7 +158,10 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
     }
 
     public String getImagePath(String uuid) {
-        return imagePath + uuid + ".png";
+        AdiFile adiFile = this.lambdaQuery()
+                .eq(AdiFile::getUuid, uuid)
+                .oneOpt().orElse(null);
+        return imagePath + uuid + "." + adiFile.getExt();
     }
 
     public String getTmpImagesPath(String uuid) {

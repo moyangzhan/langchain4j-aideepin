@@ -45,4 +45,8 @@ public class AiModel extends BaseEntity {
     @Schema(title = "最大输出长度")
     @TableField("max_output_tokens")
     private Integer maxOutputTokens;
+
+    @Schema(title = "输入类型")
+    @TableField("input_types")
+    private String inputTypes;
 }

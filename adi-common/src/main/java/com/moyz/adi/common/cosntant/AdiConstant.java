@@ -169,6 +169,11 @@ public class AdiConstant {
      */
     public static final int LLM_MAX_INPUT_TOKENS_DEFAULT = 4096;
 
+    public static final String LLM_INPUT_TYPE_TEXT = "text";
+    public static final String LLM_INPUT_TYPE_IMAGE = "image";
+    public static final String LLM_INPUT_TYPE_AUDIO = "audio";
+    public static final String LLM_INPUT_TYPE_VIDEO = "video";
+
     public static final String[] GRAPH_ENTITY_EXTRACTION_ENTITY_TYPES = {"organization", "person", "geo", "event"};
     public static final String GRAPH_TUPLE_DELIMITER = "<|>";
     public static final String GRAPH_RECORD_DELIMITER = "##";

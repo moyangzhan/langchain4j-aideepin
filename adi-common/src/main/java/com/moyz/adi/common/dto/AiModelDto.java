@@ -39,6 +39,8 @@ public class AiModelDto {
 
     private Integer maxOutputTokens;
 
+    private String inputTypes;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;

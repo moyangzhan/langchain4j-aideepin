@@ -25,7 +25,8 @@ public class ModelController {
             modelInfo.setModelId(aiModel.getId());
             modelInfo.setModelName(aiModel.getName());
             modelInfo.setModelPlatform(aiModel.getPlatform());
-            modelInfo.setEnable(item.getAiModel().getIsEnable());
+            modelInfo.setEnable(aiModel.getIsEnable());
+            modelInfo.setInputTypes(aiModel.getInputTypes());
             return modelInfo;
         }).collect(Collectors.toList());
     }
