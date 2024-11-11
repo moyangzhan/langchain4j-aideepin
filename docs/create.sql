@@ -18,23 +18,25 @@ $$ language 'plpgsql';
 
 CREATE TABLE public.adi_ai_image
 (
-    id                 bigserial primary key,
-    user_id            bigint                  default 0                     not null,
-    uuid               character varying(32)   default ''::character varying not null,
-    ai_model_name      character varying(45)   default ''::character varying not null,
-    prompt             character varying(1024) default ''::character varying not null,
-    generate_size      character varying(20)   default ''::character varying not null,
-    generate_quality   character varying(20)   default ''::character varying not null,
-    generate_number    integer                 default 1                     not null,
-    original_image     character varying(1000) default ''::character varying not null,
-    mask_image         character varying(1000) default ''::character varying not null,
-    resp_images_path   character varying(2048) default ''::character varying not null,
-    generated_images   character varying(2048) default ''::character varying not null,
-    interacting_method smallint                default '1'::smallint         not null,
-    process_status     smallint                default '1'::smallint         not null,
-    create_time        timestamp               default CURRENT_TIMESTAMP     not null,
-    update_time        timestamp               default CURRENT_TIMESTAMP     not null,
-    is_deleted         boolean                 default false                 not null,
+    id                    bigserial primary key,
+    user_id               bigint                  default 0                     not null,
+    uuid                  varchar(32)   default ''::character varying not null,
+    ai_model_name         varchar(45)   default ''::character varying not null,
+    prompt                varchar(1024) default ''::character varying not null,
+    generate_size         varchar(20)   default ''::character varying not null,
+    generate_quality      varchar(20)   default ''::character varying not null,
+    generate_number       integer                 default 1                     not null,
+    original_image        varchar(1000) default ''::character varying not null,
+    mask_image            varchar(1000) default ''::character varying not null,
+    resp_images_path      varchar(2048) default ''::character varying not null,
+    generated_images      varchar(2048) default ''::character varying not null,
+    interacting_method    smallint                default '1'::smallint         not null,
+    process_status        smallint                default '1'::smallint         not null,
+    is_public             boolean                 default false                 not null,
+    with_watermark        boolean                 default false                 not null,
+    create_time           timestamp               default CURRENT_TIMESTAMP     not null,
+    update_time           timestamp               default CURRENT_TIMESTAMP     not null,
+    is_deleted            boolean                 default false                 not null,
     CONSTRAINT adi_ai_image_generate_number_check CHECK (((generate_number >= 1) AND (generate_number <= 10))),
     CONSTRAINT adi_ai_image_interacting_method_check CHECK ((interacting_method = ANY (ARRAY [1, 2, 3]))),
     CONSTRAINT adi_ai_image_process_status_check CHECK ((process_status = ANY (ARRAY [1, 2, 3]))),
@@ -59,7 +61,11 @@ COMMENT ON COLUMN public.adi_ai_image.process_status IS 'Generate image status, 
 COMMENT ON COLUMN public.adi_ai_image.create_time IS 'Timestamp of record creation';
 COMMENT ON COLUMN public.adi_ai_image.update_time IS 'Timestamp of record last update, automatically updated on each update';
 COMMENT ON COLUMN public.adi_ai_image.is_deleted IS 'Flag indicating whether the record is deleted (0: not deleted, 1: deleted)';
-
+CREATE TRIGGER trigger_ai_image_update_time
+    BEFORE UPDATE
+    ON adi_ai_image
+    FOR EACH ROW
+EXECUTE PROCEDURE update_modified_column();
 
 CREATE TABLE public.adi_ai_model
 (
@@ -72,6 +78,7 @@ CREATE TABLE public.adi_ai_model
     context_window    int           default 0                 not null,
     max_input_tokens  int           default 0                 not null,
     max_output_tokens int           default 0                 not null,
+    input_types       varchar(100)  default 'text'            not null,
     is_enable         boolean       default false             not null,
     create_time       timestamp     default CURRENT_TIMESTAMP not null,
     update_time       timestamp     default CURRENT_TIMESTAMP not null,
@@ -84,26 +91,16 @@ COMMENT ON COLUMN public.adi_ai_model.name IS 'The name of the AI model';
 COMMENT ON COLUMN public.adi_ai_model.remark IS 'Additional remarks about the AI model';
 COMMENT ON COLUMN public.adi_ai_model.platform IS 'eg: openai,dashscope,qianfan,ollama';
 COMMENT ON COLUMN public.adi_ai_model.context_window IS 'LLM context window';
+COMMENT ON COLUMN public.adi_ai_model.input_types IS 'text,image,audio,video';
 COMMENT ON COLUMN public.adi_ai_model.is_enable IS '1: Normal usage, 0: Not available';
 COMMENT ON COLUMN public.adi_ai_model.create_time IS 'Timestamp of record creation';
 COMMENT ON COLUMN public.adi_ai_model.update_time IS 'Timestamp of record last update, automatically updated on each update';
 
--- 示例数据
--- https://platform.openai.com/docs/models/gpt-3-5-turbo
-INSERT INTO adi_ai_model (name, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
-VALUES ('gpt-3.5-turbo', 'text', 'openai', 16385, 12385, 4096, false);
-INSERT INTO adi_ai_model (name, type, platform, is_enable)
-VALUES ('dall-e-2', 'image', 'openai', false);
-INSERT INTO adi_ai_model (name, type, platform, is_enable)
-VALUES ('dall-e-3', 'image', 'openai', false);
--- https://help.aliyun.com/zh/dashscope/developer-reference/model-introduction?spm=a2c4g.11186623.0.i39
-INSERT INTO adi_ai_model (name, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
-VALUES ('qwen-turbo', 'text', 'dashscope', 8192, 6144, 1536, false);
--- https://console.bce.baidu.com/qianfan/modelcenter/model/buildIn/detail/am-bg7n2rn2gsbb
-INSERT INTO adi_ai_model (name, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable, setting)
-VALUES ('ERNIE-Speed-8K', 'text', 'qianfan', 131072, 126976, 4096, false, '{"endpoint":"ernie-speed-128k"}');
-INSERT INTO adi_ai_model (name, type, platform, is_enable)
-VALUES ('tinydolphin', 'text', 'ollama', false);
+CREATE TRIGGER trigger_ai_model_update_time
+    BEFORE UPDATE
+    ON adi_ai_model
+    FOR EACH ROW
+EXECUTE PROCEDURE update_modified_column();
 
 CREATE TABLE public.adi_conversation_preset
 (
@@ -130,13 +127,6 @@ create trigger trigger_conversation_preset
     for each row
 execute procedure update_modified_column();
 
--- 示例数据
-INSERT INTO adi_conversation_preset (uuid, title, remark, ai_system_message)
-VALUES ('26a8f54c560948d6b2d4969f08f3f2fb', '开发工程师', '技术好', '你是一个经验丰富的开发工程师,开发技能极其熟练');
-INSERT INTO adi_conversation_preset (uuid, title, remark, ai_system_message)
-VALUES ('16a8f54c560949d6b2d4969f08f3f2fc', '财务专家', '算数很厉害,相关法律知识也很了解',
-        '你是一个经验丰富的财务专家,精通财务分析、预算编制、财务报告、税务法规等领域知识');
-
 CREATE TABLE public.adi_conversation
 (
     id                        bigserial primary key,
@@ -161,6 +151,12 @@ COMMENT ON COLUMN public.adi_conversation.ai_model IS '模型名称';
 COMMENT ON COLUMN public.adi_conversation.title IS '标题';
 
 COMMENT ON COLUMN public.adi_conversation.llm_temperature is '指定LLM响应时的创造性/随机性';
+
+CREATE TRIGGER trigger_conv_update_time
+    BEFORE UPDATE
+    ON adi_conversation
+    FOR EACH ROW
+EXECUTE PROCEDURE update_modified_column();
 
 
 CREATE TABLE public.adi_conversation_preset_rel
@@ -189,19 +185,20 @@ execute procedure update_modified_column();
 CREATE TABLE public.adi_conversation_message
 (
     id                              bigserial primary key,
-    parent_message_id               bigint                default 0                     not null,
-    conversation_id                 bigint                default 0                     not null,
-    conversation_uuid               character varying(32) default ''::character varying not null,
-    remark                          text                                                not null,
-    uuid                            character varying(32) default ''::character varying not null,
-    message_role                    integer               default 1                     not null,
-    tokens                          integer               default 0                     not null,
-    user_id                         bigint                default 0                     not null,
-    ai_model_id                     bigint                default 0                     not null,
-    understand_context_msg_pair_num integer               default 0                     not null,
-    create_time                     timestamp             default CURRENT_TIMESTAMP     not null,
-    update_time                     timestamp             default CURRENT_TIMESTAMP     not null,
-    is_deleted                      boolean               default false                 not null
+    parent_message_id               bigint        default 0                 not null,
+    conversation_id                 bigint        default 0                 not null,
+    conversation_uuid               varchar(32)   default '',
+    remark                          text                                    not null,
+    uuid                            varchar(32)   default '',
+    message_role                    integer       default 1                 not null,
+    tokens                          integer       default 0                 not null,
+    user_id                         bigint        default 0                 not null,
+    ai_model_id                     bigint        default 0                 not null,
+    understand_context_msg_pair_num integer       default 0                 not null,
+    attachments                     varchar(1000) default ''                not null,
+    create_time                     timestamp     default CURRENT_TIMESTAMP not null,
+    update_time                     timestamp     default CURRENT_TIMESTAMP not null,
+    is_deleted                      boolean       default false             not null
 );
 COMMENT ON TABLE public.adi_conversation_message IS '对话消息表';
 
@@ -224,6 +221,14 @@ COMMENT ON COLUMN public.adi_conversation_message.user_id IS '用户ID';
 COMMENT ON COLUMN public.adi_conversation_message.ai_model_id IS 'adi_ai_model id';
 
 COMMENT ON COLUMN public.adi_conversation_message.understand_context_msg_pair_num IS '上下文消息对数量';
+
+COMMENT ON COLUMN public.adi_conversation_message.attachments IS '附件,存储格式: uuid,uuid';
+
+CREATE TRIGGER trigger_conv_message_update_time
+    BEFORE UPDATE
+    ON adi_conversation_message
+    FOR EACH ROW
+EXECUTE PROCEDURE update_modified_column();
 
 CREATE TABLE public.adi_file
 (
@@ -262,6 +267,12 @@ COMMENT ON COLUMN public.adi_file.is_deleted IS '0: Normal; 1: Deleted';
 
 COMMENT ON COLUMN public.adi_file.md5 IS 'MD5 hash of the file';
 
+CREATE TRIGGER trigger_file_update_time
+    BEFORE UPDATE
+    ON adi_file
+    FOR EACH ROW
+EXECUTE PROCEDURE update_modified_column();
+
 CREATE TABLE public.adi_prompt
 (
     id          bigserial primary key,
@@ -287,6 +298,12 @@ COMMENT ON COLUMN public.adi_prompt.update_time IS 'Timestamp of record last upd
 
 COMMENT ON COLUMN public.adi_prompt.is_deleted IS '0:未删除；1：已删除';
 
+CREATE TRIGGER trigger_prompt_update_time
+    BEFORE UPDATE
+    ON adi_prompt
+    FOR EACH ROW
+EXECUTE PROCEDURE update_modified_column();
+
 CREATE TABLE public.adi_sys_config
 (
     id          bigserial primary key,
@@ -308,6 +325,12 @@ COMMENT ON COLUMN public.adi_sys_config.create_time IS 'Timestamp of record crea
 COMMENT ON COLUMN public.adi_sys_config.update_time IS 'Timestamp of record last update, automatically updated on each update';
 
 COMMENT ON COLUMN public.adi_sys_config.is_deleted IS '0：未删除；1：已删除';
+
+CREATE TRIGGER trigger_sys_config_update_time
+    BEFORE UPDATE
+    ON adi_sys_config
+    FOR EACH ROW
+EXECUTE PROCEDURE update_modified_column();
 
 CREATE TABLE public.adi_user
 (
@@ -370,10 +393,11 @@ COMMENT ON COLUMN public.adi_user.quota_by_image_daily IS '每日图片配额';
 
 COMMENT ON COLUMN public.adi_user.quota_by_image_monthly IS '每月图片配额';
 
--- 管理员账号：catkeeper@aideepin.com  密码：123456
-INSERT INTO adi_user (name, password, uuid, email, user_status, is_admin)
-VALUES ('catkeeper', '$2a$10$z44gncmQk6xCBCeDx55gMe1Zc8uYtOKcoT4/HE2F92VcF7wP2iquG',
-        replace(gen_random_uuid()::text, '-', ''), 'catkeeper@aideepin.com', 2, true);
+CREATE TRIGGER trigger_user_update_time
+    BEFORE UPDATE
+    ON adi_user
+    FOR EACH ROW
+EXECUTE PROCEDURE update_modified_column();
 
 CREATE TABLE public.adi_user_day_cost
 (
@@ -404,101 +428,11 @@ COMMENT ON COLUMN public.adi_user_day_cost.update_time IS 'Timestamp of record l
 
 COMMENT ON COLUMN public.adi_user_day_cost.images_number IS '图片数量';
 
-
-CREATE TRIGGER trigger_ai_image_update_time
-    BEFORE UPDATE
-    ON adi_ai_image
-    FOR EACH ROW
-EXECUTE PROCEDURE update_modified_column();
-
-CREATE TRIGGER trigger_ai_model_update_time
-    BEFORE UPDATE
-    ON adi_ai_model
-    FOR EACH ROW
-EXECUTE PROCEDURE update_modified_column();
-
-CREATE TRIGGER trigger_conv_update_time
-    BEFORE UPDATE
-    ON adi_conversation
-    FOR EACH ROW
-EXECUTE PROCEDURE update_modified_column();
-
-CREATE TRIGGER trigger_conv_message_update_time
-    BEFORE UPDATE
-    ON adi_conversation_message
-    FOR EACH ROW
-EXECUTE PROCEDURE update_modified_column();
-
-CREATE TRIGGER trigger_file_update_time
-    BEFORE UPDATE
-    ON adi_file
-    FOR EACH ROW
-EXECUTE PROCEDURE update_modified_column();
-
-CREATE TRIGGER trigger_prompt_update_time
-    BEFORE UPDATE
-    ON adi_prompt
-    FOR EACH ROW
-EXECUTE PROCEDURE update_modified_column();
-
-CREATE TRIGGER trigger_sys_config_update_time
-    BEFORE UPDATE
-    ON adi_sys_config
-    FOR EACH ROW
-EXECUTE PROCEDURE update_modified_column();
-
-CREATE TRIGGER trigger_user_update_time
-    BEFORE UPDATE
-    ON adi_user
-    FOR EACH ROW
-EXECUTE PROCEDURE update_modified_column();
-
 CREATE TRIGGER trigger_user_day_cost_update_time
     BEFORE UPDATE
     ON adi_user_day_cost
     FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
-
-create trigger trigger_ai_model
-    before update
-    on adi_ai_model
-    for each row
-execute procedure update_modified_column();
-
-
-INSERT INTO adi_sys_config (name, value)
-VALUES ('openai_setting', '{"secret_key":""}');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('dashscope_setting', '{"api_key":""}');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('qianfan_setting', '{"api_key":"","secret_key":""}');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('ollama_setting', '{"base_url":""}');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('google_setting',
-        '{"url":"https://www.googleapis.com/customsearch/v1","key":"","cx":""}');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('request_text_rate_limit', '{"times":24,"minutes":3}');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('request_image_rate_limit', '{"times":6,"minutes":3}');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('conversation_max_num', '50');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('quota_by_token_daily', '10000');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('quota_by_token_monthly', '200000');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('quota_by_request_daily', '150');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('quota_by_request_monthly', '3000');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('quota_by_image_daily', '30');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('quota_by_image_monthly', '300');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('quota_by_qa_ask_daily', '50');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('quota_by_qa_item_monthly', '100');
 
 create table adi_knowledge_base
 (
@@ -760,6 +694,12 @@ comment on column adi_knowledge_base_graph_segment.remark is '内容';
 
 comment on column adi_knowledge_base_graph_segment.user_id is '所属用户';
 
+create trigger trigger_kb_graph_segment_update_time
+    before update
+    on adi_knowledge_base_graph_segment
+    for each row
+execute procedure update_modified_column();
+
 create table adi_knowledge_base_qa_record_ref_graph
 (
     id               bigserial primary key,
@@ -826,3 +766,72 @@ create trigger trigger_ai_search_record
     on adi_ai_search_record
     for each row
 execute procedure update_modified_column();
+
+-- 初始化数据 --
+
+-- 管理员账号：catkeeper@aideepin.com  密码：123456
+INSERT INTO adi_user (name, password, uuid, email, user_status, is_admin)
+VALUES ('catkeeper', '$2a$10$z44gncmQk6xCBCeDx55gMe1Zc8uYtOKcoT4/HE2F92VcF7wP2iquG',
+        replace(gen_random_uuid()::text, '-', ''), 'catkeeper@aideepin.com', 2, true);
+
+-- 配置信息
+INSERT INTO adi_sys_config (name, value)
+VALUES ('openai_setting', '{"secret_key":""}');
+INSERT INTO adi_sys_config (name, value)
+VALUES ('dashscope_setting', '{"api_key":""}');
+INSERT INTO adi_sys_config (name, value)
+VALUES ('qianfan_setting', '{"api_key":"","secret_key":""}');
+INSERT INTO adi_sys_config (name, value)
+VALUES ('ollama_setting', '{"base_url":""}');
+INSERT INTO adi_sys_config (name, value)
+VALUES ('google_setting',
+        '{"url":"https://www.googleapis.com/customsearch/v1","key":"","cx":""}');
+INSERT INTO adi_sys_config (name, value)
+VALUES ('request_text_rate_limit', '{"times":24,"minutes":3}');
+INSERT INTO adi_sys_config (name, value)
+VALUES ('request_image_rate_limit', '{"times":6,"minutes":3}');
+INSERT INTO adi_sys_config (name, value)
+VALUES ('conversation_max_num', '50');
+INSERT INTO adi_sys_config (name, value)
+VALUES ('quota_by_token_daily', '10000');
+INSERT INTO adi_sys_config (name, value)
+VALUES ('quota_by_token_monthly', '200000');
+INSERT INTO adi_sys_config (name, value)
+VALUES ('quota_by_request_daily', '150');
+INSERT INTO adi_sys_config (name, value)
+VALUES ('quota_by_request_monthly', '3000');
+INSERT INTO adi_sys_config (name, value)
+VALUES ('quota_by_image_daily', '30');
+INSERT INTO adi_sys_config (name, value)
+VALUES ('quota_by_image_monthly', '300');
+INSERT INTO adi_sys_config (name, value)
+VALUES ('quota_by_qa_ask_daily', '50');
+INSERT INTO adi_sys_config (name, value)
+VALUES ('quota_by_qa_item_monthly', '100');
+
+-- 大语言模型
+-- https://platform.openai.com/docs/models/gpt-3-5-turbo
+INSERT INTO adi_ai_model (name, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
+VALUES ('gpt-3.5-turbo', 'text', 'openai', 16385, 12385, 4096, false);
+INSERT INTO adi_ai_model (name, type, platform, is_enable)
+VALUES ('dall-e-2', 'image', 'openai', false);
+INSERT INTO adi_ai_model (name, type, platform, is_enable)
+VALUES ('dall-e-3', 'image', 'openai', false);
+-- https://help.aliyun.com/zh/dashscope/developer-reference/model-introduction?spm=a2c4g.11186623.0.i39
+INSERT INTO adi_ai_model (name, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
+VALUES ('qwen-turbo', 'text', 'dashscope', 8192, 6144, 1536, false);
+INSERT INTO adi_ai_model (name, type, platform, context_window, max_input_tokens, max_output_tokens, input_types,
+                          is_enable)
+VALUES ('qwen2-vl-7b-instruct', 'text', 'dashscope', 32768, 16384, 16384, 'text,image', false);
+-- https://console.bce.baidu.com/qianfan/modelcenter/model/buildIn/detail/am-bg7n2rn2gsbb
+INSERT INTO adi_ai_model (name, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable, setting)
+VALUES ('ERNIE-Speed-8K', 'text', 'qianfan', 131072, 126976, 4096, false, '{"endpoint":"ernie-speed-128k"}');
+INSERT INTO adi_ai_model (name, type, platform, is_enable)
+VALUES ('tinydolphin', 'text', 'ollama', false);
+
+-- 预设角色
+INSERT INTO adi_conversation_preset (uuid, title, remark, ai_system_message)
+VALUES ('26a8f54c560948d6b2d4969f08f3f2fb', '开发工程师', '技术好', '你是一个经验丰富的开发工程师,开发技能极其熟练');
+INSERT INTO adi_conversation_preset (uuid, title, remark, ai_system_message)
+VALUES ('16a8f54c560949d6b2d4969f08f3f2fc', '财务专家', '算数很厉害,相关法律知识也很了解',
+        '你是一个经验丰富的财务专家,精通财务分析、预算编制、财务报告、税务法规等领域知识');
