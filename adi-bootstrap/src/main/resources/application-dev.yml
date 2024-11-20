@@ -40,12 +40,15 @@ adi:
   frontend-url: http://localhost:1002
   backend-url: http://localhost:1002/api
   proxy:
-    enable: true
+    enable: false
     host: 127.0.0.1
     http-port: 1087
 
 local:
   files: D:/data/aideepin/files/
   images: D:/data/aideepin/images/
+  watermark-images: D:/data/aideepin/mark-images/
+  thumbnails: D:/data/aideepin/thumbnails/
+  watermark-thumbnails: D:/data/aideepin/watermark-thumbnails/
   tmp-images: D:/data/aideepin/tmp_images/
   chat-memory: D:/data/aideepin/chat_memory/

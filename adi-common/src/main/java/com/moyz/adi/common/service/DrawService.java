@@ -1,50 +1,67 @@
 package com.moyz.adi.common.service;
 
+import cn.hutool.core.img.Img;
+import cn.hutool.core.io.FileUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.RedisKeyConstant;
 import com.moyz.adi.common.dto.*;
-import com.moyz.adi.common.entity.AdiFile;
-import com.moyz.adi.common.entity.AiImage;
-import com.moyz.adi.common.entity.User;
-import com.moyz.adi.common.entity.UserDayCost;
+import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.ImageModelContext;
 import com.moyz.adi.common.helper.QuotaHelper;
 import com.moyz.adi.common.helper.RateLimitHelper;
-import com.moyz.adi.common.mapper.AiImageMapper;
+import com.moyz.adi.common.mapper.DrawMapper;
 import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
-import com.moyz.adi.common.util.UserUtil;
 import com.moyz.adi.common.util.UuidUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestParam;
 
+import java.awt.*;
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.GenerateImage.*;
-import static com.moyz.adi.common.cosntant.AdiConstant.IMAGE_PATH_PRE;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 @Slf4j
 @Service
-public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
+public class DrawService extends ServiceImpl<DrawMapper, Draw> {
 
     @Resource
     @Lazy
-    private AiImageService _this;
+    private DrawService _this;
+
+    @Value("${local.images}")
+    private String imagePath;
+
+    @Value("${local.watermark-images}")
+    private String watermarkImagesPath;
+
+    @Value("${local.thumbnails}")
+    private String thumbnailsPath;
+
+    @Value("${local.watermark-thumbnails}")
+    private String watermarkThumbnailsPath;
+
+    @Value("${adi.host}")
+    private String adiHost;
+
     @Resource
     private QuotaHelper quotaHelper;
 
@@ -59,6 +76,12 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
 
     @Resource
     private FileService fileService;
+
+    @Resource
+    private AiModelService aiModelService;
+
+    @Resource
+    private DrawStarService drawStarService;
 
     public void check() {
         User user = ThreadContext.getCurrentUser();
@@ -82,7 +105,7 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
     /**
      * interacting method 1: Creates an image given a prompt
      *
-     * @param generateImageReq
+     * @param generateImageReq 文生图请求参数
      */
     public String createByPrompt(GenerateImageReq generateImageReq) {
         _this.check();
@@ -128,23 +151,25 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
      * @return
      */
     public String generate(CreateImageDto createImageDto) {
+        AiModel aiModel = aiModelService.getByNameOrThrow(createImageDto.getModelName());
         User user = ThreadContext.getCurrentUser();
         int generateNumber = Math.min(createImageDto.getNumber(), user.getQuotaByImageDaily());
         String uuid = UuidUtil.createShort();
-        AiImage aiImage = new AiImage();
-        aiImage.setGenerateSize(createImageDto.getSize());
-        aiImage.setGenerateQuality(createImageDto.getQuality());
-        aiImage.setGenerateNumber(generateNumber);
-        aiImage.setUuid(uuid);
-        aiImage.setAiModelName(createImageDto.getModelName());
-        aiImage.setUserId(user.getId());
-        aiImage.setInteractingMethod(createImageDto.getInteractingMethod());
-        aiImage.setProcessStatus(STATUS_DOING);
-        aiImage.setPrompt(createImageDto.getPrompt());
-        aiImage.setOriginalImage(createImageDto.getOriginalImage());
-        aiImage.setMaskImage(createImageDto.getMaskImage());
-        getBaseMapper().insert(aiImage);
-        AiImage obj = this.lambdaQuery().eq(AiImage::getUuid, uuid).one();
+        Draw draw = new Draw();
+        draw.setGenerateSize(createImageDto.getSize());
+        draw.setGenerateQuality(createImageDto.getQuality());
+        draw.setGenerateNumber(generateNumber);
+        draw.setUuid(uuid);
+        draw.setAiModelId(aiModel.getId());
+        draw.setAiModelName(createImageDto.getModelName());
+        draw.setUserId(user.getId());
+        draw.setInteractingMethod(createImageDto.getInteractingMethod());
+        draw.setProcessStatus(STATUS_DOING);
+        draw.setPrompt(createImageDto.getPrompt());
+        draw.setOriginalImage(createImageDto.getOriginalImage());
+        draw.setMaskImage(createImageDto.getMaskImage());
+        getBaseMapper().insert(draw);
+        Draw obj = this.lambdaQuery().eq(Draw::getUuid, uuid).one();
         _this.createFromRemote(obj, user);
         return uuid;
     }
@@ -156,9 +181,9 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
      */
     public void regenerate(String uuid) {
         User user = ThreadContext.getCurrentUser();
-        AiImage obj = this.lambdaQuery()
-                .eq(AiImage::getUuid, uuid)
-                .eq(AiImage::getProcessStatus, STATUS_FAIL)
+        Draw obj = this.lambdaQuery()
+                .eq(Draw::getUuid, uuid)
+                .eq(Draw::getProcessStatus, STATUS_FAIL)
                 .oneOpt().orElseThrow(() -> new BaseException(B_FIND_IMAGE_404));
 
         _this.createFromRemote(obj, user);
@@ -167,11 +192,11 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
     /**
      * 异步生成图片
      *
-     * @param aiImage
+     * @param draw
      * @param user
      */
     @Async("imagesExecutor")
-    public void createFromRemote(AiImage aiImage, User user) {
+    public void createFromRemote(Draw draw, User user) {
         String drawingKey = MessageFormat.format(RedisKeyConstant.USER_DRAWING, user.getId());
         stringRedisTemplate.opsForValue().set(drawingKey, "1", 30, TimeUnit.SECONDS);
 
@@ -181,12 +206,12 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
             rateLimitHelper.increaseRequestTimes(requestTimesKey, LocalCache.IMAGE_RATE_LIMIT_CONFIG);
 
             List<String> images = new ArrayList<>();
-            if (aiImage.getInteractingMethod() == INTERACTING_METHOD_GENERATE_IMAGE) {
-                images = ImageModelContext.getModelService(aiImage.getAiModelName()).generateImage(user, aiImage);
-            } else if (aiImage.getInteractingMethod() == INTERACTING_METHOD_EDIT_IMAGE) {
-                images = ImageModelContext.getModelService(aiImage.getAiModelName()).editImage(user, aiImage);
-            } else if (aiImage.getInteractingMethod() == INTERACTING_METHOD_VARIATION) {
-                images = ImageModelContext.getModelService(aiImage.getAiModelName()).createImageVariation(user, aiImage);
+            if (draw.getInteractingMethod() == INTERACTING_METHOD_GENERATE_IMAGE) {
+                images = ImageModelContext.getModelService(draw.getAiModelName()).generateImage(user, draw);
+            } else if (draw.getInteractingMethod() == INTERACTING_METHOD_EDIT_IMAGE) {
+                images = ImageModelContext.getModelService(draw.getAiModelName()).editImage(user, draw);
+            } else if (draw.getInteractingMethod() == INTERACTING_METHOD_VARIATION) {
+                images = ImageModelContext.getModelService(draw.getAiModelName()).createImageVariation(user, draw);
             }
             List<String> imageUuids = new ArrayList<>();
             images.forEach(imageUrl -> {
@@ -195,11 +220,11 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
             });
             String imageUuidsJoin = imageUuids.stream().collect(Collectors.joining(","));
             if (StringUtils.isBlank(imageUuidsJoin)) {
-                _this.lambdaUpdate().eq(AiImage::getId, aiImage.getId()).set(AiImage::getProcessStatus, STATUS_FAIL).update();
+                _this.lambdaUpdate().eq(Draw::getId, draw.getId()).set(Draw::getProcessStatus, STATUS_FAIL).update();
                 return;
             }
             String respImagesPath = images.stream().collect(Collectors.joining(","));
-            updateAiImageStatus(aiImage.getId(), respImagesPath, imageUuidsJoin, STATUS_SUCCESS);
+            updateDrawStatus(draw.getId(), respImagesPath, imageUuidsJoin, STATUS_SUCCESS);
 
             //Update the cost of current user
             UserDayCost userDayCost = userDayCostService.getTodayCost(user);
@@ -218,9 +243,9 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
         }
     }
 
-    public void updateAiImageStatus(Long aiImageId, String respImagesPath, String localImagesUuid, int generationStatus) {
-        AiImage updateImage = new AiImage();
-        updateImage.setId(aiImageId);
+    public void updateDrawStatus(Long drawId, String respImagesPath, String localImagesUuid, int generationStatus) {
+        Draw updateImage = new Draw();
+        updateImage.setId(drawId);
         updateImage.setRespImagesPath(respImagesPath);
         updateImage.setGeneratedImages(localImagesUuid);
         updateImage.setProcessStatus(generationStatus);
@@ -232,32 +257,92 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
         }
     }
 
-
-    public AiImagesListResp listAll(@RequestParam Long maxId, @RequestParam int pageSize) {
-        List<AiImage> list = this.lambdaQuery()
-                .eq(AiImage::getUserId, ThreadContext.getCurrentUserId())
-                .eq(AiImage::getIsDeleted, false)
-                .lt(AiImage::getId, maxId)
-                .orderByDesc(AiImage::getId)
+    public DrawListResp listByCurrentUser(Long maxId, int pageSize) {
+        List<Draw> list = this.lambdaQuery()
+                .eq(Draw::getUserId, ThreadContext.getCurrentUserId())
+                .eq(Draw::getIsDeleted, false)
+                .lt(Draw::getId, maxId)
+                .orderByDesc(Draw::getId)
                 .last("limit " + pageSize)
                 .list();
-        list.sort(Comparator.comparing(AiImage::getId));
-        List<AiImageDto> dtoList = new ArrayList<>();
-        list.forEach(item -> dtoList.add(convertAiImageToDto(item)));
-        AiImagesListResp result = new AiImagesListResp();
-        result.setImageItems(dtoList);
-        result.setMinId(list.stream().map(AiImage::getId).reduce(Long.MAX_VALUE, Long::min));
+        list.sort(Comparator.comparing(Draw::getId));
+        return imagesToListResp(list);
+    }
+
+    /**
+     * 倒序查询公开的图片
+     *
+     * @param maxId    最大的ID
+     * @param pageSize 每次请示获取的数量
+     * @return 图片列表
+     */
+    public DrawListResp listPublic(Long maxId, int pageSize) {
+        List<Draw> list = this.lambdaQuery()
+                .eq(Draw::getIsDeleted, false)
+                .eq(Draw::getIsPublic, true)
+                .lt(Draw::getId, maxId)
+                .orderByDesc(Draw::getId)
+                .last("limit " + pageSize)
+                .list();
+        return imagesToListResp(list);
+    }
+
+    public DrawListResp listFav(Long maxId, int pageSize) {
+        List<DrawStar> stars = drawStarService.listByCurrentUser(maxId, pageSize);
+        if (CollectionUtils.isEmpty(stars)) {
+            DrawListResp resp = new DrawListResp();
+            resp.setDraws(Collections.emptyList());
+            resp.setMinId(Long.MAX_VALUE);
+            return resp;
+        }
+        List<Draw> list = this.lambdaQuery()
+                .in(Draw::getId, stars.stream().map(DrawStar::getDrawId).toList())
+                .list();
+        return imagesToListResp(list);
+    }
+
+    private DrawListResp imagesToListResp(List<Draw> list) {
+        List<DrawDto> dtoList = new ArrayList<>();
+        list.forEach(item -> dtoList.add(convertDrawToDto(item)));
+        DrawListResp result = new DrawListResp();
+        result.setDraws(dtoList);
+        result.setMinId(list.stream().map(Draw::getId).reduce(Long.MAX_VALUE, Long::min));
         return result;
     }
 
-    public AiImageDto getOne(String uuid) {
-        AiImage aiImage = this.lambdaQuery()
-                .eq(AiImage::getUuid, uuid)
-                .eq(AiImage::getUserId, ThreadContext.getCurrentUserId())
+    public DrawDto getOne(String uuid) {
+        Draw draw = this.lambdaQuery()
+                .eq(Draw::getUuid, uuid)
+                .eq(Draw::getUserId, ThreadContext.getCurrentUserId())
                 .oneOpt()
                 .orElse(null);
-        if (null != aiImage) {
-            return convertAiImageToDto(aiImage);
+        if (null != draw) {
+            return convertDrawToDto(draw);
+        } else {
+            return null;
+        }
+    }
+
+    public DrawDto getOrThrow(String uuid) {
+        Draw draw = this.lambdaQuery()
+                .eq(Draw::getUuid, uuid)
+                .eq(Draw::getUserId, ThreadContext.getCurrentUserId())
+                .one();
+        if (null == draw) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
+        return convertDrawToDto(draw);
+    }
+
+    public DrawDto getPublicOne(String uuid) {
+        Draw draw = this.lambdaQuery()
+                .eq(Draw::getUuid, uuid)
+                .eq(Draw::getIsDeleted, false)
+                .eq(Draw::getIsPublic, true)
+                .oneOpt()
+                .orElse(null);
+        if (null != draw) {
+            return convertDrawToDto(draw);
         } else {
             return null;
         }
@@ -270,30 +355,30 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
      * @return
      */
     public boolean del(String uuid) {
-        AiImage aiImage = checkAndGet(uuid);
-        if (StringUtils.isNotBlank(aiImage.getGeneratedImages())) {
-            String[] uuids = aiImage.getGeneratedImages().split(",");
+        Draw draw = checkAndGet(uuid);
+        if (StringUtils.isNotBlank(draw.getGeneratedImages())) {
+            String[] uuids = draw.getGeneratedImages().split(",");
             for (String fileUuid : uuids) {
                 fileService.removeFileAndSoftDel(fileUuid);
             }
         }
-        _this.softDel(aiImage.getId());
+        _this.softDel(draw.getId());
         return true;
     }
 
     /**
      * 删除做图任务中的一张图片
      *
-     * @param uuid               adi_ai_image uuid
-     * @param generatedImageUuid
-     * @return
+     * @param uuid               adi_draw uuid
+     * @param generatedImageUuid 图片uuid
+     * @return 是否成功
      */
     public boolean delGeneratedFile(String uuid, String generatedImageUuid) {
-        AiImage aiImage = checkAndGet(uuid);
-        if (StringUtils.isBlank(aiImage.getGeneratedImages())) {
+        Draw draw = checkAndGet(uuid);
+        if (StringUtils.isBlank(draw.getGeneratedImages())) {
             return false;
         }
-        String[] uuids = aiImage.getGeneratedImages().split(",");
+        String[] uuids = draw.getGeneratedImages().split(",");
         for (int i = 0; i < uuids.length; i++) {
             String fileUuid = uuids[i];
             if (fileUuid.equals(generatedImageUuid)) {
@@ -304,58 +389,56 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
         String remainFiles = Arrays.stream(uuids)
                 .filter(StringUtils::isNotBlank)
                 .collect(Collectors.joining(","));
-        _this.lambdaUpdate().eq(AiImage::getId, aiImage.getId()).set(AiImage::getGeneratedImages, remainFiles).update();
+        _this.lambdaUpdate().eq(Draw::getId, draw.getId()).set(Draw::getGeneratedImages, remainFiles).update();
         return true;
     }
 
-    private AiImageDto convertAiImageToDto(AiImage aiImage) {
-        AiImageDto dto = new AiImageDto();
-        BeanUtils.copyProperties(aiImage, dto);
+    private DrawDto convertDrawToDto(Draw draw) {
+        DrawDto dto = new DrawDto();
+        BeanUtils.copyProperties(draw, dto);
         fillImagesToDto(dto);
-        if (StringUtils.isNotBlank(aiImage.getOriginalImage())) {
-            dto.setOriginalImageUrl(IMAGE_PATH_PRE + aiImage.getOriginalImage());
+        if (StringUtils.isNotBlank(draw.getOriginalImage())) {
+            dto.setOriginalImageUuid(draw.getOriginalImage());
         }
-        if (StringUtils.isNotBlank(aiImage.getMaskImage())) {
-            dto.setMaskImageUrl(IMAGE_PATH_PRE + aiImage.getMaskImage());
+        if (StringUtils.isNotBlank(draw.getMaskImage())) {
+            dto.setMaskImageUuid(draw.getMaskImage());
         }
         return dto;
     }
 
-    private void fillImagesToDto(AiImageDto aiImageDto) {
+    private void fillImagesToDto(DrawDto drawDto) {
         List<String> images = new ArrayList<>();
-        aiImageDto.setImageUrlList(images);
-        if (StringUtils.isNotBlank(aiImageDto.getGeneratedImages())) {
-            String[] imageUuids = aiImageDto.getGeneratedImages().split(",");
-            for (String imageUuid : imageUuids) {
-                images.add(IMAGE_PATH_PRE + imageUuid);
-            }
+        if (StringUtils.isNotBlank(drawDto.getGeneratedImages())) {
+            String[] imageUuids = drawDto.getGeneratedImages().split(",");
+            images.addAll(Arrays.asList(imageUuids));
         }
+        drawDto.setImageUuids(images);
     }
 
-    private AiImage checkAndGet(String uuid) {
-        AiImage aiImage;
+    private Draw checkAndGet(String uuid) {
+        Draw draw;
         if (Boolean.TRUE.equals(ThreadContext.getCurrentUser().getIsAdmin())) {
-            aiImage = this.lambdaQuery()
-                    .eq(AiImage::getUuid, uuid)
-                    .eq(AiImage::getIsDeleted, false)
+            draw = this.lambdaQuery()
+                    .eq(Draw::getUuid, uuid)
+                    .eq(Draw::getIsDeleted, false)
                     .oneOpt()
                     .orElse(null);
         } else {
-            aiImage = this.lambdaQuery()
-                    .eq(AiImage::getUuid, uuid)
-                    .eq(AiImage::getUserId, ThreadContext.getCurrentUserId())
-                    .eq(AiImage::getIsDeleted, false)
+            draw = this.lambdaQuery()
+                    .eq(Draw::getUuid, uuid)
+                    .eq(Draw::getUserId, ThreadContext.getCurrentUserId())
+                    .eq(Draw::getIsDeleted, false)
                     .oneOpt()
                     .orElse(null);
         }
-        if (null == aiImage) {
+        if (null == draw) {
             throw new BaseException(A_AI_IMAGE_NOT_FOUND);
         }
-        return aiImage;
+        return draw;
     }
 
     private void softDel(Long id) {
-        _this.lambdaUpdate().eq(AiImage::getId, id).set(AiImage::getIsDeleted, true).update();
+        this.lambdaUpdate().eq(Draw::getId, id).set(Draw::getIsDeleted, true).update();
     }
 
     public int sumTodayCost() {
@@ -363,8 +446,8 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
         LocalDateTime begin = LocalDateTime.of(now.getYear(), now.getMonth(), now.getDayOfMonth(), 0, 0);
         LocalDateTime end = LocalDateTime.of(now.getYear(), now.getMonth(), now.getDayOfMonth(), 23, 59, 59);
         return this.lambdaQuery()
-                .between(AiImage::getCreateTime, begin, end)
-                .eq(AiImage::getIsDeleted, false)
+                .between(Draw::getCreateTime, begin, end)
+                .eq(Draw::getIsDeleted, false)
                 .count()
                 .intValue();
     }
@@ -374,9 +457,31 @@ public class AiImageService extends ServiceImpl<AiImageMapper, AiImage> {
         LocalDateTime begin = LocalDateTime.of(now.getYear(), now.getMonth(), 1, 0, 0);
         LocalDateTime end = LocalDateTime.of(now.getYear(), now.getMonth(), 1, 23, 59, 59).plusMonths(1).minusDays(1);
         return this.lambdaQuery()
-                .between(AiImage::getCreateTime, begin, end)
-                .eq(AiImage::getIsDeleted, false)
+                .between(Draw::getCreateTime, begin, end)
+                .eq(Draw::getIsDeleted, false)
                 .count()
                 .intValue();
+    }
+
+    public void setImagePublic(String uuid, Boolean isPublic, Boolean withWatermark) {
+        Draw draw = checkAndGet(uuid);
+        //生成水印
+        if (BooleanUtils.isTrue(withWatermark)) {
+            AdiFile adiFile = fileService.getFile(uuid);
+            String markImagePath = fileService.getWatermarkImagesPath(adiFile);
+            if (!FileUtil.exist(markImagePath)) {
+                Img.from(FileUtil.file(adiFile.getPath())).setPositionBaseCentre(false).pressText(
+                        ThreadContext.getCurrentUser().getName() + "|" + adiHost, Color.WHITE,
+                        null,
+                        0,
+                        0,
+                        0.4f);
+            }
+        }
+        this.lambdaUpdate()
+                .eq(Draw::getId, draw.getId())
+                .set(Draw::getIsPublic, isPublic)
+                .set(BooleanUtils.isTrue(withWatermark), Draw::getWithWatermark, withWatermark)
+                .update();
     }
 }

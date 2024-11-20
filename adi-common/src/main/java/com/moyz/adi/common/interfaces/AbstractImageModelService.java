@@ -1,6 +1,6 @@
 package com.moyz.adi.common.interfaces;
 
-import com.moyz.adi.common.entity.AiImage;
+import com.moyz.adi.common.entity.Draw;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.service.FileService;
@@ -68,14 +68,14 @@ public abstract class AbstractImageModelService<T> {
 
     protected abstract ImageModel buildImageModel(User user, ImageModelBuilderProperties builderProperties);
 
-    public List<String> generateImage(User user, AiImage aiImage) {
+    public List<String> generateImage(User user, Draw draw) {
         ImageModelBuilderProperties builderProperties = ImageModelBuilderProperties.builder()
-                .size(aiImage.getGenerateSize())
-                .quality(aiImage.getGenerateQuality())
+                .size(draw.getGenerateSize())
+                .quality(draw.getGenerateQuality())
                 .build();
         ImageModel curImageModel = getImageModel(user, builderProperties);
         try {
-            Response<List<Image>> response = curImageModel.generate(aiImage.getPrompt(), aiImage.getGenerateNumber());
+            Response<List<Image>> response = curImageModel.generate(draw.getPrompt(), draw.getGenerateNumber());
             log.info("createImage response:{}", response);
             return response.content().stream().map(item -> item.url().toString()).toList();
         } catch (Exception e) {
@@ -88,19 +88,19 @@ public abstract class AbstractImageModelService<T> {
      * DALL·E 2 only
      *
      * @param user
-     * @param aiImage
+     * @param draw
      * @return
      */
-    public abstract List<String> editImage(User user, AiImage aiImage);
+    public abstract List<String> editImage(User user, Draw draw);
 
     /**
      * DALL·E 2 only
      *
      * @param user
-     * @param aiImage
+     * @param draw
      * @return
      */
-    public abstract List<String> createImageVariation(User user, AiImage aiImage);
+    public abstract List<String> createImageVariation(User user, Draw draw);
 
     public AiModel getAiModel() {
         return aiModel;

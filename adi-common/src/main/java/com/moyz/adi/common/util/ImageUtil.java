@@ -116,4 +116,30 @@ public class ImageUtil {
         }
         return result;
     }
+
+    public static void createThumbnail(String inputFile, String outputFile, int thumbWidth, int thumbHeight, int quality) throws IOException {
+        File input = new File(inputFile);
+        BufferedImage image = ImageIO.read(input);
+        int imageWidth = image.getWidth();
+        int imageHeight = image.getHeight();
+
+        // 计算缩放比例
+        double thumbRatio = (double)thumbWidth / (double)thumbHeight;
+        double imageRatio = (double)imageWidth / (double)imageHeight;
+        if (thumbRatio < imageRatio) {
+            thumbHeight = (int)(thumbWidth / imageRatio);
+        } else {
+            thumbWidth = (int)(thumbHeight * imageRatio);
+        }
+
+        // 创建缩略图
+        Image thumbnail = image.getScaledInstance(thumbWidth, thumbHeight, Image.SCALE_SMOOTH);
+        BufferedImage outputImage = new BufferedImage(thumbWidth, thumbHeight, BufferedImage.TYPE_INT_RGB);
+        outputImage.getGraphics().drawImage(thumbnail, 0, 0, null);
+
+        // 保存缩略图
+        File output = new File(outputFile);
+        ImageIO.write(outputImage, "JPEG", output);
+    }
+
 }

@@ -32,7 +32,7 @@ public class StatisticService {
     private ConversationService conversationService;
 
     @Resource
-    private AiImageService aiImageService;
+    private DrawService drawService;
 
     @Cacheable(value = STATISTIC + ":" + STATISTIC_USER)
     public UserStatistic calUserStat() {
@@ -73,8 +73,8 @@ public class StatisticService {
     @Cacheable(value = STATISTIC + ":" + STATISTIC_IMAGE_COST)
     public ImageCostStatistic calImageCostStat() {
         return ImageCostStatistic.builder()
-                .todayCost(aiImageService.sumTodayCost())
-                .monthCost(aiImageService.sumCurrMonthCost())
+                .todayCost(drawService.sumTodayCost())
+                .monthCost(drawService.sumCurrMonthCost())
                 .build();
     }
 

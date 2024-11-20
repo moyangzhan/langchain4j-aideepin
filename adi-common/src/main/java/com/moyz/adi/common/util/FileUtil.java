@@ -20,7 +20,7 @@ import static com.moyz.adi.common.enums.ErrorEnum.*;
 @Slf4j
 public class FileUtil {
 
-    public static Pair saveToLocal(MultipartFile file, String path, String newName) {
+    public static Pair<String, String> saveToLocal(MultipartFile file, String path, String newName) {
         if (file.isEmpty()) {
             log.info("save to local,file is empty");
             throw new BaseException(A_FILE_NOT_EXIST);

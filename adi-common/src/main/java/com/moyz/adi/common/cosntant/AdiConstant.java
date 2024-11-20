@@ -54,8 +54,6 @@ public class AdiConstant {
 
     public static final String OPENAI_CREATE_IMAGE_RESP_FORMATS_URL = "url";
 
-    public static final String IMAGE_PATH_PRE = "/image/";
-
     public static final List<String> DALLE2_CREATE_IMAGE_SIZES = List.of("256x256", "512x512", "1024x1024");
 
     public static final List<String> DALLE3_CREATE_IMAGE_SIZES = List.of("1024x1024", "1024x1792", "1792x1024");
@@ -189,4 +187,9 @@ public class AdiConstant {
      * 更新数据时，如遇到该标识中的字段，追加内容而不是替换
      */
     public static final String GRAPH_METADATA_APPEND_COLUMNS = "graph_metadata_append_columns_if_exist";
+
+    public static final int AI_IMAGE_TYPE_REGULAR = 1;
+    public static final int AI_IMAGE_TYPE_THUMBNAIL = 2;
+    public static final int AI_IMAGE_TYPE_REGULAR_MARK = 3;
+    public static final int AI_IMAGE_TYPE_THUMBNAIL_MARK = 4;
 }

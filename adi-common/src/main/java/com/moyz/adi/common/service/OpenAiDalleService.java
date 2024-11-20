@@ -1,8 +1,8 @@
 package com.moyz.adi.common.service;
 
 import com.moyz.adi.common.cosntant.AdiConstant;
-import com.moyz.adi.common.entity.AiImage;
 import com.moyz.adi.common.entity.AiModel;
+import com.moyz.adi.common.entity.Draw;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
@@ -36,8 +36,8 @@ import static com.moyz.adi.common.cosntant.AdiConstant.*;
 import static com.theokanning.openai.service.OpenAiService.defaultClient;
 import static com.theokanning.openai.service.OpenAiService.defaultRetrofit;
 import static dev.ai4j.openai4j.image.ImageModel.DALL_E_SIZE_512_x_512;
-import static dev.langchain4j.model.openai.OpenAiModelName.DALL_E_2;
-import static dev.langchain4j.model.openai.OpenAiModelName.DALL_E_3;
+import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_2;
+import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_3;
 
 @Slf4j
 public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting> {
@@ -52,26 +52,26 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
     }
 
     @Override
-    public List<String> generateImage(User user, AiImage aiImage) {
-        if (aiImage.getAiModelName().equalsIgnoreCase(DALL_E_2)) {
-            assertDalle2(aiImage);
+    public List<String> generateImage(User user, Draw draw) {
+        if (draw.getAiModelName().equalsIgnoreCase(DALL_E_2.toString())) {
+            assertDalle2(draw);
         } else {
-            assertDalle3(aiImage);
+            assertDalle3(draw);
         }
-        return super.generateImage(user, aiImage);
+        return super.generateImage(user, draw);
     }
 
-    private void assertDalle2(AiImage aiImage) {
-        if (!DALLE2_CREATE_IMAGE_SIZES.contains(aiImage.getGenerateSize())) {
+    private void assertDalle2(Draw draw) {
+        if (!DALLE2_CREATE_IMAGE_SIZES.contains(draw.getGenerateSize())) {
             throw new BaseException(ErrorEnum.A_IMAGE_SIZE_ERROR);
         }
-        if (aiImage.getGenerateNumber() < 1 || aiImage.getGenerateNumber() > 10) {
+        if (draw.getGenerateNumber() < 1 || draw.getGenerateNumber() > 10) {
             throw new BaseException(ErrorEnum.A_IMAGE_NUMBER_ERROR);
         }
     }
 
-    private void assertDalle3(AiImage aiImage) {
-        if (!DALLE3_CREATE_IMAGE_SIZES.contains(aiImage.getGenerateSize())) {
+    private void assertDalle3(Draw draw) {
+        if (!DALLE3_CREATE_IMAGE_SIZES.contains(draw.getGenerateSize())) {
             throw new BaseException(ErrorEnum.A_IMAGE_SIZE_ERROR);
         }
     }
@@ -88,7 +88,7 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
         if (StringUtils.isBlank(setting.getSecretKey())) {
             throw new BaseException(ErrorEnum.B_LLM_SECRET_KEY_NOT_SET);
         }
-        if (aiModel.getName().equals(DALL_E_3)) {
+        if (aiModel.getName().equals(DALL_E_3.toString())) {
             return createDalle3Model(user, builderProperties);
         } else {
             return createDalle2Model(user, builderProperties);
@@ -129,7 +129,7 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
 
     private ImageModel createDalle3Model(User user, ImageModelBuilderProperties builderProperties) {
         OpenAiImageModel.OpenAiImageModelBuilder builder = OpenAiImageModel.builder()
-                .modelName(DALL_E_3)
+                .modelName(DALL_E_3.toString())
                 .apiKey(setting.getSecretKey())
                 .user(user.getUuid())
                 .responseFormat(OPENAI_CREATE_IMAGE_RESP_FORMATS_URL)
@@ -146,19 +146,19 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
     }
 
     @Override
-    public List<String> editImage(User user, AiImage aiImageEntity) {
-        File originalFile = new File(getFileService().getImagePath(aiImageEntity.getOriginalImage()));
+    public List<String> editImage(User user, Draw draw) {
+        File originalFile = new File(getFileService().getImagePath(draw.getOriginalImage()));
         File maskFile = null;
-        if (StringUtils.isNotBlank(aiImageEntity.getMaskImage())) {
-            maskFile = new File(getFileService().getImagePath(aiImageEntity.getMaskImage()));
+        if (StringUtils.isNotBlank(draw.getMaskImage())) {
+            maskFile = new File(getFileService().getImagePath(draw.getMaskImage()));
         }
         //如果不是RGBA类型的图片，先转成RGBA
-        File rgbaOriginalImage = ImageUtil.rgbConvertToRgba(originalFile, getFileService().getTmpImagesPath(aiImageEntity.getOriginalImage()));
+        File rgbaOriginalImage = ImageUtil.rgbConvertToRgba(originalFile, getFileService().getTmpImagesPath(draw.getOriginalImage()));
         OpenAiService service = getOpenAiService();
         CreateImageEditRequest request = new CreateImageEditRequest();
-        request.setPrompt(aiImageEntity.getPrompt());
-        request.setN(aiImageEntity.getGenerateNumber());
-        request.setSize(aiImageEntity.getGenerateSize());
+        request.setPrompt(draw.getPrompt());
+        request.setN(draw.getGenerateNumber());
+        request.setSize(draw.getGenerateSize());
         request.setResponseFormat(OPENAI_CREATE_IMAGE_RESP_FORMATS_URL);
         request.setUser(user.getUuid());
         try {
@@ -172,12 +172,12 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
     }
 
     @Override
-    public List<String> createImageVariation(User user, AiImage aiImage) {
-        File imagePath = new File(getFileService().getImagePath(aiImage.getOriginalImage()));
+    public List<String> createImageVariation(User user, Draw draw) {
+        File imagePath = new File(getFileService().getImagePath(draw.getOriginalImage()));
         OpenAiService service = getOpenAiService();
         CreateImageVariationRequest request = new CreateImageVariationRequest();
-        request.setN(aiImage.getGenerateNumber());
-        request.setSize(aiImage.getGenerateSize());
+        request.setN(draw.getGenerateNumber());
+        request.setSize(draw.getGenerateSize());
         request.setResponseFormat(OPENAI_CREATE_IMAGE_RESP_FORMATS_URL);
         request.setUser(user.getUuid());
         try {

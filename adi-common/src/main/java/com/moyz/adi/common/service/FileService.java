@@ -1,9 +1,11 @@
 package com.moyz.adi.common.service;
 
+import cn.hutool.core.img.ImgUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.entity.User;
+import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.FileMapper;
 import com.moyz.adi.common.util.FileUtil;
@@ -24,10 +26,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Optional;
-import java.util.UUID;
 
-import static com.moyz.adi.common.enums.ErrorEnum.A_FILE_NOT_EXIST;
-import static com.moyz.adi.common.enums.ErrorEnum.B_SAVE_IMAGE_ERROR;
+import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 @Slf4j
 @Service
@@ -35,6 +35,15 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
 
     @Value("${local.images}")
     private String imagePath;
+
+    @Value("${local.watermark-images}")
+    private String watermarkImagesPath;
+
+    @Value("${local.thumbnails}")
+    private String thumbnailsPath;
+
+    @Value("${local.watermark-thumbnails}")
+    private String watermarkThumbnailsPath;
 
     @Value("${local.files}")
     private String filePath;
@@ -101,20 +110,22 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
                 .update();
     }
 
-    public boolean removeFileAndSoftDel(String uuid) {
+    public void removeFileAndSoftDel(String uuid) {
         AdiFile adiFile = this.lambdaQuery()
                 .eq(AdiFile::getUserId, ThreadContext.getCurrentUserId())
                 .eq(AdiFile::getUuid, uuid)
                 .oneOpt()
                 .orElse(null);
         if (null == adiFile) {
-            return false;
+            return;
         }
         if (StringUtils.isNotBlank(adiFile.getPath())) {
             File file = new File(adiFile.getPath());
-            file.delete();
+            if (!file.delete()) {
+                log.warn("Delete file error,uuid:{}", uuid);
+            }
         }
-        return this.softDel(uuid);
+        this.softDel(uuid);
     }
 
     public AdiFile getByUuid(String uuid) {
@@ -142,16 +153,59 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         return FileUtil.readBytes(adiFile.getPath());
     }
 
-    public BufferedImage readBufferedImage(String uuid) {
+    /**
+     * 读取图片到BufferedImage，管理员或图片拥有者才有权限查看
+     *
+     * @param uuid      图片uuid
+     * @param thumbnail 读取的是缩略图
+     * @return 图片内容
+     */
+    public BufferedImage readMyImage(String uuid, boolean thumbnail) {
+        if (StringUtils.isBlank(ThreadContext.getToken())) {
+            throw new BaseException(A_AI_IMAGE_NO_AUTH);
+        }
         AdiFile adiFile = this.lambdaQuery()
+                .eq(!ThreadContext.getCurrentUser().getIsAdmin(), AdiFile::getUserId, ThreadContext.getCurrentUserId())
                 .eq(AdiFile::getUuid, uuid)
-                .eq(AdiFile::getUserId, ThreadContext.getCurrentUserId())
                 .oneOpt().orElse(null);
         if (null == adiFile) {
             throw new BaseException(A_FILE_NOT_EXIST);
         }
+        return readImage(adiFile, thumbnail);
+    }
+
+    public BufferedImage readImage(String uuid, boolean thumbnail) {
+        AdiFile adiFile = this.lambdaQuery()
+                .eq(AdiFile::getUuid, uuid)
+                .oneOpt().orElse(null);
+        if (null == adiFile) {
+            throw new BaseException(A_FILE_NOT_EXIST);
+        }
+        return readImage(adiFile, thumbnail);
+    }
+
+    /**
+     * 读取图片到BufferedImage
+     *
+     * @param adiFile   图片实体类
+     * @param thumbnail 读取的是缩略图
+     * @return 图片内容
+     */
+    private BufferedImage readImage(AdiFile adiFile, boolean thumbnail) {
         try {
-            return ImageIO.read(new FileInputStream(adiFile.getPath()));
+            String currentFilePath = adiFile.getPath();
+            if (thumbnail) {
+                currentFilePath = thumbnailsPath + adiFile.getUuid() + "." + adiFile.getExt();
+                //不存在则创建
+                if (new File(adiFile.getPath()).exists() && !new File(currentFilePath).exists()) {
+                    ImgUtil.scale(
+                            cn.hutool.core.io.FileUtil.file(adiFile.getPath()),
+                            cn.hutool.core.io.FileUtil.file(currentFilePath),
+                            0.2f
+                    );
+                }
+            }
+            return ImageIO.read(new FileInputStream(currentFilePath));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -161,10 +215,44 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         AdiFile adiFile = this.lambdaQuery()
                 .eq(AdiFile::getUuid, uuid)
                 .oneOpt().orElse(null);
-        return imagePath + uuid + "." + adiFile.getExt();
+        if (null == adiFile) {
+            throw new BaseException(ErrorEnum.A_AI_IMAGE_NOT_FOUND);
+        }
+        return adiFile.getPath();
+    }
+
+
+    public AdiFile getFile(String uuid) {
+        AdiFile adiFile = this.lambdaQuery()
+                .eq(AdiFile::getUuid, uuid)
+                .oneOpt().orElse(null);
+        if (null == adiFile) {
+            throw new BaseException(ErrorEnum.A_AI_IMAGE_NOT_FOUND);
+        }
+        return adiFile;
     }
 
     public String getTmpImagesPath(String uuid) {
-        return tmpImagesPath + uuid + ".png";
+        AdiFile adiFile = this.lambdaQuery()
+                .eq(AdiFile::getUuid, uuid)
+                .oneOpt().orElse(null);
+        if (null == adiFile) {
+            throw new BaseException(ErrorEnum.A_AI_IMAGE_NOT_FOUND);
+        }
+        return tmpImagesPath + uuid + "." + adiFile.getExt();
+    }
+
+    public String getWatermarkImagesPath(String uuid) {
+        AdiFile adiFile = this.lambdaQuery()
+                .eq(AdiFile::getUuid, uuid)
+                .oneOpt().orElse(null);
+        if (null == adiFile) {
+            throw new BaseException(ErrorEnum.A_AI_IMAGE_NOT_FOUND);
+        }
+        return watermarkImagesPath + uuid + "." + adiFile.getExt();
+    }
+
+    public String getWatermarkImagesPath(AdiFile adiFile) {
+        return watermarkImagesPath + adiFile.getUuid() + "." + adiFile.getExt();
     }
 }

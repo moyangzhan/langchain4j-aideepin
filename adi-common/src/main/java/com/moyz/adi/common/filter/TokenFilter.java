@@ -29,7 +29,15 @@ public class TokenFilter extends OncePerRequestFilter {
     public static final String[] EXCLUDE_API = {
             "/auth/",
             "/model/",
-            "/user/avatar/"
+            "/user/avatar/",
+            "/draw/public/"
+    };
+
+    public static final String[] TOKEN_IN_PARAMS = {
+            "/my-image/",
+            "/my-thumbnail/",
+            "/image/",
+            "/file/"
     };
 
     @Resource
@@ -46,7 +54,7 @@ public class TokenFilter extends OncePerRequestFilter {
             return;
         }
         String token = request.getHeader(AUTHORIZATION);
-        if (StringUtils.isBlank(token) && (requestUri.indexOf("/image/") == 0 || requestUri.indexOf("/file/") == 0)) {
+        if (StringUtils.isBlank(token) && checkPathWithToken(requestUri)) {
             token = request.getParameter("token");
         }
         if (StringUtils.isBlank(token)) {
@@ -88,6 +96,15 @@ public class TokenFilter extends OncePerRequestFilter {
         for (String path : AdiConstant.WEB_RESOURCES) {
             if (requestUri.startsWith(contextPath + path) || requestUri.endsWith(path)) {
 //                log.info("path exclude{}", requestUri);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean checkPathWithToken(String requestUri) {
+        for (String path : TOKEN_IN_PARAMS) {
+            if (requestUri.startsWith(contextPath + path)) {
                 return true;
             }
         }

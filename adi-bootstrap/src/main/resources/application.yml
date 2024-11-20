@@ -52,11 +52,13 @@ mybatis-plus:
     map-underscore-to-camel-case: true
 
 logging:
-  file: /data/aideepin/logs
+  file:
+    name: /data/aideepin/logs
 
 adi:
-  frontend-url: http://www.aideepin.com
-  backend-url: http://www.aideepin.com/api
+  host: aideepin.com
+  frontend-url: http://www.${adi.host}
+  backend-url: http://www.${adi.host}/api
   proxy:
     enable: false
     host: 127.0.0.1
@@ -65,5 +67,8 @@ adi:
 local:
   files: /data/aideepin/files/
   images: /data/aideepin/images/
+  watermark-images: /data/aideepin/mark-images/
+  thumbnails: /data/aideepin/thumbnails/
+  watermark-thumbnails: /data/aideepin/watermark-thumbnails/
   tmp-images: /data/aideepin/tmp_images/
   chat-memory: /data/aideepin/chat_memory/

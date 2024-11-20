@@ -46,6 +46,17 @@ public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
                 .one();
     }
 
+    public AiModel getByNameOrThrow(String modelName) {
+        AiModel aiModel = ChainWrappers.lambdaQueryChain(baseMapper)
+                .eq(AiModel::getName, modelName)
+                .eq(AiModel::getIsDeleted, false)
+                .one();
+        if (null == aiModel) {
+            throw new BaseException(ErrorEnum.A_MODEL_NOT_FOUND);
+        }
+        return aiModel;
+    }
+
     public Long getIdByName(String modelName) {
         AiModel aiModel = this.getByName(modelName);
         return null == aiModel ? 0l : aiModel.getId();

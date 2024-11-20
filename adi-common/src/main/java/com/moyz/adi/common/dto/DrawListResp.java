@@ -5,7 +5,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class AiImagesListResp {
+public class DrawListResp {
     private Long minId;
-    private List<AiImageDto> imageItems;
+    private List<DrawDto> draws;
 }

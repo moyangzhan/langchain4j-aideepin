@@ -3,8 +3,10 @@ package com.moyz.adi.chat.controller;
 import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.service.FileService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.constraints.NotBlank;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.validator.constraints.Length;
@@ -31,9 +33,38 @@ public class FileController {
     @Resource
     private FileService fileService;
 
+    @Operation(summary = "我的图片")
+    @GetMapping(value = "/my-image/{uuid}", produces = MediaType.IMAGE_PNG_VALUE)
+    public void myImage(@Length(min = 32, max = 32) @PathVariable String uuid, HttpServletResponse response) {
+        BufferedImage bufferedImage = fileService.readMyImage(uuid, false);
+        //把图片写给浏览器
+        try {
+            ImageIO.write(bufferedImage, "png", response.getOutputStream());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @GetMapping(value = "/my-thumbnail/{uuid}", produces = MediaType.IMAGE_PNG_VALUE)
+    public void thumbnail(@Length(min = 32, max = 32) @PathVariable String uuid, HttpServletResponse response) {
+        BufferedImage bufferedImage = fileService.readMyImage(uuid, true);
+        //把图片写给浏览器
+        try {
+            ImageIO.write(bufferedImage, "png", response.getOutputStream());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * 获取图片
+     *
+     * @param uuid     图片uuid
+     * @param response HttpServletResponse
+     */
     @GetMapping(value = "/image/{uuid}", produces = MediaType.IMAGE_PNG_VALUE)
     public void image(@Length(min = 32, max = 32) @PathVariable String uuid, HttpServletResponse response) {
-        BufferedImage bufferedImage = fileService.readBufferedImage(uuid);
+        BufferedImage bufferedImage = fileService.readMyImage(uuid, false);
         //把图片写给浏览器
         try {
             ImageIO.write(bufferedImage, "png", response.getOutputStream());
