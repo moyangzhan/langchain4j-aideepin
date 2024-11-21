@@ -95,7 +95,7 @@ public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
 //    }
 
     @Override
-    protected String parseError(Object error) {
+    protected LLMException parseError(Object error) {
         return null;
     }
 

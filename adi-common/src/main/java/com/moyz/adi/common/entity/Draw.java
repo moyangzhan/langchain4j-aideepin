@@ -57,6 +57,9 @@ public class Draw extends BaseEntity {
     @TableField("process_status")
     private Integer processStatus;
 
+    @TableField("process_status_remark")
+    private String processStatusRemark;
+
     @TableField("is_public")
     private Boolean isPublic;
 

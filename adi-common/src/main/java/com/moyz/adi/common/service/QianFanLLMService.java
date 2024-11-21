@@ -5,6 +5,7 @@ import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.vo.LLMBuilderProperties;
+import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.QianFanAiModelSetting;
 import com.moyz.adi.common.vo.QianFanAiPlatformSetting;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -82,7 +83,7 @@ public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetti
     }
 
     @Override
-    protected String parseError(Object error) {
+    protected LLMException parseError(Object error) {
         return null;
     }
 }

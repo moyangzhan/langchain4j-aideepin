@@ -3,6 +3,7 @@ package com.moyz.adi.common.service;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
 import com.moyz.adi.common.vo.LLMBuilderProperties;
+import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.OllamaSetting;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -50,7 +51,7 @@ public class OllamaLLMService extends AbstractLLMService<OllamaSetting> {
     }
 
     @Override
-    protected String parseError(Object error) {
+    protected LLMException parseError(Object error) {
         return null;
     }
 }

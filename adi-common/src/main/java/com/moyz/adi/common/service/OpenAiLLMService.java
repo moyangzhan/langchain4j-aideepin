@@ -6,7 +6,9 @@ import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
 import com.moyz.adi.common.util.JsonUtil;
+import com.moyz.adi.common.util.OpenAiUtil;
 import com.moyz.adi.common.vo.LLMBuilderProperties;
+import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.OpenAiSetting;
 import com.theokanning.openai.OpenAiError;
 import dev.ai4j.openai4j.OpenAiHttpException;
@@ -79,13 +81,8 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
     }
 
     @Override
-    protected String parseError(Object error) {
-        if (error instanceof OpenAiHttpException) {
-            OpenAiHttpException openAiHttpException = (OpenAiHttpException) error;
-            OpenAiError openAiError = JsonUtil.fromJson(openAiHttpException.getMessage(), OpenAiError.class);
-            return openAiError.getError().getMessage();
-        }
-        return Strings.EMPTY;
+    protected LLMException parseError(Object error) {
+        return OpenAiUtil.parseError(error);
     }
 
 }

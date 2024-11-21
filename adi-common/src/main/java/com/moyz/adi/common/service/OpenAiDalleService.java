@@ -9,19 +9,24 @@ import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.interfaces.AbstractImageModelService;
 import com.moyz.adi.common.util.ImageUtil;
 import com.moyz.adi.common.util.JsonUtil;
+import com.moyz.adi.common.util.OpenAiUtil;
 import com.moyz.adi.common.vo.ImageModelBuilderProperties;
+import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.OpenAiSetting;
 import com.theokanning.openai.OpenAiApi;
+import com.theokanning.openai.OpenAiError;
 import com.theokanning.openai.image.CreateImageEditRequest;
 import com.theokanning.openai.image.CreateImageVariationRequest;
 import com.theokanning.openai.image.Image;
 import com.theokanning.openai.image.ImageResult;
 import com.theokanning.openai.service.OpenAiService;
+import dev.ai4j.openai4j.OpenAiHttpException;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openai.OpenAiImageModel;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.util.Strings;
 import retrofit2.Retrofit;
 
 import java.io.File;
@@ -203,5 +208,10 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
             return new OpenAiService(api);
         }
         return new OpenAiService(secretKey, Duration.of(60, ChronoUnit.SECONDS));
+    }
+
+    @Override
+    protected LLMException parseError(Object error) {
+        return OpenAiUtil.parseError(error);
     }
 }

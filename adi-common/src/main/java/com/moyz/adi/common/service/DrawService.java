@@ -21,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
@@ -218,13 +219,13 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
                 String imageUuid = fileService.saveImageToLocal(user, imageUrl);
                 imageUuids.add(imageUuid);
             });
-            String imageUuidsJoin = imageUuids.stream().collect(Collectors.joining(","));
+            String imageUuidsJoin = String.join(",", imageUuids);
             if (StringUtils.isBlank(imageUuidsJoin)) {
                 _this.lambdaUpdate().eq(Draw::getId, draw.getId()).set(Draw::getProcessStatus, STATUS_FAIL).update();
                 return;
             }
-            String respImagesPath = images.stream().collect(Collectors.joining(","));
-            updateDrawStatus(draw.getId(), respImagesPath, imageUuidsJoin, STATUS_SUCCESS);
+            String respImagesPath = String.join(",", images);
+            updateDrawSuccess(draw.getId(), respImagesPath, imageUuidsJoin);
 
             //Update the cost of current user
             UserDayCost userDayCost = userDayCostService.getTodayCost(user);
@@ -238,23 +239,37 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
                 saveOrUpdateInst.setImagesNumber(userDayCost.getImagesNumber() + images.size());
             }
             userDayCostService.saveOrUpdate(saveOrUpdateInst);
+        } catch (BaseException e) {
+            log.error("createFromRemote error", e);
+            updateDrawFail(draw.getId(), e.getMessage());
         } finally {
             stringRedisTemplate.delete(drawingKey);
         }
     }
 
-    public void updateDrawStatus(Long drawId, String respImagesPath, String localImagesUuid, int generationStatus) {
+    public void updateDrawSuccess(Long drawId, String respImagesPath, String localImagesUuid) {
         Draw updateImage = new Draw();
         updateImage.setId(drawId);
         updateImage.setRespImagesPath(respImagesPath);
         updateImage.setGeneratedImages(localImagesUuid);
-        updateImage.setProcessStatus(generationStatus);
+        updateImage.setProcessStatus(STATUS_SUCCESS);
         getBaseMapper().updateById(updateImage);
 
+        if (StringUtils.isBlank(localImagesUuid)) {
+            return;
+        }
         AdiFile adiFile = fileService.lambdaQuery().eq(AdiFile::getUuid, localImagesUuid).oneOpt().orElse(null);
         if (null != adiFile) {
             fileService.lambdaUpdate().eq(AdiFile::getId, adiFile.getId()).set(AdiFile::getRefCount, adiFile.getRefCount() + 1).update();
         }
+    }
+
+    public void updateDrawFail(Long drawId, String failMsg) {
+        Draw updateImage = new Draw();
+        updateImage.setId(drawId);
+        updateImage.setProcessStatus(STATUS_FAIL);
+        updateImage.setProcessStatusRemark(failMsg);
+        getBaseMapper().updateById(updateImage);
     }
 
     public DrawListResp listByCurrentUser(Long maxId, int pageSize) {

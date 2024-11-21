@@ -24,5 +24,6 @@ public class DrawDto {
     private String generatedImages;
     private List<String> imageUuids;
     private Integer processStatus;
+    private String processStatusRemark;
     private LocalDateTime createTime;
 }

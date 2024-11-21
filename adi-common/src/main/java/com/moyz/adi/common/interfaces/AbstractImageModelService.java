@@ -3,14 +3,17 @@ package com.moyz.adi.common.interfaces;
 import com.moyz.adi.common.entity.Draw;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.User;
+import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.service.FileService;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.vo.ImageModelBuilderProperties;
+import com.moyz.adi.common.vo.LLMException;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 
@@ -18,11 +21,14 @@ import java.net.Proxy;
 import java.util.Collections;
 import java.util.List;
 
+import static com.moyz.adi.common.enums.ErrorEnum.C_DRAW_FAIL;
+
 @Slf4j
 public abstract class AbstractImageModelService<T> {
 
     protected Proxy proxy;
 
+    @Getter
     protected AiModel aiModel;
 
     protected T setting;
@@ -80,8 +86,12 @@ public abstract class AbstractImageModelService<T> {
             return response.content().stream().map(item -> item.url().toString()).toList();
         } catch (Exception e) {
             log.error("create image error", e);
+            LLMException llmException = parseError(e);
+            if (null != llmException) {
+                throw new BaseException(C_DRAW_FAIL, llmException.getMessage());
+            }
+            throw new BaseException(C_DRAW_FAIL, e.getMessage());
         }
-        return Collections.emptyList();
     }
 
     /**
@@ -102,9 +112,7 @@ public abstract class AbstractImageModelService<T> {
      */
     public abstract List<String> createImageVariation(User user, Draw draw);
 
-    public AiModel getAiModel() {
-        return aiModel;
-    }
+    protected abstract LLMException parseError(Object error);
 
     public FileService getFileService() {
         if (null == fileService) {

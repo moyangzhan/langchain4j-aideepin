@@ -14,6 +14,7 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -32,6 +33,7 @@ import static com.moyz.adi.common.enums.ErrorEnum.B_LLM_SERVICE_DISABLED;
 public abstract class AbstractLLMService<T> {
 
     protected Proxy proxy;
+    @Getter
     protected AiModel aiModel;
     protected T modelPlatformSetting;
 
@@ -89,7 +91,7 @@ public abstract class AbstractLLMService<T> {
 
     public abstract StreamingChatLanguageModel buildStreamingChatLLM(LLMBuilderProperties properties);
 
-    protected abstract String parseError(Object error);
+    protected abstract LLMException parseError(Object error);
 
     /**
      * 普通聊天，将原始的用户问题及历史消息发送给AI
@@ -142,7 +144,4 @@ public abstract class AbstractLLMService<T> {
         SSEEmitterHelper.registerTokenStreamCallBack(tokenStream, params, consumer);
     }
 
-    public AiModel getAiModel() {
-        return aiModel;
-    }
 }

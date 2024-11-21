@@ -47,7 +47,8 @@ public enum ErrorEnum {
     B_NO_ANSWER("B0011", "[无答案]"),
     B_SAVE_FILE_ERROR("B0012", "保存文件异常"),
     B_BREAK_SEARCH("B0013", "中断搜索"),
-    B_GRAPH_FILTER_NOT_FOUND("B0014", "图过滤器未定义");
+    B_GRAPH_FILTER_NOT_FOUND("B0014", "图过滤器未定义"),
+    C_DRAW_FAIL("C0001", "大模型生成图片失败,原因:{0}");
 
     private String code;
     private String info;
