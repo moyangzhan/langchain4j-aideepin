@@ -6,7 +6,6 @@ import com.moyz.adi.common.service.FileService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.validation.constraints.NotBlank;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.validator.constraints.Length;
@@ -24,6 +23,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_FILE_NOT_EXIST;
+import static com.moyz.adi.common.enums.ErrorEnum.B_IMAGE_LOAD_ERROR;
 
 @Slf4j
 @RestController
@@ -41,7 +41,8 @@ public class FileController {
         try {
             ImageIO.write(bufferedImage, "png", response.getOutputStream());
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.error("myImage error", e);
+            throw new BaseException(B_IMAGE_LOAD_ERROR);
         }
     }
 
@@ -52,7 +53,8 @@ public class FileController {
         try {
             ImageIO.write(bufferedImage, "png", response.getOutputStream());
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.error("thumbnail error", e);
+            throw new BaseException(B_IMAGE_LOAD_ERROR);
         }
     }
 
@@ -69,7 +71,8 @@ public class FileController {
         try {
             ImageIO.write(bufferedImage, "png", response.getOutputStream());
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.error("image error", e);
+            throw new BaseException(B_IMAGE_LOAD_ERROR);
         }
     }
 

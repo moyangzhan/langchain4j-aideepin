@@ -1,5 +1,6 @@
 package com.moyz.adi.chat.controller;
 
+import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.service.UserService;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.ConfigResp;
@@ -25,6 +26,8 @@ import org.springframework.web.bind.annotation.*;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+
+import static com.moyz.adi.common.enums.ErrorEnum.B_IMAGE_LOAD_ERROR;
 
 @Slf4j
 @Tag(name = "用户controller")
@@ -76,7 +79,8 @@ public class UserController {
         try {
             ImageIO.write(bufferedImage, "png", response.getOutputStream());
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.error("load my avatar error", e);
+            throw new BaseException(B_IMAGE_LOAD_ERROR);
         }
     }
 
@@ -91,7 +95,8 @@ public class UserController {
         try {
             writeToResponse(userId, width, height, response);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.error("load avatar error", e);
+            throw new BaseException(B_IMAGE_LOAD_ERROR);
         }
     }
 

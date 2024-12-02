@@ -12,6 +12,7 @@ import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.ImageModelContext;
 import com.moyz.adi.common.helper.QuotaHelper;
 import com.moyz.adi.common.helper.RateLimitHelper;
+import com.moyz.adi.common.interfaces.AbstractImageModelService;
 import com.moyz.adi.common.mapper.DrawMapper;
 import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
@@ -21,7 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.util.Strings;
+import org.apache.poi.ss.formula.functions.T;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
@@ -46,7 +47,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
 
     @Resource
     @Lazy
-    private DrawService _this;
+    private DrawService self;
 
     @Value("${local.images}")
     private String imagePath;
@@ -84,6 +85,9 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
     @Resource
     private DrawStarService drawStarService;
 
+    @Resource
+    private UserService userService;
+
     public void check() {
         User user = ThreadContext.getCurrentUser();
         String askingKey = MessageFormat.format(RedisKeyConstant.USER_DRAWING, user.getId());
@@ -97,7 +101,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         if (!rateLimitHelper.checkRequestTimes(requestTimesKey, LocalCache.TEXT_RATE_LIMIT_CONFIG)) {
             throw new BaseException(A_REQUEST_TOO_MUCH);
         }
-        ErrorEnum errorEnum = quotaHelper.checkImageQuota(user);
+        ErrorEnum errorEnum = quotaHelper.checkImageQuota(user, false);
         if (null != errorEnum) {
             throw new BaseException(errorEnum);
         }
@@ -109,18 +113,18 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
      * @param generateImageReq 文生图请求参数
      */
     public String createByPrompt(GenerateImageReq generateImageReq) {
-        _this.check();
+        self.check();
         CreateImageDto createImageDto = new CreateImageDto();
         createImageDto.setInteractingMethod(INTERACTING_METHOD_GENERATE_IMAGE);
         BeanUtils.copyProperties(generateImageReq, createImageDto);
-        return _this.generate(createImageDto);
+        return self.generate(createImageDto);
     }
 
     /**
      * Interacting method 2:  Creates an edited or extended image given an original image and a prompt.
      */
     public String editByOriginalImage(EditImageReq editImageReq) {
-        _this.check();
+        self.check();
         CreateImageDto createImageDto = new CreateImageDto();
         createImageDto.setInteractingMethod(INTERACTING_METHOD_EDIT_IMAGE);
         createImageDto.setPrompt(editImageReq.getPrompt());
@@ -129,20 +133,20 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         createImageDto.setMaskImage(editImageReq.getMaskImage());
         createImageDto.setOriginalImage(editImageReq.getOriginalImage());
         createImageDto.setModelName(editImageReq.getModelName());
-        return _this.generate(createImageDto);
+        return self.generate(createImageDto);
     }
 
     /**
      * interacting method 3: Creates a variation of a given image.
      */
     public String variationImage(VariationImageReq variationImageReq) {
-        _this.check();
+        self.check();
         CreateImageDto createImageDto = new CreateImageDto();
         createImageDto.setInteractingMethod(INTERACTING_METHOD_VARIATION);
         createImageDto.setSize(variationImageReq.getSize());
         createImageDto.setNumber(variationImageReq.getNumber());
         createImageDto.setOriginalImage(variationImageReq.getOriginalImage());
-        return _this.generate(createImageDto);
+        return self.generate(createImageDto);
     }
 
     /**
@@ -171,7 +175,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         draw.setMaskImage(createImageDto.getMaskImage());
         getBaseMapper().insert(draw);
         Draw obj = this.lambdaQuery().eq(Draw::getUuid, uuid).one();
-        _this.createFromRemote(obj, user);
+        self.createFromRemote(obj, user);
         return uuid;
     }
 
@@ -187,7 +191,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
                 .eq(Draw::getProcessStatus, STATUS_FAIL)
                 .oneOpt().orElseThrow(() -> new BaseException(B_FIND_IMAGE_404));
 
-        _this.createFromRemote(obj, user);
+        self.createFromRemote(obj, user);
     }
 
     /**
@@ -206,13 +210,14 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
             String requestTimesKey = MessageFormat.format(RedisKeyConstant.USER_REQUEST_TEXT_TIMES, user.getId());
             rateLimitHelper.increaseRequestTimes(requestTimesKey, LocalCache.IMAGE_RATE_LIMIT_CONFIG);
 
+            AbstractImageModelService<T> imageModelService = ImageModelContext.getModelService(draw.getAiModelName());
             List<String> images = new ArrayList<>();
             if (draw.getInteractingMethod() == INTERACTING_METHOD_GENERATE_IMAGE) {
-                images = ImageModelContext.getModelService(draw.getAiModelName()).generateImage(user, draw);
+                images = imageModelService.generateImage(user, draw);
             } else if (draw.getInteractingMethod() == INTERACTING_METHOD_EDIT_IMAGE) {
-                images = ImageModelContext.getModelService(draw.getAiModelName()).editImage(user, draw);
+                images = imageModelService.editImage(user, draw);
             } else if (draw.getInteractingMethod() == INTERACTING_METHOD_VARIATION) {
-                images = ImageModelContext.getModelService(draw.getAiModelName()).createImageVariation(user, draw);
+                images = imageModelService.createImageVariation(user, draw);
             }
             List<String> imageUuids = new ArrayList<>();
             images.forEach(imageUrl -> {
@@ -221,14 +226,15 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
             });
             String imageUuidsJoin = String.join(",", imageUuids);
             if (StringUtils.isBlank(imageUuidsJoin)) {
-                _this.lambdaUpdate().eq(Draw::getId, draw.getId()).set(Draw::getProcessStatus, STATUS_FAIL).update();
+                self.lambdaUpdate().eq(Draw::getId, draw.getId()).set(Draw::getProcessStatus, STATUS_FAIL).update();
                 return;
             }
             String respImagesPath = String.join(",", images);
             updateDrawSuccess(draw.getId(), respImagesPath, imageUuidsJoin);
 
             //Update the cost of current user
-            UserDayCost userDayCost = userDayCostService.getTodayCost(user);
+            boolean tokenIsFree = imageModelService.getAiModel().getIsFree();
+            UserDayCost userDayCost = userDayCostService.getTodayCost(user, tokenIsFree);
             UserDayCost saveOrUpdateInst = new UserDayCost();
             if (null == userDayCost) {
                 saveOrUpdateInst.setUserId(user.getId());
@@ -238,6 +244,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
                 saveOrUpdateInst.setId(userDayCost.getId());
                 saveOrUpdateInst.setImagesNumber(userDayCost.getImagesNumber() + images.size());
             }
+            saveOrUpdateInst.setIsFree(tokenIsFree);
             userDayCostService.saveOrUpdate(saveOrUpdateInst);
         } catch (BaseException e) {
             log.error("createFromRemote error", e);
@@ -281,7 +288,9 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
                 .last("limit " + pageSize)
                 .list();
         list.sort(Comparator.comparing(Draw::getId));
-        return imagesToListResp(list);
+        DrawListResp listResp = drawsToListResp(list);
+        listResp.getDraws().forEach(item -> item.setIsStar(drawStarService.isStarred(item.getId(), ThreadContext.getCurrentUserId())));
+        return listResp;
     }
 
     /**
@@ -299,10 +308,14 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
                 .orderByDesc(Draw::getId)
                 .last("limit " + pageSize)
                 .list();
-        return imagesToListResp(list);
+        DrawListResp listResp = drawsToListResp(list);
+        if (StringUtils.isNotBlank(ThreadContext.getToken())) {
+            listResp.getDraws().forEach(item -> item.setIsStar(drawStarService.isStarred(item.getId(), ThreadContext.getCurrentUserId())));
+        }
+        return listResp;
     }
 
-    public DrawListResp listFav(Long maxId, int pageSize) {
+    public DrawListResp listStarred(Long maxId, int pageSize) {
         List<DrawStar> stars = drawStarService.listByCurrentUser(maxId, pageSize);
         if (CollectionUtils.isEmpty(stars)) {
             DrawListResp resp = new DrawListResp();
@@ -313,15 +326,17 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         List<Draw> list = this.lambdaQuery()
                 .in(Draw::getId, stars.stream().map(DrawStar::getDrawId).toList())
                 .list();
-        return imagesToListResp(list);
+        DrawListResp listResp = drawsToListResp(list);
+        listResp.getDraws().forEach(item -> item.setIsStar(true));
+        return listResp;
     }
 
-    private DrawListResp imagesToListResp(List<Draw> list) {
+    private DrawListResp drawsToListResp(List<Draw> draws) {
         List<DrawDto> dtoList = new ArrayList<>();
-        list.forEach(item -> dtoList.add(convertDrawToDto(item)));
+        draws.forEach(item -> dtoList.add(convertDrawToDto(item)));
         DrawListResp result = new DrawListResp();
         result.setDraws(dtoList);
-        result.setMinId(list.stream().map(Draw::getId).reduce(Long.MAX_VALUE, Long::min));
+        result.setMinId(draws.stream().map(Draw::getId).reduce(Long.MAX_VALUE, Long::min));
         return result;
     }
 
@@ -353,10 +368,13 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         Draw draw = this.lambdaQuery()
                 .eq(Draw::getUuid, uuid)
                 .eq(Draw::getIsDeleted, false)
-                .eq(Draw::getIsPublic, true)
                 .oneOpt()
                 .orElse(null);
-        if (null != draw) {
+        //公开的图片或者自己的图片，都可以获取到
+        if (
+                null != draw
+                        && (draw.getIsPublic() || (StringUtils.isNotBlank(ThreadContext.getToken()) && ThreadContext.getCurrentUserId().equals(draw.getUserId())))
+        ) {
             return convertDrawToDto(draw);
         } else {
             return null;
@@ -366,8 +384,8 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
     /**
      * 删除做图记录
      *
-     * @param uuid
-     * @return
+     * @param uuid 绘图任务uuid
+     * @return 是否删除成功
      */
     public boolean del(String uuid) {
         Draw draw = checkAndGet(uuid);
@@ -377,7 +395,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
                 fileService.removeFileAndSoftDel(fileUuid);
             }
         }
-        _this.softDel(draw.getId());
+        self.softDel(draw.getId());
         return true;
     }
 
@@ -404,30 +422,37 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         String remainFiles = Arrays.stream(uuids)
                 .filter(StringUtils::isNotBlank)
                 .collect(Collectors.joining(","));
-        _this.lambdaUpdate().eq(Draw::getId, draw.getId()).set(Draw::getGeneratedImages, remainFiles).update();
+        self.lambdaUpdate().eq(Draw::getId, draw.getId()).set(Draw::getGeneratedImages, remainFiles).update();
         return true;
     }
 
     private DrawDto convertDrawToDto(Draw draw) {
         DrawDto dto = new DrawDto();
         BeanUtils.copyProperties(draw, dto);
-        fillImagesToDto(dto);
+
+        //Image uuid string to uuid list
+        List<String> images = new ArrayList<>();
+        if (StringUtils.isNotBlank(dto.getGeneratedImages())) {
+            String[] imageUuids = dto.getGeneratedImages().split(",");
+            images.addAll(Arrays.asList(imageUuids));
+        }
+        dto.setImageUuids(images);
+
         if (StringUtils.isNotBlank(draw.getOriginalImage())) {
             dto.setOriginalImageUuid(draw.getOriginalImage());
         }
         if (StringUtils.isNotBlank(draw.getMaskImage())) {
             dto.setMaskImageUuid(draw.getMaskImage());
         }
-        return dto;
-    }
-
-    private void fillImagesToDto(DrawDto drawDto) {
-        List<String> images = new ArrayList<>();
-        if (StringUtils.isNotBlank(drawDto.getGeneratedImages())) {
-            String[] imageUuids = drawDto.getGeneratedImages().split(",");
-            images.addAll(Arrays.asList(imageUuids));
+        boolean isStarred = drawStarService.isStarred(draw.getId(), dto.getUserId());
+        dto.setIsStar(isStarred);
+        //User
+        User user = userService.getByUserId(dto.getUserId());
+        if (null != user) {
+            dto.setUserUuid(user.getUuid());
+            dto.setUserName(user.getName());
         }
-        drawDto.setImageUuids(images);
+        return dto;
     }
 
     private Draw checkAndGet(String uuid) {
@@ -478,7 +503,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
                 .intValue();
     }
 
-    public void setImagePublic(String uuid, Boolean isPublic, Boolean withWatermark) {
+    public void setDrawPublic(String uuid, Boolean isPublic, Boolean withWatermark) {
         Draw draw = checkAndGet(uuid);
         //生成水印
         if (BooleanUtils.isTrue(withWatermark)) {
@@ -498,5 +523,21 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
                 .set(Draw::getIsPublic, isPublic)
                 .set(BooleanUtils.isTrue(withWatermark), Draw::getWithWatermark, withWatermark)
                 .update();
+    }
+
+    public DrawDto toggleStar(String uuid) {
+        DrawDto draw = getOrThrow(uuid);
+        drawStarService.toggle(draw.getId(), ThreadContext.getCurrentUserId());
+
+        //Calculate stars
+        boolean starred = drawStarService.isStarred(draw.getId(), ThreadContext.getCurrentUserId());
+        int stars = draw.getStarCount() + (starred ? 1 : -1);
+        this.lambdaUpdate()
+                .eq(Draw::getId, draw.getId())
+                .set(Draw::getStarCount, stars)
+                .update();
+        draw.setStarCount(stars);
+        draw.setIsStar(starred);
+        return draw;
     }
 }

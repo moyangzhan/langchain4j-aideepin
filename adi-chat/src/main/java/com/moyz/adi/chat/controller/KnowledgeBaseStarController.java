@@ -3,7 +3,7 @@ package com.moyz.adi.chat.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.KbStarInfoResp;
-import com.moyz.adi.common.service.KnowledgeBaseStarRecordService;
+import com.moyz.adi.common.service.KnowledgeBaseStarService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
@@ -18,10 +18,10 @@ import org.springframework.web.bind.annotation.RestController;
 public class KnowledgeBaseStarController {
 
     @Resource
-    private KnowledgeBaseStarRecordService knowledgeBaseStarRecordService;
+    private KnowledgeBaseStarService knowledgeBaseStarService;
 
     @GetMapping("/mine")
     public Page<KbStarInfoResp> stars(int currentPage, int pageSize) {
-        return knowledgeBaseStarRecordService.listStarInfo(ThreadContext.getCurrentUser(), currentPage, pageSize);
+        return knowledgeBaseStarService.listStarInfo(ThreadContext.getCurrentUser(), currentPage, pageSize);
     }
 }

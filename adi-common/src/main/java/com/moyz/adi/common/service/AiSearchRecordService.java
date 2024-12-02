@@ -63,7 +63,7 @@ public class AiSearchRecordService extends ServiceImpl<AiSearchRecordMapper, AiS
     }
 
     public boolean softDelete(String uuid) {
-        if (ThreadContext.getCurrentUser().getIsAdmin()) {
+        if (Boolean.TRUE.equals(ThreadContext.getCurrentUser().getIsAdmin())) {
             return ChainWrappers.lambdaUpdateChain(baseMapper)
                     .eq(AiSearchRecord::getUuid, uuid)
                     .set(AiSearchRecord::getIsDeleted, true)

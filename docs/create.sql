@@ -37,12 +37,13 @@ CREATE TABLE public.adi_draw
     process_status_remark varchar(250)  default ''                not null,
     is_public             boolean       default false             not null,
     with_watermark        boolean       default false             not null,
+    star_count            int           default 0                 not null,
     create_time           timestamp     default CURRENT_TIMESTAMP not null,
     update_time           timestamp     default CURRENT_TIMESTAMP not null,
     is_deleted            boolean       default false             not null,
     CONSTRAINT adi_draw_generate_number_check CHECK (((generate_number >= 1) AND (generate_number <= 10))),
-    CONSTRAINT adi_draw_interacting_method_check CHECK ((interacting_method = ANY (ARRAY[1, 2, 3]))),
-    CONSTRAINT adi_draw_process_status_check CHECK ((process_status = ANY (ARRAY[1, 2, 3]))),
+    CONSTRAINT adi_draw_interacting_method_check CHECK ((interacting_method = ANY (ARRAY [1, 2, 3]))),
+    CONSTRAINT adi_draw_process_status_check CHECK ((process_status = ANY (ARRAY [1, 2, 3]))),
     CONSTRAINT adi_draw_user_id_check CHECK ((user_id >= 0))
 );
 ALTER TABLE ONLY public.adi_draw
@@ -97,6 +98,7 @@ CREATE TABLE public.adi_ai_model
     max_input_tokens  int           default 0                 not null,
     max_output_tokens int           default 0                 not null,
     input_types       varchar(100)  default 'text'            not null,
+    is_free           boolean       default false             not null,
     is_enable         boolean       default false             not null,
     create_time       timestamp     default CURRENT_TIMESTAMP not null,
     update_time       timestamp     default CURRENT_TIMESTAMP not null,
@@ -110,7 +112,8 @@ COMMENT ON COLUMN public.adi_ai_model.remark IS 'Additional remarks about the AI
 COMMENT ON COLUMN public.adi_ai_model.platform IS 'eg: openai,dashscope,qianfan,ollama';
 COMMENT ON COLUMN public.adi_ai_model.context_window IS 'LLM context window';
 COMMENT ON COLUMN public.adi_ai_model.input_types IS 'text,image,audio,video';
-COMMENT ON COLUMN public.adi_ai_model.is_enable IS '1: Normal usage, 0: Not available';
+COMMENT ON COLUMN public.adi_ai_model.is_enable IS 'True: Normal usage, false: Not available';
+COMMENT ON COLUMN public.adi_ai_model.is_free IS '是：收费，意味着参与限额计算, 否: 免费，不参与限额计算';
 COMMENT ON COLUMN public.adi_ai_model.create_time IS 'Timestamp of record creation';
 COMMENT ON COLUMN public.adi_ai_model.update_time IS 'Timestamp of record last update, automatically updated on each update';
 
@@ -163,8 +166,6 @@ CREATE TABLE public.adi_conversation
 COMMENT ON TABLE public.adi_conversation IS '用户会话(角色)表';
 
 COMMENT ON COLUMN public.adi_conversation.user_id IS '用户id';
-
-COMMENT ON COLUMN public.adi_conversation.ai_model IS '模型名称';
 
 COMMENT ON COLUMN public.adi_conversation.title IS '标题';
 
@@ -250,17 +251,17 @@ EXECUTE PROCEDURE update_modified_column();
 
 CREATE TABLE public.adi_file
 (
-    id             bigserial primary key,
-    name           varchar(36)  default ''                not null,
-    uuid           varchar(32)  default ''                not null,
-    ext            varchar(36)  default ''                not null,
-    user_id        bigint       default 0                 not null,
-    path           varchar(250) default ''                not null,
-    ref_count      integer      default 0                 not null,
-    create_time    timestamp    default CURRENT_TIMESTAMP not null,
-    update_time    timestamp    default CURRENT_TIMESTAMP not null,
-    is_deleted     boolean      default false             not null,
-    md5            varchar(128) default ''                not null
+    id          bigserial primary key,
+    name        varchar(36)  default ''                not null,
+    uuid        varchar(32)  default ''                not null,
+    ext         varchar(36)  default ''                not null,
+    user_id     bigint       default 0                 not null,
+    path        varchar(250) default ''                not null,
+    ref_count   integer      default 0                 not null,
+    create_time timestamp    default CURRENT_TIMESTAMP not null,
+    update_time timestamp    default CURRENT_TIMESTAMP not null,
+    is_deleted  boolean      default false             not null,
+    md5         varchar(128) default ''                not null
 );
 
 COMMENT ON TABLE public.adi_file IS '文件';
@@ -424,6 +425,7 @@ CREATE TABLE public.adi_user_day_cost
     day           integer   default 0                 not null,
     requests      integer   default 0                 not null,
     tokens        integer   default 0                 not null,
+    is_free       boolean   default false             not null,
     create_time   timestamp default CURRENT_TIMESTAMP not null,
     update_time   timestamp default CURRENT_TIMESTAMP not null,
     images_number integer   default 0                 not null,
@@ -439,6 +441,8 @@ COMMENT ON COLUMN public.adi_user_day_cost.day IS '日期，用7位整数表示�
 COMMENT ON COLUMN public.adi_user_day_cost.requests IS '请求数量';
 
 COMMENT ON COLUMN public.adi_user_day_cost.tokens IS '消耗的token数量';
+
+COMMENT ON COLUMN public.adi_user_day_cost.is_free IS '是：免费额度(即该行统计的是免费模型消耗的额度)；否：收费额度(即该行统计的是收费模型消耗的额度)';
 
 COMMENT ON COLUMN public.adi_user_day_cost.create_time IS 'Timestamp of record creation';
 
@@ -577,7 +581,7 @@ create trigger trigger_kb_item_update_time
     for each row
 execute procedure update_modified_column();
 
-create table adi_knowledge_base_star_record
+create table adi_knowledge_base_star
 (
     id          bigserial primary key,
     kb_id       bigint      default 0                     not null,
@@ -590,29 +594,29 @@ create table adi_knowledge_base_star_record
     UNIQUE (kb_id, user_id)
 );
 
-comment on table adi_knowledge_base_star_record is '知识库-点赞记录';
+comment on table adi_knowledge_base_star is '知识库-点赞记录';
 
-comment on column adi_knowledge_base_star_record.kb_id is 'adi_knowledge_base id';
+comment on column adi_knowledge_base_star.kb_id is 'adi_knowledge_base id';
 
-comment on column adi_knowledge_base_star_record.kb_uuid is 'adi_knowledge_base uuid';
+comment on column adi_knowledge_base_star.kb_uuid is 'adi_knowledge_base uuid';
 
-comment on column adi_knowledge_base_star_record.user_id is 'adi_user id';
+comment on column adi_knowledge_base_star.user_id is 'adi_user id';
 
-comment on column adi_knowledge_base_star_record.user_uuid is 'adi_user uuid';
+comment on column adi_knowledge_base_star.user_uuid is 'adi_user uuid';
 
-comment on column adi_knowledge_base_star_record.create_time is '创建时间';
+comment on column adi_knowledge_base_star.create_time is '创建时间';
 
-comment on column adi_knowledge_base_star_record.update_time is '更新时间';
+comment on column adi_knowledge_base_star.update_time is '更新时间';
 
-comment on column adi_knowledge_base_star_record.is_deleted is '0:normal; 1:deleted';
+comment on column adi_knowledge_base_star.is_deleted is '0:normal; 1:deleted';
 
-create trigger trigger_kb_star_record_update_time
+create trigger trigger_kb_star_update_time
     before update
-    on adi_knowledge_base_star_record
+    on adi_knowledge_base_star
     for each row
 execute procedure update_modified_column();
 
-create table adi_knowledge_base_qa_record
+create table adi_knowledge_base_qa
 (
     id              bigserial primary key,
     uuid            varchar(32)   default ''::character varying not null,
@@ -631,39 +635,39 @@ create table adi_knowledge_base_qa_record
     is_deleted      boolean       default false                 not null
 );
 
-comment on table adi_knowledge_base_qa_record is '知识库-提问记录';
+comment on table adi_knowledge_base_qa is '知识库-提问记录';
 
-comment on column adi_knowledge_base_qa_record.kb_id is '所属知识库id';
+comment on column adi_knowledge_base_qa.kb_id is '所属知识库id';
 
-comment on column adi_knowledge_base_qa_record.kb_uuid is '所属知识库uuid';
+comment on column adi_knowledge_base_qa.kb_uuid is '所属知识库uuid';
 
-comment on column adi_knowledge_base_qa_record.question is '用户的原始问题';
+comment on column adi_knowledge_base_qa.question is '用户的原始问题';
 
-comment on column adi_knowledge_base_qa_record.prompt is '提供给LLM的提示词';
+comment on column adi_knowledge_base_qa.prompt is '提供给LLM的提示词';
 
-comment on column adi_knowledge_base_qa_record.prompt_tokens is '提示词消耗的token';
+comment on column adi_knowledge_base_qa.prompt_tokens is '提示词消耗的token';
 
-comment on column adi_knowledge_base_qa_record.answer is '答案';
+comment on column adi_knowledge_base_qa.answer is '答案';
 
-comment on column adi_knowledge_base_qa_record.answer_tokens is '答案消耗的token';
+comment on column adi_knowledge_base_qa.answer_tokens is '答案消耗的token';
 
-comment on column adi_knowledge_base_qa_record.source_file_ids is '来源文档id,以逗号隔开';
+comment on column adi_knowledge_base_qa.source_file_ids is '来源文档id,以逗号隔开';
 
-comment on column adi_knowledge_base_qa_record.user_id is '提问用户id';
+comment on column adi_knowledge_base_qa.user_id is '提问用户id';
 
-comment on column adi_knowledge_base_qa_record.create_time is '创建时间';
+comment on column adi_knowledge_base_qa.create_time is '创建时间';
 
-comment on column adi_knowledge_base_qa_record.update_time is '更新时间';
+comment on column adi_knowledge_base_qa.update_time is '更新时间';
 
-comment on column adi_knowledge_base_qa_record.is_deleted is '0：未删除；1：已删除';
+comment on column adi_knowledge_base_qa.is_deleted is '0：未删除；1：已删除';
 
-create trigger trigger_kb_qa_record_update_time
+create trigger trigger_kb_qa_update_time
     before update
-    on adi_knowledge_base_qa_record
+    on adi_knowledge_base_qa
     for each row
 execute procedure update_modified_column();
 
-create table adi_knowledge_base_qa_record_reference
+create table adi_knowledge_base_qa_ref_embedding
 (
     id           bigserial primary key,
     qa_record_id bigint        default 0                     not null,
@@ -672,19 +676,19 @@ create table adi_knowledge_base_qa_record_reference
     user_id      bigint        default 0                     not null
 );
 
-comment on table adi_knowledge_base_qa_record_reference is '知识库-提问记录-向量引用列表';
+comment on table adi_knowledge_base_qa_ref_embedding is '知识库-提问记录-向量引用列表';
 
-comment on column adi_knowledge_base_qa_record_reference.qa_record_id is '提问记录id';
+comment on column adi_knowledge_base_qa_ref_embedding.qa_record_id is '提问记录id';
 
-comment on column adi_knowledge_base_qa_record_reference.embedding_id is '向量uuid';
+comment on column adi_knowledge_base_qa_ref_embedding.embedding_id is '向量uuid';
 
-comment on column adi_knowledge_base_qa_record_reference.score is '评分';
+comment on column adi_knowledge_base_qa_ref_embedding.score is '评分';
 
-comment on column adi_knowledge_base_qa_record_reference.user_id is '所属用户';
+comment on column adi_knowledge_base_qa_ref_embedding.user_id is '所属用户';
 
-create trigger trigger_kb_qa_record_reference_update_time
+create trigger trigger_kb_qa_ref_update_time
     before update
-    on adi_knowledge_base_qa_record_reference
+    on adi_knowledge_base_qa_ref_embedding
     for each row
 execute procedure update_modified_column();
 
@@ -718,7 +722,7 @@ create trigger trigger_kb_graph_segment_update_time
     for each row
 execute procedure update_modified_column();
 
-create table adi_knowledge_base_qa_record_ref_graph
+create table adi_knowledge_base_qa_ref_graph
 (
     id               bigserial primary key,
     qa_record_id     bigint default 0                     not null,
@@ -727,15 +731,15 @@ create table adi_knowledge_base_qa_record_ref_graph
     user_id          bigint default 0                     not null
 );
 
-comment on table adi_knowledge_base_qa_record_ref_graph is '知识库-提问记录-图谱引用记录';
+comment on table adi_knowledge_base_qa_ref_graph is '知识库-提问记录-图谱引用记录';
 
-comment on column adi_knowledge_base_qa_record_ref_graph.qa_record_id is '提问记录id';
+comment on column adi_knowledge_base_qa_ref_graph.qa_record_id is '提问记录id';
 
-comment on column adi_knowledge_base_qa_record_ref_graph.graph_from_llm is 'LLM解析出来的图谱: vertexName1,vertexName2';
+comment on column adi_knowledge_base_qa_ref_graph.graph_from_llm is 'LLM解析出来的图谱: vertexName1,vertexName2';
 
-comment on column adi_knowledge_base_qa_record_ref_graph.graph_from_store is '从图数据库中查找得到的图谱: {vertices:[{id:"111",name:"vertexName1"},{id:"222",name:"vertexName2"}],edges:[{id:"333",name:"edgeName1",start:"111",end:"222"}]';
+comment on column adi_knowledge_base_qa_ref_graph.graph_from_store is '从图数据库中查找得到的图谱: {vertices:[{id:"111",name:"vertexName1"},{id:"222",name:"vertexName2"}],edges:[{id:"333",name:"edgeName1",start:"111",end:"222"}]';
 
-comment on column adi_knowledge_base_qa_record_ref_graph.user_id is '所属用户';
+comment on column adi_knowledge_base_qa_ref_graph.user_id is '所属用户';
 
 -- ai search
 create table adi_ai_search_record

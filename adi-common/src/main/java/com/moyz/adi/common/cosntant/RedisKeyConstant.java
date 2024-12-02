@@ -2,6 +2,8 @@ package com.moyz.adi.common.cosntant;
 
 public class RedisKeyConstant {
 
+    private RedisKeyConstant(){}
+
     /**
      * 账号激活码的key
      */
@@ -73,6 +75,13 @@ public class RedisKeyConstant {
     public static final String USER_REQUEST_IMAGE_TIMES = "user:request-image:times:{0}";
 
     /**
+     * 用户信息缓存
+     * 参数：用户id
+     * 值: user object
+     */
+    public static final String USER_INFO = "user:info:";
+
+    /**
      * 找回密码的请求绑在
      * 参数：随机数
      * 值: 用户id，用于校验后续流程中的重置密码使用
@@ -90,7 +99,7 @@ public class RedisKeyConstant {
      * 知识库知识点生成数量
      * 值: 用户id
      */
-    public static final String qa_item_create_limit = "aq:item:create:{0}";
+    public static final String QA_ITEM_CREATE_LIMIT = "aq:item:create:{0}";
 
     /**
      * 信号(重新生成知识库统计数据)

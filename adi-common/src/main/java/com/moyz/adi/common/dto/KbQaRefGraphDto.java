@@ -13,7 +13,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class KbQaRecordRefGraphDto {
+public class KbQaRefGraphDto {
     private List<String> entitiesFromLlm;
     private List<GraphVertex> vertices;
     private List<GraphEdge> edges;

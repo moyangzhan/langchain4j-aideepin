@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.constraints.NotBlank;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.validator.constraints.Length;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
@@ -19,10 +20,12 @@ import java.io.IOException;
 import java.util.Map;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_AI_IMAGE_NO_AUTH;
+import static com.moyz.adi.common.enums.ErrorEnum.B_IMAGE_LOAD_ERROR;
 
 /**
  * 绘图
  */
+@Slf4j
 @RestController
 @RequestMapping("/draw")
 @Validated
@@ -102,7 +105,7 @@ public class DrawController {
     @Operation(summary = "将绘图任务设置为公开或私有")
     @PostMapping("/set-public/{uuid}")
     public void setPublic(@PathVariable @NotBlank String uuid, @RequestParam(defaultValue = "false") Boolean isPublic, @RequestParam(required = false) Boolean withWatermark) {
-        drawService.setImagePublic(uuid, isPublic, withWatermark);
+        drawService.setDrawPublic(uuid, isPublic, withWatermark);
     }
 
     @Operation(summary = "公开绘图任务列表")
@@ -133,7 +136,8 @@ public class DrawController {
         try {
             ImageIO.write(bufferedImage, "png", response.getOutputStream());
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.error("publicImage error", e);
+            throw new BaseException(B_IMAGE_LOAD_ERROR);
         }
     }
 
@@ -148,7 +152,8 @@ public class DrawController {
         try {
             ImageIO.write(bufferedImage, "png", response.getOutputStream());
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.error("publicThumbnail error", e);
+            throw new BaseException(B_IMAGE_LOAD_ERROR);
         }
     }
 }

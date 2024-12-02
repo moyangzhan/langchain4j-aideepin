@@ -26,13 +26,13 @@ import static com.moyz.adi.common.util.LocalCache.MODEL_ID_TO_OBJ;
 
 @Slf4j
 @Service
-public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRecordMapper, KnowledgeBaseQaRecord> {
+public class KnowledgeBaseQaService extends ServiceImpl<KnowledgeBaseQaRecordMapper, KnowledgeBaseQa> {
 
     @Resource
     private KnowledgeBaseQaRecordReferenceService knowledgeBaseQaRecordReferenceService;
 
     @Resource
-    private KnowledgeBaseQaRecordRefGraphService knowledgeBaseQaRecordRefGraphService;
+    private KnowledgeBaseQaRefGraphService knowledgeBaseQaRecordRefGraphService;
 
     @Resource
     private KnowledgeBaseEmbeddingService knowledgeBaseEmbeddingService;
@@ -40,8 +40,8 @@ public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRec
     @Resource
     private AiModelService aiModelService;
 
-    public KbQaRecordDto add(KnowledgeBase knowledgeBase, QARecordReq req) {
-        KnowledgeBaseQaRecord newRecord = new KnowledgeBaseQaRecord();
+    public KbQaDto add(KnowledgeBase knowledgeBase, QARecordReq req) {
+        KnowledgeBaseQa newRecord = new KnowledgeBaseQa();
         newRecord.setAiModelId(aiModelService.getIdByName(req.getModelName()));
         newRecord.setQuestion(req.getQuestion());
         newRecord.setKbId(knowledgeBase.getId());
@@ -50,26 +50,26 @@ public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRec
         newRecord.setUserId(ThreadContext.getCurrentUserId());
         baseMapper.insert(newRecord);
 
-        KbQaRecordDto result = new KbQaRecordDto();
+        KbQaDto result = new KbQaDto();
         BeanUtils.copyProperties(newRecord, result);
         return result;
     }
 
-    public Page<KbQaRecordDto> search(String kbUuid, String keyword, Integer currentPage, Integer pageSize) {
-        LambdaQueryWrapper<KnowledgeBaseQaRecord> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(KnowledgeBaseQaRecord::getKbUuid, kbUuid);
-        wrapper.eq(KnowledgeBaseQaRecord::getIsDeleted, false);
+    public Page<KbQaDto> search(String kbUuid, String keyword, Integer currentPage, Integer pageSize) {
+        LambdaQueryWrapper<KnowledgeBaseQa> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(KnowledgeBaseQa::getKbUuid, kbUuid);
+        wrapper.eq(KnowledgeBaseQa::getIsDeleted, false);
         if (Boolean.FALSE.equals(ThreadContext.getCurrentUser().getIsAdmin())) {
-            wrapper.eq(KnowledgeBaseQaRecord::getUserId, ThreadContext.getCurrentUserId());
+            wrapper.eq(KnowledgeBaseQa::getUserId, ThreadContext.getCurrentUserId());
         }
         if (StringUtils.isNotBlank(keyword)) {
-            wrapper.like(KnowledgeBaseQaRecord::getQuestion, keyword);
+            wrapper.like(KnowledgeBaseQa::getQuestion, keyword);
         }
-        wrapper.orderByDesc(KnowledgeBaseQaRecord::getUpdateTime);
-        Page<KnowledgeBaseQaRecord> page = baseMapper.selectPage(new Page<>(currentPage, pageSize), wrapper);
+        wrapper.orderByDesc(KnowledgeBaseQa::getUpdateTime);
+        Page<KnowledgeBaseQa> page = baseMapper.selectPage(new Page<>(currentPage, pageSize), wrapper);
 
-        Page<KbQaRecordDto> result = new Page<>();
-        MPPageUtil.convertToPage(page, result, KbQaRecordDto.class, (t1, t2) -> {
+        Page<KbQaDto> result = new Page<>();
+        MPPageUtil.convertToPage(page, result, KbQaDto.class, (t1, t2) -> {
             AiModel aiModel = MODEL_ID_TO_OBJ.get(t1.getAiModelId());
             t2.setAiModelPlatform(null == aiModel ? "" : aiModel.getPlatform());
             return t2;
@@ -86,8 +86,9 @@ public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRec
      */
     public void createEmbeddingRefs(User user, Long qaRecordId, Map<String, Double> embeddingToScore) {
         log.info("更新向量引用,userId:{},qaRecordId:{},embeddingToScore.size:{}", user.getId(), qaRecordId, embeddingToScore.size());
-        for (String embeddingId : embeddingToScore.keySet()) {
-            KnowledgeBaseQaRecordReference recordReference = new KnowledgeBaseQaRecordReference();
+        for (Map.Entry<String, Double> entry : embeddingToScore.entrySet()) {
+            String embeddingId = entry.getKey();
+            KnowledgeBaseQaRefEmbedding recordReference = new KnowledgeBaseQaRefEmbedding();
             recordReference.setQaRecordId(qaRecordId);
             recordReference.setEmbeddingId(embeddingId);
             recordReference.setScore(embeddingToScore.get(embeddingId));
@@ -103,13 +104,13 @@ public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRec
      * @param qaRecordId
      * @param graphDto
      */
-    public void createGraphRefs(User user, Long qaRecordId, KbQaRecordRefGraphDto graphDto) {
+    public void createGraphRefs(User user, Long qaRecordId, KbQaRefGraphDto graphDto) {
         log.info("更新图谱引用,userId:{},qaRecordId:{},vertices.Size:{},edges.size:{}", user.getId(), qaRecordId, graphDto.getVertices().size(), graphDto.getEdges().size());
         String entities = null == graphDto.getEntitiesFromLlm() ? "" : String.join(",", graphDto.getEntitiesFromLlm());
         Map<String, Object> graphFromStore = new HashMap<>();
         graphFromStore.put("vertices", graphDto.getVertices());
         graphFromStore.put("edges", graphDto.getEdges());
-        KnowledgeBaseQaRecordRefGraph refGraph = new KnowledgeBaseQaRecordRefGraph();
+        KnowledgeBaseQaRefGraph refGraph = new KnowledgeBaseQaRefGraph();
         refGraph.setQaRecordId(qaRecordId);
         refGraph.setUserId(user.getId());
         refGraph.setGraphFromLlm(entities);
@@ -117,19 +118,19 @@ public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRec
         knowledgeBaseQaRecordRefGraphService.save(refGraph);
     }
 
-    public List<KbQaRecordReferenceDto> listReferences(String uuid) {
-        List<KnowledgeBaseQaRecordReference> recordReferences = knowledgeBaseQaRecordReferenceService.listByQaUuid(uuid);
+    public List<KbQaRefEmbeddingDto> listReferences(String uuid) {
+        List<KnowledgeBaseQaRefEmbedding> recordReferences = knowledgeBaseQaRecordReferenceService.listByQaUuid(uuid);
         if (CollectionUtils.isEmpty(recordReferences)) {
             return Collections.emptyList();
         }
-        List<String> embeddingIds = recordReferences.stream().map(KnowledgeBaseQaRecordReference::getEmbeddingId).toList();
+        List<String> embeddingIds = recordReferences.stream().map(KnowledgeBaseQaRefEmbedding::getEmbeddingId).toList();
         if (CollectionUtils.isEmpty(embeddingIds)) {
             return Collections.emptyList();
         }
         List<KnowledgeBaseEmbedding> embeddings = knowledgeBaseEmbeddingService.listByEmbeddingIds(embeddingIds);
-        List<KbQaRecordReferenceDto> result = new ArrayList<>();
+        List<KbQaRefEmbeddingDto> result = new ArrayList<>();
         for (KnowledgeBaseEmbedding embedding : embeddings) {
-            KbQaRecordReferenceDto newOne = KbQaRecordReferenceDto.builder()
+            KbQaRefEmbeddingDto newOne = KbQaRefEmbeddingDto.builder()
                     .embeddingId(embedding.getEmbeddingId().toString())
                     .text(embedding.getText())
                     .build();
@@ -138,10 +139,10 @@ public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRec
         return result;
     }
 
-    public KnowledgeBaseQaRecord getOrThrow(String uuid) {
-        KnowledgeBaseQaRecord exist = ChainWrappers.lambdaQueryChain(baseMapper)
-                .eq(KnowledgeBaseQaRecord::getUuid, uuid)
-                .eq(KnowledgeBaseQaRecord::getIsDeleted, false)
+    public KnowledgeBaseQa getOrThrow(String uuid) {
+        KnowledgeBaseQa exist = ChainWrappers.lambdaQueryChain(baseMapper)
+                .eq(KnowledgeBaseQa::getUuid, uuid)
+                .eq(KnowledgeBaseQa::getIsDeleted, false)
                 .one();
         if (null == exist) {
             throw new BaseException(A_DATA_NOT_FOUND);
@@ -151,27 +152,27 @@ public class KnowledgeBaseQaRecordService extends ServiceImpl<KnowledgeBaseQaRec
 
     public void clearByCurrentUser() {
         ChainWrappers.lambdaUpdateChain(baseMapper)
-                .eq(KnowledgeBaseQaRecord::getUserId, ThreadContext.getCurrentUserId())
-                .set(KnowledgeBaseQaRecord::getIsDeleted, true)
+                .eq(KnowledgeBaseQa::getUserId, ThreadContext.getCurrentUserId())
+                .set(KnowledgeBaseQa::getIsDeleted, true)
                 .update();
     }
 
     public boolean softDelete(String uuid) {
         if (Boolean.TRUE.equals(ThreadContext.getCurrentUser().getIsAdmin())) {
             return ChainWrappers.lambdaUpdateChain(baseMapper)
-                    .eq(KnowledgeBaseQaRecord::getUuid, uuid)
-                    .set(KnowledgeBaseQaRecord::getIsDeleted, true)
+                    .eq(KnowledgeBaseQa::getUuid, uuid)
+                    .set(KnowledgeBaseQa::getIsDeleted, true)
                     .update();
         }
-        KnowledgeBaseQaRecord exist = ChainWrappers.lambdaQueryChain(baseMapper)
-                .eq(KnowledgeBaseQaRecord::getUuid, uuid)
+        KnowledgeBaseQa exist = ChainWrappers.lambdaQueryChain(baseMapper)
+                .eq(KnowledgeBaseQa::getUuid, uuid)
                 .one();
         if (null == exist) {
             throw new BaseException(A_DATA_NOT_FOUND);
         }
         return ChainWrappers.lambdaUpdateChain(baseMapper)
-                .eq(KnowledgeBaseQaRecord::getId, exist.getId())
-                .set(KnowledgeBaseQaRecord::getIsDeleted, true)
+                .eq(KnowledgeBaseQa::getId, exist.getId())
+                .set(KnowledgeBaseQa::getIsDeleted, true)
                 .update();
     }
 }

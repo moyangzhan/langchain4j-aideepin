@@ -13,13 +13,13 @@ public class RedisTemplateUtil {
     private StringRedisTemplate stringRedisTemplate;
 
     public boolean lock(String key, String clientId, int lockExpireInSecond) {
-        return stringRedisTemplate.opsForValue().setIfAbsent(key, clientId, lockExpireInSecond, TimeUnit.SECONDS);
+        return Boolean.TRUE.equals(stringRedisTemplate.opsForValue().setIfAbsent(key, clientId, lockExpireInSecond, TimeUnit.SECONDS));
     }
 
     public boolean unlock(String key, String clientId) {
         boolean result = false;
         if (clientId.equals(stringRedisTemplate.opsForValue().get(key))) {
-            result = stringRedisTemplate.delete(key);
+            result = Boolean.TRUE.equals(stringRedisTemplate.delete(key));
         }
         return result;
     }

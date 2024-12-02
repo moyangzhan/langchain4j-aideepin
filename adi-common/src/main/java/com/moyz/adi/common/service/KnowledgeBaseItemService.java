@@ -14,9 +14,11 @@ import com.moyz.adi.common.enums.EmbeddingStatusEnum;
 import com.moyz.adi.common.enums.GraphicalStatusEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.LLMContext;
+import com.moyz.adi.common.interfaces.AbstractLLMService;
 import com.moyz.adi.common.mapper.KnowledgeBaseItemMapper;
 import com.moyz.adi.common.rag.CompositeRAG;
 import com.moyz.adi.common.util.UuidUtil;
+import com.moyz.adi.common.vo.GraphIngestParams;
 import com.moyz.adi.common.vo.LLMBuilderProperties;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
@@ -24,6 +26,8 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.poi.ss.formula.functions.T;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -41,6 +45,10 @@ import static com.moyz.adi.common.enums.ErrorEnum.*;
 @Slf4j
 @Service
 public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMapper, KnowledgeBaseItem> {
+
+    @Resource
+    @Lazy
+    private KnowledgeBaseItemService self;
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
@@ -93,15 +101,15 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
     /**
      * 批量索引知识点
      *
-     * @param knowledgeBase
+     * @param knowledgeBase 知识库
      * @param kbItemUuids   知识点uuid列表
-     * @return
+     * @return 成功或失败
      */
     public boolean checkAndIndexing(KnowledgeBase knowledgeBase, List<String> kbItemUuids) {
         for (String kbItemUuid : kbItemUuids) {
             if (checkPrivilege(kbItemUuid)) {
                 KnowledgeBaseItem item = getEnable(kbItemUuid);
-                asyncIndex(ThreadContext.getCurrentUser(), knowledgeBase, item);
+                self.asyncIndex(ThreadContext.getCurrentUser(), knowledgeBase, item);
             }
         }
         return true;
@@ -169,12 +177,26 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                     .set(KnowledgeBaseItem::getGraphicalStatusChangeTime, LocalDateTime.now())
                     .set(KnowledgeBaseItem::getGraphicalStatus, GraphicalStatusEnum.DOING)
                     .update();
-            ChatLanguageModel chatLanguageModel = LLMContext.getLLMServiceById(knowledgeBase.getIngestModelId()).buildChatLLM(
+            AbstractLLMService<T> llmService = LLMContext.getLLMServiceById(knowledgeBase.getIngestModelId());
+            ChatLanguageModel chatLanguageModel = llmService.buildChatLLM(
                     LLMBuilderProperties.builder()
                             .temperature(knowledgeBase.getQueryLlmTemperature())
                             .build()
-                    , kbItem.getUuid());
-            compositeRAG.getGraphRAGService().ingest(user, document, knowledgeBase.getIngestMaxOverlap(), chatLanguageModel, List.of(AdiConstant.MetadataKey.KB_UUID), List.of(AdiConstant.MetadataKey.KB_ITEM_UUID));
+                    , kbItem.getUuid()
+            );
+
+            //Ingest document
+            compositeRAG.getGraphRAGService().ingest(
+                    GraphIngestParams.builder()
+                            .user(user)
+                            .document(document)
+                            .overlap(knowledgeBase.getIngestMaxOverlap())
+                            .chatLanguageModel(chatLanguageModel)
+                            .identifyColumns(List.of(AdiConstant.MetadataKey.KB_UUID))
+                            .appendColumns(List.of(AdiConstant.MetadataKey.KB_ITEM_UUID))
+                            .isFreeToken(llmService.getAiModel().getIsFree())
+                            .build()
+            );
             ChainWrappers.lambdaUpdateChain(baseMapper)
                     .eq(KnowledgeBaseItem::getId, kbItem.getId())
                     .set(KnowledgeBaseItem::getGraphicalStatus, GraphicalStatusEnum.DONE)

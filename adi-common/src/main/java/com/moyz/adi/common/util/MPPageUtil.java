@@ -14,6 +14,8 @@ import java.util.function.BiFunction;
 @Slf4j
 public class MPPageUtil {
 
+    private MPPageUtil(){}
+
     public static <T, U> Page<U> convertToPage(Page<T> source, Class<U> targetRecordClass) {
         return MPPageUtil.convertToPage(source, new Page<>(), targetRecordClass, null);
     }
@@ -75,13 +77,7 @@ public class MPPageUtil {
             U target = targetClass.getDeclaredConstructor().newInstance();
             BeanUtils.copyProperties(source, target);
             return target;
-        } catch (InstantiationException e) {
-            throw new RuntimeException(e);
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
-        } catch (InvocationTargetException e) {
-            throw new RuntimeException(e);
-        } catch (NoSuchMethodException e) {
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
     }

@@ -30,7 +30,7 @@ public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
     public void loadAndCache() {
         List<SysConfig> configsFromDB = this.lambdaQuery().eq(SysConfig::getIsDeleted, false).list();
         if (LocalCache.CONFIGS.isEmpty()) {
-            configsFromDB.stream().forEach(item -> LocalCache.CONFIGS.put(item.getName(), item.getValue()));
+            configsFromDB.forEach(item -> LocalCache.CONFIGS.put(item.getName(), item.getValue()));
         } else {
             //remove deleted config
             List<String> deletedKeys = new ArrayList<>();
@@ -57,7 +57,7 @@ public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
     }
 
     public void edit(SysConfigEditDto sysConfigDto) {
-        LambdaQueryWrapper<SysConfig> lambdaQueryWrapper = new LambdaQueryWrapper();
+        LambdaQueryWrapper<SysConfig> lambdaQueryWrapper = new LambdaQueryWrapper<>();
         lambdaQueryWrapper.eq(SysConfig::getName, sysConfigDto.getName());
         lambdaQueryWrapper.eq(SysConfig::getIsDeleted, false);
         SysConfig existOne = baseMapper.selectOne(lambdaQueryWrapper);

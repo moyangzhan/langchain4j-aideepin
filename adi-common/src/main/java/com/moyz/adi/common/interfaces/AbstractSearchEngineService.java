@@ -18,7 +18,7 @@ public abstract class AbstractSearchEngineService<T> {
 
     protected WebSearchEngine searchEngine;
 
-    public AbstractSearchEngineService(String engineName, String settingName, Class<T> clazz, Proxy proxy) {
+    protected AbstractSearchEngineService(String engineName, String settingName, Class<T> clazz, Proxy proxy) {
         this.engineName = engineName;
         String st = LocalCache.CONFIGS.get(settingName);
         setting = JsonUtil.fromJson(st, clazz);

@@ -60,7 +60,7 @@ public abstract class AbstractLLMService<T> {
         return this.stringRedisTemplate;
     }
 
-    public AbstractLLMService setProxy(Proxy proxy) {
+    public AbstractLLMService<T> setProxy(Proxy proxy) {
         this.proxy = proxy;
         return this;
     }

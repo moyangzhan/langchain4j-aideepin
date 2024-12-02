@@ -27,10 +27,7 @@ public class RateLimitHelper {
         if (StringUtils.isNotBlank(rateLimitVal)) {
             requestCountInTimeWindow = Integer.parseInt(rateLimitVal);
         }
-        if (requestCountInTimeWindow >= rateLimitConfig.getTimes()) {
-            return false;
-        }
-        return true;
+        return requestCountInTimeWindow < rateLimitConfig.getTimes();
     }
 
     public void increaseRequestTimes(String requestTimesKey, RequestRateLimit rateLimitConfig) {

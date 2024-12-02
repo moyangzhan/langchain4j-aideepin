@@ -22,6 +22,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -135,7 +136,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         User user = ThreadContext.getExistCurrentUser();
 
         if (!BCrypt.checkpw(oldPassword, user.getPassword())) {
-            throw new RuntimeException("原密码不正确");
+            throw new BaseException(A_OLD_PASSWORD_INVALID);
         }
 
         String hashed = BCrypt.hashpw(newPassword, BCrypt.gensalt());
@@ -149,17 +150,16 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         String activeCodeKey = MessageFormat.format(AUTH_ACTIVE_CODE, activeCode);
         String email = stringRedisTemplate.opsForValue().get(activeCodeKey);
         if (StringUtils.isBlank(email)) {
-            throw new RuntimeException("激活码已失效");
+            throw new BaseException(A_ACTIVE_CODE_INVALID);
         }
 
-        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
         User user = this.lambdaQuery()
                 .eq(User::getEmail, email)
                 .eq(User::getIsDeleted, false)
                 .oneOpt()
                 .orElse(null);
         if (null == user) {
-            throw new RuntimeException("用户不存在");
+            throw new BaseException(A_USER_NOT_EXIST);
         }
 
         stringRedisTemplate.delete(activeCodeKey);
@@ -278,7 +278,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         User user = ThreadContext.getCurrentUser();
         BeanUtils.copyProperties(user, result);
 
-        CostStat costStat = userDayCostService.costStatByUser(user.getId());
+        CostStat costStat = userDayCostService.costStatByUser(user.getId(), false);
         result.setTodayTokenCost(costStat.getTextTokenCostByDay());
         result.setTodayRequestTimes(costStat.getTextRequestTimesByDay());
         result.setTodayGeneratedImageNumber(costStat.getImageGeneratedNumberByDay());
@@ -335,13 +335,18 @@ public class UserService extends ServiceImpl<UserMapper, User> {
     /**
      * 发送激活链接
      *
-     * @param email
+     * @param email 用户邮箱
      */
     public void sendActiveEmail(String email) {
         String activeCode = UuidUtil.createShort();
         String activeCodeKey = MessageFormat.format(AUTH_ACTIVE_CODE, activeCode);
         stringRedisTemplate.opsForValue().set(activeCodeKey, email, AdiConstant.AUTH_ACTIVE_CODE_EXPIRE, TimeUnit.HOURS);
         adiMailSender.send("欢迎注册AIDeepIn", "激活链接(" + AdiConstant.AUTH_ACTIVE_CODE_EXPIRE + "小时内有效):" + backendUrl + "/auth/active?code=" + activeCode, email);
+    }
+
+    @Cacheable(cacheNames = USER_INFO, condition = "#id>0", key = "#p0")
+    public User getByUserId(Long id) {
+        return ChainWrappers.lambdaQueryChain(baseMapper).eq(User::getId, id).one();
     }
 
     public User getByUuid(String uuid) {
@@ -378,7 +383,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         if (null != req.getUpdateTime() && req.getUpdateTime().length == 2) {
             wrapper.between(User::getUpdateTime, LocalDateTimeUtil.parse(req.getUpdateTime()[0]), LocalDateTimeUtil.parse(req.getUpdateTime()[1]));
         }
-        if(null != req.getIsAdmin()){
+        if (null != req.getIsAdmin()) {
             wrapper.eq(User::getIsAdmin, req.getIsAdmin());
         }
         wrapper.eq(User::getIsDeleted, false);

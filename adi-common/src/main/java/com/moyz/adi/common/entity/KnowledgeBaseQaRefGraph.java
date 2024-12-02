@@ -6,14 +6,13 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-import org.apache.ibatis.type.JdbcType;
 
 import java.io.Serializable;
 
 @Data
-@TableName("adi_knowledge_base_qa_record_reference")
-@Schema(title = "知识库问答记录-引用实体", description = "知识库问答记录-引用列表")
-public class KnowledgeBaseQaRecordReference implements Serializable {
+@TableName("adi_knowledge_base_qa_ref_graph")
+@Schema(title = "知识库问答记录-图谱引用", description = "知识库问答记录-图谱引用列表")
+public class KnowledgeBaseQaRefGraph implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -24,13 +23,13 @@ public class KnowledgeBaseQaRecordReference implements Serializable {
     @TableField("qa_record_id")
     private Long qaRecordId;
 
-    @Schema(title = "向量id")
-    @TableField("embedding_id")
-    private String embeddingId;
+    @Schema(title = "LLM解析出来的图谱")
+    @TableField("graph_from_llm")
+    private String graphFromLlm;
 
-    @Schema(title = "分数")
-    @TableField("score")
-    private Double score;
+    @Schema(title = "从图数据库中查找得到的图谱")
+    @TableField("graph_from_store")
+    private String graphFromStore;
 
     @Schema(title = "提问用户id")
     @TableField("user_id")

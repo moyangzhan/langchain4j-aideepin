@@ -69,7 +69,6 @@ public class GraphStoreIngestor {
         this.segmentsFunction = segmentsFunction;
         this.identifyColumns = Arrays.asList(identifyColumns.split(","));
         this.appendColumns = Arrays.asList(appendColumns.split(","));
-        ;
     }
 
     private static DocumentSplitter loadDocumentSplitter() {
@@ -107,7 +106,7 @@ public class GraphStoreIngestor {
         } else {
             segments = documents.stream()
                     .map(Document::toTextSegment)
-                    .collect(toList());
+                    .toList();
         }
         if (textSegmentTransformer != null) {
             segments = textSegmentTransformer.transformAll(segments);
@@ -148,11 +147,11 @@ public class GraphStoreIngestor {
                 throw new BaseException(ErrorEnum.B_GRAPH_FILTER_NOT_FOUND);
             }
 
-            String[] records = StringUtils.split(response, AdiConstant.GRAPH_RECORD_DELIMITER);
-            for (int j = 0; j < records.length; j++) {
-                String record = records[j];
-                record = record.replaceAll("^\\(|\\)$", "");
-                String[] recordAttributes = StringUtils.split(record, AdiConstant.GRAPH_TUPLE_DELIMITER);
+            String[] rows = StringUtils.split(response, AdiConstant.GRAPH_RECORD_DELIMITER);
+            for (String row : rows) {
+                String graphRow = row;
+                graphRow = graphRow.replaceAll("^\\(|\\)$", "");
+                String[] recordAttributes = StringUtils.split(graphRow, AdiConstant.GRAPH_TUPLE_DELIMITER);
                 if (recordAttributes.length >= 4 && (recordAttributes[0].contains("\"entity\"") || recordAttributes[0].contains("\"实体\""))) {
                     String entityName = AdiStringUtil.clearStr(recordAttributes[1].toUpperCase());
                     String entityType = AdiStringUtil.clearStr(recordAttributes[2].toUpperCase()).replaceAll("[^a-zA-Z0-9\\s\\u4E00-\\u9FA5]+", "");

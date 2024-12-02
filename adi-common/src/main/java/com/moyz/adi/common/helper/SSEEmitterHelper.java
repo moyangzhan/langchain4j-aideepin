@@ -153,7 +153,7 @@ public class SSEEmitterHelper {
      */
     public static void registerTokenStreamCallBack(TokenStream tokenStream, SseAskParams params, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
         tokenStream
-                .onNext((content) -> {
+                .onNext(content -> {
                     log.info("get content:{}", content);
                     //加空格配合前端的fetchEventSource进行解析，见https://github.com/Azure/fetch-event-source/blob/45ac3cfffd30b05b79fbf95c21e67d4ef59aa56a/src/parse.ts#L129-L133
                     try {
@@ -176,7 +176,7 @@ public class SSEEmitterHelper {
                         log.error("stream onNext error", e);
                     }
                 })
-                .onComplete((response) -> {
+                .onComplete(response -> {
                     log.info("返回数据结束了:{}", response);
                     //缓存以便后续统计此次提问的消耗总token
                     int inputTokenCount = response.tokenUsage().totalTokenCount();
@@ -199,12 +199,11 @@ public class SSEEmitterHelper {
                     params.getSseEmitter().complete();
                     consumer.accept(response.content().text(), questionMeta, answerMeta);
                 })
-                .onError((error) -> {
+                .onError(error -> {
                     log.error("stream error", error);
                     try {
                         String errorMsg = error.getMessage();
-                        if (error instanceof OpenAiHttpException) {
-                            OpenAiHttpException openAiHttpException = (OpenAiHttpException) error;
+                        if (error instanceof OpenAiHttpException openAiHttpException) {
                             OpenAiError openAiError = JsonUtil.fromJson(openAiHttpException.getMessage(), OpenAiError.class);
                             errorMsg = openAiError.getError().getMessage();
                         }

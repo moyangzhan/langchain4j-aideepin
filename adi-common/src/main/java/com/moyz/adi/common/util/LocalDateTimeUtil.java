@@ -11,6 +11,8 @@ import java.time.format.DateTimeFormatter;
 
 public class LocalDateTimeUtil {
 
+    private LocalDateTimeUtil(){}
+
     public static SimpleModule getSimpleModule() {
         // jackson中自定义处理序列化和反序列化
         SimpleModule customModule = new SimpleModule();

@@ -1,6 +1,9 @@
 package com.moyz.adi.common.base;
 
 import com.moyz.adi.common.entity.User;
+import com.moyz.adi.common.exception.BaseException;
+
+import static com.moyz.adi.common.enums.ErrorEnum.A_USER_NOT_FOUND;
 
 public class ThreadContext {
     private static final ThreadLocal<User> currentUser = new ThreadLocal<>();
@@ -22,16 +25,21 @@ public class ThreadContext {
         currentToken.set(token);
     }
 
+    private ThreadContext(){}
 
     public static String getToken() {
         return currentToken.get();
     }
 
+    public void unload() {
+        currentUser.remove();
+        currentToken.remove();
+    }
 
     public static User getExistCurrentUser() {
         User user = ThreadContext.getCurrentUser();
         if (null == user) {
-            throw new RuntimeException("用户不存在");
+            throw new BaseException(A_USER_NOT_FOUND);
         }
         return user;
     }

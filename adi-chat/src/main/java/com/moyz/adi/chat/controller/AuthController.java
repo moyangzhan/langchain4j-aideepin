@@ -3,6 +3,7 @@ package com.moyz.adi.chat.controller;
 import com.moyz.adi.common.dto.LoginReq;
 import com.moyz.adi.common.dto.LoginResp;
 import com.moyz.adi.common.dto.RegisterReq;
+import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.searchengine.SearchEngineServiceContext;
 import com.moyz.adi.common.service.UserService;
 import com.moyz.adi.common.vo.SearchEngineInfo;
@@ -25,9 +26,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.moyz.adi.common.enums.ErrorEnum.B_ACTIVE_USER_ERROR;
+import static com.moyz.adi.common.enums.ErrorEnum.B_RESET_PASSWORD_ERROR;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
 
@@ -68,21 +72,21 @@ public class AuthController {
 
         try {
             userService.active(activeCode);
-            response.sendRedirect(frontendUrl + "/#/active?active=success&msg=" + URLEncoder.encode("激活成功，请登录"));
+            response.sendRedirect(frontendUrl + "/#/active?active=success&msg=" + URLEncoder.encode("激活成功，请登录", Charset.defaultCharset()));
         } catch (IOException e) {
-            log.error("auth.active:", e);
+            log.error("auth.active1:", e);
             try {
-                response.sendRedirect(frontendUrl + "/#/active?active=fail&msg=" + URLEncoder.encode("激活失败：系统错误，请重新注册或者登录"));
+                response.sendRedirect(frontendUrl + "/#/active?active=fail&msg=" + URLEncoder.encode("激活失败：系统错误，请重新注册或者登录", Charset.defaultCharset()));
             } catch (IOException ex) {
-                log.error("auth.active:", ex);
-                throw new RuntimeException(ex);
+                log.error("auth.active2:", ex);
+                throw new BaseException(B_ACTIVE_USER_ERROR);
             }
         } catch (Exception e) {
             try {
-                response.sendRedirect(frontendUrl + "/#/active?active=fail&msg=" + URLEncoder.encode(e.getMessage()));
+                response.sendRedirect(frontendUrl + "/#/active?active=fail&msg=" + URLEncoder.encode(e.getMessage(), Charset.defaultCharset()));
             } catch (IOException ex) {
-                log.error("auth.active:", ex);
-                throw new RuntimeException(ex);
+                log.error("auth.active3:", ex);
+                throw new BaseException(B_ACTIVE_USER_ERROR);
             }
         }
         return true;
@@ -101,10 +105,10 @@ public class AuthController {
     public void resetPassword(@RequestParam @NotBlank String code, HttpServletResponse response) {
         userService.resetPassword(code);
         try {
-            response.sendRedirect(frontendUrl + "/#/active?active=success&msg=" + URLEncoder.encode("密码已经重置"));
+            response.sendRedirect(frontendUrl + "/#/active?active=success&msg=" + URLEncoder.encode("密码已经重置", Charset.defaultCharset()));
         } catch (IOException e) {
             log.error("resetPassword:", e);
-            throw new RuntimeException(e);
+            throw new BaseException(B_RESET_PASSWORD_ERROR);
         }
     }
 
@@ -135,6 +139,6 @@ public class AuthController {
             info.setEnable(item.isEnabled());
             info.setName(item.getEngineName());
             return info;
-        }).collect(Collectors.toList());
+        }).toList();
     }
 }

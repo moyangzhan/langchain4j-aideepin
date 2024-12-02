@@ -84,16 +84,6 @@ public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
                 .build();
     }
 
-    //    public static List<ChatMessage> multiModalChat() {
-//        Image image = Image.builder()
-//                .base64Data(multimodalImageData())
-//                .mimeType("image/jpeg")
-//                .build();
-//        ImageContent imageContent = ImageContent.from(image);
-//        TextContent textContent = TextContent.from("What animal is in the picture?");
-//        return Collections.singletonList(UserMessage.from(imageContent, textContent));
-//    }
-
     @Override
     protected LLMException parseError(Object error) {
         return null;

@@ -3,8 +3,8 @@ package com.moyz.adi.chat.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.dto.*;
 import com.moyz.adi.common.entity.KnowledgeBase;
-import com.moyz.adi.common.service.KnowledgeBaseQaRecordRefGraphService;
-import com.moyz.adi.common.service.KnowledgeBaseQaRecordService;
+import com.moyz.adi.common.service.KnowledgeBaseQaRefGraphService;
+import com.moyz.adi.common.service.KnowledgeBaseQaService;
 import com.moyz.adi.common.service.KnowledgeBaseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,15 +27,15 @@ public class KnowledgeBaseQAController {
     private KnowledgeBaseService knowledgeBaseService;
 
     @Resource
-    private KnowledgeBaseQaRecordService knowledgeBaseQaRecordService;
+    private KnowledgeBaseQaService knowledgeBaseQaService;
 
     @Resource
-    private KnowledgeBaseQaRecordRefGraphService knowledgeBaseQaRecordRefGraphService;
+    private KnowledgeBaseQaRefGraphService knowledgeBaseQaRefGraphService;
 
-    @PostMapping("/record/add/{kbUuid}")
-    public KbQaRecordDto add(@PathVariable String kbUuid, @RequestBody @Validated QARecordReq req) {
+    @PostMapping("/add/{kbUuid}")
+    public KbQaDto add(@PathVariable String kbUuid, @RequestBody @Validated QARecordReq req) {
         KnowledgeBase knowledgeBase = knowledgeBaseService.getOrThrow(kbUuid);
-        return knowledgeBaseQaRecordService.add(knowledgeBase, req);
+        return knowledgeBaseQaService.add(knowledgeBase, req);
     }
 
     @Operation(summary = "流式响应")
@@ -44,28 +44,28 @@ public class KnowledgeBaseQAController {
         return knowledgeBaseService.sseAsk(qaRecordUuid);
     }
 
-    @GetMapping("/record/search")
-    public Page<KbQaRecordDto> list(String kbUuid, String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
-        return knowledgeBaseQaRecordService.search(kbUuid, keyword, currentPage, pageSize);
+    @GetMapping("/search")
+    public Page<KbQaDto> list(String kbUuid, String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
+        return knowledgeBaseQaService.search(kbUuid, keyword, currentPage, pageSize);
     }
 
-    @PostMapping("/record/del/{uuid}")
+    @PostMapping("/del/{uuid}")
     public boolean recordDel(@PathVariable String uuid) {
-        return knowledgeBaseQaRecordService.softDelete(uuid);
+        return knowledgeBaseQaService.softDelete(uuid);
     }
 
-    @GetMapping("/record/reference/{uuid}")
-    public List<KbQaRecordReferenceDto> embeddingRef(@PathVariable String uuid) {
-        return knowledgeBaseQaRecordService.listReferences(uuid);
+    @GetMapping("/reference/{uuid}")
+    public List<KbQaRefEmbeddingDto> embeddingRef(@PathVariable String uuid) {
+        return knowledgeBaseQaService.listReferences(uuid);
     }
 
-    @GetMapping("/record/graph-ref/{uuid}")
-    public KbQaRecordRefGraphDto graphRef(@PathVariable String uuid) {
-        return knowledgeBaseQaRecordRefGraphService.getByQaUuid(uuid);
+    @GetMapping("/graph-ref/{uuid}")
+    public KbQaRefGraphDto graphRef(@PathVariable String uuid) {
+        return knowledgeBaseQaRefGraphService.getByQaUuid(uuid);
     }
 
-    @PostMapping("/record/clear")
+    @PostMapping("/clear")
     public void recordDel() {
-        knowledgeBaseQaRecordService.clearByCurrentUser();
+        knowledgeBaseQaService.clearByCurrentUser();
     }
 }

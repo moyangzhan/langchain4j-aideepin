@@ -9,4 +9,5 @@ public class ModelInfo {
     private Boolean enable;
     private String modelPlatform;
     private String inputTypes;
+    private Boolean isFree;
 }

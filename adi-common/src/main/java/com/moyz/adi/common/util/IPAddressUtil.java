@@ -4,6 +4,8 @@ import jakarta.servlet.http.HttpServletRequest;
 
 public class IPAddressUtil {
 
+    private IPAddressUtil(){}
+
     public static String getClientIpAddress(HttpServletRequest request) {
         String ip = null;
         //X-Forwarded-For：Squid 服务代理

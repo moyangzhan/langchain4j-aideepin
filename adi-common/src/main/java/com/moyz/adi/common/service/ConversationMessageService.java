@@ -5,12 +5,14 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.AskReq;
+import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.Conversation;
 import com.moyz.adi.common.entity.ConversationMessage;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ChatMessageRoleEnum;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.QuotaHelper;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.ConversationMessageMapper;
@@ -27,7 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_CONVERSATION_NOT_FOUND;
 import static com.moyz.adi.common.enums.ErrorEnum.B_MESSAGE_NOT_FOUND;
@@ -38,7 +39,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
 
     @Lazy
     @Resource
-    private ConversationMessageService _this;
+    private ConversationMessageService self;
 
     @Resource
     private QuotaHelper quotaHelper;
@@ -53,9 +54,6 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
     @Resource
     private SSEEmitterHelper sseEmitterHelper;
 
-    @Resource
-    private AiModelService aiModelService;
-
 
     public SseEmitter sseAsk(AskReq askReq) {
         SseEmitter sseEmitter = new SseEmitter();
@@ -64,7 +62,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             return sseEmitter;
         }
         sseEmitterHelper.startSse(user, sseEmitter);
-        _this.asyncCheckAndPushToClient(sseEmitter, ThreadContext.getCurrentUser(), askReq);
+        self.asyncCheckAndPushToClient(sseEmitter, ThreadContext.getCurrentUser(), askReq);
         return sseEmitter;
     }
 
@@ -154,9 +152,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                         .temperature(conversation.getLlmTemperature())
                         .build()
         );
-        sseEmitterHelper.commonProcess(sseAskParams, (response, questionMeta, answerMeta) -> {
-            _this.saveAfterAiResponse(user, askReq, response, questionMeta, answerMeta);
-        });
+        sseEmitterHelper.commonProcess(sseAskParams, (response, questionMeta, answerMeta) -> self.saveAfterAiResponse(user, askReq, response, questionMeta, answerMeta));
     }
 
     public List<ConversationMessage> listQuestionsByConvId(long convId, long maxId, int pageSize) {
@@ -181,7 +177,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                 .eq(Conversation::getUserId, user.getId())
                 .oneOpt()
                 .orElseGet(() -> conversationService.createByFirstMessage(user.getId(), convUuid, prompt));
-        Long modelId = aiModelService.getIdByName(askReq.getModelName());
+        AiModel aiModel = LLMContext.getAiModel(askReq.getModelName());
         //Check if regenerate question
         ConversationMessage promptMsg;
         if (StringUtils.isNotBlank(askReq.getRegenerateQuestionUuid())) {
@@ -195,10 +191,10 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             question.setConversationUuid(convUuid);
             question.setMessageRole(ChatMessageRoleEnum.USER.getValue());
             question.setRemark(prompt);
-            question.setAiModelId(modelId);
+            question.setAiModelId(aiModel.getId());
             question.setTokens(questionMeta.getTokens());
             question.setUnderstandContextMsgPairNum(user.getUnderstandContextMsgPairNum());
-            question.setAttachments(askReq.getImageUrls().stream().collect(Collectors.joining(",")));
+            question.setAttachments(String.join(",", askReq.getImageUrls()));
             baseMapper.insert(question);
 
             promptMsg = this.lambdaQuery().eq(ConversationMessage::getUuid, questionMeta.getUuid()).one();
@@ -214,14 +210,14 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         aiAnswer.setRemark(response);
         aiAnswer.setTokens(answerMeta.getTokens());
         aiAnswer.setParentMessageId(promptMsg.getId());
-        aiAnswer.setAiModelId(modelId);
+        aiAnswer.setAiModelId(aiModel.getId());
         baseMapper.insert(aiAnswer);
 
-        calcTodayCost(user, conversation, questionMeta, answerMeta);
+        calcTodayCost(user, conversation, questionMeta, answerMeta, aiModel.getIsFree());
 
     }
 
-    private void calcTodayCost(User user, Conversation conversation, PromptMeta questionMeta, AnswerMeta answerMeta) {
+    private void calcTodayCost(User user, Conversation conversation, PromptMeta questionMeta, AnswerMeta answerMeta, boolean isFreeToken) {
 
         int todayTokenCost = questionMeta.getTokens() + answerMeta.getTokens();
         try {
@@ -231,7 +227,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                     .set(Conversation::getTokens, conversation.getTokens() + todayTokenCost)
                     .update();
 
-            userDayCostService.appendCostToUser(user, todayTokenCost);
+            userDayCostService.appendCostToUser(user, todayTokenCost, isFreeToken);
         } catch (Exception e) {
             log.error("calcTodayCost error", e);
         }

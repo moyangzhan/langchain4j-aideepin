@@ -96,14 +96,14 @@ import static java.util.stream.Collectors.*;
  * @see DefaultQueryRouter
  * @see DefaultContentAggregator
  * @see DefaultContentInjector
+ * @deprecated
  */
-@Deprecated
+@Deprecated(forRemoval = true)
 public class AdiCommonChatRetrievalAugmentor implements RetrievalAugmentor {
 
     private static final Logger log = LoggerFactory.getLogger(AdiCommonChatRetrievalAugmentor.class);
 
     private final QueryTransformer queryTransformer;
-    //    private final QueryRouter queryRouter;
     private final ContentAggregator contentAggregator;
     private final ContentInjector contentInjector;
     private final Executor executor;
@@ -115,7 +115,6 @@ public class AdiCommonChatRetrievalAugmentor implements RetrievalAugmentor {
                                            ContentInjector contentInjector,
                                            Executor executor) {
         this.queryTransformer = getOrDefault(queryTransformer, DefaultQueryTransformer::new);
-//        this.queryRouter = ensureNotNull(queryRouter, "queryRouter");
         this.contentAggregator = getOrDefault(contentAggregator, DefaultContentAggregator::new);
         this.contentInjector = getOrDefault(contentInjector, DefaultContentInjector::new);
         this.executor = getOrDefault(executor, Executors::newCachedThreadPool);
@@ -142,22 +141,6 @@ public class AdiCommonChatRetrievalAugmentor implements RetrievalAugmentor {
         Collection<Query> queries = queryTransformer.transform(originalQuery);
         logQueries(originalQuery, queries);
 
-        // 不使用向量搜索
-//        Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents = new ConcurrentHashMap<>();
-//        queries.forEach(query -> {
-//            CompletableFuture<Collection<List<Content>>> futureContents =
-//                    supplyAsync(() -> {
-//                                Collection<ContentRetriever> retrievers = queryRouter.route(query);
-//                                log(query, retrievers);
-//                                return retrievers;
-//                            },
-//                            executor
-//                    ).thenCompose(retrievers -> retrieveFromAll(retrievers, query));
-//            queryToFutureContents.put(query, futureContents);
-//        });
-//
-//        Map<Query, Collection<List<Content>>> queryToContents = join(queryToFutureContents);
-
         StringBuilder newQuestion = new StringBuilder();
         Map<Query, Collection<List<Content>>> queryToContents = new HashMap<>();
         for (Map.Entry<Query, Collection<List<Content>>> entry : queryToContents.entrySet()) {
@@ -183,13 +166,13 @@ public class AdiCommonChatRetrievalAugmentor implements RetrievalAugmentor {
                                                                          Query query) {
         List<CompletableFuture<List<Content>>> futureContents = retrievers.stream()
                 .map(retriever -> supplyAsync(() -> retrieve(retriever, query), executor))
-                .collect(toList());
+                .toList();
 
         return allOf(futureContents.toArray(new CompletableFuture[0]))
                 .thenApply(ignored ->
                         futureContents.stream()
                                 .map(CompletableFuture::join)
-                                .collect(toList())
+                                .toList()
                 );
     }
 

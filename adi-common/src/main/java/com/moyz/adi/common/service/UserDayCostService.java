@@ -6,7 +6,9 @@ import com.moyz.adi.common.entity.UserDayCost;
 import com.moyz.adi.common.mapper.UserDayCostMapper;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.moyz.adi.common.vo.CostStat;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -16,18 +18,23 @@ import java.util.List;
 @Service
 public class UserDayCostService extends ServiceImpl<UserDayCostMapper, UserDayCost> {
 
+    @Lazy
+    @Resource
+    private UserDayCostService self;
+
     /**
      * Append token cost
      *
-     * @param user
+     * @param user   用户
      * @param tokens The number of tokens
+     * @param isFree 消耗的是否免费额度
      */
-    public void appendCostToUser(User user, int tokens) {
+    public void appendCostToUser(User user, int tokens, boolean isFree) {
         log.info("用户{}增加消耗token数量:{}", user.getName(), tokens);
         if (tokens <= 0) {
             return;
         }
-        UserDayCost userDayCost = getTodayCost(user);
+        UserDayCost userDayCost = getTodayCost(user, isFree);
         UserDayCost saveOrUpdateInst = new UserDayCost();
         if (null == userDayCost) {
             saveOrUpdateInst.setUserId(user.getId());
@@ -39,10 +46,11 @@ public class UserDayCostService extends ServiceImpl<UserDayCostMapper, UserDayCo
             saveOrUpdateInst.setTokens(userDayCost.getTokens() + tokens);
             saveOrUpdateInst.setRequests(userDayCost.getRequests() + 1);
         }
-        saveOrUpdate(saveOrUpdateInst);
+        saveOrUpdateInst.setIsFree(isFree);
+        self.saveOrUpdate(saveOrUpdateInst);
     }
 
-    public CostStat costStatByUser(long userId) {
+    public CostStat costStatByUser(long userId, boolean isFree) {
         CostStat result = new CostStat();
 
         int today = LocalDateTimeUtil.getIntDay(LocalDateTime.now());
@@ -52,6 +60,7 @@ public class UserDayCostService extends ServiceImpl<UserDayCostMapper, UserDayCo
         List<UserDayCost> userDayCostList = this.lambdaQuery()
                 .eq(UserDayCost::getUserId, userId)
                 .between(UserDayCost::getDay, start, end)
+                .eq(UserDayCost::getIsFree, isFree)
                 .list();
         for (UserDayCost userDayCost : userDayCostList) {
             result.setTextTokenCostByMonth(result.getTextTokenCostByMonth() + userDayCost.getTokens());
@@ -62,14 +71,16 @@ public class UserDayCostService extends ServiceImpl<UserDayCostMapper, UserDayCo
                 result.setTextRequestTimesByDay(userDayCost.getRequests());
                 result.setImageGeneratedNumberByDay(userDayCost.getImagesNumber());
             }
+            result.setFree(userDayCost.getIsFree());
         }
         return result;
     }
 
-    public UserDayCost getTodayCost(User user) {
+    public UserDayCost getTodayCost(User user, boolean isFree) {
         return this.lambdaQuery()
                 .eq(UserDayCost::getUserId, user.getId())
                 .eq(UserDayCost::getDay, LocalDateTimeUtil.getToday())
+                .eq(UserDayCost::getIsFree, isFree)
                 .one();
     }
 

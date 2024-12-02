@@ -16,5 +16,5 @@ public class DrawStar extends BaseEntity {
     private Long userId;
 
     @TableField("draw_id")
-    private Long DrawId;
+    private Long drawId;
 }

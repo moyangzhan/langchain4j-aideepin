@@ -65,4 +65,7 @@ public class Draw extends BaseEntity {
 
     @TableField("with_watermark")
     private Boolean withWatermark;
+
+    @TableField("star_count")
+    private Integer starCount;
 }

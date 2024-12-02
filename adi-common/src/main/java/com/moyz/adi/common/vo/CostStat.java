@@ -11,4 +11,5 @@ public class CostStat {
     private int textTokenCostByMonth;
     private int textRequestTimesByMonth;
     private int imageGeneratedNumberByMonth;
+    private boolean isFree;
 }

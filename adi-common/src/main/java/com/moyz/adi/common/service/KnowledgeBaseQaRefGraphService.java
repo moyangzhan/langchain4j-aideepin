@@ -2,8 +2,8 @@ package com.moyz.adi.common.service;
 
 import com.alibaba.dashscope.utils.JsonUtils;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.moyz.adi.common.dto.KbQaRecordRefGraphDto;
-import com.moyz.adi.common.entity.KnowledgeBaseQaRecordRefGraph;
+import com.moyz.adi.common.dto.KbQaRefGraphDto;
+import com.moyz.adi.common.entity.KnowledgeBaseQaRefGraph;
 import com.moyz.adi.common.mapper.KnowledgeBaseQaRecordRefGraphMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -15,24 +15,24 @@ import java.util.List;
 
 @Slf4j
 @Service
-public class KnowledgeBaseQaRecordRefGraphService extends ServiceImpl<KnowledgeBaseQaRecordRefGraphMapper, KnowledgeBaseQaRecordRefGraph> {
+public class KnowledgeBaseQaRefGraphService extends ServiceImpl<KnowledgeBaseQaRecordRefGraphMapper, KnowledgeBaseQaRefGraph> {
 
-    public KbQaRecordRefGraphDto getByQaUuid(String aqRecordUuid) {
-        List<KnowledgeBaseQaRecordRefGraph> list = this.getBaseMapper().listByQaUuid(aqRecordUuid);
+    public KbQaRefGraphDto getByQaUuid(String aqRecordUuid) {
+        List<KnowledgeBaseQaRefGraph> list = this.getBaseMapper().listByQaUuid(aqRecordUuid);
         if (list.isEmpty()) {
-            return KbQaRecordRefGraphDto
+            return KbQaRefGraphDto
                     .builder()
                     .vertices(Collections.emptyList())
                     .edges(Collections.emptyList())
                     .entitiesFromLlm(Collections.emptyList())
                     .build();
         }
-        KnowledgeBaseQaRecordRefGraph refGraph = list.get(0);
+        KnowledgeBaseQaRefGraph refGraph = list.get(0);
 
-        KbQaRecordRefGraphDto result = new KbQaRecordRefGraphDto();
+        KbQaRefGraphDto result = new KbQaRefGraphDto();
         String graphStr = refGraph.getGraphFromStore();
         if (StringUtils.isNotBlank(graphStr)) {
-            result = JsonUtils.fromJson(graphStr, KbQaRecordRefGraphDto.class);
+            result = JsonUtils.fromJson(graphStr, KbQaRefGraphDto.class);
         }
         result.setEntitiesFromLlm(Arrays.asList(refGraph.getGraphFromLlm().split(",")).stream().filter(StringUtils::isNotBlank).toList());
         if (null == result.getVertices()) {

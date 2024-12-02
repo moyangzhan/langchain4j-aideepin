@@ -30,7 +30,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
 
     @Lazy
     @Resource
-    private ConversationService _this;
+    private ConversationService self;
 
     @Resource
     private SysConfigService sysConfigService;
@@ -47,7 +47,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
     public Page<ConvDto> search(ConvSearchReq convSearchReq, int currentPage, int pageSize) {
         Page<Conversation> page = this.lambdaQuery()
                 .eq(Conversation::getIsDeleted, false)
-                .like(StringUtils.isBlank(convSearchReq.getTitle()) ? false : true, Conversation::getTitle, convSearchReq.getTitle())
+                .like(!StringUtils.isBlank(convSearchReq.getTitle()), Conversation::getTitle, convSearchReq.getTitle())
                 .orderByDesc(Conversation::getId)
                 .page(new Page<>(currentPage, pageSize));
         return MPPageUtil.convertToPage(page, ConvDto.class);
@@ -196,7 +196,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
             Conversation conv = this.getById(presetRel.getUserConvId());
             return MPPageUtil.convertTo(conv, ConvDto.class);
         }
-        ConvDto convDto = _this.add(presetConv.getTitle(), presetConv.getAiSystemMessage());
+        ConvDto convDto = self.add(presetConv.getTitle(), presetConv.getAiSystemMessage());
         conversationPresetRelService.save(
                 ConversationPresetRel.builder()
                         .presetConvId(presetConv.getId())

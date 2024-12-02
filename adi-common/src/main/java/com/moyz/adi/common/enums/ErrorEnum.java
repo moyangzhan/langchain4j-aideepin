@@ -32,6 +32,9 @@ public enum ErrorEnum {
     A_PRESET_CONVERSATION_NOT_EXIST("A0027", "预设会话或角色不存在"),
     A_CONVERSATION_TITLE_EXIST("A0028", "会话(角色)标题已存在"),
     A_AI_IMAGE_NO_AUTH("A0029", "无权限查看该图片"),
+    A_USER_NOT_FOUND("A0030", "用户不存在"),
+    A_ACTIVE_CODE_INVALID("A0031", "激活码已失效"),
+    A_OLD_PASSWORD_INVALID("A0032", "原密码不正确"),
     B_UNCAUGHT_ERROR("B0001", "未捕捉异常"),
     B_COMMON_ERROR("B0002", "业务出错"),
     B_GLOBAL_ERROR("B0003", "全局异常"),
@@ -48,6 +51,10 @@ public enum ErrorEnum {
     B_SAVE_FILE_ERROR("B0012", "保存文件异常"),
     B_BREAK_SEARCH("B0013", "中断搜索"),
     B_GRAPH_FILTER_NOT_FOUND("B0014", "图过滤器未定义"),
+    B_DB_ERROR("B0015", "数据库查询异常"),
+    B_ACTIVE_USER_ERROR("B0016", "激活用户失败"),
+    B_RESET_PASSWORD_ERROR("B0017", "重置密码失败"),
+    B_IMAGE_LOAD_ERROR("B0018", "加载图片失败"),
     C_DRAW_FAIL("C0001", "大模型生成图片失败,原因:{0}");
 
     private String code;
@@ -76,15 +83,8 @@ public enum ErrorEnum {
         return code;
     }
 
-    public void setCode(String code) {
-        this.code = code;
-    }
-
     public String getInfo() {
         return info;
     }
 
-    public void setInfo(String info) {
-        this.info = info;
-    }
 }

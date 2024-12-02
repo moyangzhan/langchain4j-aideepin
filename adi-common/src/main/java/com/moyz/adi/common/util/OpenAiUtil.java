@@ -6,6 +6,8 @@ import dev.ai4j.openai4j.OpenAiHttpException;
 
 public class OpenAiUtil {
 
+    private OpenAiUtil(){}
+    
     /**
      * openai错误格式：
      * dev.ai4j.openai4j.OpenAiHttpException: {

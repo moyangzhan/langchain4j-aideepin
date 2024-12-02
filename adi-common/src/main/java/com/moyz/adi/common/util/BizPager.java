@@ -15,6 +15,8 @@ import java.util.function.Supplier;
 
 public class BizPager {
 
+    private BizPager(){}
+
     /**
      * 逐行获取数据
      * <br/>以Long类型的惟一字段（通常为id）为锚点，批量查询后台数据库，基于mybatis-plus
@@ -94,7 +96,7 @@ public class BizPager {
      * @param asc        是否升序
      * @param <T>
      */
-    public static <T> void batchWithAnchor(Supplier<List<T>> supplier, BiConsumer<List<T>, Long> consumer, SFunction<T, Long> idSupplier, boolean asc) {
+    public static <T> void batchWithAnchor(Supplier<List<T>> supplier, ObjLongConsumer<List<T>> consumer, SFunction<T, Long> idSupplier, boolean asc) {
         long anchorId;
         List<T> records;
         do {

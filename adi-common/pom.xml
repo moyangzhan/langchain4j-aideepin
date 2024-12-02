@@ -18,7 +18,7 @@
             <artifactId>age-jdbc</artifactId>
             <scope>system</scope>
             <version>1.0.0</version>
-            <systemPath>${project.basedir}/src/lib/age-jdbc.jar</systemPath>
+            <systemPath>${project.basedir}/src/lib/adi-age-jdbc.jar</systemPath>
         </dependency>
     </dependencies>
 </project>

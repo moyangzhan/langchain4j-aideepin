@@ -42,15 +42,5 @@ public class AdiMailSender {
         } catch (Exception e) {
             log.error("发送邮件时发生异常", e);
         }
-//        SimpleMailMessage message = new SimpleMailMessage();
-//        message.setFrom(from);
-//        message.setTo(to);
-//        message.setSubject(subject);
-//        message.setText(content);
-//        try {
-//            javaMailSender.send(message);
-//        } catch (Exception e) {
-//            log.error("发送邮件时发生异常", e);
-//        }
     }
 }

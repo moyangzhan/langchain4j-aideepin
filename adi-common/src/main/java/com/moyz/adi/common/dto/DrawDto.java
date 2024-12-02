@@ -12,18 +12,22 @@ public class DrawDto {
     private String uuid;
     private String prompt;
     private String aiModelName;
-    private String originalImageUuid;
-
-    private String maskImageUuid;
-
     private Integer interactingMethod;
-
     private Boolean isPublic;
-
-    @JsonIgnore
-    private String generatedImages;
-    private List<String> imageUuids;
+    private Integer starCount;
     private Integer processStatus;
     private String processStatusRemark;
+    @JsonIgnore
+    private String generatedImages;
+    @JsonIgnore
+    private Long userId;
     private LocalDateTime createTime;
+
+    //非 Draw 字段
+    private Boolean isStar;
+    private String originalImageUuid;
+    private String maskImageUuid;
+    private String userUuid;
+    private String userName;
+    private List<String> imageUuids;
 }

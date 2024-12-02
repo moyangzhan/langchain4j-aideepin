@@ -152,7 +152,7 @@ class AdiDefaultAiServices<T> extends AiServices<T> {
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);
                         }
 
-                        if (userMessage.contents().stream().filter(content -> content instanceof TextContent).count() > 1) {
+                        if (userMessage.contents().stream().filter(TextContent.class::isInstance).count() > 1) {
                             throw illegalConfiguration("Error: The method '%s' has multiple text contents. Please use only one.", method.getName());
                         }
                         if (userMessage.contents().size() > 1 && !(userMessage.contents().get(0) instanceof TextContent)) {
@@ -597,7 +597,6 @@ class AdiDefaultAiServices<T> extends AiServices<T> {
     }
 
     private static List<Content> promptAndImages(Prompt prompt, List<Content> imageContent) {
-        return Stream.concat(Stream.of(TextContent.from(prompt.text())), imageContent.stream())
-                .collect(Collectors.toList());
+        return Stream.concat(Stream.of(TextContent.from(prompt.text())), imageContent.stream()).toList();
     }
 }

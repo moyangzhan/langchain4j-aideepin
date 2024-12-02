@@ -6,8 +6,8 @@ import com.moyz.adi.common.enums.ErrorEnum;
 import java.text.MessageFormat;
 
 public class BaseException extends RuntimeException {
-    private String code;
-    private String info;
+    private final String code;
+    private final String info;
 
     private Object data;
 
@@ -31,16 +31,8 @@ public class BaseException extends RuntimeException {
         return code;
     }
 
-    public void setCode(String code) {
-        this.code = code;
-    }
-
     public String getInfo() {
         return info;
-    }
-
-    public void setInfo(String info) {
-        this.info = info;
     }
 
     public Object getData() {

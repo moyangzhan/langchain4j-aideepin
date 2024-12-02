@@ -26,14 +26,14 @@ import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 @Component
 public class TokenFilter extends OncePerRequestFilter {
 
-    public static final String[] EXCLUDE_API = {
+    protected static final String[] EXCLUDE_API = {
             "/auth/",
             "/model/",
             "/user/avatar/",
             "/draw/public/"
     };
 
-    public static final String[] TOKEN_IN_PARAMS = {
+    protected static final String[] TOKEN_IN_PARAMS = {
             "/my-image/",
             "/my-thumbnail/",
             "/image/",
@@ -89,13 +89,11 @@ public class TokenFilter extends OncePerRequestFilter {
     private boolean excludePath(String requestUri) {
         for (String path : EXCLUDE_API) {
             if (requestUri.startsWith(contextPath + path)) {
-//                log.info("path exclude{}", requestUri);
                 return true;
             }
         }
         for (String path : AdiConstant.WEB_RESOURCES) {
             if (requestUri.startsWith(contextPath + path) || requestUri.endsWith(path)) {
-//                log.info("path exclude{}", requestUri);
                 return true;
             }
         }

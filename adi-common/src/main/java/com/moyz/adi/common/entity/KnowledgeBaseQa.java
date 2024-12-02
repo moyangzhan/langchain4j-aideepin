@@ -7,9 +7,9 @@ import lombok.Data;
 import org.apache.ibatis.type.JdbcType;
 
 @Data
-@TableName("adi_knowledge_base_qa_record")
+@TableName("adi_knowledge_base_qa")
 @Schema(title = "知识库问答记录实体", description = "知识库问答记录表")
-public class KnowledgeBaseQaRecord extends BaseEntity {
+public class KnowledgeBaseQa extends BaseEntity {
 
     @Schema(title = "uuid")
     @TableField(value = "uuid", jdbcType = JdbcType.VARCHAR)

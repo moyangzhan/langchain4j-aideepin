@@ -32,7 +32,7 @@ import static java.util.stream.Collectors.toList;
  *
  * @deprecated langchain4j 0.31.0已经支持按metadata过滤,本类废弃
  */
-@Deprecated
+@Deprecated(forRemoval = true)
 public class AdiPgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final Logger log = LoggerFactory.getLogger(AdiPgVectorEmbeddingStore.class);

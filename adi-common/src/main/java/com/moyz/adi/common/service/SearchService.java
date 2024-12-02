@@ -5,6 +5,7 @@ import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.SearchEngineResp;
 import com.moyz.adi.common.dto.SearchReturn;
 import com.moyz.adi.common.dto.SearchReturnWebPage;
+import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.AiSearchRecord;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.helper.LLMContext;
@@ -47,7 +48,7 @@ public class SearchService {
 
     @Lazy
     @Resource
-    private SearchService _this;
+    private SearchService self;
 
     @Resource
     private EmbeddingRAG searchRagService;
@@ -77,7 +78,7 @@ public class SearchService {
             return sseEmitter;
         }
         sseEmitterHelper.startSse(user, sseEmitter);
-        _this.asyncSearch(user, sseEmitter, isBriefSearch, searchText, engineName, modelName);
+        self.asyncSearch(user, sseEmitter, isBriefSearch, searchText, engineName, modelName);
         return sseEmitter;
     }
 
@@ -139,6 +140,9 @@ public class SearchService {
         sseAskParams.setModelName(modelName);
         sseAskParams.setUser(user);
         sseEmitterHelper.commonProcess(sseAskParams, (response, promptMeta, answerMeta) -> {
+
+            AiModel aiModel = aiModelService.getByName(modelName);
+
             AiSearchRecord newRecord = new AiSearchRecord();
             newRecord.setUuid(sseAskParams.getUuid());
             newRecord.setQuestion(searchText);
@@ -149,10 +153,12 @@ public class SearchService {
             newRecord.setAnswerTokens(answerMeta.getTokens());
             newRecord.setUserUuid(user.getUuid());
             newRecord.setUserId(user.getId());
-            newRecord.setAiModelId(aiModelService.getIdByName(modelName));
+            newRecord.setAiModelId(null != aiModel ? aiModel.getId() : 0L);
             aiSearchRecordService.save(newRecord);
 
-            userDayCostService.appendCostToUser(user, promptMeta.getTokens() + answerMeta.getTokens());
+            if (null != aiModel) {
+                userDayCostService.appendCostToUser(user, promptMeta.getTokens() + answerMeta.getTokens(), aiModel.getIsFree());
+            }
         });
     }
 
@@ -171,6 +177,7 @@ public class SearchService {
      */
     public void detailSearch(User user, String searchText, String engineName, String modelName, List<SearchReturnWebPage> resultItems, SseEmitter sseEmitter) {
         log.info("detailSearch,searchText:{}", searchText);
+        AiModel aiModel = LLMContext.getAiModel(modelName);
         //Save to DB
         SearchEngineResp resp = new SearchEngineResp().setItems(resultItems);
         AiSearchRecord newRecord = new AiSearchRecord();
@@ -180,7 +187,7 @@ public class SearchService {
         newRecord.setSearchEngineResp(resp);
         newRecord.setUserId(user.getId());
         newRecord.setUserUuid(user.getUuid());
-        newRecord.setAiModelId(aiModelService.getIdByName(modelName));
+        newRecord.setAiModelId(aiModel.getId());
         aiSearchRecordService.save(newRecord);
 
         CountDownLatch countDownLatch = new CountDownLatch(resultItems.size());
@@ -222,7 +229,7 @@ public class SearchService {
         }
 
         log.info("Create prompt");
-        int maxInputTokens = LLMContext.getAiModel(modelName).getMaxInputTokens();
+        int maxInputTokens = aiModel.getMaxInputTokens();
         int maxResults = EmbeddingRAG.getRetrieveMaxResults(searchText, maxInputTokens);
         ContentRetriever contentRetriever = searchRagService.createRetriever(Map.of(AdiConstant.MetadataKey.SEARCH_UUID, searchUuid), maxResults, 0, false);
 
@@ -253,7 +260,7 @@ public class SearchService {
             updateRecord.setAnswerTokens(answerMeta.getTokens());
             aiSearchRecordService.updateById(updateRecord);
 
-            userDayCostService.appendCostToUser(user, promptMeta.getTokens() + answerMeta.getTokens());
+            userDayCostService.appendCostToUser(user, promptMeta.getTokens() + answerMeta.getTokens(), aiModel.getIsFree());
         });
     }
 

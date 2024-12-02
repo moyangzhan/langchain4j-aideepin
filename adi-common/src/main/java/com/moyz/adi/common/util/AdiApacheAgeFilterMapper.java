@@ -37,30 +37,30 @@ abstract class AdiApacheAgeFilterMapper {
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
     public String map(Filter filter) {
-        if (filter instanceof IsEqualTo) {
-            return mapEqual((IsEqualTo) filter);
-        } else if (filter instanceof IsNotEqualTo) {
-            return mapNotEqual((IsNotEqualTo) filter);
-        } else if (filter instanceof IsGreaterThan) {
-            return mapGreaterThan((IsGreaterThan) filter);
-        } else if (filter instanceof IsGreaterThanOrEqualTo) {
-            return mapGreaterThanOrEqual((IsGreaterThanOrEqualTo) filter);
-        } else if (filter instanceof IsLessThan) {
-            return mapLessThan((IsLessThan) filter);
-        } else if (filter instanceof IsLessThanOrEqualTo) {
-            return mapLessThanOrEqual((IsLessThanOrEqualTo) filter);
-        } else if (filter instanceof IsIn) {
-            return mapIn((IsIn) filter);
-        } else if (filter instanceof IsNotIn) {
-            return mapNotIn((IsNotIn) filter);
-        } else if (filter instanceof And) {
-            return mapAnd((And) filter);
-        } else if (filter instanceof Not) {
-            return mapNot((Not) filter);
-        } else if (filter instanceof Or) {
-            return mapOr((Or) filter);
-        } else if (filter instanceof GraphContains) {
-            return mapContains((GraphContains) filter);
+        if (filter instanceof IsEqualTo filterInst) {
+            return mapEqual(filterInst);
+        } else if (filter instanceof IsNotEqualTo filterInst) {
+            return mapNotEqual(filterInst);
+        } else if (filter instanceof IsGreaterThan filterInst) {
+            return mapGreaterThan(filterInst);
+        } else if (filter instanceof IsGreaterThanOrEqualTo filterInst) {
+            return mapGreaterThanOrEqual(filterInst);
+        } else if (filter instanceof IsLessThan filterInst) {
+            return mapLessThan(filterInst);
+        } else if (filter instanceof IsLessThanOrEqualTo filterInst) {
+            return mapLessThanOrEqual(filterInst);
+        } else if (filter instanceof IsIn filterInst) {
+            return mapIn(filterInst);
+        } else if (filter instanceof IsNotIn filterInst) {
+            return mapNotIn(filterInst);
+        } else if (filter instanceof And filterInst) {
+            return mapAnd(filterInst);
+        } else if (filter instanceof Not filterInst) {
+            return mapNot(filterInst);
+        } else if (filter instanceof Or filterInst) {
+            return mapOr(filterInst);
+        } else if (filter instanceof GraphContains filterInst) {
+            return mapContains(filterInst);
         } else {
             throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
         }
@@ -105,10 +105,6 @@ abstract class AdiApacheAgeFilterMapper {
     private String mapNotIn(IsNotIn isNotIn) {
         String key = formatKeyAsString(isNotIn.key());
         return format("%s is null or %s not in %s", key, key, formatValuesAsString(isNotIn.comparisonValues()));
-    }
-
-    private String mapJsonIn(IsIn isIn) {
-        return format("%s @> %s", formatKeyAsString(isIn.key()), formatJsonValuesAsString(isIn.comparisonValues()));
     }
 
     private String mapAnd(And and) {

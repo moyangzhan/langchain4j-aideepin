@@ -1,7 +1,7 @@
 package com.moyz.adi.common.rag;
 
 import com.moyz.adi.common.cosntant.AdiConstant;
-import com.moyz.adi.common.dto.KbQaRecordRefGraphDto;
+import com.moyz.adi.common.dto.KbQaRefGraphDto;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.AdiStringUtil;
 import com.moyz.adi.common.vo.*;
@@ -27,8 +27,8 @@ import static java.util.stream.Collectors.toMap;
 
 @Slf4j
 public class GraphStoreContentRetriever implements ContentRetriever {
-    public static final Function<Query, Integer> DEFAULT_MAX_RESULTS = (query) -> 3;
-    public static final Function<Query, Filter> DEFAULT_FILTER = (query) -> null;
+    public static final Function<Query, Integer> DEFAULT_MAX_RESULTS = query -> 3;
+    public static final Function<Query, Filter> DEFAULT_FILTER = query -> null;
 
     public static final String DEFAULT_DISPLAY_NAME = "Default";
 
@@ -42,7 +42,7 @@ public class GraphStoreContentRetriever implements ContentRetriever {
 
     private boolean breakIfSearchMissed;
 
-    private KbQaRecordRefGraphDto kbQaRecordRefGraphDto = KbQaRecordRefGraphDto.builder().vertices(Collections.emptyList()).edges(Collections.emptyList()).entitiesFromLlm(Collections.emptyList()).build();
+    private KbQaRefGraphDto kbQaRecordRefGraphDto = KbQaRefGraphDto.builder().vertices(Collections.emptyList()).edges(Collections.emptyList()).entitiesFromLlm(Collections.emptyList()).build();
 
     @Builder
     private GraphStoreContentRetriever(String displayName,
@@ -130,7 +130,7 @@ public class GraphStoreContentRetriever implements ContentRetriever {
         return vertexContents;
     }
 
-    public KbQaRecordRefGraphDto getGraphRef() {
+    public KbQaRefGraphDto getGraphRef() {
         return kbQaRecordRefGraphDto;
     }
 

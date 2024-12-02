@@ -20,7 +20,7 @@ public class ConversationPresetService extends ServiceImpl<ConversationPresetMap
     public Page<ConversationPreset> search(String keyword, int currentPage, int pageSize) {
         return this.lambdaQuery()
                 .eq(ConversationPreset::getIsDeleted, false)
-                .like(StringUtils.isBlank(keyword) ? false : true, ConversationPreset::getTitle, keyword)
+                .like(!StringUtils.isBlank(keyword), ConversationPreset::getTitle, keyword)
                 .orderByDesc(ConversationPreset::getUpdateTime)
                 .page(new Page<>(currentPage, pageSize));
     }

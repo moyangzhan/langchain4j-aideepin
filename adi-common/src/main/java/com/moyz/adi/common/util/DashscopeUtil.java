@@ -5,6 +5,7 @@ import dev.langchain4j.model.dashscope.QwenModelName;
 import java.util.stream.Stream;
 
 public class DashscopeUtil {
+    private DashscopeUtil(){}
     public static Stream<String> languageModelNameProvider() {
         return Stream.of(
                 QwenModelName.QWEN_TURBO,

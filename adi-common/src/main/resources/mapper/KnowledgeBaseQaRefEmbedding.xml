@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.moyz.adi.common.mapper.KnowledgeBaseQaRecordReferenceMapper">
-    <select id="listByQaUuid" resultType="com.moyz.adi.common.entity.KnowledgeBaseQaRecordReference">
+    <select id="listByQaUuid" resultType="com.moyz.adi.common.entity.KnowledgeBaseQaRefEmbedding">
         select *
-        from adi_knowledge_base_qa_record_reference a
-        inner join adi_knowledge_base_qa_record b on a.qa_record_id = b.id
+        from adi_knowledge_base_qa_ref_embedding a
+        inner join adi_knowledge_base_qa b on a.qa_record_id = b.id
         where b.uuid = #{qaUuid}
     </select>
 

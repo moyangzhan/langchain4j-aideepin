@@ -14,7 +14,6 @@ import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
-import com.moyz.adi.common.interfaces.AbstractLLMService;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.rag.AdiEmbeddingStoreContentRetriever;
 import com.moyz.adi.common.rag.CompositeRAG;
@@ -27,6 +26,7 @@ import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.AssistantChatParams;
 import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.SseAskParams;
+import com.moyz.adi.common.vo.UpdateQaParams;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.parser.apache.pdfbox.ApachePdfBoxDocumentParser;
@@ -65,7 +65,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
     @Lazy
     @Resource
-    private KnowledgeBaseService _this;
+    private KnowledgeBaseService self;
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
@@ -77,10 +77,10 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     private KnowledgeBaseItemService knowledgeBaseItemService;
 
     @Resource
-    private KnowledgeBaseQaRecordService knowledgeBaseQaRecordService;
+    private KnowledgeBaseQaService knowledgeBaseQaRecordService;
 
     @Resource
-    private KnowledgeBaseStarRecordService knowledgeBaseStarRecordService;
+    private KnowledgeBaseStarService knowledgeBaseStarRecordService;
 
     @Resource
     private FileService fileService;
@@ -101,7 +101,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             knowledgeBase.setIngestModelName(aiModelService.getByIdOrThrow(kbEditReq.getIngestModelId()).getName());
         } else {
             //没有指定抽取图谱知识时的LLM时，自动指定第一个可用的
-            LLMContext.getFirstEnable().ifPresent(llmService -> {
+            LLMContext.getFirstEnableAndFree().ifPresent(llmService -> {
                 knowledgeBase.setIngestModelName(llmService.getAiModel().getName());
                 knowledgeBase.setIngestModelId(llmService.getAiModel().getId());
             });
@@ -173,7 +173,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             //创建知识库条目
             String uuid = UuidUtil.createShort();
             //postgresql不支持\u0000
-            String content = document.text().replaceAll("\u0000", "");
+            String content = document.text().replace("\u0000", "");
             KnowledgeBaseItem knowledgeBaseItem = new KnowledgeBaseItem();
             knowledgeBaseItem.setUuid(uuid);
             knowledgeBaseItem.setKbId(knowledgeBase.getId());
@@ -184,11 +184,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             knowledgeBaseItem.setRemark(content);
             boolean success = knowledgeBaseItemService.save(knowledgeBaseItem);
             if (success && Boolean.TRUE.equals(indexAfterUpload)) {
-                try {
-                    indexItems(List.of(uuid));
-                } catch (BaseException e) {
-                    log.error("indexAfterUpload error", e);
-                }
+                indexItems(List.of(uuid));
             }
             return adiFile;
         } catch (Exception e) {
@@ -209,9 +205,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         LambdaQueryWrapper<KnowledgeBaseItem> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeBaseItem::getIsDeleted, false);
         wrapper.eq(KnowledgeBaseItem::getUuid, kbUuid);
-        BizPager.oneByOneWithAnchor(wrapper, knowledgeBaseItemService, KnowledgeBaseItem::getId, kbItem -> {
-            knowledgeBaseItemService.asyncIndex(ThreadContext.getCurrentUser(), knowledgeBase, kbItem);
-        });
+        BizPager.oneByOneWithAnchor(wrapper, knowledgeBaseItemService, KnowledgeBaseItem::getId, kbItem -> knowledgeBaseItemService.asyncIndex(ThreadContext.getCurrentUser(), knowledgeBase, kbItem));
         return true;
     }
 
@@ -219,30 +213,35 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
      * 索引知识点（同一知识库下）
      *
      * @param itemUuids 知识点uuid列表
-     * @return
+     * @return 成功或失败
      */
     public boolean indexItems(List<String> itemUuids) {
-        if (CollectionUtils.isEmpty(itemUuids)) {
-            return false;
+        try {
+            if (CollectionUtils.isEmpty(itemUuids)) {
+                return false;
+            }
+            KnowledgeBase knowledgeBase = baseMapper.getByItemUuid(itemUuids.get(0));
+            String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
+            Boolean exist = stringRedisTemplate.hasKey(userIndexKey);
+            if (Boolean.TRUE.equals(exist)) {
+                log.warn("文档正在索引中,请忽频繁操作,userId:{}", knowledgeBase.getOwnerId());
+                throw new BaseException(A_DOC_INDEX_DOING);
+            }
+            return knowledgeBaseItemService.checkAndIndexing(knowledgeBase, itemUuids);
+        } catch (BaseException e) {
+            log.error("indexAfterUpload error", e);
         }
-        KnowledgeBase knowledgeBase = baseMapper.getByItemUuid(itemUuids.get(0));
-        String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
-        boolean exist = stringRedisTemplate.hasKey(userIndexKey);
-        if (exist) {
-            log.warn("文档正在索引中,请忽频繁操作,userId:{}", knowledgeBase.getOwnerId());
-            throw new BaseException(A_DOC_INDEX_DOING);
-        }
-        return knowledgeBaseItemService.checkAndIndexing(knowledgeBase, itemUuids);
+        return false;
     }
 
     /**
      * 检查当前用户下的索引任务是否已经结束
      *
-     * @return
+     * @return 成功或失败
      */
     public boolean checkIndexIsFinish() {
         String userIndexKey = MessageFormat.format(USER_INDEXING, ThreadContext.getCurrentUserId());
-        return !stringRedisTemplate.hasKey(userIndexKey);
+        return Boolean.FALSE.equals(stringRedisTemplate.hasKey(userIndexKey));
     }
 
     public Page<KbInfoResp> searchMine(String keyword, Boolean includeOthersPublic, Integer currentPage, Integer pageSize) {
@@ -303,25 +302,25 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             return sseEmitter;
         }
         sseEmitterHelper.startSse(user, sseEmitter);
-        _this.retrieveAndPushToLLM(user, sseEmitter, qaRecordUuid);
+        self.retrieveAndPushToLLM(user, sseEmitter, qaRecordUuid);
         return sseEmitter;
     }
 
     /**
      * Star or unstar
      *
-     * @param user
-     * @param kbUuid
+     * @param user   用户
+     * @param kbUuid 知识库uuid
      * @return true:star;false:unstar
      */
     @Transactional
     public boolean toggleStar(User user, String kbUuid) {
 
-        KnowledgeBase knowledgeBase = _this.getOrThrow(kbUuid);
+        KnowledgeBase knowledgeBase = self.getOrThrow(kbUuid);
         boolean star;
-        KnowledgeBaseStarRecord oldRecord = knowledgeBaseStarRecordService.getRecord(user.getId(), kbUuid);
+        KnowledgeBaseStar oldRecord = knowledgeBaseStarRecordService.getRecord(user.getId(), kbUuid);
         if (null == oldRecord) {
-            KnowledgeBaseStarRecord starRecord = new KnowledgeBaseStarRecord();
+            KnowledgeBaseStar starRecord = new KnowledgeBaseStar();
             starRecord.setUserId(user.getId());
             starRecord.setUserUuid(user.getUuid());
             starRecord.setKbId(knowledgeBase.getId());
@@ -332,8 +331,8 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         } else {
             //Deleted means unstar
             knowledgeBaseStarRecordService.lambdaUpdate()
-                    .eq(KnowledgeBaseStarRecord::getId, oldRecord.getId())
-                    .set(KnowledgeBaseStarRecord::getIsDeleted, !oldRecord.getIsDeleted())
+                    .eq(KnowledgeBaseStar::getId, oldRecord.getId())
+                    .set(KnowledgeBaseStar::getIsDeleted, !oldRecord.getIsDeleted())
                     .update();
             star = oldRecord.getIsDeleted();
         }
@@ -369,7 +368,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     @Async
     public void retrieveAndPushToLLM(User user, SseEmitter sseEmitter, String qaRecordUuid) {
         log.info("retrieveAndPushToLLM,qaRecordUuid:{},userId:{}", qaRecordUuid, user.getId());
-        KnowledgeBaseQaRecord qaRecord = knowledgeBaseQaRecordService.getOrThrow(qaRecordUuid);
+        KnowledgeBaseQa qaRecord = knowledgeBaseQaRecordService.getOrThrow(qaRecordUuid);
         KnowledgeBase knowledgeBase = getOrThrow(qaRecord.getKbUuid());
         AiModel aiModel = aiModelService.getByIdOrThrow(qaRecord.getAiModelId());
 
@@ -398,15 +397,21 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         sseAskParams.setSseEmitter(sseEmitter);
         sseAskParams.setModelName(aiModel.getName());
         sseAskParams.setUser(user);
-        //用户问题过长，无需再召回文档，严格模式下直接返回异常提示,非严格模式请求LLM
         if (maxResults == 0) {
             log.info("用户问题过长，无需再召回文档，严格模式下直接返回异常提示,非严格模式请求LLM");
-            if (knowledgeBase.getIsStrict()) {
+            if (Boolean.TRUE.equals(knowledgeBase.getIsStrict())) {
                 sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "提问内容过长，最多不超过 " + maxInputTokens + " tokens");
             } else {
-                sseEmitterHelper.commonProcess(sseAskParams, (response, questionMeta, answerMeta) -> {
-                    updateQaRecord(user, qaRecord, sseAskParams, null, response);
-                });
+                sseEmitterHelper.commonProcess(sseAskParams, (response, questionMeta, answerMeta) -> updateQaRecord(
+                        UpdateQaParams.builder()
+                                .user(user)
+                                .qaRecord(qaRecord)
+                                .retrievers(null)
+                                .sseAskParams(sseAskParams)
+                                .response(response)
+                                .isTokenFree(aiModel.getIsFree())
+                                .build())
+                );
             }
         } else {
             log.info("进行RAG请求,maxResults:{}", maxResults);
@@ -416,46 +421,74 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                             .build()
                     , qaRecordUuid);
             List<ContentRetriever> retrievers = compositeRAG.createRetriever(chatLanguageModel, metadataCond, maxResults, knowledgeBase.getRetrieveMinScore(), knowledgeBase.getIsStrict());
-            compositeRAG.ragChat(retrievers, sseAskParams, (response, promptMeta, answerMeta) -> {
-                updateQaRecord(user, qaRecord, sseAskParams, retrievers, response);
-            });
+            compositeRAG.ragChat(retrievers, sseAskParams, (response, promptMeta, answerMeta) -> updateQaRecord(
+                    UpdateQaParams.builder()
+                            .user(user)
+                            .qaRecord(qaRecord)
+                            .retrievers(retrievers)
+                            .sseAskParams(sseAskParams)
+                            .response(response)
+                            .isTokenFree(aiModel.getIsFree())
+                            .build())
+            );
         }
     }
 
-    private void updateQaRecord(User user, KnowledgeBaseQaRecord qaRecord, SseAskParams sseAskParams, List<ContentRetriever> retrievers, String response) {
-
-        List<String> tokenCountList = stringRedisTemplate.opsForList().range(MessageFormat.format(TOKEN_USAGE_KEY, sseAskParams.getUuid()), 0, -1);
+    private void updateQaRecord(UpdateQaParams updateQaParams) {
+        List<String> tokenCountList = stringRedisTemplate.opsForList().range(MessageFormat.format(TOKEN_USAGE_KEY, updateQaParams.getSseAskParams().getUuid()), 0, -1);
         int inputTokenCount = 0;
         int outputTokenCount = 0;
         if (!CollectionUtils.isEmpty(tokenCountList) && tokenCountList.size() > 1) {
-            for (int i = 0; i < tokenCountList.size(); i++) {
+            int tokenCountListSize = tokenCountList.size();
+            int i = 0;
+            while (i < tokenCountListSize) {
                 inputTokenCount += Integer.parseInt(tokenCountList.get(i));
                 i++;
-                if (i < tokenCountList.size()) {
+                if (i < tokenCountListSize) {
                     outputTokenCount += Integer.parseInt(tokenCountList.get(i));
                 }
+                i++;
             }
         }
 
-        KnowledgeBaseQaRecord updateRecord = new KnowledgeBaseQaRecord();
+        KnowledgeBaseQa qaRecord = updateQaParams.getQaRecord();
+        User user = updateQaParams.getUser();
+
+        KnowledgeBaseQa updateRecord = new KnowledgeBaseQa();
         updateRecord.setId(qaRecord.getId());
-        updateRecord.setPrompt(sseAskParams.getAssistantChatParams().getUserMessage());
+        updateRecord.setPrompt(updateQaParams.getSseAskParams().getAssistantChatParams().getUserMessage());
         updateRecord.setPromptTokens(inputTokenCount);
-        updateRecord.setAnswer(response);
+        updateRecord.setAnswer(updateQaParams.getResponse());
         updateRecord.setAnswerTokens(outputTokenCount);
         knowledgeBaseQaRecordService.updateById(updateRecord);
+
+        createRef(updateQaParams.getRetrievers(), user, qaRecord.getId());
+        //用户本次请求消耗的token数指的是整个RAG过程中消耗的token数量，其中可能涉及到多次LLM请求
+        if (null != tokenCountList) {
+            int allToken = tokenCountList.stream().map(Integer::parseInt).reduce(0, Integer::sum);
+            log.info("用户{}本次请示消耗总token:{}", user.getName(), allToken);
+            userDayCostService.appendCostToUser(user, allToken, updateQaParams.isTokenFree());
+        }
+    }
+
+    /**
+     * 创建引用记录
+     *
+     * @param retrievers 召回器
+     * @param user       用户
+     * @param qaId       问答id
+     */
+    private void createRef(List<ContentRetriever> retrievers, User user, Long qaId) {
+        if (CollectionUtils.isEmpty(retrievers)) {
+            return;
+        }
         for (ContentRetriever retriever : retrievers) {
             if (retriever instanceof AdiEmbeddingStoreContentRetriever embeddingRetriever) {
-                knowledgeBaseQaRecordService.createEmbeddingRefs(user, qaRecord.getId(), embeddingRetriever.getRetrievedEmbeddingToScore());
+                knowledgeBaseQaRecordService.createEmbeddingRefs(user, qaId, embeddingRetriever.getRetrievedEmbeddingToScore());
             } else if (retriever instanceof GraphStoreContentRetriever graphRetriever) {
-                knowledgeBaseQaRecordService.createGraphRefs(user, qaRecord.getId(), graphRetriever.getGraphRef());
+                knowledgeBaseQaRecordService.createGraphRefs(user, qaId, graphRetriever.getGraphRef());
             }
         }
-
-        //用户本次请求消耗的token数指的是整个RAG过程中消耗的token数量，其中可能涉及到多次LLM请求
-        int allToken = tokenCountList.stream().map(Integer::parseInt).reduce(0, Integer::sum);
-        log.info("用户{}本次请示消耗总token:{}", user.getName(), allToken);
-        userDayCostService.appendCostToUser(user, allToken);
     }
 
     public KnowledgeBase getOrThrow(String kbUuid) {
@@ -468,7 +501,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     /**
      * Set update knowledge base stat signal
      *
-     * @param kbUuid
+     * @param kbUuid 知识库uuid
      */
     public void updateStatistic(String kbUuid) {
         stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, kbUuid);
@@ -491,6 +524,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     @Scheduled(fixedDelay = 60 * 1000)
     public void asyncUpdateStatistic() {
         Set<String> kbUuidList = stringRedisTemplate.opsForSet().members(KB_STATISTIC_RECALCULATE_SIGNAL);
+        if (CollectionUtils.isEmpty(kbUuidList)) {
+            return;
+        }
         for (String kbUuid : kbUuidList) {
             baseMapper.updateStatByUuid(kbUuid);
             stringRedisTemplate.opsForSet().remove(KB_STATISTIC_RECALCULATE_SIGNAL, kbUuid);

@@ -42,10 +42,10 @@ public class KnowledgeBaseController {
     /**
      * 上传、解析并索引文档
      *
-     * @param uuid
+     * @param uuid             知识库uuid
      * @param indexAfterUpload 是否上传完接着索引文档
-     * @param doc
-     * @return
+     * @param doc              二进制文件
+     * @return 上传成功的文件信息
      */
     @PostMapping(path = "/upload/{uuid}", headers = "content-type=multipart/form-data", produces = MediaType.APPLICATION_JSON_VALUE)
     public AdiFile upload(@PathVariable String uuid, @RequestParam(value = "indexAfterUpload", defaultValue = "true") Boolean indexAfterUpload, @RequestParam("file") MultipartFile doc) {
@@ -55,11 +55,11 @@ public class KnowledgeBaseController {
     /**
      * 搜索我的知识库
      *
-     * @param keyword
-     * @param includeOthersPublic
-     * @param currentPage
-     * @param pageSize
-     * @return
+     * @param keyword             搜索关键词
+     * @param includeOthersPublic 是否包含其他人公开的知识库
+     * @param currentPage         当前页数
+     * @param pageSize            每页数量
+     * @return 我的知识库列表
      */
     @GetMapping("/searchMine")
     public Page<KbInfoResp> searchMine(@RequestParam(defaultValue = "") String keyword, @RequestParam(defaultValue = "false") Boolean includeOthersPublic, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
@@ -69,10 +69,10 @@ public class KnowledgeBaseController {
     /**
      * 搜索公开的知识库
      *
-     * @param keyword
-     * @param currentPage
-     * @param pageSize
-     * @return
+     * @param keyword     搜索关键词
+     * @param currentPage 当前页数
+     * @param pageSize    每页数量
+     * @return 知识库列表
      */
     @GetMapping("/searchPublic")
     public Page<KbInfoResp> searchPublic(@RequestParam(defaultValue = "") String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
@@ -83,7 +83,7 @@ public class KnowledgeBaseController {
      * 知识库详情
      *
      * @param uuid 知识库uuid
-     * @return
+     * @return 知识库详情
      */
     @GetMapping("/info/{uuid}")
     public KnowledgeBase info(@PathVariable String uuid) {
@@ -108,7 +108,7 @@ public class KnowledgeBaseController {
      * 索引整个知识库
      *
      * @param uuid 知识库uuid
-     * @return
+     * @return 成功或失败
      */
     @PostMapping("/indexing/{uuid}")
     public boolean indexing(@PathVariable String uuid) {
@@ -118,8 +118,8 @@ public class KnowledgeBaseController {
     /**
      * 批量索引知识点
      *
-     * @param req
-     * @return
+     * @param req 知识点列表
+     * @return 成功或失败
      */
     @PostMapping("/item/indexing-list")
     public boolean indexItems(@RequestBody KbItemIndexBatchReq req) {
@@ -129,7 +129,7 @@ public class KnowledgeBaseController {
     /**
      * 检查知识库是否已经索引完成
      *
-     * @return
+     * @return 成功或失败
      */
     @GetMapping("/indexing/check")
     public boolean checkIndex() {
@@ -139,7 +139,7 @@ public class KnowledgeBaseController {
     /**
      * 点赞
      *
-     * @return
+     * @return true:star;false:unstar
      */
     @PostMapping("/star/toggle")
     public boolean star(@RequestParam @NotBlank String kbUuid) {

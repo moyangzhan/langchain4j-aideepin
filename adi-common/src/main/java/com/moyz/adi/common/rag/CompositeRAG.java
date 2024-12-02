@@ -51,21 +51,6 @@ public class CompositeRAG {
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
-    /**
-     * 如果有必要，使用{chatLanguageModel}对切割出来的文本进行加工
-     *
-     * @param user
-     * @param chatLanguageModel
-     * @param document
-     * @param overlap
-     * @param identifyColumns
-     * @param appendColumns
-     */
-    public void ingest(User user, ChatLanguageModel chatLanguageModel, Document document, int overlap, String identifyColumns, String appendColumns) {
-        embeddingRAGService.ingest(document, overlap, null);
-        graphRAGService.ingest(user, document, overlap, chatLanguageModel, List.of(identifyColumns), List.of(appendColumns));
-    }
-
     public List<ContentRetriever> createRetriever(ChatLanguageModel chatLanguageModel, Map<String, String> metadataCond, int maxResults, double minScore, boolean breakIfSearchMissed) {
         ContentRetriever contentRetriever1 = embeddingRAGService.createRetriever(metadataCond, maxResults, minScore, breakIfSearchMissed);
         ContentRetriever contentRetriever2 = graphRAGService.createRetriever(chatLanguageModel, metadataCond, maxResults, breakIfSearchMissed);

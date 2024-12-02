@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/model")
@@ -27,8 +26,9 @@ public class ModelController {
             modelInfo.setModelPlatform(aiModel.getPlatform());
             modelInfo.setEnable(aiModel.getIsEnable());
             modelInfo.setInputTypes(aiModel.getInputTypes());
+            modelInfo.setIsFree(aiModel.getIsFree());
             return modelInfo;
-        }).collect(Collectors.toList());
+        }).toList();
     }
 
     @Operation(summary = "支持的图片模型列表")
@@ -41,7 +41,8 @@ public class ModelController {
             modelInfo.setModelName(aiModel.getName());
             modelInfo.setModelPlatform(aiModel.getPlatform());
             modelInfo.setEnable(item.getAiModel().getIsEnable());
+            modelInfo.setIsFree(aiModel.getIsFree());
             return modelInfo;
-        }).collect(Collectors.toList());
+        }).toList();
     }
 }

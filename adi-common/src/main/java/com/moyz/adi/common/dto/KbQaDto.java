@@ -5,7 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
-public class KbQaRecordDto {
+public class KbQaDto {
     @Schema(title = "uuid")
     private String uuid;
 

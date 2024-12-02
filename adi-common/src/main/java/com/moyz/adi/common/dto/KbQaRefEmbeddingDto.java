@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class KbQaRecordReferenceDto {
+public class KbQaRefEmbeddingDto {
     private String embeddingId;
     private String text;
 }

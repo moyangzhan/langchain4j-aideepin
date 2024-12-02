@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 @Data
+@EqualsAndHashCode(callSuper = true)
 @TableName("adi_user_day_cost")
 @Schema(title = "用户每天使用量")
 public class UserDayCost extends BaseEntity {
@@ -29,4 +31,7 @@ public class UserDayCost extends BaseEntity {
     @TableField(value = "images_number")
     private Integer imagesNumber;
 
+    @Schema(title = "是：免费额度；否：收费额度")
+    @TableField(value = "is_free")
+    private Boolean isFree;
 }

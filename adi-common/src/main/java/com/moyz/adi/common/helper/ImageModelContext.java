@@ -3,6 +3,7 @@ package com.moyz.adi.common.helper;
 import com.moyz.adi.common.interfaces.AbstractImageModelService;
 import com.moyz.adi.common.vo.CommonAiPlatformSetting;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.formula.functions.T;
 
 import java.util.HashMap;
 import java.util.List;
@@ -19,12 +20,12 @@ public class ImageModelContext {
     /**
      * AI图片模型
      */
-    public static final Map<String, AbstractImageModelService<CommonAiPlatformSetting>> NAME_TO_LLM_SERVICE = new HashMap<>();
+    public static final Map<String, AbstractImageModelService<T>> NAME_TO_LLM_SERVICE = new HashMap<>();
 
     private ImageModelContext() {
     }
 
-    public static void addImageModelService(AbstractImageModelService<CommonAiPlatformSetting> modelService) {
+    public static void addImageModelService(AbstractImageModelService<T> modelService) {
         NAME_TO_LLM_SERVICE.put(modelService.getAiModel().getName(), modelService);
     }
 
@@ -44,8 +45,8 @@ public class ImageModelContext {
         }
     }
 
-    public static AbstractImageModelService<CommonAiPlatformSetting> getModelService(String modelName) {
-        AbstractImageModelService<CommonAiPlatformSetting> service = NAME_TO_LLM_SERVICE.get(modelName);
+    public static AbstractImageModelService<T> getModelService(String modelName) {
+        AbstractImageModelService<T> service = NAME_TO_LLM_SERVICE.get(modelName);
         if (null == service) {
             log.warn("︿︿︿ Can not find {}, use the default model DALL_E_2 ︿︿︿", modelName);
             return NAME_TO_LLM_SERVICE.get(DALL_E_2.toString());

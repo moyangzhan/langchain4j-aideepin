@@ -10,6 +10,8 @@ import java.util.stream.Collectors;
 
 public class GraphStoreUtil {
 
+    private GraphStoreUtil(){}
+
     public static String buildMatchClause(String name, String textSegmentId) {
         List<String> criteriaList = new ArrayList<>();
         if (StringUtils.isNotBlank(name)) {
@@ -70,7 +72,7 @@ public class GraphStoreUtil {
         //Apache AGE不支持直接更新property中的Map或List，只能直接替换，否则会出现异常：ERROR:  SET clause doesn't not support updating maps or lists in a property
         StringBuilder setClause = new StringBuilder();
         if (MapUtils.isNotEmpty(metadata)) {
-            setClause.append(String.format(",v.metadata=$new_metadata"));
+            setClause.append(",v.metadata=$new_metadata");
         }
         return setClause.toString();
     }

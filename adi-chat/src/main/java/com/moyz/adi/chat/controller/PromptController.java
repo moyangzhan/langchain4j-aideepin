@@ -3,9 +3,7 @@ package com.moyz.adi.chat.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.*;
-import com.moyz.adi.common.entity.Prompt;
 import com.moyz.adi.common.service.PromptService;
-import com.moyz.adi.common.util.MPPageUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.Resource;
 import jakarta.validation.constraints.Min;
@@ -51,7 +49,7 @@ public class PromptController {
 
     @Operation(summary = "保存列表")
     @PostMapping(value = "/save")
-    public Map<String, Long> SavePrompts(@RequestBody PromptsSaveReq savePromptsReq) {
+    public Map<String, Long> savePrompts(@RequestBody PromptsSaveReq savePromptsReq) {
         return promptService.savePrompts(savePromptsReq);
     }
 

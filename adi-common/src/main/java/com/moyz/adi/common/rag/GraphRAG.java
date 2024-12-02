@@ -10,6 +10,7 @@ import com.moyz.adi.common.service.KnowledgeBaseGraphSegmentService;
 import com.moyz.adi.common.service.UserDayCostService;
 import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.util.UuidUtil;
+import com.moyz.adi.common.vo.GraphIngestParams;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
@@ -50,12 +51,13 @@ public class GraphRAG {
         return knowledgeBaseGraphSegmentService;
     }
 
-    public void ingest(User user, Document document, int overlap, ChatLanguageModel chatLanguageModel, List<String> identifyColumns, List<String> appendColumns) {
+    public void ingest(GraphIngestParams graphIngestParams) {
         log.info("GraphRAG ingest");
-        DocumentSplitter documentSplitter = DocumentSplitters.recursive(RAG_MAX_SEGMENT_SIZE_IN_TOKENS, overlap, new OpenAiTokenizer(GPT_3_5_TURBO));
+        User user = graphIngestParams.getUser();
+        DocumentSplitter documentSplitter = DocumentSplitters.recursive(RAG_MAX_SEGMENT_SIZE_IN_TOKENS, graphIngestParams.getOverlap(), new OpenAiTokenizer(GPT_3_5_TURBO));
         GraphStoreIngestor ingestor = GraphStoreIngestor.builder()
                 .documentSplitter(documentSplitter)
-                .segmentsFunction((segments) -> {
+                .segmentsFunction(segments -> {
                     List<Triple<TextSegment, String, String>> segmentIdToExtractContent = new ArrayList<>();
                     for (TextSegment segment : segments) {
 
@@ -66,31 +68,31 @@ public class GraphRAG {
                         graphSegment.setRemark(segment.text());
                         graphSegment.setKbUuid(segment.metadata().getString(AdiConstant.MetadataKey.KB_UUID));
                         graphSegment.setKbItemUuid(segment.metadata().getString(AdiConstant.MetadataKey.KB_ITEM_UUID));
-                        graphSegment.setUserId(ThreadContext.getCurrentUserId());
+                        graphSegment.setUserId(user.getId());
                         getKnowledgeBaseGraphSegmentService().save(graphSegment);
 
                         String response = "";
                         if (StringUtils.isNotBlank(segment.text())) {
                             ErrorEnum errorMsg = SpringUtil.getBean(QuotaHelper.class).checkTextQuota(user);
                             if (null != errorMsg) {
-                                log.warn("抽取知识图谱时发现额度已超过限制,user:{}", user.getName(), errorMsg.getInfo());
+                                log.warn("抽取知识图谱时发现额度已超过限制,user:{},errorInfo:{}", user.getName(), errorMsg.getInfo());
                                 continue;
                             }
                             log.info("请求LLM从文本中抽取实体及关系,segmentId:{}", segmentId);
-                            Response<AiMessage> aiMessageResponse = chatLanguageModel.generate(UserMessage.from(GraphExtractPrompt.GRAPH_EXTRACTION_PROMPT_CN.replace("{input_text}", segment.text())));
+                            Response<AiMessage> aiMessageResponse = graphIngestParams.getChatLanguageModel().generate(UserMessage.from(GraphExtractPrompt.GRAPH_EXTRACTION_PROMPT_CN.replace("{input_text}", segment.text())));
                             response = aiMessageResponse.content().text();
 
-                            SpringUtil.getBean(UserDayCostService.class).appendCostToUser(user, aiMessageResponse.tokenUsage().totalTokenCount());
+                            SpringUtil.getBean(UserDayCostService.class).appendCostToUser(user, aiMessageResponse.tokenUsage().totalTokenCount(), graphIngestParams.isFreeToken());
                         }
                         segmentIdToExtractContent.add(Triple.of(segment, segmentId, response));
                     }
                     return segmentIdToExtractContent;
                 })
-                .identifyColumns(identifyColumns)
-                .appendColumns(appendColumns)
+                .identifyColumns(graphIngestParams.getIdentifyColumns())
+                .appendColumns(graphIngestParams.getAppendColumns())
                 .graphStore(apacheAgeGraphStore)
                 .build();
-        ingestor.ingest(document);
+        ingestor.ingest(graphIngestParams.getDocument());
     }
 
     public GraphStoreContentRetriever createRetriever(ChatLanguageModel chatLanguageModel, Map<String, String> metadataCond, int maxResults, boolean breakIfSearchMissed) {

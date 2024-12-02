@@ -59,7 +59,7 @@ public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
 
     public Long getIdByName(String modelName) {
         AiModel aiModel = this.getByName(modelName);
-        return null == aiModel ? 0l : aiModel.getId();
+        return null == aiModel ? 0L : aiModel.getId();
     }
 
     public AiModel getByIdOrThrow(Long id) {

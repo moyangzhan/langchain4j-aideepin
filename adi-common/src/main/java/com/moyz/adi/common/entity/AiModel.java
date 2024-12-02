@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 @Data
+@EqualsAndHashCode(callSuper = true)
 @TableName("adi_ai_model")
 @Schema(title = "AiModel对象", description = "AI模型表")
 public class AiModel extends BaseEntity {
@@ -29,6 +31,10 @@ public class AiModel extends BaseEntity {
     @Schema(title = "说明")
     @TableField("remark")
     private String remark;
+
+    @Schema(title = "是否免费(true:免费,false:收费)")
+    @TableField("is_free")
+    private Boolean isFree;
 
     @Schema(title = "状态(1:正常使用,0:不可用)")
     @TableField("is_enable")
