@@ -123,7 +123,7 @@ public class AiModelSettingService {
         MODEL_ID_TO_OBJ.remove(aiModel.getId());
     }
 
-    public void add(AiModel aiModel) {
+    public void addOrUpdate(AiModel aiModel) {
         AiModel existOne = all.stream().filter(item -> item.getId().equals(aiModel.getId())).findFirst().orElse(null);
         if (null == existOne) {
             all.add(aiModel);

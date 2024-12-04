@@ -125,7 +125,7 @@ public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
         AiModelDto result = new AiModelDto();
         BeanUtils.copyProperties(aiModel, result);
 
-        aiModelSettingService.add(aiModel);
+        aiModelSettingService.addOrUpdate(aiModel);
 
         return result;
     }
@@ -139,7 +139,7 @@ public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
 
         AiModel updatedOne = getByIdOrThrow(aiModelDto.getId());
         aiModelSettingService.delete(oldAiModel);
-        aiModelSettingService.add(updatedOne);
+        aiModelSettingService.addOrUpdate(updatedOne);
     }
 
     public void softDelete(Long id) {
