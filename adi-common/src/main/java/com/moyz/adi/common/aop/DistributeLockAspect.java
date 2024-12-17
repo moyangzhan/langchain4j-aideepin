@@ -15,7 +15,7 @@ import java.util.UUID;
 
 
 /**
- * 通用分页式锁
+ * 通用分布式锁
  *
  * @author moyz
  */

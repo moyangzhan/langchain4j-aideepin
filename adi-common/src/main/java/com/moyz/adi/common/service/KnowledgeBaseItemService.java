@@ -38,6 +38,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static com.moyz.adi.common.cosntant.AdiConstant.DOC_INDEX_TYPE_EMBEDDING;
+import static com.moyz.adi.common.cosntant.AdiConstant.DOC_INDEX_TYPE_GRAPHICAL;
 import static com.moyz.adi.common.cosntant.RedisKeyConstant.KB_STATISTIC_RECALCULATE_SIGNAL;
 import static com.moyz.adi.common.cosntant.RedisKeyConstant.USER_INDEXING;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
@@ -103,13 +105,14 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
      *
      * @param knowledgeBase 知识库
      * @param kbItemUuids   知识点uuid列表
+     * @param indexTypes 索引类型，如embedding,graphical
      * @return 成功或失败
      */
-    public boolean checkAndIndexing(KnowledgeBase knowledgeBase, List<String> kbItemUuids) {
+    public boolean checkAndIndexing(KnowledgeBase knowledgeBase, List<String> kbItemUuids, List<String> indexTypes) {
         for (String kbItemUuid : kbItemUuids) {
             if (checkPrivilege(kbItemUuid)) {
                 KnowledgeBaseItem item = getEnable(kbItemUuid);
-                self.asyncIndex(ThreadContext.getCurrentUser(), knowledgeBase, item);
+                self.asyncIndex(ThreadContext.getCurrentUser(), knowledgeBase, item, indexTypes);
             }
         }
         return true;
@@ -118,15 +121,16 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
     /**
      * 对文档进行索引(向量化、图谱化)
      *
-     * @param user
-     * @param knowledgeBase
-     * @param kbItem
+     * @param user          用户
+     * @param knowledgeBase 知识库
+     * @param kbItem        知识点
+     * @param indexTypes    索引类型，如embedding,graphical
      */
     @Async
-    public void asyncIndex(User user, KnowledgeBase knowledgeBase, KnowledgeBaseItem kbItem) {
+    public void asyncIndex(User user, KnowledgeBase knowledgeBase, KnowledgeBaseItem kbItem, List<String> indexTypes) {
         stringRedisTemplate.opsForValue().set(MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId()), "", 10, TimeUnit.MINUTES);
         try {
-            if (kbItem.getEmbeddingStatus() != EmbeddingStatusEnum.DOING) {
+            if (indexTypes.contains(DOC_INDEX_TYPE_EMBEDDING) && kbItem.getEmbeddingStatus() != EmbeddingStatusEnum.DOING) {
                 Metadata metadata = new Metadata();
                 metadata.put(AdiConstant.MetadataKey.KB_UUID, kbItem.getKbUuid());
                 metadata.put(AdiConstant.MetadataKey.KB_ITEM_UUID, kbItem.getUuid());
@@ -134,7 +138,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                 knowledgeBaseEmbeddingService.deleteByItemUuid(kbItem.getUuid());
                 indexingEmbedding(knowledgeBase, kbItem, document);
             }
-            if (kbItem.getGraphicalStatus() != GraphicalStatusEnum.DOING) {
+            if (indexTypes.contains(DOC_INDEX_TYPE_GRAPHICAL) && kbItem.getGraphicalStatus() != GraphicalStatusEnum.DOING) {
                 Metadata metadata = new Metadata();
                 metadata.put(AdiConstant.MetadataKey.KB_UUID, kbItem.getKbUuid());
                 metadata.put(AdiConstant.MetadataKey.KB_ITEM_UUID, kbItem.getUuid());

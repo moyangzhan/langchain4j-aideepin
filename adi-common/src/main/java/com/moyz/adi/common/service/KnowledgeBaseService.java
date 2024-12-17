@@ -123,7 +123,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 .one();
     }
 
-    public List<AdiFile> uploadDocs(String kbUuid, Boolean embedding, MultipartFile[] docs) {
+    public List<AdiFile> uploadDocs(String kbUuid, Boolean embedding, MultipartFile[] docs, List<String> indexTypes) {
         if (ArrayUtils.isEmpty(docs)) {
             return Collections.emptyList();
         }
@@ -136,7 +136,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 .orElseThrow(() -> new BaseException(A_DATA_NOT_FOUND));
         for (MultipartFile doc : docs) {
             try {
-                result.add(uploadDoc(knowledgeBase, doc, embedding));
+                result.add(uploadDoc(knowledgeBase, doc, embedding, indexTypes));
             } catch (Exception e) {
                 log.warn("uploadDocs fail,fileName:{}", doc.getOriginalFilename(), e);
             }
@@ -144,16 +144,16 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         return result;
     }
 
-    public AdiFile uploadDoc(String kbUuid, Boolean indexAfterUpload, MultipartFile doc) {
+    public AdiFile uploadDoc(String kbUuid, Boolean indexAfterUpload, MultipartFile doc, List<String> indexTypes) {
         KnowledgeBase knowledgeBase = ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(KnowledgeBase::getUuid, kbUuid)
                 .eq(KnowledgeBase::getIsDeleted, false)
                 .oneOpt()
                 .orElseThrow(() -> new BaseException(A_DATA_NOT_FOUND));
-        return uploadDoc(knowledgeBase, doc, indexAfterUpload);
+        return uploadDoc(knowledgeBase, doc, indexAfterUpload, indexTypes);
     }
 
-    private AdiFile uploadDoc(KnowledgeBase knowledgeBase, MultipartFile doc, Boolean indexAfterUpload) {
+    private AdiFile uploadDoc(KnowledgeBase knowledgeBase, MultipartFile doc, Boolean indexAfterUpload, List<String> indexTypes) {
         try {
             String fileName = doc.getOriginalFilename();
             AdiFile adiFile = fileService.writeToLocal(doc, false);
@@ -184,7 +184,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             knowledgeBaseItem.setRemark(content);
             boolean success = knowledgeBaseItemService.save(knowledgeBaseItem);
             if (success && Boolean.TRUE.equals(indexAfterUpload)) {
-                indexItems(List.of(uuid));
+                indexItems(List.of(uuid), indexTypes);
             }
             return adiFile;
         } catch (Exception e) {
@@ -196,26 +196,28 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     /**
      * 索引（向量化、图谱化）
      *
-     * @param kbUuid 知识库uuid
-     * @return
+     * @param kbUuid     知识库uuid
+     * @param indexTypes 索引类型，如embedding,graphical
+     * @return 成功或失败
      */
-    public boolean indexing(String kbUuid) {
+    public boolean indexing(String kbUuid, List<String> indexTypes) {
         checkPrivilege(null, kbUuid);
         KnowledgeBase knowledgeBase = this.getOrThrow(kbUuid);
         LambdaQueryWrapper<KnowledgeBaseItem> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeBaseItem::getIsDeleted, false);
         wrapper.eq(KnowledgeBaseItem::getUuid, kbUuid);
-        BizPager.oneByOneWithAnchor(wrapper, knowledgeBaseItemService, KnowledgeBaseItem::getId, kbItem -> knowledgeBaseItemService.asyncIndex(ThreadContext.getCurrentUser(), knowledgeBase, kbItem));
+        BizPager.oneByOneWithAnchor(wrapper, knowledgeBaseItemService, KnowledgeBaseItem::getId, kbItem -> knowledgeBaseItemService.asyncIndex(ThreadContext.getCurrentUser(), knowledgeBase, kbItem, indexTypes));
         return true;
     }
 
     /**
      * 索引知识点（同一知识库下）
      *
-     * @param itemUuids 知识点uuid列表
+     * @param itemUuids  知识点uuid列表
+     * @param indexTypes 索引类型，如embedding,graphical
      * @return 成功或失败
      */
-    public boolean indexItems(List<String> itemUuids) {
+    public boolean indexItems(List<String> itemUuids, List<String> indexTypes) {
         try {
             if (CollectionUtils.isEmpty(itemUuids)) {
                 return false;
@@ -227,7 +229,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 log.warn("文档正在索引中,请忽频繁操作,userId:{}", knowledgeBase.getOwnerId());
                 throw new BaseException(A_DOC_INDEX_DOING);
             }
-            return knowledgeBaseItemService.checkAndIndexing(knowledgeBase, itemUuids);
+            return knowledgeBaseItemService.checkAndIndexing(knowledgeBase, itemUuids, indexTypes);
         } catch (BaseException e) {
             log.error("indexAfterUpload error", e);
         }

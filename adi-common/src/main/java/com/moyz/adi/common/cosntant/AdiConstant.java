@@ -201,4 +201,13 @@ public class AdiConstant {
     public static final int AI_IMAGE_TYPE_THUMBNAIL = 2;
     public static final int AI_IMAGE_TYPE_REGULAR_MARK = 3;
     public static final int AI_IMAGE_TYPE_THUMBNAIL_MARK = 4;
+
+    public static final String DOC_INDEX_TYPE_EMBEDDING = "embedding";
+    public static final String DOC_INDEX_TYPE_GRAPHICAL = "graphical";
+
+    public static final String DRAW_TYPE_PUBLIC = "public";
+    public static final String DRAW_TYPE_STARRED = "starred";
+    public static final String DRAW_TYPE_MINE = "mine";
+
+    public static final String MP_LIMIT_1 = "limit 1";
 }

@@ -1,12 +1,12 @@
 package com.moyz.adi.chat.controller;
 
-import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.service.UserService;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.ConfigResp;
 import com.moyz.adi.common.dto.ModifyPasswordReq;
 import com.moyz.adi.common.dto.UserUpdateReq;
 import com.moyz.adi.common.entity.User;
+import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.service.UserService;
 import com.talanlabs.avatargenerator.Avatar;
 import com.talanlabs.avatargenerator.cat.CatAvatar;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,10 +15,7 @@ import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Size;
 import lombok.extern.slf4j.Slf4j;
-import org.checkerframework.checker.units.qual.MixedUnits;
-import org.hibernate.validator.constraints.Length;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -101,10 +98,7 @@ public class UserController {
     }
 
     private synchronized void writeToResponse(Long userId, Integer width, Integer height, HttpServletResponse response) throws IOException {
-        response.setHeader("Cache-Control", "max-age=" + 3600 * 24 * 7);
-        // 设置Expires头，指示响应过期的具体日期时间
-        long expiresTime = System.currentTimeMillis() + 3600 * 24 * 7 * 1000;
-        response.setDateHeader("Expires", expiresTime);
+        response.setHeader("Cache-Control", "max-age=" + 3600 * 24 * 365);
         Avatar avatar = CatAvatar.newAvatarBuilder().size(width, height).build();
         BufferedImage bufferedImage = avatar.create(userId);
         ImageIO.write(bufferedImage, "png", response.getOutputStream());

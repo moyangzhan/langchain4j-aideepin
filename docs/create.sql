@@ -86,6 +86,23 @@ CREATE TRIGGER trigger_draw_star_update_time
     FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
 
+CREATE TABLE public.adi_draw_comment
+(
+    id          bigserial primary key,
+    uuid        varchar(32) default ''                not null,
+    user_id     bigint      default 0                 not null,
+    draw_id     bigint      default 0                 not null,
+    remark      text        default ''                not null,
+    create_time timestamp   default CURRENT_TIMESTAMP not null,
+    update_time timestamp   default CURRENT_TIMESTAMP not null,
+    is_deleted  boolean     default false             not null
+);
+CREATE TRIGGER trigger_draw_comment_update_time
+    BEFORE UPDATE
+    ON adi_draw_comment
+    FOR EACH ROW
+EXECUTE PROCEDURE update_modified_column();
+
 CREATE TABLE public.adi_ai_model
 (
     id                bigserial primary key,

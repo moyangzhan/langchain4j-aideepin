@@ -42,7 +42,7 @@ public class ConversationPresetService extends ServiceImpl<ConversationPresetMap
         if (StringUtils.isAnyBlank(uuid, editReq.getTitle(), editReq.getRemark())) {
             throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
         }
-        if (!ThreadContext.getCurrentUser().getIsAdmin()) {
+        if (Boolean.FALSE.equals(ThreadContext.getCurrentUser().getIsAdmin())) {
             throw new BaseException(ErrorEnum.A_USER_NOT_AUTH);
         }
         return this.lambdaUpdate()
@@ -54,7 +54,7 @@ public class ConversationPresetService extends ServiceImpl<ConversationPresetMap
     }
 
     public boolean softDel(String uuid) {
-        if (!ThreadContext.getCurrentUser().getIsAdmin()) {
+        if (Boolean.FALSE.equals(ThreadContext.getCurrentUser().getIsAdmin())) {
             throw new BaseException(ErrorEnum.A_USER_NOT_AUTH);
         }
         return this.lambdaUpdate().eq(ConversationPreset::getUuid, uuid).set(ConversationPreset::getIsDeleted, true).update();

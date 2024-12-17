@@ -30,7 +30,10 @@ public class TokenFilter extends OncePerRequestFilter {
             "/auth/",
             "/model/",
             "/user/avatar/",
-            "/draw/public/"
+            "/draw/public/",
+            "/draw/detail/",
+            "/draw/comment/",
+            "/knowledge-base/public/"
     };
 
     protected static final String[] TOKEN_IN_PARAMS = {
@@ -49,41 +52,39 @@ public class TokenFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String requestUri = request.getRequestURI();
-        if (excludePath(requestUri)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
         String token = request.getHeader(AUTHORIZATION);
         if (StringUtils.isBlank(token) && checkPathWithToken(requestUri)) {
             token = request.getParameter("token");
         }
-        if (StringUtils.isBlank(token)) {
+        if (StringUtils.isNotBlank(token)) {
+            String tokenKey = MessageFormat.format(RedisKeyConstant.USER_TOKEN, token);
+            String userJson = stringRedisTemplate.opsForValue().get(tokenKey);
+            if (StringUtils.isBlank(userJson)) {
+                log.warn("未登录:{}", requestUri);
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                return;
+            }
+
+            User user = JsonUtil.fromJson(userJson, User.class);
+            if (null == user) {
+                log.warn("用户不存在:{}", requestUri);
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                return;
+            }
+            if (Boolean.TRUE.equals(!user.getIsAdmin()) && requestUri.startsWith("/admin/")) {
+                log.warn("无管理权限:{}", requestUri);
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                return;
+            }
+            ThreadContext.setCurrentUser(user);
+            ThreadContext.setToken(token);
+            filterChain.doFilter(request, response);
+        } else if (excludePath(requestUri)) {
+            filterChain.doFilter(request, response);
+        } else {
             log.warn("未授权:{}", requestUri);
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
         }
-        String tokenKey = MessageFormat.format(RedisKeyConstant.USER_TOKEN, token);
-        String userJson = stringRedisTemplate.opsForValue().get(tokenKey);
-        if (StringUtils.isBlank(userJson)) {
-            log.warn("未登录:{}", requestUri);
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
-        }
-
-        User user = JsonUtil.fromJson(userJson, User.class);
-        if (null == user) {
-            log.warn("用户不存在:{}", requestUri);
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
-        }
-        if (!user.getIsAdmin() && requestUri.startsWith("/admin/")) {
-            log.warn("无管理权限:{}", requestUri);
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
-        }
-        ThreadContext.setCurrentUser(user);
-        ThreadContext.setToken(token);
-        filterChain.doFilter(request, response);
     }
 
     private boolean excludePath(String requestUri) {

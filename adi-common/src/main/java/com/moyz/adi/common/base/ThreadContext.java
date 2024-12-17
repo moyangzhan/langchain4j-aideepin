@@ -2,6 +2,7 @@ package com.moyz.adi.common.base;
 
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.exception.BaseException;
+import io.micrometer.common.util.StringUtils;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_USER_NOT_FOUND;
 
@@ -29,6 +30,10 @@ public class ThreadContext {
 
     public static String getToken() {
         return currentToken.get();
+    }
+
+    public static boolean isLogin(){
+        return StringUtils.isNotBlank(currentToken.get());
     }
 
     public void unload() {

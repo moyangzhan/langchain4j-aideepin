@@ -24,11 +24,15 @@ import java.util.Map;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_FILE_NOT_EXIST;
 import static com.moyz.adi.common.enums.ErrorEnum.B_IMAGE_LOAD_ERROR;
+import static org.springframework.http.HttpHeaders.CACHE_CONTROL;
 
 @Slf4j
 @RestController
 @Validated
 public class FileController {
+
+    //缓存一年
+    private static final String CACHE_TIME = "public, max-age=31536000";
 
     @Resource
     private FileService fileService;
@@ -39,6 +43,8 @@ public class FileController {
         BufferedImage bufferedImage = fileService.readMyImage(uuid, false);
         //把图片写给浏览器
         try {
+            // 缓存30天
+            response.setHeader(CACHE_CONTROL, CACHE_TIME);
             ImageIO.write(bufferedImage, "png", response.getOutputStream());
         } catch (IOException e) {
             log.error("myImage error", e);
@@ -51,6 +57,8 @@ public class FileController {
         BufferedImage bufferedImage = fileService.readMyImage(uuid, true);
         //把图片写给浏览器
         try {
+            // 缓存30天
+            response.setHeader(CACHE_CONTROL, CACHE_TIME);
             ImageIO.write(bufferedImage, "png", response.getOutputStream());
         } catch (IOException e) {
             log.error("thumbnail error", e);
@@ -69,6 +77,8 @@ public class FileController {
         BufferedImage bufferedImage = fileService.readMyImage(uuid, false);
         //把图片写给浏览器
         try {
+            // 缓存30天
+            response.setHeader(CACHE_CONTROL, CACHE_TIME);
             ImageIO.write(bufferedImage, "png", response.getOutputStream());
         } catch (IOException e) {
             log.error("image error", e);

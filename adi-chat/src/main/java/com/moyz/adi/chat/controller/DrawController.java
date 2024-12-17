@@ -19,8 +19,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.Map;
 
-import static com.moyz.adi.common.enums.ErrorEnum.A_AI_IMAGE_NO_AUTH;
-import static com.moyz.adi.common.enums.ErrorEnum.B_IMAGE_LOAD_ERROR;
+import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 /**
  * 绘图
@@ -69,14 +68,48 @@ public class DrawController {
 
 
     /**
-     * 获取图片详情
+     * 获取绘图任务详情
      *
-     * @param uuid 图片uuid
-     * @return
+     * @param uuid 绘图任务uuid
+     * @return 绘图任务详情
      */
     @GetMapping("/detail/{uuid}")
     public DrawDto getOne(@PathVariable String uuid) {
-        return drawService.getOne(uuid);
+        DrawDto drawDto = drawService.getPublicOrMine(uuid);
+        if (null == drawDto) {
+            throw new BaseException(A_DRAW_NOT_FOUND);
+        }
+        return drawDto;
+    }
+
+    @GetMapping("/detail/newer-public/{uuid}")
+    public DrawDto prevPublic(@PathVariable String uuid) {
+        return drawService.newerPublicOne(uuid);
+    }
+
+    @GetMapping("/detail/older-public/{uuid}")
+    public DrawDto nextPublic(@PathVariable String uuid) {
+        return drawService.olderPublicOne(uuid);
+    }
+
+    @GetMapping("/detail/newer-starred/{uuid}")
+    public DrawDto prevStarred(@PathVariable String uuid) {
+        return drawService.newerStarredOne(uuid);
+    }
+
+    @GetMapping("/detail/older-starred/{uuid}")
+    public DrawDto nextStarred(@PathVariable String uuid) {
+        return drawService.olderStarredOne(uuid);
+    }
+
+    @GetMapping("/detail/newer-mine/{uuid}")
+    public DrawDto prevMine(@PathVariable String uuid) {
+        return drawService.newerMine(uuid);
+    }
+
+    @GetMapping("/detail/older-mine/{uuid}")
+    public DrawDto nextMine(@PathVariable String uuid) {
+        return drawService.olderMine(uuid);
     }
 
     /**
@@ -104,8 +137,8 @@ public class DrawController {
 
     @Operation(summary = "将绘图任务设置为公开或私有")
     @PostMapping("/set-public/{uuid}")
-    public void setPublic(@PathVariable @NotBlank String uuid, @RequestParam(defaultValue = "false") Boolean isPublic, @RequestParam(required = false) Boolean withWatermark) {
-        drawService.setDrawPublic(uuid, isPublic, withWatermark);
+    public DrawDto setPublic(@PathVariable @NotBlank String uuid, @RequestParam(defaultValue = "false") Boolean isPublic, @RequestParam(required = false) Boolean withWatermark) {
+        return drawService.setDrawPublic(uuid, isPublic, withWatermark);
     }
 
     @Operation(summary = "公开绘图任务列表")
@@ -114,20 +147,10 @@ public class DrawController {
         return drawService.listPublic(maxId, pageSize);
     }
 
-    @Operation(summary = "公开的绘图任务详情")
-    @GetMapping("/public/detail/{uuid}")
-    public DrawDto getPublicOne(@PathVariable String uuid) {
-        DrawDto drawDto = drawService.getPublicOne(uuid);
-        if (null == drawDto) {
-            throw new BaseException(A_AI_IMAGE_NO_AUTH);
-        }
-        return drawDto;
-    }
-
     @Operation(summary = "公开的图片,可能带水印（根据水印设置决定）")
     @GetMapping(value = "/public/image/{drawUuid}/{imageUuid}", produces = MediaType.IMAGE_PNG_VALUE)
     public void publicImage(@Length(min = 32, max = 32) @PathVariable String drawUuid, @Length(min = 32, max = 32) @PathVariable String imageUuid, HttpServletResponse response) {
-        DrawDto drawDto = drawService.getPublicOne(drawUuid);
+        DrawDto drawDto = drawService.getPublicOrMine(drawUuid);
         if (null == drawDto) {
             throw new BaseException(A_AI_IMAGE_NO_AUTH);
         }
@@ -144,7 +167,7 @@ public class DrawController {
     @Operation(summary = "公开的缩略图,可能带水印（根据水印设置决定）")
     @GetMapping(value = "/public/thumbnail/{drawUuid}/{imageUuid}", produces = MediaType.IMAGE_PNG_VALUE)
     public void publicThumbnail(@Length(min = 32, max = 32) @PathVariable String drawUuid, @Length(min = 32, max = 32) @PathVariable String imageUuid, HttpServletResponse response) {
-        DrawDto drawDto = drawService.getPublicOne(drawUuid);
+        DrawDto drawDto = drawService.getPublicOrMine(drawUuid);
         if (null == drawDto) {
             throw new BaseException(A_AI_IMAGE_NO_AUTH);
         }

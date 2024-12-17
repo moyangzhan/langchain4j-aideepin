@@ -34,8 +34,11 @@ public class KnowledgeBaseController {
     }
 
     @PostMapping(path = "/uploadDocs/{uuid}", headers = "content-type=multipart/form-data", produces = MediaType.APPLICATION_JSON_VALUE)
-    public boolean uploadDocs(@PathVariable String uuid, @RequestParam(value = "indexAfterUpload", defaultValue = "true") Boolean indexAfterUpload, @RequestParam("files") MultipartFile[] docs) {
-        knowledgeBaseService.uploadDocs(uuid, indexAfterUpload, docs);
+    public boolean uploadDocs(@PathVariable String uuid,
+                              @RequestParam(value = "indexAfterUpload", defaultValue = "true") Boolean indexAfterUpload,
+                              @RequestParam(defaultValue = "") String indexTypes,
+                              @RequestParam("files") MultipartFile[] docs) {
+        knowledgeBaseService.uploadDocs(uuid, indexAfterUpload, docs, List.of(indexTypes.split(",")));
         return true;
     }
 
@@ -48,8 +51,11 @@ public class KnowledgeBaseController {
      * @return 上传成功的文件信息
      */
     @PostMapping(path = "/upload/{uuid}", headers = "content-type=multipart/form-data", produces = MediaType.APPLICATION_JSON_VALUE)
-    public AdiFile upload(@PathVariable String uuid, @RequestParam(value = "indexAfterUpload", defaultValue = "true") Boolean indexAfterUpload, @RequestParam("file") MultipartFile doc) {
-        return knowledgeBaseService.uploadDoc(uuid, indexAfterUpload, doc);
+    public AdiFile upload(@PathVariable String uuid,
+                          @RequestParam(value = "indexAfterUpload", defaultValue = "true") Boolean indexAfterUpload,
+                          @RequestParam(defaultValue = "") String indexTypes,
+                          @RequestParam("file") MultipartFile doc) {
+        return knowledgeBaseService.uploadDoc(uuid, indexAfterUpload, doc, List.of(indexTypes.split(",")));
     }
 
     /**
@@ -61,8 +67,11 @@ public class KnowledgeBaseController {
      * @param pageSize            每页数量
      * @return 我的知识库列表
      */
-    @GetMapping("/searchMine")
-    public Page<KbInfoResp> searchMine(@RequestParam(defaultValue = "") String keyword, @RequestParam(defaultValue = "false") Boolean includeOthersPublic, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
+    @GetMapping("/mine/search")
+    public Page<KbInfoResp> searchMine(@RequestParam(defaultValue = "") String keyword,
+                                       @RequestParam(defaultValue = "false") Boolean includeOthersPublic,
+                                       @NotNull @Min(1) Integer currentPage,
+                                       @NotNull @Min(10) Integer pageSize) {
         return knowledgeBaseService.searchMine(keyword, includeOthersPublic, currentPage, pageSize);
     }
 
@@ -74,8 +83,10 @@ public class KnowledgeBaseController {
      * @param pageSize    每页数量
      * @return 知识库列表
      */
-    @GetMapping("/searchPublic")
-    public Page<KbInfoResp> searchPublic(@RequestParam(defaultValue = "") String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
+    @GetMapping("/public/search")
+    public Page<KbInfoResp> searchPublic(@RequestParam(defaultValue = "") String keyword,
+                                         @NotNull @Min(1) Integer currentPage,
+                                         @NotNull @Min(10) Integer pageSize) {
         return knowledgeBaseService.search(KbSearchReq.builder().isPublic(true).title(keyword).build(), currentPage, pageSize);
     }
 
@@ -97,7 +108,7 @@ public class KnowledgeBaseController {
      * 删除知识库
      *
      * @param uuid 知识库uuid
-     * @return
+     * @return 成功或失败
      */
     @PostMapping("/del/{uuid}")
     public boolean softDelete(@PathVariable String uuid) {
@@ -111,8 +122,8 @@ public class KnowledgeBaseController {
      * @return 成功或失败
      */
     @PostMapping("/indexing/{uuid}")
-    public boolean indexing(@PathVariable String uuid) {
-        return knowledgeBaseService.indexing(uuid);
+    public boolean indexing(@PathVariable String uuid, @RequestParam(defaultValue = "") String indexTypes) {
+        return knowledgeBaseService.indexing(uuid, List.of(indexTypes.split(",")));
     }
 
     /**
@@ -123,7 +134,7 @@ public class KnowledgeBaseController {
      */
     @PostMapping("/item/indexing-list")
     public boolean indexItems(@RequestBody KbItemIndexBatchReq req) {
-        return knowledgeBaseService.indexItems(List.of(req.getUuids()));
+        return knowledgeBaseService.indexItems(List.of(req.getUuids()), List.of(req.getIndexTypes()));
     }
 
     /**

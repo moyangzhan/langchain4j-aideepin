@@ -16,6 +16,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -67,9 +68,9 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
      * 查询对话{@code uuid}的消息列表
      *
      * @param uuid       对话的uuid
-     * @param maxMsgUuid
-     * @param pageSize
-     * @return
+     * @param maxMsgUuid 最大uuid（转换成id进行判断）
+     * @param pageSize   每页数量
+     * @return 列表
      */
     public ConvMsgListResp detail(String uuid, String maxMsgUuid, int pageSize) {
         Conversation conversation = this.lambdaQuery().eq(Conversation::getUuid, uuid).one();
@@ -218,8 +219,10 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
         return baseMapper.updateById(one) > 0;
     }
 
+    @Transactional
     public boolean softDel(String uuid) {
         Conversation conversation = getOrThrow(uuid);
+        conversationPresetRelService.softDelBy(conversation.getUserId(), conversation.getId());
         return this.lambdaUpdate()
                 .eq(Conversation::getId, conversation.getId())
                 .set(Conversation::getIsDeleted, true)

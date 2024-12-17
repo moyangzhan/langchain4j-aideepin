@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moyz.adi.common.mapper.DrawCommentMapper">
+    <select id="listByPage" resultType="com.moyz.adi.common.dto.DrawCommentDto">
+        select a.uuid        as uuid,
+               c.uuid        as drawUuid,
+               b.uuid        as userUuid,
+               b.name        as userName,
+               a.remark      as remark,
+               a.create_time as createTime
+        from adi_draw_comment a
+                 inner join adi_user b on a.user_id = b.id
+                 inner join adi_draw c on c.id = a.draw_id
+        where a.draw_id = #{drawId}
+          and a.is_deleted = false
+        order by a.id asc
+    </select>
+</mapper>

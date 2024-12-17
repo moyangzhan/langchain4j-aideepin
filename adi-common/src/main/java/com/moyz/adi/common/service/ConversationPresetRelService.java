@@ -22,4 +22,12 @@ public class ConversationPresetRelService extends ServiceImpl<ConversationPreset
                 .list();
         return MPPageUtil.convertToList(list, ConvPresetRelDto.class);
     }
+
+    public boolean softDelBy(Long userId, Long convId) {
+        return this.lambdaUpdate()
+                .eq(ConversationPresetRel::getUserId, userId)
+                .eq(ConversationPresetRel::getUserConvId, convId)
+                .set(ConversationPresetRel::getIsDeleted, true)
+                .update();
+    }
 }

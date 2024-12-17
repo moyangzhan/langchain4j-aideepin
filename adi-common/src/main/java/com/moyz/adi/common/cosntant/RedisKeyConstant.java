@@ -121,4 +121,10 @@ public class RedisKeyConstant {
      * 值：用户id
      */
     public static final String USER_INDEXING = "user:indexing:{0}";
+
+    /**
+     * 用户评论并发限制
+     * 值：用户id
+     */
+    public static final String DRAW_COMMENT_LIMIT_KEY = "user:draw:comment-submitting:{0}";
 }

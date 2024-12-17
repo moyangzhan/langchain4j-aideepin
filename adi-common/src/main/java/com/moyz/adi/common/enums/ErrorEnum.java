@@ -35,6 +35,8 @@ public enum ErrorEnum {
     A_USER_NOT_FOUND("A0030", "用户不存在"),
     A_ACTIVE_CODE_INVALID("A0031", "激活码已失效"),
     A_OLD_PASSWORD_INVALID("A0032", "原密码不正确"),
+    A_OPT_TOO_FREQUENTLY("A0032", "操作太频繁"),
+    A_DRAW_NOT_FOUND("A00233", "绘图记录找不到"),
     B_UNCAUGHT_ERROR("B0001", "未捕捉异常"),
     B_COMMON_ERROR("B0002", "业务出错"),
     B_GLOBAL_ERROR("B0003", "全局异常"),
