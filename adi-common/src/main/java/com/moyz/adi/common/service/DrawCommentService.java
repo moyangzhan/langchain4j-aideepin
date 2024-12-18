@@ -45,7 +45,7 @@ public class DrawCommentService extends ServiceImpl<DrawCommentMapper, DrawComme
         String uuid = UuidUtil.createShort();
         DrawComment newObj = new DrawComment();
         newObj.setUuid(uuid);
-        newObj.setUserId(draw.getUserId());
+        newObj.setUserId(user.getId());
         newObj.setDrawId(draw.getId());
         newObj.setRemark(remark);
         baseMapper.insert(newObj);
