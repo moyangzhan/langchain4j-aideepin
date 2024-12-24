@@ -15,6 +15,8 @@ public class ConvDto {
     @NotBlank
     private String title;
 
+    private String remark;
+
     private Integer tokens;
 
     @Schema(title = "set the system message to ai, ig: you are a lawyer")
