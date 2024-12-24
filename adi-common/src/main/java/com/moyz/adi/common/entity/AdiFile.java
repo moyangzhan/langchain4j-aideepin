@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
 @TableName("adi_file")
 @Schema(title = "文件表")
@@ -21,9 +23,9 @@ public class AdiFile extends BaseEntity {
     @TableField(value = "uuid")
     private String uuid;
 
-    @Schema(title = "md5")
-    @TableField(value = "md5")
-    private String md5;
+    @Schema(title = "sha256")
+    @TableField(value = "sha256")
+    private String sha256;
 
     @Schema(title = "file extension")
     @TableField(value = "ext")

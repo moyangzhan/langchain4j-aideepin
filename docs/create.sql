@@ -168,23 +168,28 @@ execute procedure update_modified_column();
 CREATE TABLE public.adi_conversation
 (
     id                        bigserial primary key,
-    user_id                   bigint                  default 0                     not null,
-    uuid                      character varying(32)   default ''::character varying not null,
-    title                     character varying(45)   default ''::character varying not null,
-    tokens                    integer                 default 0                     not null,
-    ai_system_message         character varying(1000) default ''::character varying not null,
-    understand_context_enable boolean                 default false                 not null,
-    llm_temperature           numeric(2, 1)           default 0.7                   not null,
-    create_time               timestamp               default CURRENT_TIMESTAMP     not null,
-    update_time               timestamp               default CURRENT_TIMESTAMP     not null,
-    is_deleted                boolean                 default false                 not null
+    user_id                   bigint        default 0                 not null,
+    uuid                      varchar(32)   default ''                not null,
+    title                     varchar(45)   default ''                not null,
+    remark                    varchar(500)  default ''                not null,
+    tokens                    integer       default 0                 not null,
+    ai_system_message         varchar(1000) default ''                not null,
+    understand_context_enable boolean       default false             not null,
+    llm_temperature           numeric(2, 1) default 0.7               not null,
+    create_time               timestamp     default CURRENT_TIMESTAMP not null,
+    update_time               timestamp     default CURRENT_TIMESTAMP not null,
+    is_deleted                boolean       default false             not null
 );
 
 COMMENT ON TABLE public.adi_conversation IS '用户会话(角色)表';
 
 COMMENT ON COLUMN public.adi_conversation.user_id IS '用户id';
 
-COMMENT ON COLUMN public.adi_conversation.title IS '标题';
+COMMENT ON COLUMN public.adi_conversation.title IS '标题，如：狄仁杰';
+
+COMMENT ON COLUMN public.adi_conversation.remark IS '备注，如：断案如神、手下能人众多';
+
+COMMENT ON COLUMN public.adi_conversation.ai_system_message IS '角色设定内容，如：你是唐朝的神探狄仁杰，破了很多大案、疑案';
 
 COMMENT ON COLUMN public.adi_conversation.llm_temperature is '指定LLM响应时的创造性/随机性';
 
@@ -278,7 +283,7 @@ CREATE TABLE public.adi_file
     create_time timestamp    default CURRENT_TIMESTAMP not null,
     update_time timestamp    default CURRENT_TIMESTAMP not null,
     is_deleted  boolean      default false             not null,
-    md5         varchar(128) default ''                not null
+    sha256      varchar(64)  default ''                not null
 );
 
 COMMENT ON TABLE public.adi_file IS '文件';
@@ -301,7 +306,7 @@ COMMENT ON COLUMN public.adi_file.update_time IS 'Timestamp of record last updat
 
 COMMENT ON COLUMN public.adi_file.is_deleted IS '0: Normal; 1: Deleted';
 
-COMMENT ON COLUMN public.adi_file.md5 IS 'MD5 hash of the file';
+COMMENT ON COLUMN public.adi_file.sha256 IS 'Hash of the file';
 
 CREATE TRIGGER trigger_file_update_time
     BEFORE UPDATE

@@ -57,10 +57,13 @@ public enum ErrorEnum {
     B_ACTIVE_USER_ERROR("B0016", "激活用户失败"),
     B_RESET_PASSWORD_ERROR("B0017", "重置密码失败"),
     B_IMAGE_LOAD_ERROR("B0018", "加载图片失败"),
+    B_IO_EXCEPTION("B0019", "IO异常"),
+    B_SERVER_EXCEPTION("B0020", "服务端异常"),
+    B_DELETE_FILE_ERROR("B0020", "删除文件异常"),
     C_DRAW_FAIL("C0001", "大模型生成图片失败,原因:{0}");
 
-    private String code;
-    private String info;
+    private final String code;
+    private final String info;
 
     ErrorEnum(String code, String info) {
         this.code = code;

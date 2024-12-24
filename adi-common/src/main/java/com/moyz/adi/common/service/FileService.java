@@ -9,7 +9,7 @@ import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.FileMapper;
 import com.moyz.adi.common.util.FileUtil;
-import com.moyz.adi.common.util.MD5Utils;
+import com.moyz.adi.common.util.HashUtil;
 import com.moyz.adi.common.util.UuidUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
@@ -25,9 +25,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Optional;
 
 import static com.moyz.adi.common.enums.ErrorEnum.*;
+import static org.apache.poi.poifs.crypt.HashAlgorithm.md5;
 
 @Slf4j
 @Service
@@ -52,9 +55,9 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
     private String tmpImagesPath;
 
     public AdiFile writeToLocal(MultipartFile file, boolean image) {
-        String md5 = MD5Utils.md5ByMultipartFile(file);
+        String sha256 = HashUtil.sha256(file);
         Optional<AdiFile> existFile = this.lambdaQuery()
-                .eq(AdiFile::getMd5, md5)
+                .eq(AdiFile::getSha256, md5)
                 .eq(AdiFile::getIsDeleted, false)
                 .oneOpt();
         if (existFile.isPresent()) {
@@ -63,7 +66,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
             if (exist) {
                 return adiFile;
             } else {
-                log.warn("文件不存在,删除记录以便后续重新生成,fileId:{},uuid:{},md5:{}", adiFile.getId(), adiFile.getUuid(), adiFile.getMd5());
+                log.warn("文件不存在,删除记录以便后续重新生成,fileId:{},uuid:{},sha256:{}", adiFile.getId(), adiFile.getUuid(), adiFile.getSha256());
                 this.lambdaUpdate().eq(AdiFile::getId, adiFile.getId()).set(AdiFile::getIsDeleted, true).update();
             }
         }
@@ -72,7 +75,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         AdiFile adiFile = new AdiFile();
         adiFile.setName(file.getOriginalFilename());
         adiFile.setUuid(uuid);
-        adiFile.setMd5(md5);
+        adiFile.setSha256(sha256);
         adiFile.setPath(originalFile.getLeft());
         adiFile.setExt(originalFile.getRight());
         adiFile.setUserId(ThreadContext.getCurrentUserId());
@@ -94,7 +97,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         AdiFile adiFile = new AdiFile();
         adiFile.setName(target.getName());
         adiFile.setUuid(uuid);
-        adiFile.setMd5(MD5Utils.calculateMD5(localPath));
+        adiFile.setSha256(HashUtil.sha256(localPath));
         adiFile.setPath(localPath);
         adiFile.setUserId(user.getId());
         adiFile.setExt("png");
@@ -120,9 +123,12 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
             return;
         }
         if (StringUtils.isNotBlank(adiFile.getPath())) {
-            File file = new File(adiFile.getPath());
-            if (!file.delete()) {
-                log.warn("Delete file error,uuid:{}", uuid);
+            try {
+                if (!Files.deleteIfExists(Paths.get(adiFile.getPath()))) {
+                    log.warn("Delete file fail,uuid:{}", uuid);
+                }
+            } catch (IOException e) {
+                throw new BaseException(B_DELETE_FILE_ERROR);
             }
         }
         this.softDel(uuid);
@@ -207,7 +213,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
             }
             return ImageIO.read(new FileInputStream(currentFilePath));
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new BaseException(B_IO_EXCEPTION);
         }
     }
 

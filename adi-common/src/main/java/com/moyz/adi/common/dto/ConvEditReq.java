@@ -10,6 +10,8 @@ public class ConvEditReq {
     @NotBlank
     private String title;
 
+    private String remark;
+
     @Schema(title = "set the system message to ai, ig: you are a lawyer")
     private String aiSystemMessage;
 

@@ -48,7 +48,7 @@ public class ConversationController {
 
     @PostMapping("/add")
     public ConvDto add(@RequestBody @Validated ConvAddReq convAddReq) {
-        return conversationService.add(convAddReq.getTitle(), convAddReq.getAiSystemMessage());
+        return conversationService.add(convAddReq.getTitle(), convAddReq.getRemark(), convAddReq.getAiSystemMessage());
     }
 
     @Operation(summary = "根据预设会话创建用户自己的会话")

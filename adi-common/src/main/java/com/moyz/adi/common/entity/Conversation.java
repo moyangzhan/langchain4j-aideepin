@@ -30,6 +30,10 @@ public class Conversation extends BaseEntity {
     @TableField("title")
     private String title;
 
+    @Schema(title = "描述")
+    @TableField("remark")
+    private String remark;
+
     @Schema(title = "消耗的token数量")
     @TableField("tokens")
     private Integer tokens;

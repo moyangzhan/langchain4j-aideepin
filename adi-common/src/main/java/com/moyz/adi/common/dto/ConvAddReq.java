@@ -10,5 +10,8 @@ public class ConvAddReq {
 
     @NotBlank
     private String title;
+
+    private String remark;
+
     private String aiSystemMessage;
 }

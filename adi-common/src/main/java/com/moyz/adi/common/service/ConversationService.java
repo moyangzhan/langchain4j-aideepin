@@ -155,7 +155,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
         return this.lambdaQuery().eq(Conversation::getUuid, uuid).oneOpt().orElse(null);
     }
 
-    public ConvDto add(String title, String systemMessage) {
+    public ConvDto add(String title, String remark, String systemMessage) {
         Conversation conversation = this.lambdaQuery()
                 .eq(Conversation::getUserId, ThreadContext.getCurrentUserId())
                 .eq(Conversation::getTitle, title)
@@ -170,6 +170,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
         one.setTitle(title);
         one.setAiSystemMessage(systemMessage);
         one.setUserId(ThreadContext.getCurrentUserId());
+        one.setRemark(remark);
         baseMapper.insert(one);
 
         Conversation conv = this.lambdaQuery().eq(Conversation::getUuid, uuid).one();
@@ -197,7 +198,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
             Conversation conv = this.getById(presetRel.getUserConvId());
             return MPPageUtil.convertTo(conv, ConvDto.class);
         }
-        ConvDto convDto = self.add(presetConv.getTitle(), presetConv.getAiSystemMessage());
+        ConvDto convDto = self.add(presetConv.getTitle(), presetConv.getRemark(), presetConv.getAiSystemMessage());
         conversationPresetRelService.save(
                 ConversationPresetRel.builder()
                         .presetConvId(presetConv.getId())
