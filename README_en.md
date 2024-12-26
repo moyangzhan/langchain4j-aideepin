@@ -1,170 +1,256 @@
 ## Getting Started
 
-[中文](README.md)
+**LangChain4j-AIDeepin is an AI-based productivity enhancement tool.**
 
-**LangChain4j-AIDeepin**
-Langchain4j-aideepin is an open source, offline deployable Retrieval Enhancement Generation (RAG) project based on large language models such as ChatGPT and application frameworks such as Langchain4j.
+*It can be used to assist enterprises/teams in technical research and development, product design, HR/finance/IT information consulting, system/product consulting, customer service support, etc.*
 
-## Website
+> **🌟 If this project is helpful to you, please give it a star 🌟**
+
+## System Composition and Documentation
+
+[中文文档](README.md) | [English](README_en.md)
+
+AIDEEPIN
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|__ Server (langchain4j-aideepin)
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|__ User Web (langchain4j-aideepin-web)
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|__ Admin Web (langchain4j-aideepin-admin)
+
+👉[Detailed Documentation](https://github.com/moyangzhan/langchain4j-aideepin/wiki)
+
+Backend source repository: [github](https://github.com/moyangzhan/langchain4j-aideepin) or [gitee](https://gitee.com/moyangzhan/langchain4j-aideepin)
+
+Frontend projects:
+
+* User Web: langchain4j-aideepin-web
+    * [github](https://github.com/moyangzhan/langchain4j-aideepin-web)
+    * [gitee](https://gitee.com/moyangzhan/langchain4j-aideepin-web)
+* Admin Web: langchain4j-aideepin-admin
+    * [github](https://github.com/moyangzhan/langchain4j-aideepin-admin)
+    * [gitee](https://gitee.com/moyangzhan/langchain4j-aideepin-admin)
+
+## Demo URL
 
 [http://www.aideepin.com](http://www.aideepin.com/)
 
-## Feature
+## Features
 
-* Login & Register
-* Multiple Conversation | Multiple character
-* AI Draw
-* Prompt
-* Quota
-* Knowledge base(RAG)
-* AI Search(RAG)
-* Multiple models switch at will
-* Multiple search engine switch at will
+* Registration & Login
+* Multi-session (multi-role)
+* Image generation (text-to-image, image editing, image-to-image)
+* Prompts
+* Quota control
+* Knowledge base based on large models (RAG)
+    * Vector search
+    * Graph search
+* Search based on large models (RAG)
+* Free switching between multiple models
+* Free switching between multiple search engines
 
-## Support Models
+## Integrated Models:
 
 * ChatGPT 3.5
 * 通义千问
 * 文心一言
-* ollama
+* Ollama
 * DALL-E 2
+* DALL-E 3
 
-## Support Search Engines
+## Integrated Search Engines
 
 Google
 
 Bing (TODO)
 
-百度 (TODO)
+Baidu (TODO)
 
-## Introduction
+## Tech Stack
 
-This repository is a back-end project, front-end project in [langchain4j-aideepin-web](https://github.com/moyangzhan/langchain4j-aideepin-web)
+This repository is for the backend service
 
-Backend：
+Tech stack:
 
-jdk17
+* jdk17
+* springboot3.0.5
+* [langchain4j (Java version of LangChain)](https://github.com/langchain4j/langchain4j)
+* Postgresql
+    * pgvector extension: https://github.com/pgvector/pgvector
+    * Apache AGE extension: https://github.com/apache/age
 
-springboot3.0.5
+Frontend tech stack:
 
-[langchain4j(Java version of LangChain)](https://github.com/langchain4j/langchain4j)
+* vue3
+* vite
+* typescript
+* pnpm
+* pinia
+* naiveui
 
-**Postgresql(Need plugin [pgvector](https://github.com/pgvector/pgvector))**
+## How to Deploy
 
-Frontend：
+### Initialization
 
-vue3+typescript+pnpm
+**a. Initialize the database**
 
-## Build and run this project
+* Create the database `aideepin`
+* Execute `docs/create.sql`
+* Configure models (at least set one) or use the [admin web](https://github.com/moyangzhan/langchain4j-aideepin-admin) to configure on the interface
 
-### Init
+    * Configure AI platforms
+      ```plaintext
+      -- OpenAI secretKey
+      update adi_sys_config set value = '{"secret_key":"my_openai_secret_key"}' where name = 'openai_setting';
+  
+      -- Dashscope API key
+      update adi_sys_config set value = '{"api_key":"my_dashcope_api_key"}' where name = 'dashscope_setting';
+  
+      -- Qianfan API key and secret key
+      update adi_sys_config set value = '{"api_key":"my_qianfan_api_key","secret_key":"my_qianfan_secret_key"}' where name = 'qianfan_setting';
+  
+      -- Ollama configuration
+      update adi_sys_config set value = '{"base_url":"my_ollama_base_url"}' where name = 'ollama_setting';
+      ```
+    * Enable AI platform models or add new models
+      ```
+      -- Enable model
+      update adi_ai_model set is_enable = true where name = 'gpt-3.5-turbo';
+      update adi_ai_model set is_enable = true where name = 'dall-e-2';
+      update adi_ai_model set is_enable = true where name = 'qwen-turbo';
+      update adi_ai_model set is_enable = true where name = 'ernie_speed';
+      update adi_ai_model set is_enable = true where name = 'tinydolphin';
+  
+      -- Add new model
+      INSERT INTO adi_ai_model (name, type, platform, is_enable) VALUES ('vicuna', 'text', 'ollama', true);
+      ```
+* Fill in the search engine configuration
 
-**a. Init database**
+    * Google configuration
+      ```
+      update adi_sys_config set value = '{"url":"https://www.googleapis.com/customsearch/v1","key":"my key from cloud.google.com","cx":"my cx from programmablesearchengine.google.com"}' where name = 'google_setting';
+      ```
 
-* Create database schema: aideepin
-* Run: docs/create.sql
-* Update language model config:
+**b. Modify the configuration file**
 
-Openai setting
+* postgresql: `application-[dev|prod].xml` in `spring.datasource`
+* redis: `application-[dev|prod].xml` in `spring.data.redis`
+* mail: `application.xml` in `spring.mail`
 
-```plaintext
-update adi_sys_config set value = '{"secret_key":"my_openai_secret_key","models":["gpt-3.5-turbo"]}' where name = 'openai_setting';
-```
+### Build and Run
 
-Dashscope setting
+* Enter the project
 
-```plaintext
-update adi_sys_config set value = '{"api_key":"my_dashcope_api_key","models":["my model name,eg:qwen-max"]}' where name = 'dashscope_setting';
-```
+  ```plaintext
+  cd langchain4j-aideepin
+  ```
+* Package:
 
-Qianfan setting
+  ```
+  mvn clean package -Dmaven.test.skip=true
+  ```
+* Run
 
-```plaintext
-update adi_sys_config set value = '{"api_key":"my_qianfan_api_key","secret_key":"my_qianfan_secret_key","models":["my model name,eg:ERNIE-Bot"]}' where name = 'qianfan_setting';
-```
+    * Start with jar:
 
-Ollama setting
+  ```plaintext
+  cd adi-bootstrap/target
+  nohup java -jar -Xms768m -Xmx1024m -XX:+HeapDumpOnOutOfMemoryError adi-bootstrap-0.0.1-SNAPSHOT.jar --spring.profiles.active=[dev|prod] dev/null 2>&1 &
+  ```
 
-```
-update adi_sys_config set value = '{"base_url":"my_ollama_base_url","models":["my model name,eg:tinydolphin"]}' where name = 'ollama_setting';
-```
+    * Start with docker
 
-* Search engine setting
+  ```plaintext
+  cd adi-bootstrap
+  docker build . -t aideepin:0.0.1
+  docker run -d \
+    --name=aideepin \
+    -e APP_PROFILE=[dev|prod] \
+    -v="/data/aideepin/logs:/data/logs" \
+    aideepin:0.0.1
+  ```
 
-Google:
+## TODO:
 
-```
-update adi_sys_config set value = '{"url":"https://www.googleapis.com/customsearch/v1","key":"my key from cloud.google.com","cx":"my cx from programmablesearchengine.google.com"}' where name = 'google_setting';
-```
+* Advanced RAG
+    * Query compression  √
+    * Query routing
+    * Re-rank: support local rerank model
+* AI Chat
+    * Multi-role  √
+    * Preset general roles (created in admin backend)  √
+* Image Models:
+    * DALL-E 2 & DALL-E 3 √
+    * Chat view  √
+    * Gallery view  √
+    * Open/collect images √ 
+    * Image comments √
+* Knowledge Base:
+    * Vector  √
+    * Knowledge graph  √
+    * Set the number of document recalls
+        * Auto-adjust (based on LLM context window size)  √
+        * Manual adjustment  √
+    * Set the minimum score for document recall  √
+    * Set the overlap number when chunking  √
+    * Set temperature when requesting model  √
+    * Strict mode and non-strict mode  √
+    * Answer source  √
+    * Support fetching online documents
+    * FAQ
+    * Comments
+* Multi-modal support
+    * Image  √
+    * Audio
+    * Video
+* Tools
+    * FAQ extraction
+    * Document conversation
+    * Translation
+    * Image processing
+      * Image editing
+      * Image matting
+      * Image expansion
+      * Image synthesis
+      * Background switching
+* Search Engines
+    * Google  √
+    * Bing
+    * Baidu
+* Quota statistics and control
+    * Free quota statistics and limits
+    * Paid quota statistics and limits
+    * Total quota statistics
+* Open API
 
+## Screenshots
 
-**b. Init properties**
-
-* postgresql: spring.datasource in application-[dev|prod].xml
-* redis: spring.data.redis in application-[dev|prod].xml
-* mail: spring.mail in application.xml
-
-### Compile & Run
-
-* Enter the project root directory:
-
-```plaintext
-cd langchain4j-aideepin
-```
-
-* Package：
-
-```
-mvn clean package -Dmaven.test.skip=true
-```
-
-* Run:
-
-a. Run by jar：
-
-```plaintext
-cd adi-bootstrap/target
-nohup java -jar -Xms768m -Xmx1024m -XX:+HeapDumpOnOutOfMemoryError adi-chat-0.0.1-SNAPSHOT.jar --spring.profiles.active=[dev|prod] dev/null 2>&1 &
-```
-
-b. Run by docker
-
-```plaintext
-cd adi-bootstrap
-docker build . -t aideepin:0.0.1
-docker run -d \
-  --name=aideepin \
-  -e APP_PROFILE=[dev|prod] \
-  -v="/data/aideepin/logs:/data/logs" \
-  aideepin:0.0.1
-```
-
-## TODO：
-
-Advanced RAG
-
-More search engine（BING、百度）
-
-## Screenshot
-
-**AI Chat：**
+**AI Chat:**
 ![1691583184761](image/README/1691583184761.png)
 
-**AI Draw：**
+**AI Drawing:**
 
-![1691583124744](image/README/1691583124744.png "AI绘图")
+![draw_001](image/README/draw_001.png "AI Drawing")
 
-**Knowlege base：**
+![draw_002](image/README/draw_002.png "AI Drawing")
+
+**Knowledge Base:**
 ![kbindex](image/README/kbidx.png)
 
 ![kb01](image/README/kb01.png)
 
-**Embedding：**
+**Vectorization:**
 
 ![kb02](image/README/kb02.png)
 
 ![kb03](image/README/kb03.png)
 
-**Quota：**
+**Knowledge Graph:**
 
-!![1691583329105.png](image%2FREADME%2F1691583329105.png)
+![kb_graph_01](image/README/kb_graph_01.png)
+
+![kb_graph_02](image/README/kb_graph_02.png)
+
+**Quota Statistics:**
+
+![1691583329105.png](image%2FREADME%2F1691583329105.png)

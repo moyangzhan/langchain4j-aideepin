@@ -8,6 +8,8 @@
 
 ## 系统组成及文档
 
+[中文文档](README.md) | [English](README_en.md)
+
 AIDEEPIN
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|__ 服务端(langchain4j-aideepin)
@@ -18,7 +20,7 @@ AIDEEPIN
 
 👉[详细文档](https://github.com/moyangzhan/langchain4j-aideepin/wiki)
 
-服务端代码地址：[github](https://github.com/moyangzhan/langchain4j-aideepin)  [gitee](https://gitee.com/moyangzhan/langchain4j-aideepin)
+后端服务代码地址：[github](https://github.com/moyangzhan/langchain4j-aideepin) 或 [gitee](https://gitee.com/moyangzhan/langchain4j-aideepin)
 
 前端项目：
 
@@ -181,7 +183,8 @@ Bing (TODO)
   * DALL-E 2 & DALL-E 3 √
   * 聊天视图  √
   * 画廊视图  √
-  * 开放/收藏图片
+  * 开放/收藏图片  √
+  * 图片评论  √
 * 知识库：
   * 向量  √
   * 知识图谱  √
@@ -204,6 +207,12 @@ Bing (TODO)
   * FAQ提取
   * 文档对话
   * 翻译
+  * 图片处理
+    * 修图
+    * 抠图
+    * 扩图
+    * 合成
+    * 背景切换
 * 搜索引擎
   * Google  √
   * Bing
