@@ -1,4 +1,4 @@
-package com.moyz.adi.common.vo;
+package com.moyz.adi.common.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -8,18 +8,15 @@ import lombok.NoArgsConstructor;
 import java.io.Serial;
 import java.io.Serializable;
 
-/**
- * LLM相关的统计
- */
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class TokenCostStatistic implements Serializable {
+public class RequestTimesStatistic implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private Integer todayTokenCost;
-    private Integer monthTokenCost;
+    private Integer todayRequestTimes;
+    private Integer monthRequestTimes;
 }

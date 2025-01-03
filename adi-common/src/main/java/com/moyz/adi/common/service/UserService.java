@@ -16,9 +16,11 @@ import com.moyz.adi.common.helper.AdiMailSender;
 import com.moyz.adi.common.mapper.UserMapper;
 import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.vo.CostStat;
+import com.moyz.adi.common.vo.TokenCostStatistic;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,7 +30,6 @@ import org.springframework.stereotype.Service;
 
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static com.moyz.adi.common.cosntant.RedisKeyConstant.*;
@@ -36,7 +37,7 @@ import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 /**
  * <p>
- * 用户表 服务实现类
+ * User service implementation class
  * </p>
  *
  * @author moyz
@@ -64,17 +65,24 @@ public class UserService extends ServiceImpl<UserMapper, User> {
     @Value("${spring.application.name}")
     private String appName;
 
+    /**
+     * 通过邮箱获取用户|Get user by email
+     *
+     * @param email 邮箱|email
+     * @return 用户|user
+     */
     public User getByEmail(String email) {
         if (StringUtils.isBlank(email)) {
             throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
         }
-        return this.lambdaQuery()
-                .eq(User::getEmail, email)
-                .eq(User::getIsDeleted, false)
-                .oneOpt()
-                .orElseThrow(() -> new BaseException(A_USER_NOT_EXIST));
+        return this.lambdaQuery().eq(User::getEmail, email).eq(User::getIsDeleted, false).oneOpt().orElseThrow(() -> new BaseException(A_USER_NOT_EXIST));
     }
 
+    /**
+     * 通过邮箱找回密码|Forgot password by email
+     *
+     * @param email 邮箱|email
+     */
     public void forgotPassword(String email) {
         User user = getByEmail(email);
         String code = UuidUtil.createShort();
@@ -83,6 +91,14 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         adiMailSender.send(appName + "重置密码", "点击链接将密码重置为" + AdiConstant.DEFAULT_PASSWORD + "，链接(" + AdiConstant.AUTH_ACTIVE_CODE_EXPIRE + "小时内有效):" + backendUrl + "/auth/password/reset?code=" + code, email);
     }
 
+    /**
+     * 注册|Register
+     *
+     * @param email     邮箱|email
+     * @param password  密码|password
+     * @param captchaId 验证码ID|captcha ID
+     * @param captcha   验证码|captcha
+     */
     public void register(String email, String password, String captchaId, String captcha) {
         //验证码
         String captchaIdKey = MessageFormat.format(AUTH_REGISTER_CAPTCHA_ID, captchaId);
@@ -92,10 +108,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         }
         stringRedisTemplate.delete(captchaInCache);
 
-        User user = ChainWrappers.lambdaQueryChain(baseMapper)
-                .eq(User::getIsDeleted, false)
-                .eq(User::getEmail, email)
-                .one();
+        User user = ChainWrappers.lambdaQueryChain(baseMapper).eq(User::getIsDeleted, false).eq(User::getEmail, email).one();
         if (null != user && user.getUserStatus() == UserStatusEnum.NORMAL) {
             throw new BaseException(A_USER_EXIST);
         }
@@ -119,6 +132,11 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         baseMapper.insert(newOne);
     }
 
+    /**
+     * 重置密码|Reset password
+     *
+     * @param code 重置密码code|reset password code
+     */
     public void resetPassword(String code) {
         String key = MessageFormat.format(FIND_MY_PASSWORD, code);
         String userId = stringRedisTemplate.opsForValue().get(key);
@@ -132,6 +150,12 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         stringRedisTemplate.delete(key);
     }
 
+    /**
+     * 修改密码|Modify password
+     *
+     * @param oldPassword 旧密码|old password
+     * @param newPassword 新密码|new password
+     */
     public void modifyPassword(String oldPassword, String newPassword) {
         User user = ThreadContext.getExistCurrentUser();
 
@@ -146,6 +170,11 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         baseMapper.updateById(updateUser);
     }
 
+    /**
+     * 激活|Activate
+     *
+     * @param activeCode 激活码|activation code
+     */
     public void active(String activeCode) {
         String activeCodeKey = MessageFormat.format(AUTH_ACTIVE_CODE, activeCode);
         String email = stringRedisTemplate.opsForValue().get(activeCodeKey);
@@ -153,11 +182,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
             throw new BaseException(A_ACTIVE_CODE_INVALID);
         }
 
-        User user = this.lambdaQuery()
-                .eq(User::getEmail, email)
-                .eq(User::getIsDeleted, false)
-                .oneOpt()
-                .orElse(null);
+        User user = this.lambdaQuery().eq(User::getEmail, email).eq(User::getIsDeleted, false).oneOpt().orElse(null);
         if (null == user) {
             throw new BaseException(A_USER_NOT_EXIST);
         }
@@ -176,6 +201,11 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         conversationService.createDefault(user.getId());
     }
 
+    /**
+     * 通过UUID激活|Activate by UUID
+     *
+     * @param uuid 用户UUID|user UUID
+     */
     public void activeByUuid(String uuid) {
         User user = this.getByUuidOrThrow(uuid);
         User updateUser = new User();
@@ -185,6 +215,11 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         baseMapper.updateById(updateUser);
     }
 
+    /**
+     * 冻结用户|Freeze user
+     *
+     * @param uuid 用户UUID|user UUID
+     */
     public void freeze(String uuid) {
         User user = this.getByUuidOrThrow(uuid);
         User updateUser = new User();
@@ -193,6 +228,11 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         baseMapper.updateById(updateUser);
     }
 
+    /**
+     * 编辑用户|Edit user
+     *
+     * @param userEditReq 用户编辑请求|user edit request
+     */
     public void editUser(UserEditReq userEditReq) {
         User user = this.getByUuidOrThrow(userEditReq.getUuid());
         User editUser = new User();
@@ -207,6 +247,12 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         baseMapper.updateById(editUser);
     }
 
+    /**
+     * 登录|Login
+     *
+     * @param loginReq 登录请求|login request
+     * @return 登录响应|login response
+     */
     public LoginResp login(LoginReq loginReq) {
         //captcha check
         String failCountKey = MessageFormat.format(RedisKeyConstant.LOGIN_FAIL_COUNT, loginReq.getEmail());
@@ -230,11 +276,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         }
         //captcha check end
 
-        User user = this.lambdaQuery()
-                .eq(User::getIsDeleted, false)
-                .eq(User::getEmail, loginReq.getEmail())
-                .oneOpt()
-                .orElseThrow(() -> new BaseException(ErrorEnum.A_USER_NOT_EXIST));
+        User user = this.lambdaQuery().eq(User::getIsDeleted, false).eq(User::getEmail, loginReq.getEmail()).oneOpt().orElseThrow(() -> new BaseException(ErrorEnum.A_USER_NOT_EXIST));
         if (user.getUserStatus() == UserStatusEnum.WAIT_CONFIRM) {
             throw new BaseException(ErrorEnum.A_USER_WAIT_CONFIRM);
         }
@@ -256,6 +298,11 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         return loginResp;
     }
 
+    /**
+     * 设置并获取登录验证码ID|Set and get login captcha ID
+     *
+     * @return 登录验证码ID|login captcha ID
+     */
     public String setAndGetLoginCaptchaId() {
         String captchaId = UuidUtil.createShort();
         String captchaIdKey = MessageFormat.format(AUTH_LOGIN_CAPTCHA_ID, captchaId);
@@ -263,31 +310,79 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         return captchaId;
     }
 
+    /**
+     * 缓存登录验证码|Cache login captcha
+     *
+     * @param captchaId 验证码ID|captcha ID
+     * @param captcha   验证码|captcha
+     */
     public void cacheLoginCaptcha(String captchaId, String captcha) {
         String captchaIdKey = MessageFormat.format(AUTH_LOGIN_CAPTCHA_ID, captchaId);
         stringRedisTemplate.opsForValue().set(captchaIdKey, captcha, AdiConstant.AUTH_CAPTCHA_ID_EXPIRE, TimeUnit.HOURS);
     }
 
+    /**
+     * 缓存注册验证码|Cache register captcha
+     *
+     * @param captchaId 验证码ID|captcha ID
+     * @param captcha   验证码|captcha
+     */
     public void cacheRegisterCaptcha(String captchaId, String captcha) {
         String captchaIdKey = MessageFormat.format(AUTH_REGISTER_CAPTCHA_ID, captchaId);
         stringRedisTemplate.opsForValue().set(captchaIdKey, captcha, AdiConstant.AUTH_CAPTCHA_ID_EXPIRE, TimeUnit.HOURS);
     }
 
+    /**
+     * 获取配置|Get config
+     *
+     * @return 配置响应|config response
+     */
     public ConfigResp getConfig() {
         ConfigResp result = new ConfigResp();
         User user = ThreadContext.getCurrentUser();
-        BeanUtils.copyProperties(user, result);
 
-        CostStat costStat = userDayCostService.costStatByUser(user.getId(), false);
-        result.setTodayTokenCost(costStat.getTextTokenCostByDay());
-        result.setTodayRequestTimes(costStat.getTextRequestTimesByDay());
-        result.setTodayGeneratedImageNumber(costStat.getImageGeneratedNumberByDay());
-        result.setCurrMonthTokenCost(costStat.getTextTokenCostByMonth());
-        result.setCurrMonthRequestTimes(costStat.getTextRequestTimesByMonth());
-        result.setCurrMonthGeneratedImageNumber(costStat.getImageGeneratedNumberByMonth());
+        result.setContextMsgPairNum(user.getUnderstandContextMsgPairNum());
+        //User quota
+        result.setUserQuota(UserQuota.builder().requestTimesByDay(user.getQuotaByRequestDaily()).requestTimesByMonth(user.getQuotaByRequestMonthly()).drawByDay(user.getQuotaByImageDaily()).drawByMonth(user.getQuotaByImageMonthly()).tokenByDay(user.getQuotaByTokenDaily()).tokenByMonth(user.getQuotaByTokenMonthly()).build());
+        //User cost
+        CostStatResp quotaCostResp = new CostStatResp();
+        setPaidCostStat(user, quotaCostResp);
+        setFreeCostStat(user, quotaCostResp);
+        result.setQuotaCost(quotaCostResp);
         return result;
     }
 
+    /**
+     * 设置付费费用统计|Set paid cost statistics
+     *
+     * @param user          用户|user
+     * @param quotaCostResp 配额费用响应|quota cost response
+     */
+    private void setPaidCostStat(User user, CostStatResp quotaCostResp) {
+        CostStat cost = userDayCostService.costStatByUser(user.getId(), false);
+        quotaCostResp.setPaidTokenCost(TokenCostStatistic.builder().todayTokenCost(cost.getTextTokenCostByDay()).monthTokenCost(cost.getTextTokenCostByMonth()).build());
+        quotaCostResp.setPaidRequestTimes(RequestTimesStatistic.builder().todayRequestTimes(cost.getTextRequestTimesByDay()).monthRequestTimes(cost.getTextRequestTimesByMonth()).build());
+        quotaCostResp.setPaidDrawTimes(DrawTimesStatistic.builder().todayDrawTimes(cost.getDrawTimesByDay()).monthDrawTimes(cost.getDrawTimesByMonth()).build());
+    }
+
+    /**
+     * 设置免费费用统计|Set free cost statistics
+     *
+     * @param user          用户|user
+     * @param quotaCostResp 配额费用响应|quota cost response
+     */
+    private void setFreeCostStat(@NotNull User user, CostStatResp quotaCostResp) {
+        CostStat cost = userDayCostService.costStatByUser(user.getId(), true);
+        quotaCostResp.setFreeTokenCost(TokenCostStatistic.builder().todayTokenCost(cost.getTextTokenCostByDay()).monthTokenCost(cost.getTextTokenCostByMonth()).build());
+        quotaCostResp.setFreeRequestTimes(RequestTimesStatistic.builder().todayRequestTimes(cost.getTextRequestTimesByDay()).monthRequestTimes(cost.getTextRequestTimesByMonth()).build());
+        quotaCostResp.setFreeDrawTimes(DrawTimesStatistic.builder().todayDrawTimes(cost.getDrawTimesByDay()).monthDrawTimes(cost.getDrawTimesByMonth()).build());
+    }
+
+    /**
+     * 更新配置|Update config
+     *
+     * @param userUpdateReq 用户更新请求|user update request
+     */
     public void updateConfig(UserUpdateReq userUpdateReq) {
         User user = new User();
         user.setId(ThreadContext.getCurrentUserId());
@@ -295,6 +390,9 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         baseMapper.updateById(user);
     }
 
+    /**
+     * 注销|Logout
+     */
     public void logout() {
         String token = ThreadContext.getToken();
         if (null == token) {
@@ -305,6 +403,12 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         stringRedisTemplate.delete(tokenKey);
     }
 
+    /**
+     * 设置用户的登录令牌|Set the login token for the user
+     *
+     * @param user 要设置登录令牌的用户|the user for whom the login token is being set
+     * @return 生成的登录令牌|the generated login token
+     */
     private String setLoginToken(User user) {
         if (user.getQuotaByTokenDaily() == 0) {
             user.setQuotaByTokenDaily(Integer.parseInt(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.QUOTA_BY_TOKEN_DAILY)));
@@ -333,9 +437,9 @@ public class UserService extends ServiceImpl<UserMapper, User> {
     }
 
     /**
-     * 发送激活链接
+     * 发送激活链接|Send activation email
      *
-     * @param email 用户邮箱
+     * @param email 用户邮箱|user email
      */
     public void sendActiveEmail(String email) {
         String activeCode = UuidUtil.createShort();
@@ -344,17 +448,33 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         adiMailSender.send("欢迎注册AIDeepIn", "激活链接(" + AdiConstant.AUTH_ACTIVE_CODE_EXPIRE + "小时内有效):" + backendUrl + "/auth/active?code=" + activeCode, email);
     }
 
+    /**
+     * 通过用户ID获取用户|Get user by user ID
+     *
+     * @param id 用户ID|user ID
+     * @return 用户|user
+     */
     @Cacheable(cacheNames = USER_INFO, condition = "#id>0", key = "#p0")
     public User getByUserId(Long id) {
         return ChainWrappers.lambdaQueryChain(baseMapper).eq(User::getId, id).one();
     }
 
+    /**
+     * 通过UUID获取用户|Get user by UUID
+     *
+     * @param uuid 用户UUID|user UUID
+     * @return 用户|user
+     */
     public User getByUuid(String uuid) {
-        return ChainWrappers.lambdaQueryChain(baseMapper)
-                .eq(User::getUuid, uuid)
-                .one();
+        return ChainWrappers.lambdaQueryChain(baseMapper).eq(User::getUuid, uuid).one();
     }
 
+    /**
+     * 通过UUID获取用户，如果不存在则抛出异常|Get user by UUID or throw exception if not exist
+     *
+     * @param uuid 用户UUID|user UUID
+     * @return 用户|user
+     */
     public User getByUuidOrThrow(String uuid) {
         User user = this.getByUuid(uuid);
         if (null == user) {
@@ -363,6 +483,14 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         return user;
     }
 
+    /**
+     * 搜索用户|Search users
+     *
+     * @param req         用户搜索请求|user search request
+     * @param currentPage 当前页码|current page number
+     * @param pageSize    每页大小|page size
+     * @return 用户信息分页|page of user information
+     */
     public Page<UserInfoDto> search(UserSearchReq req, Integer currentPage, Integer pageSize) {
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.isNotBlank(req.getName())) {
@@ -393,11 +521,14 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         return MPPageUtil.convertToPage(page, result, UserInfoDto.class);
     }
 
+    /**
+     * 添加用户|Add user
+     *
+     * @param addUserReq 添加用户请求|add user request
+     * @return 用户信息|user information
+     */
     public UserInfoDto addUser(UserAddReq addUserReq) {
-        User user = this.lambdaQuery()
-                .eq(User::getIsDeleted, false)
-                .eq(User::getEmail, addUserReq.getEmail())
-                .one();
+        User user = this.lambdaQuery().eq(User::getIsDeleted, false).eq(User::getEmail, addUserReq.getEmail()).one();
         if (null != user) {
             throw new BaseException(A_USER_EXIST);
         }

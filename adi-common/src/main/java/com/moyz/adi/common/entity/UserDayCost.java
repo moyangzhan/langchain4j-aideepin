@@ -20,16 +20,16 @@ public class UserDayCost extends BaseEntity {
     private Integer day;
 
     @Schema(title = "请求量")
-    @TableField(value = "requests")
-    private Integer requests;
+    @TableField(value = "request_times")
+    private Integer requestTimes;
 
     @Schema(title = "token数量")
     @TableField(value = "tokens")
     private Integer tokens;
 
-    @Schema(title = "The number of generated images")
-    @TableField(value = "images_number")
-    private Integer imagesNumber;
+    @Schema(title = "绘图次数")
+    @TableField(value = "draw_times")
+    private Integer drawTimes;
 
     @Schema(title = "是：免费额度；否：收费额度")
     @TableField(value = "is_free")

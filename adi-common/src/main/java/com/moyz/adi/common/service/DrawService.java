@@ -239,18 +239,18 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
             updateDrawSuccess(draw.getId(), respImagesPath, imageUuidsJoin);
 
             //Update the cost of current user
-            boolean tokenIsFree = imageModelService.getAiModel().getIsFree();
-            UserDayCost userDayCost = userDayCostService.getTodayCost(user, tokenIsFree);
+            boolean modelIsFree = imageModelService.getAiModel().getIsFree();
+            UserDayCost userDayCost = userDayCostService.getTodayCost(user, modelIsFree);
             UserDayCost saveOrUpdateInst = new UserDayCost();
             if (null == userDayCost) {
                 saveOrUpdateInst.setUserId(user.getId());
                 saveOrUpdateInst.setDay(LocalDateTimeUtil.getToday());
-                saveOrUpdateInst.setImagesNumber(images.size());
+                saveOrUpdateInst.setDrawTimes(1);
             } else {
                 saveOrUpdateInst.setId(userDayCost.getId());
-                saveOrUpdateInst.setImagesNumber(userDayCost.getImagesNumber() + images.size());
+                saveOrUpdateInst.setDrawTimes(userDayCost.getDrawTimes() + 1);
             }
-            saveOrUpdateInst.setIsFree(tokenIsFree);
+            saveOrUpdateInst.setIsFree(modelIsFree);
             userDayCostService.saveOrUpdate(saveOrUpdateInst);
         } catch (BaseException e) {
             log.error("createFromRemote error", e);

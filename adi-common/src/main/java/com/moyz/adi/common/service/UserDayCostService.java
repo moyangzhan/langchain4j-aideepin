@@ -40,11 +40,11 @@ public class UserDayCostService extends ServiceImpl<UserDayCostMapper, UserDayCo
             saveOrUpdateInst.setUserId(user.getId());
             saveOrUpdateInst.setDay(LocalDateTimeUtil.getToday());
             saveOrUpdateInst.setTokens(tokens);
-            saveOrUpdateInst.setRequests(1);
+            saveOrUpdateInst.setRequestTimes(1);
         } else {
             saveOrUpdateInst.setId(userDayCost.getId());
             saveOrUpdateInst.setTokens(userDayCost.getTokens() + tokens);
-            saveOrUpdateInst.setRequests(userDayCost.getRequests() + 1);
+            saveOrUpdateInst.setRequestTimes(userDayCost.getRequestTimes() + 1);
         }
         saveOrUpdateInst.setIsFree(isFree);
         self.saveOrUpdate(saveOrUpdateInst);
@@ -64,12 +64,12 @@ public class UserDayCostService extends ServiceImpl<UserDayCostMapper, UserDayCo
                 .list();
         for (UserDayCost userDayCost : userDayCostList) {
             result.setTextTokenCostByMonth(result.getTextTokenCostByMonth() + userDayCost.getTokens());
-            result.setTextRequestTimesByMonth(result.getTextRequestTimesByMonth() + userDayCost.getRequests());
-            result.setImageGeneratedNumberByMonth(result.getImageGeneratedNumberByMonth() + userDayCost.getImagesNumber());
+            result.setTextRequestTimesByMonth(result.getTextRequestTimesByMonth() + userDayCost.getRequestTimes());
+            result.setDrawTimesByMonth(result.getDrawTimesByMonth() + userDayCost.getDrawTimes());
             if (userDayCost.getDay() == today) {
                 result.setTextTokenCostByDay(userDayCost.getTokens());
-                result.setTextRequestTimesByDay(userDayCost.getRequests());
-                result.setImageGeneratedNumberByDay(userDayCost.getImagesNumber());
+                result.setTextRequestTimesByDay(userDayCost.getRequestTimes());
+                result.setDrawTimesByDay(userDayCost.getDrawTimes());
             }
             result.setFree(userDayCost.getIsFree());
         }

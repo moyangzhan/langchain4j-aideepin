@@ -394,24 +394,24 @@ CREATE TABLE public.adi_user_day_cost
     id            bigserial primary key,
     user_id       bigint    default 0                 not null,
     day           integer   default 0                 not null,
-    requests      integer   default 0                 not null,
     tokens        integer   default 0                 not null,
+    draw_times    integer   default 0                 not null,
+    request_times integer   default 0                 not null,
     is_free       boolean   default false             not null,
     create_time   timestamp default CURRENT_TIMESTAMP not null,
     update_time   timestamp default CURRENT_TIMESTAMP not null,
-    images_number integer   default 0                 not null,
     is_deleted    boolean   default false             not null
 );
 
 COMMENT ON TABLE public.adi_user_day_cost IS '用户每天消耗总量表 | User daily consumption table';
 COMMENT ON COLUMN public.adi_user_day_cost.user_id IS '用户ID | User ID';
 COMMENT ON COLUMN public.adi_user_day_cost.day IS '日期，用7位整数表示，如20230901 | Date, represented as a 7-digit integer, e.g., 20230901';
-COMMENT ON COLUMN public.adi_user_day_cost.requests IS '请求数量 | Number of requests';
+COMMENT ON COLUMN public.adi_user_day_cost.request_times IS '请求数量 | Number of requests';
 COMMENT ON COLUMN public.adi_user_day_cost.tokens IS '消耗的token数量 | Number of tokens consumed';
 COMMENT ON COLUMN public.adi_user_day_cost.is_free IS '是：免费额度(即该行统计的是免费模型消耗的额度)；否：收费额度(即该行统计的是收费模型消耗的额度) | Yes: Free quota (the row counts the consumption of free models); No: Paid quota (the row counts the consumption of paid models)';
 COMMENT ON COLUMN public.adi_user_day_cost.create_time IS '记录创建的时间戳 | Timestamp of record creation';
 COMMENT ON COLUMN public.adi_user_day_cost.update_time IS '记录最后更新的时间戳，自动更新 | Timestamp of record last update, automatically updated on each update';
-COMMENT ON COLUMN public.adi_user_day_cost.images_number IS '图片数量 | Number of images';
+COMMENT ON COLUMN public.adi_user_day_cost.draw_times IS '图片数量 | Number of images';
 
 CREATE TRIGGER trigger_user_day_cost_update_time
     BEFORE UPDATE
@@ -737,8 +737,9 @@ INSERT INTO adi_ai_model (name, type, platform, context_window, max_input_tokens
                           is_enable)
 VALUES ('qwen2-vl-7b-instruct', 'text', 'dashscope', 32768, 16384, 16384, 'text,image', false);
 -- https://console.bce.baidu.com/qianfan/modelcenter/model/buildIn/detail/am-bg7n2rn2gsbb
-INSERT INTO adi_ai_model (name, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable, setting)
-VALUES ('ERNIE-Speed-8K', 'text', 'qianfan', 131072, 126976, 4096, false, '{"endpoint":"ernie-speed-128k"}');
+INSERT INTO adi_ai_model (name, type, platform, context_window, max_input_tokens, max_output_tokens, is_free, is_enable,
+                          setting)
+VALUES ('ERNIE-Speed-128K', 'text', 'qianfan', 131072, 126976, 4096, true, false, '{"endpoint":"ernie-speed-128k"}');
 INSERT INTO adi_ai_model (name, type, platform, is_enable)
 VALUES ('tinydolphin', 'text', 'ollama', false);
 
