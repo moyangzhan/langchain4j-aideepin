@@ -165,12 +165,11 @@ class AdiDefaultAiServices<T> extends AiServices<T> {
                             chatMemory.add(userMessage);
                         }
 
-                        List<ChatMessage> messages;
+                        List<ChatMessage> messages = new ArrayList<>();
+                        systemMessage.ifPresent(messages::add);
                         if (context.hasChatMemory()) {
-                            messages = context.chatMemory(memoryId).messages();
+                            messages.addAll(context.chatMemory(memoryId).messages());
                         } else {
-                            messages = new ArrayList<>();
-                            systemMessage.ifPresent(messages::add);
                             messages.add(userMessage);
                         }
 
