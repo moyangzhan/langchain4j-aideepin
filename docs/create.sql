@@ -728,7 +728,7 @@ VALUES ('quota_by_qa_item_monthly', '100');
 -- store_location: 1表示存储到本地,2表示存储到阿里云oss
 INSERT INTO adi_sys_config (name, value)
 VALUES ('storage_location', '1');
--- endpoint: 如：https://oss-cn-hangzhou.aliyuncs.com
+-- endpoint: 如：oss-cn-hangzhou.aliyuncs.com
 INSERT INTO adi_sys_config (name, value)
 VALUES ('storage_location_ali_oss', '{"access_key_id":"","access_key_secret":"","endpoint":"","bucketName":""}');
 
