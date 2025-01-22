@@ -10,5 +10,6 @@ public class AliOssConfig {
     private String accessKeyId;
     @JsonProperty("access_key_secret")
     private String accessKeySecret;
+    @JsonProperty("bucket_name")
     private String bucketName;
 }

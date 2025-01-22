@@ -730,7 +730,7 @@ INSERT INTO adi_sys_config (name, value)
 VALUES ('storage_location', '1');
 -- endpoint: 如：oss-cn-hangzhou.aliyuncs.com
 INSERT INTO adi_sys_config (name, value)
-VALUES ('storage_location_ali_oss', '{"access_key_id":"","access_key_secret":"","endpoint":"","bucketName":""}');
+VALUES ('storage_location_ali_oss', '{"access_key_id":"","access_key_secret":"","endpoint":"","bucket_name":""}');
 
 -- 大语言模型
 -- https://platform.openai.com/docs/models/gpt-3-5-turbo
