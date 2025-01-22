@@ -1,5 +1,7 @@
 package com.moyz.adi.common.util;
 
+import cn.hutool.core.img.ImgUtil;
+import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.exception.BaseException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
@@ -8,7 +10,10 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -18,7 +23,7 @@ import java.nio.file.Paths;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 @Slf4j
-public class FileUtil {
+public class LocalFileUtil {
 
     public static Pair<String, String> saveToLocal(MultipartFile file, String path, String newName) {
         if (file.isEmpty()) {
@@ -39,6 +44,35 @@ public class FileUtil {
         return new ImmutablePair<>(pathName, fileExt);
     }
 
+    /**
+     * 读取图片到BufferedImage
+     *
+     * @param adiFile        图片实体类
+     * @param thumbnail      读取的是缩略图
+     * @param thumbnailsPath 缩略图路径
+     * @return 图片内容
+     */
+    public static BufferedImage readLocalImage(AdiFile adiFile, boolean thumbnail, String thumbnailsPath) {
+        try {
+            String currentFilePath = adiFile.getPath();
+            if (thumbnail) {
+                currentFilePath = thumbnailsPath + adiFile.getUuid() + "." + adiFile.getExt();
+                //不存在则创建
+                if (new File(adiFile.getPath()).exists() && !new File(currentFilePath).exists()) {
+                    ImgUtil.scale(
+                            cn.hutool.core.io.FileUtil.file(adiFile.getPath()),
+                            cn.hutool.core.io.FileUtil.file(currentFilePath),
+                            0.2f
+                    );
+                }
+            }
+            return ImageIO.read(new FileInputStream(currentFilePath));
+        } catch (IOException e) {
+            log.error("read image error", e);
+            throw new BaseException(B_IO_EXCEPTION);
+        }
+    }
+
     public static byte[] readBytes(String localPath) {
         try {
             return FileUtils.readFileToByteArray(new File(localPath));
@@ -56,7 +90,8 @@ public class FileUtil {
             // 文件名中没有后缀或者后缀位于文件名的末尾
             return "";
         } else {
-            return fileName.substring(dotIndex + 1);
+            int endIndex = fileName.indexOf("?");
+            return fileName.substring(dotIndex + 1, endIndex);
         }
     }
 

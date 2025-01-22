@@ -37,6 +37,8 @@ public class KbItemDto {
 
     private String sourceFileUuid;
 
+    private String sourceFileUrl;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;

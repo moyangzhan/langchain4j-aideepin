@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.util.Strings;
 import org.apache.poi.ss.formula.functions.T;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,6 +43,7 @@ import java.util.stream.Collectors;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.GenerateImage.*;
 import static com.moyz.adi.common.cosntant.AdiConstant.MP_LIMIT_1;
+import static com.moyz.adi.common.cosntant.AdiConstant.URL_PREFIX_IMAGE;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 @Slf4j
@@ -227,7 +229,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
             }
             List<String> imageUuids = new ArrayList<>();
             images.forEach(imageUrl -> {
-                String imageUuid = fileService.saveImageToLocal(user, imageUrl);
+                String imageUuid = fileService.saveImageFromUrl(user, imageUrl);
                 imageUuids.add(imageUuid);
             });
             String imageUuidsJoin = String.join(",", imageUuids);
@@ -591,15 +593,18 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
             images.addAll(Arrays.asList(imageUuids));
         }
         dto.setImageUuids(images);
+        dto.setImageUrls(fileService.getUrls(images));
 
-        if (StringUtils.isNotBlank(draw.getOriginalImage())) {
-            dto.setOriginalImageUuid(draw.getOriginalImage());
-        }
-        if (StringUtils.isNotBlank(draw.getMaskImage())) {
-            dto.setMaskImageUuid(draw.getMaskImage());
-        }
+        dto.setOriginalImageUuid(StringUtils.defaultString(draw.getOriginalImage(), Strings.EMPTY));
+        String originalUrl = fileService.getUrl(draw.getOriginalImage());
+        dto.setOriginalImageUrl(StringUtils.defaultString(originalUrl, Strings.EMPTY));
+
+        dto.setMaskImageUuid(StringUtils.defaultString(draw.getMaskImage(), Strings.EMPTY));
+        String maskUrl = fileService.getUrl(draw.getMaskImage());
+        dto.setMaskImageUrl(StringUtils.defaultString(maskUrl, Strings.EMPTY));
         boolean isStarred = drawStarService.isStarred(draw.getId(), dto.getUserId());
         dto.setIsStar(isStarred);
+
         //User
         User user = userService.getByUserId(dto.getUserId());
         if (null != user) {

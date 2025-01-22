@@ -1,5 +1,6 @@
 package com.moyz.adi.common.service;
 
+import com.moyz.adi.common.helper.AliyunOssHelper;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,9 @@ public class Initializer {
     @Resource
     private SysConfigService sysConfigService;
 
+    @Resource
+    private AliyunOssHelper aliyunOssHelper;
+
     /**
      * 应用初始化
      */
@@ -33,6 +37,7 @@ public class Initializer {
     public void init() {
         sysConfigService.loadAndCache();
         aiModelService.init();
+        aliyunOssHelper.init();
     }
 
     /**
@@ -41,5 +46,6 @@ public class Initializer {
     @Scheduled(initialDelay = 10 * 60 * 1000, fixedDelay = 10 * 60 * 1000)
     public void reloadConfig() {
         sysConfigService.loadAndCache();
+        aliyunOssHelper.init();
     }
 }

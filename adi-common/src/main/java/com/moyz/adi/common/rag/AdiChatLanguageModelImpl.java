@@ -14,8 +14,8 @@ import java.util.function.Consumer;
  */
 public class AdiChatLanguageModelImpl implements ChatLanguageModel {
 
-    private ChatLanguageModel chatLanguageModel;
-    private Consumer<Response<AiMessage>> consumer;
+    private final ChatLanguageModel chatLanguageModel;
+    private final Consumer<Response<AiMessage>> consumer;
 
     public AdiChatLanguageModelImpl(ChatLanguageModel chatLanguageModel, Consumer<Response<AiMessage>> consumer) {
         this.chatLanguageModel = chatLanguageModel;

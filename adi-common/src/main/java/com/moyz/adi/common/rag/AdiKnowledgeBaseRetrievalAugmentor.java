@@ -20,22 +20,29 @@ import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.rag.query.transformer.DefaultQueryTransformer;
 import dev.langchain4j.rag.query.transformer.QueryTransformer;
 import lombok.Builder;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Collections.*;
+import static java.util.Collections.emptyMap;
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.concurrent.CompletableFuture.supplyAsync;
-import static java.util.stream.Collectors.*;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toMap;
 
 /**
  * 知识库召回增强器<br/>
@@ -67,10 +74,18 @@ public class AdiKnowledgeBaseRetrievalAugmentor implements RetrievalAugmentor {
         this.queryRouter = ensureNotNull(queryRouter, "queryRouter");
         this.contentAggregator = getOrDefault(contentAggregator, DefaultContentAggregator::new);
         this.contentInjector = getOrDefault(contentInjector, DefaultContentInjector::new);
-        this.executor = getOrDefault(executor, Executors::newCachedThreadPool);
+        this.executor = getOrDefault(executor, AdiKnowledgeBaseRetrievalAugmentor::createDefaultExecutor);
 
         this.inputAdaptorMsgConsumer = inputAdaptorMsgConsumer;
         this.maxInputTokens = maxInputTokens;
+    }
+
+    private static ExecutorService createDefaultExecutor() {
+        return new ThreadPoolExecutor(
+                0, Integer.MAX_VALUE,
+                1, SECONDS,
+                new SynchronousQueue<>()
+        );
     }
 
     /**
@@ -97,25 +112,12 @@ public class AdiKnowledgeBaseRetrievalAugmentor implements RetrievalAugmentor {
         }));
         //=======aideepin --end
 
-        Query originalQuery = Query.from(chatMessage.text(), validMetadata);
+        Query originalQuery = Query.from(chatMessage.text(), metadata);
 
         Collection<Query> queries = queryTransformer.transform(originalQuery);
         logQueries(originalQuery, queries);
 
-        Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents = new ConcurrentHashMap<>();
-        queries.forEach(query -> {
-            CompletableFuture<Collection<List<Content>>> futureContents =
-                    supplyAsync(() -> {
-                                Collection<ContentRetriever> retrievers = queryRouter.route(query);
-                                log(query, retrievers);
-                                return retrievers;
-                            },
-                            executor
-                    ).thenCompose(retrievers -> retrieveFromAll(retrievers, query));
-            queryToFutureContents.put(query, futureContents);
-        });
-
-        Map<Query, Collection<List<Content>>> queryToContents = join(queryToFutureContents);
+        Map<Query, Collection<List<Content>>> queryToContents = process(queries);
 
         List<Content> contents = contentAggregator.aggregate(queryToContents);
         log(queryToContents, contents);
@@ -127,25 +129,56 @@ public class AdiKnowledgeBaseRetrievalAugmentor implements RetrievalAugmentor {
         ChatMessage augmentedChatMessage = contentInjector.inject(validContents, chatMessage);
         log(augmentedChatMessage);
 
-
         return AugmentationResult.builder()
                 .chatMessage(augmentedChatMessage)
                 .contents(validContents)
                 .build();
     }
 
+    private Map<Query, Collection<List<Content>>> process(Collection<Query> queries) {
+        if (queries.size() == 1) {
+            Query query = queries.iterator().next();
+            Collection<ContentRetriever> retrievers = queryRouter.route(query);
+            if (retrievers.size() == 1) {
+                ContentRetriever contentRetriever = retrievers.iterator().next();
+                List<Content> contents = contentRetriever.retrieve(query);
+                return singletonMap(query, singletonList(contents));
+            } else if (retrievers.size() > 1) {
+                Collection<List<Content>> contents = retrieveFromAll(retrievers, query).join();
+                return singletonMap(query, contents);
+            } else {
+                return emptyMap();
+            }
+        } else if (queries.size() > 1) {
+            Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents = new ConcurrentHashMap<>();
+            queries.forEach(query -> {
+                CompletableFuture<Collection<List<Content>>> futureContents =
+                        supplyAsync(() -> {
+                                    Collection<ContentRetriever> retrievers = queryRouter.route(query);
+                                    log(query, retrievers);
+                                    return retrievers;
+                                },
+                                executor
+                        ).thenCompose(retrievers -> retrieveFromAll(retrievers, query));
+                queryToFutureContents.put(query, futureContents);
+            });
+            return join(queryToFutureContents);
+        } else {
+            return emptyMap();
+        }
+    }
+
     private CompletableFuture<Collection<List<Content>>> retrieveFromAll(Collection<ContentRetriever> retrievers,
                                                                          Query query) {
         List<CompletableFuture<List<Content>>> futureContents = retrievers.stream()
                 .map(retriever -> supplyAsync(() -> retrieve(retriever, query), executor))
-                .collect(toList());
+                .toList();
 
         return allOf(futureContents.toArray(new CompletableFuture[0]))
                 .thenApply(ignored ->
                         futureContents.stream()
                                 .map(CompletableFuture::join)
-                                .collect(toList())
-                );
+                                .toList());
     }
 
     private static List<Content> retrieve(ContentRetriever retriever, Query query) {
@@ -173,7 +206,7 @@ public class AdiKnowledgeBaseRetrievalAugmentor implements RetrievalAugmentor {
                 log.debug("Transformed original query '{}' into '{}'",
                         originalQuery.text(), transformedQuery.text());
             }
-        } else {
+        } else if (log.isDebugEnabled()){
             log.debug("Transformed original query '{}' into the following queries:\n{}",
                     originalQuery.text(), queries.stream()
                             .map(Query::text)
@@ -187,7 +220,7 @@ public class AdiKnowledgeBaseRetrievalAugmentor implements RetrievalAugmentor {
         if (retrievers.size() == 1) {
             log.debug("Routing query '{}' to the following retriever: {}",
                     query.text(), retrievers.iterator().next());
-        } else {
+        } else if (log.isDebugEnabled()) {
             log.debug("Routing query '{}' to the following retrievers:\n{}",
                     query.text(), retrievers.stream()
                             .map(retriever -> "- " + retriever.toString())
@@ -200,13 +233,26 @@ public class AdiKnowledgeBaseRetrievalAugmentor implements RetrievalAugmentor {
         log.debug("Retrieved {} contents using query '{}' and retriever '{}'",
                 contents.size(), query.text(), retriever);
 
-        if (contents.size() > 0) {
-            log.trace("Retrieved {} contents using query '{}' and retriever '{}':\n{}",
-                    contents.size(), query.text(), retriever, contents.stream()
-                            .map(Content::textSegment)
-                            .map(segment -> "- " + escapeNewlines(segment.text()))
-                            .collect(joining("\n")));
+        if (!log.isTraceEnabled()) {
+            return;
         }
+
+        if (!contents.isEmpty()) {
+            final var contentsSting = contents.stream()
+                    .map(Content::textSegment)
+                    .map(segment -> "- " + escapeNewlines(segment.text()))
+                    .collect(joining("\n"));
+            log.trace("Retrieved {} contents using query '{}' and retriever '{}':\n{}",
+                    contents.size(),
+                    query.text(),
+                    retriever.getClass().getName(),
+                    contentsSting);
+        } else {
+            log.trace("Retrieved 0 contents using query '{}' and retriever '{}'",
+                    query.text(),
+                    retriever.getClass().getName());
+        }
+
     }
 
     private static void log(Map<Query, Collection<List<Content>>> queryToContents, List<Content> contents) {
@@ -223,15 +269,21 @@ public class AdiKnowledgeBaseRetrievalAugmentor implements RetrievalAugmentor {
 
         log.debug("Aggregated {} content(s) into {}", contentCount, contents.size());
 
-        log.trace("Aggregated {} content(s) into:\n{}",
-                contentCount, contents.stream()
-                        .map(Content::textSegment)
-                        .map(segment -> "- " + escapeNewlines(segment.text()))
-                        .collect(joining("\n")));
+        if (log.isTraceEnabled()) {
+            log.trace("Aggregated {} content(s) into:\n{}",
+                    contentCount, contents.stream()
+                            .map(Content::textSegment)
+                            .map(segment -> "- " + escapeNewlines(segment.text()))
+                            .collect(joining("\n")));
+        }
     }
 
     private static void log(ChatMessage augmentedChatMessage) {
-        log.trace("Augmented chat message: {}", escapeNewlines(augmentedChatMessage.text()));
+        if (log.isTraceEnabled()) {
+            log.trace("Augmented chat message: {}",
+                    escapeNewlines(augmentedChatMessage.text())
+            );
+        }
     }
 
     private static String escapeNewlines(String text) {
@@ -244,9 +296,64 @@ public class AdiKnowledgeBaseRetrievalAugmentor implements RetrievalAugmentor {
 
     public static class AdiKnowledgeBaseRetrievalAugmentorBuilder {
 
+        private QueryTransformer queryTransformer;
+        private QueryRouter queryRouter;
+        private ContentAggregator contentAggregator;
+        private ContentInjector contentInjector;
+        private Executor executor;
+
+        private Consumer<InputAdaptorMsg> inputAdaptorMsgConsumer;
+        private int maxInputTokens;
+
+        AdiKnowledgeBaseRetrievalAugmentorBuilder() {
+        }
+
         public AdiKnowledgeBaseRetrievalAugmentor.AdiKnowledgeBaseRetrievalAugmentorBuilder contentRetriever(ContentRetriever contentRetriever) {
             this.queryRouter = new DefaultQueryRouter(ensureNotNull(contentRetriever, "contentRetriever"));
             return this;
+        }
+
+        public AdiKnowledgeBaseRetrievalAugmentor.AdiKnowledgeBaseRetrievalAugmentorBuilder queryTransformer(QueryTransformer queryTransformer) {
+            this.queryTransformer = queryTransformer;
+            return this;
+        }
+
+        public AdiKnowledgeBaseRetrievalAugmentor.AdiKnowledgeBaseRetrievalAugmentorBuilder queryRouter(QueryRouter queryRouter) {
+            this.queryRouter = queryRouter;
+            return this;
+        }
+
+        public AdiKnowledgeBaseRetrievalAugmentor.AdiKnowledgeBaseRetrievalAugmentorBuilder contentAggregator(ContentAggregator contentAggregator) {
+            this.contentAggregator = contentAggregator;
+            return this;
+        }
+
+        public AdiKnowledgeBaseRetrievalAugmentor.AdiKnowledgeBaseRetrievalAugmentorBuilder contentInjector(ContentInjector contentInjector) {
+            this.contentInjector = contentInjector;
+            return this;
+        }
+
+        public AdiKnowledgeBaseRetrievalAugmentor.AdiKnowledgeBaseRetrievalAugmentorBuilder executor(Executor executor) {
+            this.executor = executor;
+            return this;
+        }
+
+        public AdiKnowledgeBaseRetrievalAugmentor.AdiKnowledgeBaseRetrievalAugmentorBuilder inputAdaptorMsgConsumer(Consumer<InputAdaptorMsg> inputAdaptorMsgConsumer) {
+            this.inputAdaptorMsgConsumer = inputAdaptorMsgConsumer;
+            return this;
+        }
+
+        public AdiKnowledgeBaseRetrievalAugmentor.AdiKnowledgeBaseRetrievalAugmentorBuilder maxInputTokens(int maxInputTokens) {
+            this.maxInputTokens = maxInputTokens;
+            return this;
+        }
+
+        public AdiKnowledgeBaseRetrievalAugmentor build() {
+            return new AdiKnowledgeBaseRetrievalAugmentor(this.queryTransformer, this.queryRouter, this.contentAggregator, this.contentInjector, this.executor, this.inputAdaptorMsgConsumer, this.maxInputTokens);
+        }
+
+        public String toString() {
+            return "AdiKnowledgeBaseRetrievalAugmentor.AdiKnowledgeBaseRetrievalAugmentorBuilder(queryTransformer=" + this.queryTransformer + ", queryRouter=" + this.queryRouter + ", contentAggregator=" + this.contentAggregator + ", contentInjector=" + this.contentInjector + ", executor=" + this.executor + ", inputAdaptorMsgConsumer=" + this.inputAdaptorMsgConsumer + ", maxInputTokens=" + this.maxInputTokens + ")";
         }
     }
 }

@@ -12,6 +12,7 @@ import com.moyz.adi.common.dto.KbInfoResp;
 import com.moyz.adi.common.dto.KbSearchReq;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.helper.AdiFileHelper;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
@@ -28,9 +29,6 @@ import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.SseAskParams;
 import com.moyz.adi.common.vo.UpdateQaParams;
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.parser.TextDocumentParser;
-import dev.langchain4j.data.document.parser.apache.pdfbox.ApachePdfBoxDocumentParser;
-import dev.langchain4j.data.document.parser.apache.poi.ApachePoiDocumentParser;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import jakarta.annotation.Resource;
@@ -53,11 +51,9 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 
-import static com.moyz.adi.common.cosntant.AdiConstant.POI_DOC_TYPES;
 import static com.moyz.adi.common.cosntant.AdiConstant.SysConfigKey.QUOTA_BY_QA_ASK_DAILY;
 import static com.moyz.adi.common.cosntant.RedisKeyConstant.*;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
-import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocument;
 
 @Slf4j
 @Service
@@ -93,6 +89,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
     @Resource
     private AiModelService aiModelService;
+
+    @Resource
+    private AdiFileHelper adiFileHelper;
 
     public KnowledgeBase saveOrUpdate(KbEditReq kbEditReq) {
         KnowledgeBase knowledgeBase = new KnowledgeBase();
@@ -156,17 +155,11 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     private AdiFile uploadDoc(KnowledgeBase knowledgeBase, MultipartFile doc, Boolean indexAfterUpload, List<String> indexTypes) {
         try {
             String fileName = doc.getOriginalFilename();
-            AdiFile adiFile = fileService.writeToLocal(doc, false);
+            AdiFile adiFile = fileService.saveFile(doc, false);
 
             //解析文档
-            Document document;
-            if (adiFile.getExt().equalsIgnoreCase("txt")) {
-                document = loadDocument(adiFile.getPath(), new TextDocumentParser());
-            } else if (adiFile.getExt().equalsIgnoreCase("pdf")) {
-                document = loadDocument(adiFile.getPath(), new ApachePdfBoxDocumentParser());
-            } else if (ArrayUtils.contains(POI_DOC_TYPES, adiFile.getExt())) {
-                document = loadDocument(adiFile.getPath(), new ApachePoiDocumentParser());
-            } else {
+            Document document = adiFileHelper.loadDocument(adiFile);
+            if (null == document) {
                 log.warn("该文件类型:{}无法解析，忽略", adiFile.getExt());
                 return adiFile;
             }
@@ -186,6 +179,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             if (success && Boolean.TRUE.equals(indexAfterUpload)) {
                 indexItems(List.of(uuid), indexTypes);
             }
+
+            //Replace file path with url
+            adiFile.setPath(adiFileHelper.getFileUrl(adiFile));
             return adiFile;
         } catch (Exception e) {
             log.error("upload error", e);

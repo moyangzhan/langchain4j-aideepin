@@ -61,6 +61,9 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
     @Resource
     private KnowledgeBaseEmbeddingService knowledgeBaseEmbeddingService;
 
+    @Resource
+    private FileService fileService;
+
     public KnowledgeBaseItem saveOrUpdate(KbItemEditReq itemEditReq) {
         String uuid = itemEditReq.getUuid();
         KnowledgeBaseItem item = new KnowledgeBaseItem();
@@ -97,7 +100,9 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
     }
 
     public Page<KbItemDto> search(String kbUuid, String keyword, Integer currentPage, Integer pageSize) {
-        return baseMapper.searchByKb(new Page<>(currentPage, pageSize), kbUuid, keyword);
+        Page<KbItemDto> page = baseMapper.searchByKb(new Page<>(currentPage, pageSize), kbUuid, keyword);
+        page.getRecords().forEach(item -> item.setSourceFileUrl(fileService.getUrl(item.getSourceFileUuid())));
+        return page;
     }
 
     /**

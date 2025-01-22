@@ -3,7 +3,7 @@
 <mapper namespace="com.moyz.adi.common.mapper.KnowledgeBaseItemMapper">
 
     <select id="searchByKb" parameterType="Map" resultType="com.moyz.adi.common.dto.KbItemDto">
-        select a.*, b.name source_file_name, b.uuid source_file_uuid
+        select a.*, b.name source_file_name, b.uuid source_file_uuid, b.storage_location
         from adi_knowledge_base_item a
         left join adi_file b on a.source_file_id = b.id
         where a.is_deleted = false

@@ -26,8 +26,11 @@ public class DrawDto {
     //非 Draw 字段
     private Boolean isStar;
     private String originalImageUuid;
+    private String originalImageUrl;
     private String maskImageUuid;
+    private String maskImageUrl;
     private String userUuid;
     private String userName;
     private List<String> imageUuids;
+    private List<String> imageUrls;
 }

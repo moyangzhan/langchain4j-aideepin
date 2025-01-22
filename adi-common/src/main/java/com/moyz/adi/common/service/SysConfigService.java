@@ -41,7 +41,7 @@ public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
                 }
             });
             if (!deletedKeys.isEmpty()) {
-                deletedKeys.forEach(k -> LocalCache.CONFIGS.remove(k));
+                deletedKeys.forEach(LocalCache.CONFIGS::remove);
             }
 
             //add or update config
@@ -90,13 +90,14 @@ public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
         return LocalCache.CONFIGS.get(key);
     }
 
-    public static Integer getIntByKey(String key) {
+    public static Integer getIntByKey(String key, int defaultValue) {
         String val = LocalCache.CONFIGS.get(key);
         if (null != val) {
             return Integer.parseInt(val);
         }
-        return null;
+        return defaultValue;
     }
+
 
     public Page<SysConfigDto> search(SysConfigSearchReq searchReq, Integer currentPage, Integer pageSize) {
         LambdaQueryWrapper<SysConfig> wrapper = new LambdaQueryWrapper<>();

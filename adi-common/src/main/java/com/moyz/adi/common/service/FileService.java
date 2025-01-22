@@ -1,36 +1,34 @@
 package com.moyz.adi.common.service;
 
-import cn.hutool.core.img.ImgUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.helper.AdiFileHelper;
 import com.moyz.adi.common.mapper.FileMapper;
-import com.moyz.adi.common.util.FileUtil;
 import com.moyz.adi.common.util.HashUtil;
+import com.moyz.adi.common.util.LocalFileUtil;
 import com.moyz.adi.common.util.UuidUtil;
+import com.moyz.adi.common.vo.SaveRemoteImageResult;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FileUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
-import static com.moyz.adi.common.enums.ErrorEnum.*;
-import static org.apache.poi.poifs.crypt.HashAlgorithm.md5;
+import static com.moyz.adi.common.enums.ErrorEnum.A_AI_IMAGE_NO_AUTH;
+import static com.moyz.adi.common.enums.ErrorEnum.A_FILE_NOT_EXIST;
 
 @Slf4j
 @Service
@@ -54,15 +52,18 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
     @Value("${local.tmp-images}")
     private String tmpImagesPath;
 
-    public AdiFile writeToLocal(MultipartFile file, boolean image) {
+    @Resource
+    private AdiFileHelper adiFileHelper;
+
+    public AdiFile saveFile(MultipartFile file, boolean image) {
         String sha256 = HashUtil.sha256(file);
         Optional<AdiFile> existFile = this.lambdaQuery()
-                .eq(AdiFile::getSha256, md5)
+                .eq(AdiFile::getSha256, sha256)
                 .eq(AdiFile::getIsDeleted, false)
                 .oneOpt();
         if (existFile.isPresent()) {
             AdiFile adiFile = existFile.get();
-            boolean exist = FileUtil.checkIfExist(adiFile.getPath());
+            boolean exist = adiFileHelper.checkIfExist(adiFile);
             if (exist) {
                 return adiFile;
             } else {
@@ -71,7 +72,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
             }
         }
         String uuid = UuidUtil.createShort();
-        Pair<String, String> originalFile = FileUtil.saveToLocal(file, image ? imagePath : filePath, uuid);
+        Pair<String, String> originalFile = adiFileHelper.save(file, image, uuid);
         AdiFile adiFile = new AdiFile();
         adiFile.setName(file.getOriginalFilename());
         adiFile.setUuid(uuid);
@@ -79,28 +80,23 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         adiFile.setPath(originalFile.getLeft());
         adiFile.setExt(originalFile.getRight());
         adiFile.setUserId(ThreadContext.getCurrentUserId());
+        adiFile.setStorageLocation(AdiFileHelper.getStorageLocation());
         this.getBaseMapper().insert(adiFile);
         return adiFile;
     }
 
-    public String saveImageToLocal(User user, String sourceImageUrl) {
+    public String saveImageFromUrl(User user, String sourceImageUrl) {
+        log.info("saveImageFromUrl,sourceImageUrl:{}", sourceImageUrl);
         String uuid = UuidUtil.createShort();
-        String localPath = imagePath + uuid + ".png";
-        File target = new File(localPath);
-        try {
-            FileUtils.createParentDirectories(target);
-            FileUtils.copyURLToFile(new URL(sourceImageUrl), target);
-        } catch (IOException e) {
-            log.error("saveToLocal", e);
-            throw new BaseException(B_SAVE_IMAGE_ERROR);
-        }
+        SaveRemoteImageResult saveResult = adiFileHelper.saveImageFromUrl(sourceImageUrl, uuid);
         AdiFile adiFile = new AdiFile();
-        adiFile.setName(target.getName());
+        adiFile.setName(saveResult.getOriginalName());
         adiFile.setUuid(uuid);
-        adiFile.setSha256(HashUtil.sha256(localPath));
-        adiFile.setPath(localPath);
+        adiFile.setSha256(HashUtil.sha256(saveResult.getPathOrUrl()));
+        adiFile.setPath(saveResult.getPathOrUrl());
         adiFile.setUserId(user.getId());
         adiFile.setExt("png");
+        adiFile.setStorageLocation(AdiFileHelper.getStorageLocation());
         this.getBaseMapper().insert(adiFile);
         return uuid;
     }
@@ -113,25 +109,17 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
                 .update();
     }
 
-    public void removeFileAndSoftDel(String uuid) {
+    public boolean removeFileAndSoftDel(String uuid) {
         AdiFile adiFile = this.lambdaQuery()
                 .eq(AdiFile::getUserId, ThreadContext.getCurrentUserId())
                 .eq(AdiFile::getUuid, uuid)
                 .oneOpt()
                 .orElse(null);
         if (null == adiFile) {
-            return;
+            return false;
         }
-        if (StringUtils.isNotBlank(adiFile.getPath())) {
-            try {
-                if (!Files.deleteIfExists(Paths.get(adiFile.getPath()))) {
-                    log.warn("Delete file fail,uuid:{}", uuid);
-                }
-            } catch (IOException e) {
-                throw new BaseException(B_DELETE_FILE_ERROR);
-            }
-        }
-        this.softDel(uuid);
+        adiFileHelper.delete(adiFile);
+        return this.softDel(uuid);
     }
 
     public AdiFile getByUuid(String uuid) {
@@ -139,24 +127,6 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
                 .eq(AdiFile::getUuid, uuid)
                 .eq(AdiFile::getUserId, ThreadContext.getCurrentUserId())
                 .oneOpt().orElse(null);
-    }
-
-    public byte[] readBytes(AdiFile adiFile) {
-        if (null == adiFile) {
-            throw new BaseException(A_FILE_NOT_EXIST);
-        }
-        return FileUtil.readBytes(adiFile.getPath());
-    }
-
-    public byte[] readBytes(String uuid) {
-        AdiFile adiFile = this.lambdaQuery()
-                .eq(AdiFile::getUuid, uuid)
-                .eq(AdiFile::getUserId, ThreadContext.getCurrentUserId())
-                .oneOpt().orElse(null);
-        if (null == adiFile) {
-            throw new BaseException(A_FILE_NOT_EXIST);
-        }
-        return FileUtil.readBytes(adiFile.getPath());
     }
 
     /**
@@ -177,7 +147,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         if (null == adiFile) {
             throw new BaseException(A_FILE_NOT_EXIST);
         }
-        return readImage(adiFile, thumbnail);
+        return LocalFileUtil.readLocalImage(adiFile, thumbnail, thumbnailsPath);
     }
 
     public BufferedImage readImage(String uuid, boolean thumbnail) {
@@ -187,34 +157,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         if (null == adiFile) {
             throw new BaseException(A_FILE_NOT_EXIST);
         }
-        return readImage(adiFile, thumbnail);
-    }
-
-    /**
-     * 读取图片到BufferedImage
-     *
-     * @param adiFile   图片实体类
-     * @param thumbnail 读取的是缩略图
-     * @return 图片内容
-     */
-    private BufferedImage readImage(AdiFile adiFile, boolean thumbnail) {
-        try {
-            String currentFilePath = adiFile.getPath();
-            if (thumbnail) {
-                currentFilePath = thumbnailsPath + adiFile.getUuid() + "." + adiFile.getExt();
-                //不存在则创建
-                if (new File(adiFile.getPath()).exists() && !new File(currentFilePath).exists()) {
-                    ImgUtil.scale(
-                            cn.hutool.core.io.FileUtil.file(adiFile.getPath()),
-                            cn.hutool.core.io.FileUtil.file(currentFilePath),
-                            0.2f
-                    );
-                }
-            }
-            return ImageIO.read(new FileInputStream(currentFilePath));
-        } catch (IOException e) {
-            throw new BaseException(B_IO_EXCEPTION);
-        }
+        return LocalFileUtil.readLocalImage(adiFile, thumbnail, thumbnailsPath);
     }
 
     public String getImagePath(String uuid) {
@@ -260,5 +203,37 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
 
     public String getWatermarkImagesPath(AdiFile adiFile) {
         return watermarkImagesPath + adiFile.getUuid() + "." + adiFile.getExt();
+    }
+
+    public String getUrl(String fileUuid) {
+        if (StringUtils.isBlank(fileUuid)) {
+            return null;
+        }
+        List<String> list = getUrls(List.of(fileUuid));
+        if (!list.isEmpty()) {
+            return list.get(0);
+        }
+        return null;
+    }
+
+    /**
+     * 获取文件url
+     *
+     * @param fileUuids 文件uuid
+     * @return 文件url
+     */
+    public List<String> getUrls(List<String> fileUuids) {
+        if (CollectionUtils.isEmpty(fileUuids)) {
+            return Collections.emptyList();
+        }
+        List<String> result = new ArrayList<>();
+        this.lambdaQuery()
+                .in(AdiFile::getUuid, fileUuids)
+                .eq(AdiFile::getIsDeleted, false)
+                .list()
+                .forEach(adiFile -> {
+                    result.add(adiFileHelper.getFileUrl(adiFile));
+                });
+        return result;
     }
 }

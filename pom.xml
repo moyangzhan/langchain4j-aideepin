@@ -25,7 +25,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <langchain4j.version>0.35.0</langchain4j.version>
+        <langchain4j.version>0.36.2</langchain4j.version>
     </properties>
     <dependencies>
         <dependency>
@@ -210,6 +210,11 @@
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-core</artifactId>
             <version>5.8.33</version>
+        </dependency>
+        <dependency>
+            <groupId>com.aliyun.oss</groupId>
+            <artifactId>aliyun-sdk-oss</artifactId>
+            <version>3.18.1</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

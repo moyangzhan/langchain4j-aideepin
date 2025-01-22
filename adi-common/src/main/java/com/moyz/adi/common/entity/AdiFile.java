@@ -35,6 +35,10 @@ public class AdiFile extends BaseEntity {
     @TableField(value = "path")
     private String path;
 
+    @Schema(title = "存储位置，1：本地存储，2：阿里云OSS")
+    @TableField(value = "storage_location")
+    private Integer storageLocation;
+
     @Schema(title = "引用数量")
     @TableField(value = "ref_count")
     private Integer refCount;

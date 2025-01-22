@@ -45,6 +45,9 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
     @Resource
     private ConversationPresetRelService conversationPresetRelService;
 
+    @Resource
+    private FileService fileService;
+
     public Page<ConvDto> search(ConvSearchReq convSearchReq, int currentPage, int pageSize) {
         Page<Conversation> page = this.lambdaQuery()
                 .eq(Conversation::getIsDeleted, false)
@@ -104,9 +107,10 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
         //Wrap question content
         List<ConvMsgDto> userMessages = MPPageUtil.convertToList(questions, ConvMsgDto.class, (source, target) -> {
             if (StringUtils.isNotBlank(source.getAttachments())) {
-                target.setAttachments(Arrays.stream(source.getAttachments().split(",")).toList());
+                List<String> urls = fileService.getUrls(Arrays.stream(source.getAttachments().split(",")).toList());
+                target.setAttachmentUrls(urls);
             } else {
-                target.setAttachments(Collections.emptyList());
+                target.setAttachmentUrls(Collections.emptyList());
             }
             return target;
         });

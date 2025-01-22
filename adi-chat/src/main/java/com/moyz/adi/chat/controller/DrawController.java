@@ -141,7 +141,7 @@ public class DrawController {
         return drawService.setDrawPublic(uuid, isPublic, withWatermark);
     }
 
-    @Operation(summary = "公开绘图任务列表")
+    @Operation(summary = "公开的绘图任务列表")
     @GetMapping("/public/list")
     public DrawListResp publicList(@RequestParam Long maxId, @RequestParam int pageSize) {
         return drawService.listPublic(maxId, pageSize);

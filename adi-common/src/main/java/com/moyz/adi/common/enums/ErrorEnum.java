@@ -60,7 +60,8 @@ public enum ErrorEnum {
     B_IO_EXCEPTION("B0019", "IO异常"),
     B_SERVER_EXCEPTION("B0020", "服务端异常"),
     B_DELETE_FILE_ERROR("B0020", "删除文件异常"),
-    C_DRAW_FAIL("C0001", "大模型生成图片失败,原因:{0}");
+    C_DRAW_FAIL("C0001", "大模型生成图片失败,原因:{0}"),
+    C_ALI_OSS_CONFIG_ERROR("C0002", "阿里云OSS初始化失败,原因:{0}");
 
     private final String code;
     private final String info;

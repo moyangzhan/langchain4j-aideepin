@@ -5,7 +5,8 @@ import dev.langchain4j.model.input.PromptTemplate;
 import java.util.List;
 
 public class AdiConstant {
-    private AdiConstant(){}
+    private AdiConstant() {
+    }
 
     public static final int DEFAULT_PAGE_SIZE = 10;
 
@@ -68,12 +69,16 @@ public class AdiConstant {
             """);
 
     public static class ConversationConstant {
-        private ConversationConstant(){}
+        private ConversationConstant() {
+        }
+
         public static final String DEFAULT_NAME = "通用智能助手";
     }
 
     public static class GenerateImage {
-        private GenerateImage(){}
+        private GenerateImage() {
+        }
+
         public static final int INTERACTING_METHOD_GENERATE_IMAGE = 1;
         public static final int INTERACTING_METHOD_EDIT_IMAGE = 2;
         public static final int INTERACTING_METHOD_VARIATION = 3;
@@ -84,7 +89,9 @@ public class AdiConstant {
     }
 
     public static class MetadataKey {
-        private MetadataKey(){}
+        private MetadataKey() {
+        }
+
         public static final String KB_UUID = "kb_uuid";
         public static final String KB_ITEM_UUID = "kb_item_uuid";
         public static final String ENGINE_NAME = "engine_name";
@@ -92,7 +99,9 @@ public class AdiConstant {
     }
 
     public static class SysConfigKey {
-        private SysConfigKey(){}
+        private SysConfigKey() {
+        }
+
         public static final String OPENAI_SETTING = "openai_setting";
         public static final String DASHSCOPE_SETTING = "dashscope_setting";
         public static final String QIANFAN_SETTING = "qianfan_setting";
@@ -110,13 +119,17 @@ public class AdiConstant {
         public static final String QUOTA_BY_IMAGE_DAILY = "quota_by_image_daily";
         public static final String QUOTA_BY_IMAGE_MONTHLY = "quota_by_image_monthly";
         public static final String QUOTA_BY_QA_ASK_DAILY = "quota_by_qa_ask_daily";
+        public static final String STORAGE_LOCATION = "storage_location";
+        public static final String STORAGE_LOCATION_ALI_OSS = "storage_location_ali_oss";
     }
 
     public static final String[] POI_DOC_TYPES = {"doc", "docx", "ppt", "pptx", "xls", "xlsx"};
 
 
     public static class ModelPlatform {
-        private ModelPlatform(){}
+        private ModelPlatform() {
+        }
+
         public static final String OPENAI = "openai";
         public static final String DASHSCOPE = "dashscope";
         public static final String QIANFAN = "qianfan";
@@ -124,7 +137,9 @@ public class AdiConstant {
     }
 
     public static class ModelType {
-        private ModelType(){}
+        private ModelType() {
+        }
+
         public static final String TEXT = "text";
         public static final String IMAGE = "image";
         public static final String EMBEDDING = "embedding";
@@ -132,14 +147,18 @@ public class AdiConstant {
     }
 
     public static class SearchEngineName {
-        private SearchEngineName(){}
+        private SearchEngineName() {
+        }
+
         public static final String GOOGLE = "google";
         public static final String BING = "bing";
         public static final String BAIDU = "baidu";
     }
 
     public static class SSEEventName {
-        private SSEEventName(){}
+        private SSEEventName() {
+        }
+
         public static final String START = "[START]";
         public static final String DONE = "[DONE]";
         public static final String ERROR = "[ERROR]";
@@ -210,4 +229,21 @@ public class AdiConstant {
     public static final String DRAW_TYPE_MINE = "mine";
 
     public static final String MP_LIMIT_1 = "limit 1";
+
+    /**
+     * 文件存储在本地
+     */
+    public static final int STORAGE_LOCATION_LOCAL = 1;
+
+    /**
+     * 文件存储到阿里云OSS
+     */
+    public static final int STORAGE_LOCATION_ALI_OSS = 2;
+
+    public static final String URL_PREFIX_FILE = "/file/";
+    public static final String URL_PREFIX_IMAGE = "/image/";
+    public static final String URL_PREFIX_MY_IMAGE = "/my-image/";
+    public static final String URL_PREFIX_MY_THUMBNAIL = "/my-thumbnail/";
+
+    public static final List<String> IMAGE_EXTENSIONS = List.of("jpg", "jpeg", "png", "gif", "bmp", "webp");
 }

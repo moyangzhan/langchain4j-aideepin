@@ -256,17 +256,18 @@ EXECUTE PROCEDURE update_modified_column();
 
 CREATE TABLE public.adi_file
 (
-    id          bigserial primary key,
-    name        varchar(36)  default ''                not null,
-    uuid        varchar(32)  default ''                not null,
-    ext         varchar(36)  default ''                not null,
-    user_id     bigint       default 0                 not null,
-    path        varchar(250) default ''                not null,
-    ref_count   integer      default 0                 not null,
-    create_time timestamp    default CURRENT_TIMESTAMP not null,
-    update_time timestamp    default CURRENT_TIMESTAMP not null,
-    is_deleted  boolean      default false             not null,
-    sha256      varchar(64)  default ''                not null
+    id               bigserial primary key,
+    name             varchar(36)  default ''                not null,
+    uuid             varchar(32)  default ''                not null,
+    ext              varchar(36)  default ''                not null,
+    user_id          bigint       default 0                 not null,
+    path             varchar(250) default ''                not null,
+    storage_location int          default 1                 not null,
+    ref_count        integer      default 0                 not null,
+    create_time      timestamp    default CURRENT_TIMESTAMP not null,
+    update_time      timestamp    default CURRENT_TIMESTAMP not null,
+    is_deleted       boolean      default false             not null,
+    sha256           varchar(64)  default ''                not null
 );
 
 COMMENT ON TABLE public.adi_file IS '文件 | File';
@@ -274,7 +275,8 @@ COMMENT ON COLUMN public.adi_file.name IS '文件名 | File name';
 COMMENT ON COLUMN public.adi_file.uuid IS '文件的UUID | UUID of the file';
 COMMENT ON COLUMN public.adi_file.ext IS '文件扩展名 | File extension';
 COMMENT ON COLUMN public.adi_file.user_id IS '用户ID，0: 系统；其他: 用户 | User ID, 0: System; Other: User';
-COMMENT ON COLUMN public.adi_file.path IS '文件路径 | File path';
+COMMENT ON COLUMN public.adi_file.path IS '文件路径或对象名称(OSS)，如https://*.png 或 123.png | File path or object name, eg: httts://*.png or 123.png(name in OSS bucket)';
+COMMENT ON COLUMN public.adi_file.storage_location IS '存储位置，1：本地存储，2：阿里云OSS | Storage Location: 1 - Local Storage, 2 - Alibaba Cloud OSS';
 COMMENT ON COLUMN public.adi_file.ref_count IS '引用此文件的次数 | The number of references to this file';
 COMMENT ON COLUMN public.adi_file.create_time IS '记录创建的时间戳 | Timestamp of record creation';
 COMMENT ON COLUMN public.adi_file.update_time IS '记录最后更新的时间戳，自动更新 | Timestamp of record last update, automatically updated on each update';
@@ -721,6 +723,14 @@ INSERT INTO adi_sys_config (name, value)
 VALUES ('quota_by_qa_ask_daily', '50');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('quota_by_qa_item_monthly', '100');
+
+-- 文件存储位置，默认存储到本地
+-- store_location: 1表示存储到本地,2表示存储到阿里云oss
+INSERT INTO adi_sys_config (name, value)
+VALUES ('storage_location', '1');
+-- endpoint: 如：https://oss-cn-hangzhou.aliyuncs.com
+INSERT INTO adi_sys_config (name, value)
+VALUES ('storage_location_ali_oss', '{"access_key_id":"","access_key_secret":"","endpoint":"","bucketName":""}');
 
 -- 大语言模型
 -- https://platform.openai.com/docs/models/gpt-3-5-turbo

@@ -13,7 +13,6 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
-import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 
@@ -32,6 +31,7 @@ import static java.util.stream.Collectors.toList;
  */
 @Slf4j
 public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
+
     public static final Function<Query, Integer> DEFAULT_MAX_RESULTS = (query) -> 3;
     public static final Function<Query, Double> DEFAULT_MIN_SCORE = (query) -> 0.0;
     public static final Function<Query, Filter> DEFAULT_FILTER = (query) -> null;
@@ -50,12 +50,12 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
     /**
      * 新增的特性: 命中的向量及对应的分数
      */
-    private Map<String, Double> embeddingToScore = new HashMap<>();
+    private final Map<String, Double> embeddingToScore = new HashMap<>();
 
-    private boolean breakIfSearchMissed = false;
+    private final boolean breakIfSearchMissed;
 
     public AdiEmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore,
-                                             EmbeddingModel embeddingModel) {
+                                          EmbeddingModel embeddingModel) {
         this(
                 DEFAULT_DISPLAY_NAME,
                 embeddingStore,
@@ -68,8 +68,8 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
     }
 
     public AdiEmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore,
-                                             EmbeddingModel embeddingModel,
-                                             int maxResults) {
+                                          EmbeddingModel embeddingModel,
+                                          int maxResults) {
         this(
                 DEFAULT_DISPLAY_NAME,
                 embeddingStore,
@@ -82,9 +82,9 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
     }
 
     public AdiEmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore,
-                                             EmbeddingModel embeddingModel,
-                                             Integer maxResults,
-                                             Double minScore) {
+                                          EmbeddingModel embeddingModel,
+                                          Integer maxResults,
+                                          Double minScore) {
         this(
                 DEFAULT_DISPLAY_NAME,
                 embeddingStore,
@@ -96,7 +96,6 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
         );
     }
 
-    @Builder
     private AdiEmbeddingStoreContentRetriever(String displayName,
                                               EmbeddingStore<TextSegment> embeddingStore,
                                               EmbeddingModel embeddingModel,
@@ -120,7 +119,7 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
         Collection<EmbeddingModelFactory> factories = loadFactories(EmbeddingModelFactory.class);
         if (factories.size() > 1) {
             throw new RuntimeException("Conflict: multiple embedding models have been found in the classpath. " +
-                    "Please explicitly specify the one you wish to use.");
+                                       "Please explicitly specify the one you wish to use.");
         }
 
         for (EmbeddingModelFactory factory : factories) {
@@ -130,34 +129,88 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
         return null;
     }
 
+    public static AdiEmbeddingStoreContentRetriever.AdiEmbeddingStoreContentRetrieverBuilder builder() {
+        return new AdiEmbeddingStoreContentRetriever.AdiEmbeddingStoreContentRetrieverBuilder();
+    }
+
     public static class AdiEmbeddingStoreContentRetrieverBuilder {
 
-        public AdiEmbeddingStoreContentRetrieverBuilder maxResults(Integer maxResults) {
+        private String displayName;
+        private EmbeddingStore<TextSegment> embeddingStore;
+        private EmbeddingModel embeddingModel;
+        private Function<Query, Integer> dynamicMaxResults;
+        private Function<Query, Double> dynamicMinScore;
+        private Function<Query, Filter> dynamicFilter;
+
+        private Boolean breakIfSearchMissed;
+
+        AdiEmbeddingStoreContentRetrieverBuilder() {
+        }
+
+        public AdiEmbeddingStoreContentRetriever.AdiEmbeddingStoreContentRetrieverBuilder maxResults(Integer maxResults) {
             if (maxResults != null) {
                 dynamicMaxResults = (query) -> ensureGreaterThanZero(maxResults, "maxResults");
             }
             return this;
         }
 
-        public AdiEmbeddingStoreContentRetrieverBuilder minScore(Double minScore) {
+        public AdiEmbeddingStoreContentRetriever.AdiEmbeddingStoreContentRetrieverBuilder minScore(Double minScore) {
             if (minScore != null) {
                 dynamicMinScore = (query) -> ensureBetween(minScore, 0, 1, "minScore");
             }
             return this;
         }
 
-        public AdiEmbeddingStoreContentRetrieverBuilder filter(Filter filter) {
+        public AdiEmbeddingStoreContentRetriever.AdiEmbeddingStoreContentRetrieverBuilder filter(Filter filter) {
             if (filter != null) {
                 dynamicFilter = (query) -> filter;
             }
             return this;
         }
 
-        public AdiEmbeddingStoreContentRetrieverBuilder breakIfSearchMissed(boolean breakFlag) {
-            breakIfSearchMissed = breakFlag;
+        public AdiEmbeddingStoreContentRetriever.AdiEmbeddingStoreContentRetrieverBuilder displayName(String displayName) {
+            this.displayName = displayName;
             return this;
         }
 
+        public AdiEmbeddingStoreContentRetriever.AdiEmbeddingStoreContentRetrieverBuilder embeddingStore(EmbeddingStore<TextSegment> embeddingStore) {
+            this.embeddingStore = embeddingStore;
+            return this;
+        }
+
+        public AdiEmbeddingStoreContentRetriever.AdiEmbeddingStoreContentRetrieverBuilder embeddingModel(EmbeddingModel embeddingModel) {
+            this.embeddingModel = embeddingModel;
+            return this;
+        }
+
+        public AdiEmbeddingStoreContentRetriever.AdiEmbeddingStoreContentRetrieverBuilder dynamicMaxResults(Function<Query, Integer> dynamicMaxResults) {
+            this.dynamicMaxResults = dynamicMaxResults;
+            return this;
+        }
+
+        public AdiEmbeddingStoreContentRetriever.AdiEmbeddingStoreContentRetrieverBuilder dynamicMinScore(Function<Query, Double> dynamicMinScore) {
+            this.dynamicMinScore = dynamicMinScore;
+            return this;
+        }
+
+        public AdiEmbeddingStoreContentRetriever.AdiEmbeddingStoreContentRetrieverBuilder dynamicFilter(Function<Query, Filter> dynamicFilter) {
+            this.dynamicFilter = dynamicFilter;
+            return this;
+        }
+
+        public AdiEmbeddingStoreContentRetrieverBuilder breakIfSearchMissed(boolean breakIfSearchMissed){
+            this.breakIfSearchMissed = breakIfSearchMissed;
+            return this;
+        }
+
+        public AdiEmbeddingStoreContentRetriever build() {
+            return new AdiEmbeddingStoreContentRetriever(this.displayName, this.embeddingStore, this.embeddingModel, this.dynamicMaxResults, this.dynamicMinScore, this.dynamicFilter, this.breakIfSearchMissed);
+        }
+
+
+        public String toString() {
+            return "AdiEmbeddingStoreContentRetriever.AdiEmbeddingStoreContentRetrieverBuilder(displayName=" + this.displayName + ", embeddingStore=" + this.embeddingStore + ", embeddingModel=" + this.embeddingModel + ", dynamicMaxResults=" + this.dynamicMaxResults + ", dynamicMinScore=" + this.dynamicMinScore + ", dynamicFilter=" + this.dynamicFilter + ", breakIfSearchMissed=" + this.breakIfSearchMissed + ")";
+        }
     }
 
     /**
@@ -170,11 +223,6 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
 
     @Override
     public List<Content> retrieve(Query query) {
-
-        int maxResults = maxResultsProvider.apply(query);
-        if(maxResults == 0){
-            return Collections.emptyList();
-        }
 
         Embedding embeddedQuery = embeddingModel.embed(query.text()).content();
 
@@ -215,7 +263,7 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
     @Override
     public String toString() {
         return "AdiEmbeddingStoreContentRetriever{" +
-                "displayName='" + displayName + '\'' +
-                '}';
+               "displayName='" + displayName + '\'' +
+               '}';
     }
 }
