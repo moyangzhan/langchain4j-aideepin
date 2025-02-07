@@ -37,7 +37,6 @@ public class Initializer {
     public void init() {
         sysConfigService.loadAndCache();
         aiModelService.init();
-        aliyunOssHelper.init();
     }
 
     /**
@@ -46,6 +45,5 @@ public class Initializer {
     @Scheduled(initialDelay = 10 * 60 * 1000, fixedDelay = 10 * 60 * 1000)
     public void reloadConfig() {
         sysConfigService.loadAndCache();
-        aliyunOssHelper.init();
     }
 }

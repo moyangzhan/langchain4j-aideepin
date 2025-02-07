@@ -1,13 +1,11 @@
 package com.moyz.adi.common.helper;
 
-import com.aliyun.core.utils.StringUtils;
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.model.DeleteObjectsRequest;
 import com.aliyun.oss.model.DeleteObjectsResult;
 import com.aliyun.oss.model.PutObjectResult;
 import com.moyz.adi.common.cosntant.AdiConstant;
-import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.JsonUtil;
@@ -15,12 +13,14 @@ import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.vo.AliOssConfig;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
-import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.List;
+
+import static com.moyz.adi.common.cosntant.AdiConstant.STORAGE_LOCATION_ALI_OSS;
 
 @Slf4j
 @Service
@@ -47,9 +47,19 @@ public class AliyunOssHelper {
         if (null != client) {
             client.shutdown();
         }
+        if (StringUtils.isAnyBlank(newConfigObj.getEndpoint(), newConfigObj.getAccessKeyId(), newConfigObj.getAccessKeySecret(), newConfigObj.getBucketName())) {
+            log.warn("阿里云OSS配置信息没有填写完整");
+            if (STORAGE_LOCATION_ALI_OSS == Integer.parseInt(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.STORAGE_LOCATION))) {
+                log.error("^^^ 阿里云OSS不可用，需将存储位置切换回本地存储 ^^^");
+            }
+        }
         configStr = newConfigStr;
         configObj = newConfigObj;
         client = new OSSClientBuilder().build(configObj.getEndpoint(), configObj.getAccessKeyId(), configObj.getAccessKeySecret());
+    }
+
+    public void reload() {
+        init();
     }
 
     public void saveObj(byte[] bytes, String name) {

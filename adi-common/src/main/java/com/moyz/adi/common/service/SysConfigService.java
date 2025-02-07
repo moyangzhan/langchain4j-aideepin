@@ -10,11 +10,13 @@ import com.moyz.adi.common.dto.SysConfigSearchReq;
 import com.moyz.adi.common.entity.SysConfig;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.helper.AliyunOssHelper;
 import com.moyz.adi.common.mapper.SysConfigMapper;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.util.MPPageUtil;
 import com.moyz.adi.common.vo.RequestRateLimit;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -26,6 +28,9 @@ import java.util.List;
 @Slf4j
 @Service
 public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
+
+    @Resource
+    private AliyunOssHelper aliyunOssHelper;
 
     public void loadAndCache() {
         List<SysConfig> configsFromDB = this.lambdaQuery().eq(SysConfig::getIsDeleted, false).list();
@@ -54,6 +59,8 @@ public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
         LocalCache.IMAGE_RATE_LIMIT_CONFIG = JsonUtil.fromJson(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.REQUEST_IMAGE_RATE_LIMIT), RequestRateLimit.class);
         LocalCache.TEXT_RATE_LIMIT_CONFIG.setType(RequestRateLimit.TYPE_TEXT);
         LocalCache.IMAGE_RATE_LIMIT_CONFIG.setType(RequestRateLimit.TYPE_IMAGE);
+
+        aliyunOssHelper.reload();
     }
 
     public void edit(SysConfigEditDto sysConfigDto) {
