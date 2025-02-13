@@ -1,14 +1,13 @@
 package com.moyz.adi.common.interfaces;
 
-import com.moyz.adi.common.entity.Draw;
 import com.moyz.adi.common.entity.AiModel;
+import com.moyz.adi.common.entity.Draw;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.service.FileService;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.util.SpringUtil;
-import com.moyz.adi.common.vo.ImageModelBuilderProperties;
 import com.moyz.adi.common.vo.LLMException;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.image.ImageModel;
@@ -18,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.net.Proxy;
-import java.util.Collections;
 import java.util.List;
 
 import static com.moyz.adi.common.enums.ErrorEnum.C_DRAW_FAIL;
@@ -44,8 +42,6 @@ public abstract class AbstractImageModelService<T> {
     @Value("${adi.proxy.http-port:0}")
     protected int proxyHttpPort;
 
-    protected ImageModel imageModel;
-
     protected AbstractImageModelService(AiModel aiModel, String settingName, Class<T> clazz) {
         this.aiModel = aiModel;
         String st = LocalCache.CONFIGS.get(settingName);
@@ -57,12 +53,8 @@ public abstract class AbstractImageModelService<T> {
         return this;
     }
 
-    public ImageModel getImageModel(User user, ImageModelBuilderProperties builderProperties) {
-        if (null != imageModel) {
-            return imageModel;
-        }
-        imageModel = buildImageModel(user, builderProperties);
-        return imageModel;
+    public ImageModel getImageModel(User user, Draw draw) {
+        return buildImageModel(user, draw);
     }
 
     /**
@@ -72,14 +64,10 @@ public abstract class AbstractImageModelService<T> {
      */
     public abstract boolean isEnabled();
 
-    protected abstract ImageModel buildImageModel(User user, ImageModelBuilderProperties builderProperties);
+    protected abstract ImageModel buildImageModel(User user, Draw draw);
 
     public List<String> generateImage(User user, Draw draw) {
-        ImageModelBuilderProperties builderProperties = ImageModelBuilderProperties.builder()
-                .size(draw.getGenerateSize())
-                .quality(draw.getGenerateQuality())
-                .build();
-        ImageModel curImageModel = getImageModel(user, builderProperties);
+        ImageModel curImageModel = getImageModel(user, draw);
         try {
             Response<List<Image>> response = curImageModel.generate(draw.getPrompt(), draw.getGenerateNumber());
             log.info("createImage response:{}", response);

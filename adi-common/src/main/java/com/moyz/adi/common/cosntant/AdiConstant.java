@@ -82,6 +82,7 @@ public class AdiConstant {
         public static final int INTERACTING_METHOD_GENERATE_IMAGE = 1;
         public static final int INTERACTING_METHOD_EDIT_IMAGE = 2;
         public static final int INTERACTING_METHOD_VARIATION = 3;
+        public static final int INTERACTING_METHOD_BACKGROUND_GENERATION = 4;
 
         public static final int STATUS_DOING = 1;
         public static final int STATUS_FAIL = 2;
@@ -246,4 +247,6 @@ public class AdiConstant {
     public static final String URL_PREFIX_MY_THUMBNAIL = "/my-thumbnail/";
 
     public static final List<String> IMAGE_EXTENSIONS = List.of("jpg", "jpeg", "png", "gif", "bmp", "webp");
+
+    public static final String W_FAILED = "FAILED";
 }

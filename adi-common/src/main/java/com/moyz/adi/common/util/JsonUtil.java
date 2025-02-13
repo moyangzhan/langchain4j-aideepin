@@ -2,10 +2,7 @@ package com.moyz.adi.common.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.*;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
@@ -90,6 +87,24 @@ public class JsonUtil {
             log.error("反序列化失败", jme);
         } catch (IOException ioe) {
             log.error("反序列化失败", ioe);
+        }
+        return null;
+    }
+
+    public static <T> T fromJson(JsonNode jsonNode, Class<T> clazz) {
+        try {
+            return objectMapper.treeToValue(jsonNode, clazz);
+        } catch (JsonProcessingException e) {
+            log.error("反序列化失败", e);
+        }
+        return null;
+    }
+
+    public static JsonNode toJsonNode(String json) {
+        try {
+            return objectMapper.readTree(json);
+        } catch (JsonProcessingException e) {
+            log.error("反序列化失败", e);
         }
         return null;
     }

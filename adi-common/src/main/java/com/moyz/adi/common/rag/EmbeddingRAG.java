@@ -12,6 +12,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel;
+import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
@@ -24,7 +25,6 @@ import java.util.regex.Matcher;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.*;
 import static com.moyz.adi.common.vo.InputAdaptorMsg.TOKEN_TOO_MUCH_QUESTION;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 
 @Slf4j
 public class EmbeddingRAG implements IRAGService {
@@ -51,7 +51,7 @@ public class EmbeddingRAG implements IRAGService {
     @Override
     public void ingest(Document document, int overlap, ChatLanguageModel chatLanguageModel) {
         log.info("EmbeddingRAG ingest");
-        DocumentSplitter documentSplitter = DocumentSplitters.recursive(RAG_MAX_SEGMENT_SIZE_IN_TOKENS, overlap, new OpenAiTokenizer(GPT_3_5_TURBO));
+        DocumentSplitter documentSplitter = DocumentSplitters.recursive(RAG_MAX_SEGMENT_SIZE_IN_TOKENS, overlap, new OpenAiTokenizer(OpenAiChatModelName.GPT_3_5_TURBO));
         EmbeddingStoreIngestor embeddingStoreIngestor = EmbeddingStoreIngestor.builder()
                 .documentSplitter(documentSplitter)
                 .embeddingModel(embeddingModel)

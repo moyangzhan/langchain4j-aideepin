@@ -88,6 +88,9 @@ public class AiModelSettingService {
         //openai image model
         initImageModelService(AdiConstant.ModelPlatform.OPENAI, model -> new OpenAiDalleService(model).setProxy(proxy));
 
+
+        initImageModelService(AdiConstant.ModelPlatform.DASHSCOPE, DashScopeWanxService::new);
+
         //search engine
         SearchEngineServiceContext.addWebSearcher(AdiConstant.SearchEngineName.GOOGLE, new GoogleSearchEngineService(proxy));
     }

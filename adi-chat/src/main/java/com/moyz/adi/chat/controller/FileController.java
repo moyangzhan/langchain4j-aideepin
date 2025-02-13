@@ -2,6 +2,7 @@ package com.moyz.adi.chat.controller;
 
 import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.helper.AdiFileHelper;
 import com.moyz.adi.common.service.FileService;
 import com.moyz.adi.common.util.LocalFileUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,6 +39,9 @@ public class FileController {
 
     @Resource
     private FileService fileService;
+
+    @Resource
+    private AdiFileHelper adiFileHelper;
 
 //    @Operation(summary = "我的图片")
 //    @GetMapping(value = "/my-image/{uuid}", produces = MediaType.IMAGE_PNG_VALUE)
@@ -112,14 +116,18 @@ public class FileController {
     @PostMapping(path = "/file/upload", headers = "content-type=multipart/form-data", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, String> upload(@RequestPart(value = "file") MultipartFile file) {
         Map<String, String> result = new HashMap<>();
-        result.put("uuid", fileService.saveFile(file, false).getUuid());
+        AdiFile adiFile = fileService.saveFile(file, false);
+        result.put("uuid", adiFile.getUuid());
+        result.put("url", adiFileHelper.getFileUrl(adiFile));
         return result;
     }
 
     @PostMapping(path = "/image/upload", headers = "content-type=multipart/form-data", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, String> imageUpload(@RequestPart(value = "file") MultipartFile file) {
         Map<String, String> result = new HashMap<>();
-        result.put("uuid", fileService.saveFile(file, true).getUuid());
+        AdiFile adiFile = fileService.saveFile(file, true);
+        result.put("uuid", adiFile.getUuid());
+        result.put("url", adiFileHelper.getFileUrl(adiFile));
         return result;
     }
 

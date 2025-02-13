@@ -25,15 +25,18 @@ CREATE TABLE public.adi_draw
     ai_model_id           bigint        default 0                 not null,
     ai_model_name         varchar(45)   default ''                not null,
     prompt                varchar(1024) default ''                not null,
+    negative_prompt       varchar(1024) default ''                not null,
     generate_size         varchar(20)   default ''                not null,
     generate_quality      varchar(20)   default ''                not null,
     generate_number       integer       default 1                 not null,
+    generate_seed         integer       default -1                not null,
+    dynamic_params        jsonb         default '{}'              not null,
     original_image        varchar(1000) default ''                not null,
     mask_image            varchar(1000) default ''                not null,
     resp_images_path      varchar(2048) default ''                not null,
     generated_images      varchar(2048) default ''                not null,
-    interacting_method    smallint      default '1'               not null,
-    process_status        smallint      default '1'               not null,
+    interacting_method    smallint      default 1                 not null,
+    process_status        smallint      default 1                 not null,
     process_status_remark varchar(250)  default ''                not null,
     is_public             boolean       default false             not null,
     with_watermark        boolean       default false             not null,
@@ -42,7 +45,6 @@ CREATE TABLE public.adi_draw
     update_time           timestamp     default CURRENT_TIMESTAMP not null,
     is_deleted            boolean       default false             not null,
     CONSTRAINT adi_draw_generate_number_check CHECK (((generate_number >= 1) AND (generate_number <= 10))),
-    CONSTRAINT adi_draw_interacting_method_check CHECK ((interacting_method = ANY (ARRAY [1, 2, 3]))),
     CONSTRAINT adi_draw_process_status_check CHECK ((process_status = ANY (ARRAY [1, 2, 3]))),
     CONSTRAINT adi_draw_user_id_check CHECK ((user_id >= 0))
 );
@@ -56,12 +58,17 @@ COMMENT ON COLUMN public.adi_draw.prompt IS '生成图片的提示词 | The prom
 COMMENT ON COLUMN public.adi_draw.generate_size IS '生成图片的尺寸 | Image generation size';
 COMMENT ON COLUMN public.adi_draw.generate_quality IS '生成图片的质量 | Image generation quality';
 COMMENT ON COLUMN public.adi_draw.generate_number IS '生成图片的数量，必须在1到10之间，默认为1 | The number of images to generate. Must be between 1 and 10. Defaults to 1.';
+COMMENT ON COLUMN public.adi_draw.generate_seed IS '生成图片的随机种子，如果希望生成内容保持相对稳定，请使用相同的seed参数值 | The random seed of the generated image. If you want the generated content to remain relatively stable, use the same seed parameter value';
 COMMENT ON COLUMN public.adi_draw.original_image IS '原始图片的UUID，交互方式必须为2或3 | The UUID of the original image, interacting method must be 2 or 3';
 COMMENT ON COLUMN public.adi_draw.mask_image IS '遮罩图片的UUID，交互方式必须为2 | The UUID of the mask image, interacting method must be 2';
 COMMENT ON COLUMN public.adi_draw.resp_images_path IS '从OpenAI响应生成图片的URL，逗号隔开 | The URL of the generated images from OpenAI response, separated by commas';
 COMMENT ON COLUMN public.adi_draw.generated_images IS '生成的多张图片文件UUID，逗号隔开 | The UUID of the generated images, separated by commas';
-COMMENT ON COLUMN public.adi_draw.interacting_method IS '交互方式：1：根据文本提示从头创建图片；2：根据新文本提示编辑现有图片；3：创建现有图片的变体 | Interaction method: 1: Creating images from scratch based on a text prompt; 2: Creating edits of an existing image based on a new text prompt; 3: Creating variations of an existing image';
-COMMENT ON COLUMN public.adi_draw.process_status IS '生成图片状态，1：进行中，2：失败，3：成功 | Image generation status: 1: in progress, 2: failed, 3: successful';
+COMMENT ON COLUMN public.adi_draw.interacting_method IS '交互方式：1：文本生成图片；2：图片编辑；3：图片生成图片；4：背景生成；5：扩大图片；6：风格转化 | Image generation task type: 1: Text to Image; 2: Image Editing; 3: Image to Image; 4: Background Generation; 5: Style Transfer';
+COMMENT ON COLUMN public.adi_draw.process_status IS '任务执行状态，1：进行中，2：失败，3：成功 | Task execution status, 1: In progress, 2: Failed, 3: Success';
+COMMENT ON COLUMN public.adi_draw.process_status_remark IS '生成图片状态备注 | Image generation status remark';
+COMMENT ON COLUMN public.adi_draw.is_public IS '是否公开 | Is public';
+COMMENT ON COLUMN public.adi_draw.with_watermark IS '是否带水印 | With watermark';
+COMMENT ON COLUMN public.adi_draw.star_count IS '点赞数 | Number of Likes';
 COMMENT ON COLUMN public.adi_draw.create_time IS '记录创建的时间戳 | Timestamp of record creation';
 COMMENT ON COLUMN public.adi_draw.update_time IS '记录最后更新的时间戳，自动更新 | Timestamp of record last update, automatically updated on each update';
 COMMENT ON COLUMN public.adi_draw.is_deleted IS '记录是否被删除的标志（0：未删除，1：已删除） | Flag indicating whether the record is deleted (0: not deleted, 1: deleted)';
@@ -108,6 +115,7 @@ CREATE TABLE public.adi_ai_model
 (
     id                bigserial primary key,
     name              varchar(45)   default ''                not null,
+    title             varchar(45)   default ''                not null,
     type              varchar(45)   default 'text'            not null,
     setting           varchar(500)  default ''                not null,
     remark            varchar(1000) default '',
@@ -734,24 +742,34 @@ VALUES ('storage_location_ali_oss', '{"access_key_id":"","access_key_secret":"",
 
 -- 大语言模型
 -- https://platform.openai.com/docs/models/gpt-3-5-turbo
-INSERT INTO adi_ai_model (name, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
-VALUES ('gpt-3.5-turbo', 'text', 'openai', 16385, 12385, 4096, false);
-INSERT INTO adi_ai_model (name, type, platform, is_enable)
-VALUES ('dall-e-2', 'image', 'openai', false);
-INSERT INTO adi_ai_model (name, type, platform, is_enable)
-VALUES ('dall-e-3', 'image', 'openai', false);
+INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
+VALUES ('gpt-3.5-turbo', 'gpt3.5', 'text', 'openai', 16385, 12385, 4096, false);
+INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
+VALUES ('dall-e-2', 'DALL-E-2', 'image', 'openai', false);
+INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
+VALUES ('dall-e-3', 'DALL-E-3', 'image', 'openai', false);
 -- https://help.aliyun.com/zh/dashscope/developer-reference/model-introduction?spm=a2c4g.11186623.0.i39
-INSERT INTO adi_ai_model (name, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
-VALUES ('qwen-turbo', 'text', 'dashscope', 8192, 6144, 1536, false);
-INSERT INTO adi_ai_model (name, type, platform, context_window, max_input_tokens, max_output_tokens, input_types,
+INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
+VALUES ('qwen-turbo', '通义千问turbo', 'text', 'dashscope', 8192, 6144, 1536, false);
+-- 图片识别
+INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, input_types,
                           is_enable)
-VALUES ('qwen2-vl-7b-instruct', 'text', 'dashscope', 32768, 16384, 16384, 'text,image', false);
+VALUES ('qwen2-vl-7b-instruct', '通义千问-识图', 'text', 'dashscope', 32768, 16384, 16384, 'text,image', false);
+-- https://help.aliyun.com/zh/model-studio/developer-reference/text-to-image-v2-api-reference?spm=a2c4g.11186623.0.i2
+-- 通义万相-文生图（wanx2.1-t2i-plus、wanx2.1-t2i-turbo）
+INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
+VALUES ('wanx2.1-t2i-turbo', '通义万相-文生图', 'image', 'dashscope', false);
+-- 通义万相-切换背景
+INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
+VALUES ('wanx-background-generation-v2', '通义万相-背景生成', 'image', 'dashscope', false);
 -- https://console.bce.baidu.com/qianfan/modelcenter/model/buildIn/detail/am-bg7n2rn2gsbb
-INSERT INTO adi_ai_model (name, type, platform, context_window, max_input_tokens, max_output_tokens, is_free, is_enable,
+INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_free,
+                          is_enable,
                           setting)
-VALUES ('ERNIE-Speed-128K', 'text', 'qianfan', 131072, 126976, 4096, true, false, '{"endpoint":"ernie-speed-128k"}');
-INSERT INTO adi_ai_model (name, type, platform, is_enable)
-VALUES ('tinydolphin', 'text', 'ollama', false);
+VALUES ('ERNIE-Speed-128K', 'ERNIE-Speed-128K', 'text', 'qianfan', 131072, 126976, 4096, true, false,
+        '{"endpoint":"ernie-speed-128k"}');
+INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
+VALUES ('tinydolphin', 'ollama-tinydolphin', 'text', 'ollama', false);
 
 -- 预设角色
 INSERT INTO adi_conversation_preset (uuid, title, remark, ai_system_message)

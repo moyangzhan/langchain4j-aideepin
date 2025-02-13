@@ -23,6 +23,7 @@ public class ModelController {
             LLMModelInfo modelInfo = new LLMModelInfo();
             modelInfo.setModelId(aiModel.getId());
             modelInfo.setModelName(aiModel.getName());
+            modelInfo.setModelTitle(aiModel.getTitle());
             modelInfo.setModelPlatform(aiModel.getPlatform());
             modelInfo.setEnable(aiModel.getIsEnable());
             modelInfo.setInputTypes(aiModel.getInputTypes());
@@ -39,6 +40,7 @@ public class ModelController {
             ImageModelInfo modelInfo = new ImageModelInfo();
             modelInfo.setModelId(aiModel.getId());
             modelInfo.setModelName(aiModel.getName());
+            modelInfo.setModelTitle(aiModel.getTitle());
             modelInfo.setModelPlatform(aiModel.getPlatform());
             modelInfo.setEnable(item.getAiModel().getIsEnable());
             modelInfo.setIsFree(aiModel.getIsFree());

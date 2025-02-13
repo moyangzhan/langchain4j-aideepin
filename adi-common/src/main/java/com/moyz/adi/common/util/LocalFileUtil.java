@@ -91,6 +91,9 @@ public class LocalFileUtil {
             return "";
         } else {
             int endIndex = fileName.indexOf("?");
+            if (endIndex == -1) {
+                endIndex = fileName.length();
+            }
             return fileName.substring(dotIndex + 1, endIndex);
         }
     }

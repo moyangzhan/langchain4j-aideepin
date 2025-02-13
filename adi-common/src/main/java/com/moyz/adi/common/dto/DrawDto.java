@@ -1,6 +1,7 @@
 package com.moyz.adi.common.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -22,6 +23,7 @@ public class DrawDto {
     @JsonIgnore
     private Long userId;
     private LocalDateTime createTime;
+    private JsonNode dynamicParams;
 
     //非 Draw 字段
     private Boolean isStar;

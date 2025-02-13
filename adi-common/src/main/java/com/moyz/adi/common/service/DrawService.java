@@ -15,10 +15,7 @@ import com.moyz.adi.common.helper.QuotaHelper;
 import com.moyz.adi.common.helper.RateLimitHelper;
 import com.moyz.adi.common.interfaces.AbstractImageModelService;
 import com.moyz.adi.common.mapper.DrawMapper;
-import com.moyz.adi.common.util.LocalCache;
-import com.moyz.adi.common.util.LocalDateTimeUtil;
-import com.moyz.adi.common.util.PrivilegeUtil;
-import com.moyz.adi.common.util.UuidUtil;
+import com.moyz.adi.common.util.*;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -123,7 +120,6 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
     public String createByPrompt(GenerateImageReq generateImageReq) {
         self.check();
         CreateImageDto createImageDto = new CreateImageDto();
-        createImageDto.setInteractingMethod(INTERACTING_METHOD_GENERATE_IMAGE);
         BeanUtils.copyProperties(generateImageReq, createImageDto);
         return self.generate(createImageDto);
     }
@@ -172,6 +168,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         draw.setGenerateSize(createImageDto.getSize());
         draw.setGenerateQuality(createImageDto.getQuality());
         draw.setGenerateNumber(generateNumber);
+        draw.setGenerateSeed(createImageDto.getSeed());
         draw.setUuid(uuid);
         draw.setAiModelId(aiModel.getId());
         draw.setAiModelName(createImageDto.getModelName());
@@ -179,8 +176,12 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         draw.setInteractingMethod(createImageDto.getInteractingMethod());
         draw.setProcessStatus(STATUS_DOING);
         draw.setPrompt(createImageDto.getPrompt());
+        draw.setNegativePrompt(createImageDto.getNegativePrompt());
         draw.setOriginalImage(createImageDto.getOriginalImage());
         draw.setMaskImage(createImageDto.getMaskImage());
+        if (null != createImageDto.getDynamicParams() && !createImageDto.getDynamicParams().isEmpty()) {
+            draw.setDynamicParams(createImageDto.getDynamicParams());
+        }
         getBaseMapper().insert(draw);
         Draw obj = this.lambdaQuery().eq(Draw::getUuid, uuid).one();
         self.createFromRemote(obj, user);
@@ -219,13 +220,13 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
             rateLimitHelper.increaseRequestTimes(requestTimesKey, LocalCache.IMAGE_RATE_LIMIT_CONFIG);
 
             AbstractImageModelService<T> imageModelService = ImageModelContext.getModelService(draw.getAiModelName());
-            List<String> images = new ArrayList<>();
-            if (draw.getInteractingMethod() == INTERACTING_METHOD_GENERATE_IMAGE) {
-                images = imageModelService.generateImage(user, draw);
-            } else if (draw.getInteractingMethod() == INTERACTING_METHOD_EDIT_IMAGE) {
+            List<String> images;
+            if (draw.getInteractingMethod() == INTERACTING_METHOD_EDIT_IMAGE) {
                 images = imageModelService.editImage(user, draw);
             } else if (draw.getInteractingMethod() == INTERACTING_METHOD_VARIATION) {
                 images = imageModelService.createImageVariation(user, draw);
+            } else {
+                images = imageModelService.generateImage(user, draw);
             }
             List<String> imageUuids = new ArrayList<>();
             images.forEach(imageUrl -> {

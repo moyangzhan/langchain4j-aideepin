@@ -20,6 +20,10 @@ public class AiModel extends BaseEntity {
     @TableField("name")
     private String name;
 
+    @Schema(title = "模型标题(更易理解记忆的名称)")
+    @TableField("title")
+    private String title;
+
     @Schema(title = "模型所属平台")
     @TableField("platform")
     private String platform;

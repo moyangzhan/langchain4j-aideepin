@@ -10,23 +10,19 @@ import com.moyz.adi.common.interfaces.AbstractImageModelService;
 import com.moyz.adi.common.util.ImageUtil;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.OpenAiUtil;
-import com.moyz.adi.common.vo.ImageModelBuilderProperties;
 import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.OpenAiSetting;
 import com.theokanning.openai.OpenAiApi;
-import com.theokanning.openai.OpenAiError;
 import com.theokanning.openai.image.CreateImageEditRequest;
 import com.theokanning.openai.image.CreateImageVariationRequest;
 import com.theokanning.openai.image.Image;
 import com.theokanning.openai.image.ImageResult;
 import com.theokanning.openai.service.OpenAiService;
-import dev.ai4j.openai4j.OpenAiHttpException;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openai.OpenAiImageModel;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.util.Strings;
 import retrofit2.Retrofit;
 
 import java.io.File;
@@ -85,18 +81,18 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
      * You can request 1 image at a time with DALL·E 3 (request more by making parallel requests) or up to 10 images at a time using DALL·E 2 with the n parameter.
      *
      * @param user
-     * @param builderProperties
+     * @param draw
      * @return
      */
     @Override
-    public ImageModel buildImageModel(User user, ImageModelBuilderProperties builderProperties) {
+    public ImageModel buildImageModel(User user, Draw draw) {
         if (StringUtils.isBlank(setting.getSecretKey())) {
             throw new BaseException(ErrorEnum.B_LLM_SECRET_KEY_NOT_SET);
         }
         if (aiModel.getName().equals(DALL_E_3.toString())) {
-            return createDalle3Model(user, builderProperties);
+            return createDalle3Model(user, draw);
         } else {
-            return createDalle2Model(user, builderProperties);
+            return createDalle2Model(user, draw);
         }
     }
 
@@ -104,16 +100,16 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
      * dall-e-2
      *
      * @param user
-     * @param builderProperties
+     * @param draw
      * @return
      */
-    private ImageModel createDalle2Model(User user, ImageModelBuilderProperties builderProperties) {
+    private ImageModel createDalle2Model(User user, Draw draw) {
         OpenAiImageModel.OpenAiImageModelBuilder builder = OpenAiImageModel.builder()
                 .modelName(aiModel.getName())
                 .apiKey(setting.getSecretKey())
                 .user(user.getUuid())
                 .responseFormat(OPENAI_CREATE_IMAGE_RESP_FORMATS_URL)
-                .size(StringUtils.defaultString(builderProperties.getSize(), DALL_E_SIZE_512_x_512))
+                .size(StringUtils.defaultString(draw.getGenerateSize(), DALL_E_SIZE_512_x_512))
                 .logRequests(true)
                 .logResponses(true)
                 .withPersisting(false)
@@ -128,18 +124,18 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
      * dall-e-3
      *
      * @param user
-     * @param builderProperties
+     * @param draw
      * @return
      */
 
-    private ImageModel createDalle3Model(User user, ImageModelBuilderProperties builderProperties) {
+    private ImageModel createDalle3Model(User user, Draw draw) {
         OpenAiImageModel.OpenAiImageModelBuilder builder = OpenAiImageModel.builder()
                 .modelName(DALL_E_3.toString())
                 .apiKey(setting.getSecretKey())
                 .user(user.getUuid())
                 .responseFormat(OPENAI_CREATE_IMAGE_RESP_FORMATS_URL)
-                .size(builderProperties.getSize())
-                .quality(builderProperties.getQuality())
+                .size(draw.getGenerateSize())
+                .quality(draw.getGenerateQuality())
                 .logRequests(true)
                 .logResponses(true)
                 .withPersisting(false)
