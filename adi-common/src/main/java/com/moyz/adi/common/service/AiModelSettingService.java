@@ -68,6 +68,9 @@ public class AiModelSettingService {
      */
     private synchronized void initLLMServiceList() {
 
+        //deepseek
+        initLLMService(AdiConstant.ModelPlatform.DEEPSEEK, DeepSeekLLMService::new);
+
         //openai
         initLLMService(AdiConstant.ModelPlatform.OPENAI, model -> new OpenAiLLMService(model).setProxy(proxy));
 

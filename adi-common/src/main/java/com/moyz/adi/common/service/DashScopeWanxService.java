@@ -10,8 +10,7 @@ import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.interfaces.AbstractImageModelService;
 import com.moyz.adi.common.util.JsonUtil;
-import com.moyz.adi.common.util.wanx.Wanx2ImageModel;
-import com.moyz.adi.common.util.wanx.WanxBackgroundGenerationModel;
+import com.moyz.adi.common.util.wanx.AdiWanxImageModel;
 import com.moyz.adi.common.vo.DashScopeSetting;
 import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.WanxBackgroundGenerationParams;
@@ -49,16 +48,32 @@ public class DashScopeWanxService extends AbstractImageModelService<DashScopeSet
                 log.error("动态参数解析失败");
                 throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
             }
-            return WanxBackgroundGenerationModel.builder()
+            if (StringUtils.isAllBlank(dynamicParamsObj.getRefImageUrl(), dynamicParamsObj.getRefPrompt())) {
+                log.error("引导图与提示词不能全部为空,dynamicParams:{}", dynamicParamsObj);
+                throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
+            }
+            AdiWanxImageModel model = AdiWanxImageModel.builder()
+                    .baseUrl(setting.getBaseUrl())
                     .apiKey(setting.getApiKey())
                     .modelName(draw.getAiModelName())
+                    .task("background-generation")
+                    .function("generation")
                     .size(draw.getGenerateSize())
-                    .refImageUrl(dynamicParamsObj.getRefImageUrl())
-                    .baseImageUrl(dynamicParamsObj.getBaseImageUrl())
-                    .refPrompt(dynamicParamsObj.getRefPrompt())
                     .build();
+            model.setImageSynthesisParamCustomizer((paramBuilder -> {
+                paramBuilder.extraInput("base_image_url", dynamicParamsObj.getBaseImageUrl());
+                if (StringUtils.isNotBlank(dynamicParamsObj.getRefImageUrl())) {
+                    paramBuilder.extraInput("ref_image_url", dynamicParamsObj.getRefImageUrl());
+                }
+                if (StringUtils.isNotBlank(dynamicParamsObj.getRefPrompt())) {
+                    paramBuilder.extraInput("ref_prompt", dynamicParamsObj.getRefPrompt());
+                }
+                paramBuilder.parameter("model_version", "v3");
+            }));
+            return model;
         } else {
-            Wanx2ImageModel.WanxImageModelBuilder builder = Wanx2ImageModel.builder()
+            AdiWanxImageModel.WanxImageModelBuilder builder = AdiWanxImageModel.builder()
+                    .baseUrl(setting.getBaseUrl())
                     .apiKey(setting.getApiKey())
                     .modelName(draw.getAiModelName())
                     .size(draw.getGenerateSize())
@@ -69,11 +84,6 @@ public class DashScopeWanxService extends AbstractImageModelService<DashScopeSet
             return builder.build();
         }
 
-    }
-
-    @Override
-    public List<String> generateImage(User user, Draw draw) {
-        return super.generateImage(user, draw);
     }
 
     @Override

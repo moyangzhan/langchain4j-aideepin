@@ -26,6 +26,7 @@ public class DrawDto {
     private JsonNode dynamicParams;
 
     //非 Draw 字段
+    private String aiModelPlatform;
     private Boolean isStar;
     private String originalImageUuid;
     private String originalImageUrl;

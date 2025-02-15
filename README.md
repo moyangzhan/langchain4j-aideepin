@@ -45,14 +45,16 @@ AIDEEPIN
 * 基于大模型的知识库（RAG）
   * 向量搜索
   * 图搜索
-* 基于大模型的搜索（RAG）
+* 基于大模型的网络搜索（RAG）
 * 多模型随意切换
 * 多搜索引擎随意切换
 
 ## 接入的模型：
 
+* DeepSeek
 * ChatGPT 3.5
 * 通义千问
+* 通义万相
 * 文心一言
 * ollama
 * DALL-E 2
@@ -100,6 +102,9 @@ Bing (TODO)
 
   * 配置AI平台
     ```plaintext
+    -- DeepSeek的secretKey
+    update adi_sys_config set value = '{"base_url":"https://api.deepseek.com","secret_key":"my_deepseek_secret_key"}' where name = 'deepseek_setting';
+    
     -- openai的secretKey
     update adi_sys_config set value = '{"secret_key":"my_openai_secret_key"}' where name = 'openai_setting';
 
@@ -115,10 +120,11 @@ Bing (TODO)
   * 启用AI平台下的模型或新增模型
     ```
     -- Enable model
+    update adi_ai_model set is_enable = true where name = 'deepseek-chat';
     update adi_ai_model set is_enable = true where name = 'gpt-3.5-turbo';
     update adi_ai_model set is_enable = true where name = 'dall-e-2';
     update adi_ai_model set is_enable = true where name = 'qwen-turbo';
-    update adi_ai_model set is_enable = true where name = 'ernie_speed';
+    update adi_ai_model set is_enable = true where name = 'ERNIE-Speed-128K';
     update adi_ai_model set is_enable = true where name = 'tinydolphin';
 
     -- Add new model
@@ -214,7 +220,7 @@ Bing (TODO)
     * 抠图
     * 扩图
     * 合成
-    * 背景切换
+    * 背景生成  √
 * 搜索引擎
   * Google  √
   * Bing

@@ -36,6 +36,16 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
         super(model, AdiConstant.SysConfigKey.OPENAI_SETTING, OpenAiSetting.class);
     }
 
+    /**
+     * 兼容OpenAi的模型，重新指定系统配置项，并使用本构造器进行初始化
+     *
+     * @param model        adi_ai_model中的模型
+     * @param sysConfigKey 系统配置项名称，如DeepSeek兼容openai的api格式，DeepSeek的系统配置项在adi_sys_config中为deepseek_setting
+     */
+    public OpenAiLLMService(AiModel model, String sysConfigKey) {
+        super(model, sysConfigKey, OpenAiSetting.class);
+    }
+
     @Override
     public boolean isEnabled() {
         return StringUtils.isNotBlank(modelPlatformSetting.getSecretKey()) && aiModel.getIsEnable();
@@ -51,8 +61,12 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
             temperature = properties.getTemperature();
         }
         OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
+                .baseUrl(modelPlatformSetting.getBaseUrl())
                 .temperature(temperature)
                 .apiKey(modelPlatformSetting.getSecretKey());
+        if (StringUtils.isNotBlank(modelPlatformSetting.getBaseUrl())) {
+            builder.baseUrl(modelPlatformSetting.getBaseUrl());
+        }
         if (null != proxy) {
             builder.proxy(proxy);
         }
@@ -70,6 +84,7 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
         }
         OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder = OpenAiStreamingChatModel
                 .builder()
+                .baseUrl(modelPlatformSetting.getBaseUrl())
                 .modelName(aiModel.getName())
                 .temperature(temperature)
                 .apiKey(modelPlatformSetting.getSecretKey())

@@ -60,6 +60,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         Optional<AdiFile> existFile = this.lambdaQuery()
                 .eq(AdiFile::getSha256, sha256)
                 .eq(AdiFile::getIsDeleted, false)
+                .last("limit 1")
                 .oneOpt();
         if (existFile.isPresent()) {
             AdiFile adiFile = existFile.get();

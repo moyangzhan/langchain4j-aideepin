@@ -30,7 +30,7 @@ public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetti
         String ms = aiModel.getSetting();
         if (StringUtils.isNotBlank(ms)) {
             QianFanAiModelSetting aiModelSetting = JsonUtil.fromJson(ms, QianFanAiModelSetting.class);
-            if (StringUtils.isNotBlank(aiModelSetting.getEndpoint())) {
+            if (null != aiModelSetting && StringUtils.isNotBlank(aiModelSetting.getEndpoint())) {
                 endpoint = aiModelSetting.getEndpoint();
             }
         }
@@ -48,6 +48,7 @@ public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetti
             temperature = properties.getTemperature();
         }
         QianfanChatModel.QianfanChatModelBuilder builder = QianfanChatModel.builder()
+                .baseUrl(modelPlatformSetting.getBaseUrl())
                 .modelName(aiModel.getName())
                 .temperature(temperature)
                 .topP(1.0)
@@ -69,6 +70,7 @@ public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetti
             temperature = properties.getTemperature();
         }
         QianfanStreamingChatModel.QianfanStreamingChatModelBuilder builder = QianfanStreamingChatModel.builder()
+                .baseUrl(modelPlatformSetting.getBaseUrl())
                 .modelName(aiModel.getName())
                 .temperature(temperature)
                 .topP(1.0)

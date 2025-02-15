@@ -42,6 +42,7 @@ import static com.moyz.adi.common.cosntant.AdiConstant.GenerateImage.*;
 import static com.moyz.adi.common.cosntant.AdiConstant.MP_LIMIT_1;
 import static com.moyz.adi.common.cosntant.AdiConstant.URL_PREFIX_IMAGE;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
+import static com.moyz.adi.common.util.LocalCache.MODEL_ID_TO_OBJ;
 
 @Slf4j
 @Service
@@ -130,13 +131,8 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
     public String editByOriginalImage(EditImageReq editImageReq) {
         self.check();
         CreateImageDto createImageDto = new CreateImageDto();
+        BeanUtils.copyProperties(editImageReq, createImageDto);
         createImageDto.setInteractingMethod(INTERACTING_METHOD_EDIT_IMAGE);
-        createImageDto.setPrompt(editImageReq.getPrompt());
-        createImageDto.setSize(editImageReq.getSize());
-        createImageDto.setNumber(editImageReq.getNumber());
-        createImageDto.setMaskImage(editImageReq.getMaskImage());
-        createImageDto.setOriginalImage(editImageReq.getOriginalImage());
-        createImageDto.setModelName(editImageReq.getModelName());
         return self.generate(createImageDto);
     }
 
@@ -146,10 +142,8 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
     public String variationImage(VariationImageReq variationImageReq) {
         self.check();
         CreateImageDto createImageDto = new CreateImageDto();
+        BeanUtils.copyProperties(variationImageReq, createImageDto);
         createImageDto.setInteractingMethod(INTERACTING_METHOD_VARIATION);
-        createImageDto.setSize(variationImageReq.getSize());
-        createImageDto.setNumber(variationImageReq.getNumber());
-        createImageDto.setOriginalImage(variationImageReq.getOriginalImage());
         return self.generate(createImageDto);
     }
 
@@ -587,6 +581,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         DrawDto dto = new DrawDto();
         BeanUtils.copyProperties(draw, dto);
 
+        dto.setAiModelPlatform(MODEL_ID_TO_OBJ.get(draw.getAiModelId()).getPlatform());
         //Image uuid string to uuid list
         List<String> images = new ArrayList<>();
         if (StringUtils.isNotBlank(dto.getGeneratedImages())) {

@@ -265,7 +265,7 @@ EXECUTE PROCEDURE update_modified_column();
 CREATE TABLE public.adi_file
 (
     id               bigserial primary key,
-    name             varchar(36)  default ''                not null,
+    name             varchar(120)  default ''                not null,
     uuid             varchar(32)  default ''                not null,
     ext              varchar(36)  default ''                not null,
     user_id          bigint       default 0                 not null,
@@ -698,6 +698,9 @@ VALUES ('catkeeper', '$2a$10$z44gncmQk6xCBCeDx55gMe1Zc8uYtOKcoT4/HE2F92VcF7wP2iq
         replace(gen_random_uuid()::text, '-', ''), 'catkeeper@aideepin.com', 2, true);
 
 -- 配置信息
+-- https://api-docs.deepseek.com/zh-cn/
+INSERT INTO adi_sys_config (name, value)
+VALUES ('deepseek_setting', '{"base_url":"https://api.deepseek.com","secret_key":""}');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('openai_setting', '{"secret_key":""}');
 INSERT INTO adi_sys_config (name, value)
@@ -741,6 +744,9 @@ INSERT INTO adi_sys_config (name, value)
 VALUES ('storage_location_ali_oss', '{"access_key_id":"","access_key_secret":"","endpoint":"","bucket_name":""}');
 
 -- 大语言模型
+-- https://api-docs.deepseek.com/zh-cn/quick_start/pricing
+INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
+VALUES ('deepseek-chat', 'DeepSeek-V3', 'text', 'deepseek', 65536, 61440, 4096, false);
 -- https://platform.openai.com/docs/models/gpt-3-5-turbo
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
 VALUES ('gpt-3.5-turbo', 'gpt3.5', 'text', 'openai', 16385, 12385, 4096, false);
@@ -766,7 +772,7 @@ VALUES ('wanx-background-generation-v2', '通义万相-背景生成', 'image', '
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_free,
                           is_enable,
                           setting)
-VALUES ('ERNIE-Speed-128K', 'ERNIE-Speed-128K', 'text', 'qianfan', 131072, 126976, 4096, true, false,
+VALUES ('ERNIE-Speed-128K', 'ernie_speed', 'text', 'qianfan', 131072, 126976, 4096, true, false,
         '{"endpoint":"ernie-speed-128k"}');
 INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
 VALUES ('tinydolphin', 'ollama-tinydolphin', 'text', 'ollama', false);

@@ -14,18 +14,24 @@ import com.alibaba.dashscope.protocol.HttpMethod;
 import com.alibaba.dashscope.protocol.Protocol;
 import com.alibaba.dashscope.protocol.StreamingMode;
 import com.alibaba.dashscope.task.AsyncTaskListParam;
+import com.aliyun.core.utils.StringUtils;
 
-public class BackgroundGeneration {
+public final class AdiImageSynthesis {
     private final AsynchronousApi<HalfDuplexServiceParam> asyncApi;
     private final ApiServiceOption createServiceOptions;
     private final String baseUrl;
 
     public static class Models {
+        public static final String WANX_V1 = "wanx-v1";
+        public static final String WANX_V2 = "wanx-v2";
+        public static final String WANX_SKETCH_TO_IMAGE_V1 = "wanx-sketch-to-image-v1";
         public static final String WANX_BACKGROUND_GENERATION_V2 = "wanx-background-generation-v2";
     }
 
-    /** Default test2image */
-    public BackgroundGeneration() {
+    /**
+     * Default test2image
+     */
+    public AdiImageSynthesis() {
         // only support http
         asyncApi = new AsynchronousApi<HalfDuplexServiceParam>();
         createServiceOptions =
@@ -34,8 +40,8 @@ public class BackgroundGeneration {
                         .httpMethod(HttpMethod.POST)
                         .streamingMode(StreamingMode.NONE)
                         .taskGroup("aigc")
-                        .task("background-generation")
-                        .function("generation")
+                        .task("text2image")
+                        .function("image-synthesis")
                         .isAsyncTask(true)
                         .build();
         this.baseUrl = null;
@@ -46,7 +52,7 @@ public class BackgroundGeneration {
      *
      * @param task The task of image synthesis(image2image|text2image).
      */
-    public BackgroundGeneration(String task) {
+    public AdiImageSynthesis(String task, String function) {
         // only support http
         asyncApi = new AsynchronousApi<HalfDuplexServiceParam>();
         createServiceOptions =
@@ -56,7 +62,7 @@ public class BackgroundGeneration {
                         .streamingMode(StreamingMode.NONE)
                         .taskGroup("aigc")
                         .task(task)
-                        .function("generation")
+                        .function(StringUtils.isBlank(function) ? "image-synthesis" : function)
                         .isAsyncTask(true)
                         .build();
         this.baseUrl = null;
@@ -65,10 +71,10 @@ public class BackgroundGeneration {
     /**
      * Create with task and custom baseUrl
      *
-     * @param task The task of image synthesis(image2image|text2image).
+     * @param task    The task of image synthesis(image2image|text2image).
      * @param baseUrl The service base url.
      */
-    public BackgroundGeneration(String task, String baseUrl) {
+    public AdiImageSynthesis(String task, String function, String baseUrl) {
         // only support http
         asyncApi = new AsynchronousApi<HalfDuplexServiceParam>();
         createServiceOptions =
@@ -79,7 +85,7 @@ public class BackgroundGeneration {
                         .streamingMode(StreamingMode.NONE)
                         .taskGroup("aigc")
                         .task(task)
-                        .function("generation")
+                        .function(StringUtils.isBlank(function) ? "image-synthesis" : function)
                         .isAsyncTask(true)
                         .build();
         this.baseUrl = baseUrl;
@@ -97,7 +103,7 @@ public class BackgroundGeneration {
      * @param param The input param of class `ImageSynthesisParam`.
      * @return The image synthesis result.
      * @throws NoApiKeyException Can not find api key.
-     * @throws ApiException The request failed, possibly due to a network or data error.
+     * @throws ApiException      The request failed, possibly due to a network or data error.
      */
     public ImageSynthesisResult call(ImageSynthesisParam param)
             throws ApiException, NoApiKeyException {
@@ -107,7 +113,7 @@ public class BackgroundGeneration {
     /**
      * @param param The input param of class `SketchImageSynthesisParam`
      * @return The image synthesis result `ImageSynthesisResult`
-     * @throws ApiException The dashscope exception.
+     * @throws ApiException      The dashscope exception.
      * @throws NoApiKeyException No api key provide.
      */
     public ImageSynthesisResult asyncCall(SketchImageSynthesisParam param)
@@ -122,7 +128,7 @@ public class BackgroundGeneration {
      * @param param The input param of class `SketchImageSynthesisParam`.
      * @return The image synthesis result.
      * @throws NoApiKeyException Can not find api key.
-     * @throws ApiException The request failed, possibly due to a network or data error.
+     * @throws ApiException      The request failed, possibly due to a network or data error.
      */
     public ImageSynthesisResult call(SketchImageSynthesisParam param)
             throws ApiException, NoApiKeyException {

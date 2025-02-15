@@ -105,6 +105,7 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
      */
     private ImageModel createDalle2Model(User user, Draw draw) {
         OpenAiImageModel.OpenAiImageModelBuilder builder = OpenAiImageModel.builder()
+                .baseUrl(setting.getBaseUrl())
                 .modelName(aiModel.getName())
                 .apiKey(setting.getSecretKey())
                 .user(user.getUuid())
@@ -130,6 +131,7 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
 
     private ImageModel createDalle3Model(User user, Draw draw) {
         OpenAiImageModel.OpenAiImageModelBuilder builder = OpenAiImageModel.builder()
+                .baseUrl(setting.getBaseUrl())
                 .modelName(DALL_E_3.toString())
                 .apiKey(setting.getSecretKey())
                 .user(user.getUuid())

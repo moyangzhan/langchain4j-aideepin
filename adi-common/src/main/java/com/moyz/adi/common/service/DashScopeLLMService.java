@@ -65,6 +65,7 @@ public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
                 .apiKey(modelPlatformSetting.getApiKey())
                 .temperature(temperature)
                 .modelName(aiModel.getName())
+                .baseUrl(modelPlatformSetting.getBaseUrl())
                 .build();
     }
 

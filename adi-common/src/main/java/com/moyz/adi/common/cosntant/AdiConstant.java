@@ -102,7 +102,7 @@ public class AdiConstant {
     public static class SysConfigKey {
         private SysConfigKey() {
         }
-
+        public static final String DEEPSEEK_SETTING = "deepseek_setting";
         public static final String OPENAI_SETTING = "openai_setting";
         public static final String DASHSCOPE_SETTING = "dashscope_setting";
         public static final String QIANFAN_SETTING = "qianfan_setting";
@@ -130,7 +130,7 @@ public class AdiConstant {
     public static class ModelPlatform {
         private ModelPlatform() {
         }
-
+        public static final String DEEPSEEK = "deepseek";
         public static final String OPENAI = "openai";
         public static final String DASHSCOPE = "dashscope";
         public static final String QIANFAN = "qianfan";
