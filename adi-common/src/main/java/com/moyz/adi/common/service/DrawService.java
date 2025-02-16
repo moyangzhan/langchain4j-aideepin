@@ -374,7 +374,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         //公开的图片或者自己的图片，都可以获取到
         if (
                 null != draw
-                && (draw.getIsPublic() || (ThreadContext.isLogin() && ThreadContext.getCurrentUserId().equals(draw.getUserId())))
+                        && (draw.getIsPublic() || (ThreadContext.isLogin() && ThreadContext.getCurrentUserId().equals(draw.getUserId())))
         ) {
             return convertDrawToDto(draw);
         } else {
@@ -581,7 +581,11 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         DrawDto dto = new DrawDto();
         BeanUtils.copyProperties(draw, dto);
 
-        dto.setAiModelPlatform(MODEL_ID_TO_OBJ.get(draw.getAiModelId()).getPlatform());
+        String aiPlatformName = "";
+        if (null != MODEL_ID_TO_OBJ.get(draw.getAiModelId())) {
+            aiPlatformName = MODEL_ID_TO_OBJ.get(draw.getAiModelId()).getPlatform();
+        }
+        dto.setAiModelPlatform(aiPlatformName);
         //Image uuid string to uuid list
         List<String> images = new ArrayList<>();
         if (StringUtils.isNotBlank(dto.getGeneratedImages())) {
