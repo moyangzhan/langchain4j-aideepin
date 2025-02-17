@@ -96,7 +96,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         adiFile.setSha256(HashUtil.sha256(saveResult.getPathOrUrl()));
         adiFile.setPath(saveResult.getPathOrUrl());
         adiFile.setUserId(user.getId());
-        adiFile.setExt("png");
+        adiFile.setExt(saveResult.getExt());
         adiFile.setStorageLocation(AdiFileHelper.getStorageLocation());
         this.getBaseMapper().insert(adiFile);
         return uuid;
