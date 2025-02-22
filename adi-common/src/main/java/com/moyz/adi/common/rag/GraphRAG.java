@@ -73,11 +73,15 @@ public class GraphRAG {
 
                         String response = "";
                         if (StringUtils.isNotBlank(segment.text())) {
-                            ErrorEnum errorMsg = SpringUtil.getBean(QuotaHelper.class).checkTextQuota(user);
-                            if (null != errorMsg) {
-                                log.warn("抽取知识图谱时发现额度已超过限制,user:{},errorInfo:{}", user.getName(), errorMsg.getInfo());
-                                continue;
+
+                            if (!graphIngestParams.isFreeToken()) {
+                                ErrorEnum errorMsg = SpringUtil.getBean(QuotaHelper.class).checkTextQuota(user);
+                                if (null != errorMsg) {
+                                    log.warn("抽取知识图谱时发现额度已超过限制,user:{},errorInfo:{}", user.getName(), errorMsg.getInfo());
+                                    continue;
+                                }
                             }
+
                             log.info("请求LLM从文本中抽取实体及关系,segmentId:{}", segmentId);
                             Response<AiMessage> aiMessageResponse = graphIngestParams.getChatLanguageModel().generate(UserMessage.from(GraphExtractPrompt.GRAPH_EXTRACTION_PROMPT_CN.replace("{input_text}", segment.text())));
                             response = aiMessageResponse.content().text();

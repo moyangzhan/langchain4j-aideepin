@@ -91,10 +91,13 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             }
 
             //check 3: current user's quota
-            ErrorEnum errorMsg = quotaHelper.checkTextQuota(user);
-            if (null != errorMsg) {
-                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, errorMsg.getInfo());
-                return false;
+            AiModel aiModel = LLMContext.getAiModel(askReq.getModelName());
+            if (null != aiModel && !aiModel.getIsFree()) {
+                ErrorEnum errorMsg = quotaHelper.checkTextQuota(user);
+                if (null != errorMsg) {
+                    sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, errorMsg.getInfo());
+                    return false;
+                }
             }
         } catch (Exception e) {
             log.error("error", e);
