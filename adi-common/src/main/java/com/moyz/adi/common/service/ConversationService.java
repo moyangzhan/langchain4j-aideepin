@@ -184,7 +184,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
     /**
      * 根据预设会话创建当前用户会话
      *
-     * @param presetConvUuid
+     * @param presetConvUuid 预设会话uuid
      */
     public ConvDto addByPresetConv(String presetConvUuid) {
         ConversationPreset presetConv = this.conversationPresetService.lambdaQuery()
@@ -194,7 +194,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
                 .orElseThrow(() -> new BaseException(A_PRESET_CONVERSATION_NOT_EXIST));
         ConversationPresetRel presetRel = this.conversationPresetRelService.lambdaQuery()
                 .eq(ConversationPresetRel::getUserId, ThreadContext.getCurrentUserId())
-                .eq(ConversationPresetRel::getUserConvId, presetConv.getId())
+                .eq(ConversationPresetRel::getPresetConvId, presetConv.getId())
                 .eq(ConversationPresetRel::getIsDeleted, false)
                 .oneOpt()
                 .orElse(null);

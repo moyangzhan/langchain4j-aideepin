@@ -62,6 +62,7 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
         }
         OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
                 .baseUrl(modelPlatformSetting.getBaseUrl())
+                .modelName(aiModel.getName())
                 .temperature(temperature)
                 .apiKey(modelPlatformSetting.getSecretKey());
         if (StringUtils.isNotBlank(modelPlatformSetting.getBaseUrl())) {

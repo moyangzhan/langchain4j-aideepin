@@ -42,11 +42,6 @@ public class KnowledgeBaseItem extends BaseEntity {
     @TableField("remark")
     private String remark;
 
-    @Schema(title = "是否已向量化")
-    @TableField("is_embedded")
-    @Deprecated
-    private Boolean isEmbedded;
-
     @Schema(title = "向量化状态")
     @TableField("embedding_status")
     private EmbeddingStatusEnum embeddingStatus;
