@@ -5,7 +5,6 @@ import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.formula.functions.T;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -17,12 +16,12 @@ import java.util.Optional;
  */
 @Slf4j
 public class LLMContext {
-    protected static final Map<String, AbstractLLMService<T>> NAME_TO_LLM_SERVICE = new LinkedHashMap<>();
+    protected static final Map<String, AbstractLLMService<?>> NAME_TO_LLM_SERVICE = new LinkedHashMap<>();
 
     private LLMContext() {
     }
 
-    public static void addLLMService(AbstractLLMService<T> llmService) {
+    public static void addLLMService(AbstractLLMService<?> llmService) {
         NAME_TO_LLM_SERVICE.put(llmService.getAiModel().getName(), llmService);
     }
 
@@ -51,14 +50,14 @@ public class LLMContext {
         return NAME_TO_LLM_SERVICE.get(modelName).getAiModel();
     }
 
-    public static Map<String, AbstractLLMService<T>> getAllServices() {
+    public static Map<String, AbstractLLMService<?>> getAllServices() {
         return NAME_TO_LLM_SERVICE;
     }
 
-    public static AbstractLLMService<T> getLLMServiceByName(String modelName) {
-        AbstractLLMService<T> service = NAME_TO_LLM_SERVICE.get(modelName);
+    public static AbstractLLMService<?> getLLMServiceByName(String modelName) {
+        AbstractLLMService<?> service = NAME_TO_LLM_SERVICE.get(modelName);
         if (null == service) {
-            Optional<AbstractLLMService<T>> serviceOptional = getFirstEnableAndFree();
+            Optional<AbstractLLMService<?>> serviceOptional = getFirstEnableAndFree();
             if (serviceOptional.isPresent()) {
                 log.warn("︿︿︿ 找不到 {},使用第1个可用的免费模型 {} ︿︿︿", modelName, serviceOptional.get().getAiModel().getName());
                 return serviceOptional.get();
@@ -69,7 +68,7 @@ public class LLMContext {
         return service;
     }
 
-    public static AbstractLLMService<T> getLLMServiceById(Long modelId) {
+    public static AbstractLLMService<?> getLLMServiceById(Long modelId) {
         AiModel aiModel = NAME_TO_LLM_SERVICE.values().stream()
                 .map(AbstractLLMService::getAiModel)
                 .filter(item -> item.getId().equals(modelId))
@@ -84,7 +83,7 @@ public class LLMContext {
      *
      * @return 返回免费可用或收费可用的模型
      */
-    public static Optional<AbstractLLMService<T>> getFirstEnableAndFree() {
+    public static Optional<AbstractLLMService<?>> getFirstEnableAndFree() {
         return NAME_TO_LLM_SERVICE.values().stream().filter(item -> {
             AiModel aiModel = item.getAiModel();
             if (aiModel.getIsEnable() && aiModel.getIsFree()) {

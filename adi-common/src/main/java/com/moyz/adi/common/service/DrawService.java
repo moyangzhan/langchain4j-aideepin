@@ -22,7 +22,6 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
-import org.apache.poi.ss.formula.functions.T;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
@@ -213,7 +212,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
             String requestTimesKey = MessageFormat.format(RedisKeyConstant.USER_REQUEST_TEXT_TIMES, user.getId());
             rateLimitHelper.increaseRequestTimes(requestTimesKey, LocalCache.IMAGE_RATE_LIMIT_CONFIG);
 
-            AbstractImageModelService<T> imageModelService = ImageModelContext.getModelService(draw.getAiModelName());
+            AbstractImageModelService<?> imageModelService = ImageModelContext.getModelService(draw.getAiModelName());
             List<String> images;
             if (draw.getInteractingMethod() == INTERACTING_METHOD_EDIT_IMAGE) {
                 images = imageModelService.editImage(user, draw);

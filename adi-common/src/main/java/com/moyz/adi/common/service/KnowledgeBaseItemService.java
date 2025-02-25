@@ -26,7 +26,6 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.poi.ss.formula.functions.T;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
@@ -186,7 +185,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                     .set(KnowledgeBaseItem::getGraphicalStatusChangeTime, LocalDateTime.now())
                     .set(KnowledgeBaseItem::getGraphicalStatus, GraphicalStatusEnum.DOING)
                     .update();
-            AbstractLLMService<T> llmService = LLMContext.getLLMServiceById(knowledgeBase.getIngestModelId());
+            AbstractLLMService<?> llmService = LLMContext.getLLMServiceById(knowledgeBase.getIngestModelId());
             ChatLanguageModel chatLanguageModel = llmService.buildChatLLM(
                     LLMBuilderProperties.builder()
                             .temperature(knowledgeBase.getQueryLlmTemperature())
