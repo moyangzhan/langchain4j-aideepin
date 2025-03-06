@@ -48,10 +48,11 @@ public class AliyunOssHelper {
             client.shutdown();
         }
         if (StringUtils.isAnyBlank(newConfigObj.getEndpoint(), newConfigObj.getAccessKeyId(), newConfigObj.getAccessKeySecret(), newConfigObj.getBucketName())) {
-            log.warn("阿里云OSS配置信息没有填写完整");
+            log.warn("阿里云OSS配置信息没有填写完整，不初始化OSSClient");
             if (STORAGE_LOCATION_ALI_OSS == Integer.parseInt(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.STORAGE_LOCATION))) {
                 log.error("^^^ 阿里云OSS不可用，需将存储位置切换回本地存储 ^^^");
             }
+            return;
         }
         configStr = newConfigStr;
         configObj = newConfigObj;
