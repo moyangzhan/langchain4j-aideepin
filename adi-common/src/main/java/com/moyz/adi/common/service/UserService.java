@@ -130,6 +130,9 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         newOne.setPassword(hashed);
         newOne.setUserStatus(UserStatusEnum.WAIT_CONFIRM);
         baseMapper.insert(newOne);
+
+        //Create default conversation
+        conversationService.createDefault(newOne.getId());
     }
 
     /**
@@ -196,9 +199,6 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         baseMapper.updateById(updateUser);
 
         setLoginToken(user);
-
-        //Create default conversation
-        conversationService.createDefault(user.getId());
     }
 
     /**
