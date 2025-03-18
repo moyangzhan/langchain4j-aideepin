@@ -155,7 +155,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                         .temperature(conversation.getLlmTemperature())
                         .build()
         );
-        sseEmitterHelper.commonProcess(sseAskParams, (response, questionMeta, answerMeta) -> self.saveAfterAiResponse(user, askReq, response, questionMeta, answerMeta));
+        sseEmitterHelper.call(sseAskParams, true, (response, questionMeta, answerMeta) -> self.saveAfterAiResponse(user, askReq, response, questionMeta, answerMeta));
     }
 
     public List<ConversationMessage> listQuestionsByConvId(long convId, long maxId, int pageSize) {

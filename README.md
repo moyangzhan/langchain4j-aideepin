@@ -40,14 +40,15 @@ AIDEEPIN
 * 注册&登录
 * 多会话（多角色）
 * 图片生成（文生图、修图、图生图）
-* 提示词
-* 额度控制
 * 基于大模型的知识库（RAG）
   * 向量搜索
   * 图搜索
 * 基于大模型的网络搜索（RAG）
+* 工作流
 * 多模型随意切换
 * 多搜索引擎随意切换
+* 提示词管理
+* 额度控制
 
 ## 接入的模型：
 
@@ -210,7 +211,7 @@ Bing (TODO)
   * 图片  √
   * 音频
   * 视频
-* 自定义AI Agent（工作流）
+* 自定义AI Agent（工作流）  √
 * 工具
   * FAQ提取
   * 文档对话
@@ -242,16 +243,10 @@ Bing (TODO)
 
 ![draw_001](image/README/draw_001.png "AI绘图")
 
-![draw_002](image/README/draw_002.png "AI绘图")
-
 **知识库：**
 ![kbindex](image/README/kbidx.png)
 
-![kb01](image/README/kb01.png)
-
 **向量化：**
-
-![kb02](image/README/kb02.png)
 
 ![kb03](image/README/kb03.png)
 
@@ -259,7 +254,9 @@ Bing (TODO)
 
 ![kb_graph_01](image/README/kb_graph_01.png)
 
-![kb_graph_02](image/README/kb_graph_02.png)
+**工作流：**
+
+![workflow_01](image/README/workflow.png)
 
 **额度统计：**
 

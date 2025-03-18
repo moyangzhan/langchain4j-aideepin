@@ -1,6 +1,7 @@
 package com.moyz.adi.common.util;
 
-import dev.langchain4j.model.dashscope.QwenModelName;
+
+import dev.langchain4j.community.model.dashscope.QwenModelName;
 
 import java.util.stream.Stream;
 

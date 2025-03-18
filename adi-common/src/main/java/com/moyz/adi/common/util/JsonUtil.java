@@ -2,7 +2,10 @@ package com.moyz.adi.common.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.*;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +13,9 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -100,6 +106,19 @@ public class JsonUtil {
         return null;
     }
 
+
+    public static <T> List<T> fromArrayNode(ArrayNode arrayNode, Class<T> clazz) {
+        List<T> result = new ArrayList<>();
+        try {
+            for (JsonNode jsonNode : arrayNode) {
+                result.add(objectMapper.treeToValue(jsonNode, clazz));
+            }
+        } catch (JsonProcessingException e) {
+            log.error("反序列化失败", e);
+        }
+        return result;
+    }
+
     public static JsonNode toJsonNode(String json) {
         try {
             return objectMapper.readTree(json);
@@ -120,13 +139,24 @@ public class JsonUtil {
     }
 
     public static Map<String, Object> toMap(Object obj) {
-        Map<String, Object> result;
         try {
-            result = objectMapper.convertValue(obj, Map.class);
+            return objectMapper.convertValue(obj, new TypeReference<HashMap<String, Object>>() {
+            });
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        return result;
+    }
+
+    public static JsonNode classToJsonNode(Object obj) {
+        return objectMapper.valueToTree(obj);
+    }
+
+    public static ObjectNode createObjectNode() {
+        return objectMapper.createObjectNode();
+    }
+
+    public static ArrayNode createArrayNode() {
+        return objectMapper.createArrayNode();
     }
 
 }

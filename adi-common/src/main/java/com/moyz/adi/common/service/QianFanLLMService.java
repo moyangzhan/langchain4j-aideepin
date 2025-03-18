@@ -8,10 +8,10 @@ import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.QianFanAiModelSetting;
 import com.moyz.adi.common.vo.QianFanAiPlatformSetting;
+import dev.langchain4j.community.model.qianfan.QianfanChatModel;
+import dev.langchain4j.community.model.qianfan.QianfanStreamingChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.qianfan.QianfanChatModel;
-import dev.langchain4j.model.qianfan.QianfanStreamingChatModel;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -66,7 +66,7 @@ public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetti
     @Override
     public StreamingChatLanguageModel buildStreamingChatLLM(LLMBuilderProperties properties) {
         double temperature = 0.7;
-        if (null != properties && properties.getTemperature() > 0 && properties.getTemperature() <= 1) {
+        if (null != properties && null != properties.getTemperature() && properties.getTemperature() > 0 && properties.getTemperature() <= 1) {
             temperature = properties.getTemperature();
         }
         QianfanStreamingChatModel.QianfanStreamingChatModelBuilder builder = QianfanStreamingChatModel.builder()

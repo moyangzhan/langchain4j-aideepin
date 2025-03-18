@@ -2,7 +2,8 @@ package com.moyz.adi.common.cosntant;
 
 public class RedisKeyConstant {
 
-    private RedisKeyConstant(){}
+    private RedisKeyConstant() {
+    }
 
     /**
      * 账号激活码的key
@@ -127,4 +128,8 @@ public class RedisKeyConstant {
      * 值：用户id
      */
     public static final String DRAW_COMMENT_LIMIT_KEY = "user:draw:comment-submitting:{0}";
+
+    public static final String WORKFLOW_KEY = "workflow";
+
+    public static final String WORKFLOW_COMPONENT_START_KEY = "workflow:component:start";
 }

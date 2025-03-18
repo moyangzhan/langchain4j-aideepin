@@ -16,6 +16,7 @@ import com.moyz.adi.common.searchengine.SearchEngineServiceContext;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.AssistantChatParams;
 import com.moyz.adi.common.vo.SseAskParams;
+import dev.langchain4j.data.document.DefaultDocument;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -139,7 +140,7 @@ public class SearchService {
         sseAskParams.setSseEmitter(sseEmitter);
         sseAskParams.setModelName(modelName);
         sseAskParams.setUser(user);
-        sseEmitterHelper.commonProcess(sseAskParams, (response, promptMeta, answerMeta) -> {
+        sseEmitterHelper.call(sseAskParams, true, (response, promptMeta, answerMeta) -> {
 
             AiModel aiModel = aiModelService.getByName(modelName);
 
@@ -211,7 +212,7 @@ public class SearchService {
                         Metadata metadata = new Metadata();
                         metadata.put(AdiConstant.MetadataKey.ENGINE_NAME, engineName);
                         metadata.put(AdiConstant.MetadataKey.SEARCH_UUID, searchUuid);
-                        Document document = new Document(content, metadata);
+                        Document document = new DefaultDocument(content, metadata);
                         searchRagService.ingest(document, 0, null);
                     }
                 } catch (Exception e) {

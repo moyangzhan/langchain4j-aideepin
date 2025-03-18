@@ -102,6 +102,7 @@ public class AdiConstant {
     public static class SysConfigKey {
         private SysConfigKey() {
         }
+
         public static final String DEEPSEEK_SETTING = "deepseek_setting";
         public static final String OPENAI_SETTING = "openai_setting";
         public static final String DASHSCOPE_SETTING = "dashscope_setting";
@@ -130,6 +131,7 @@ public class AdiConstant {
     public static class ModelPlatform {
         private ModelPlatform() {
         }
+
         public static final String DEEPSEEK = "deepseek";
         public static final String OPENAI = "openai";
         public static final String DASHSCOPE = "dashscope";
@@ -166,6 +168,8 @@ public class AdiConstant {
         public static final String META = "[META]";
 
         public static final String AI_SEARCH_SOURCE_LINKS = "[SOURCE_LINKS]";
+        public static final String WF_NODE_CHUNK = "[WF_NODE_CHUNK]";
+        public static final String WF_NODE_OUTPUT = "[WF_NODE_OUTPUT]";
     }
 
     public static final int RAG_TYPE_KB = 1;
@@ -249,4 +253,23 @@ public class AdiConstant {
     public static final List<String> IMAGE_EXTENSIONS = List.of("jpg", "jpeg", "png", "gif", "bmp", "webp");
 
     public static final String W_FAILED = "FAILED";
+
+    public static class WorkflowConstant {
+        public static final String DEFAULT_INPUT_PARAM_NAME = "input";
+        public static final String DEFAULT_OUTPUT_PARAM_NAME = "output";
+
+        public static final int NODE_PROCESS_STATUS_READY = 1;
+        public static final int NODE_PROCESS_STATUS_DOING = 2;
+        public static final int NODE_PROCESS_STATUS_SUCCESS = 3;
+        public static final int NODE_PROCESS_STATUS_FAIL = 4;
+
+        public static final int WORKFLOW_PROCESS_STATUS_READY = 1;
+        public static final int WORKFLOW_PROCESS_STATUS_DOING = 2;
+        public static final int WORKFLOW_PROCESS_STATUS_SUCCESS = 3;
+        public static final int WORKFLOW_PROCESS_STATUS_FAIL = 4;
+
+        public static final int WORKFLOW_NODE_PROCESS_TYPE_NORMAL = 1;
+        public static final int WORKFLOW_NODE_PROCESS_TYPE_CONDITIONAL = 2;
+        public static final int WORKFLOW_NODE_PROCESS_TYPE_PARALLEL = 3;
+    }
 }

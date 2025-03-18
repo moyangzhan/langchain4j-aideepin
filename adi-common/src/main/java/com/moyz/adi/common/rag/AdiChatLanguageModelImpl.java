@@ -1,9 +1,11 @@
 package com.moyz.adi.common.rag;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 
 import java.util.List;
@@ -15,43 +17,50 @@ import java.util.function.Consumer;
 public class AdiChatLanguageModelImpl implements ChatLanguageModel {
 
     private final ChatLanguageModel chatLanguageModel;
-    private final Consumer<Response<AiMessage>> consumer;
+    private final Consumer<ChatResponse> consumer;
 
-    public AdiChatLanguageModelImpl(ChatLanguageModel chatLanguageModel, Consumer<Response<AiMessage>> consumer) {
+    public AdiChatLanguageModelImpl(ChatLanguageModel chatLanguageModel, Consumer<ChatResponse> consumer) {
         this.chatLanguageModel = chatLanguageModel;
         this.consumer = consumer;
     }
 
     @Override
-    public String generate(String userMessage) {
-        return chatLanguageModel.generate(userMessage);
+    public ChatResponse chat(ChatMessage... messages) {
+        ChatResponse chatResponse = ChatLanguageModel.super.chat(messages);
+        consumer.accept(chatResponse);
+        return chatResponse;
     }
 
     @Override
-    public Response<AiMessage> generate(ChatMessage... messages) {
-        Response<AiMessage> response = chatLanguageModel.generate(messages);
-        consumer.accept(response);
-        return response;
+    public ChatResponse chat(List<ChatMessage> messages) {
+        ChatResponse chatResponse = ChatLanguageModel.super.chat(messages);
+        consumer.accept(chatResponse);
+        return chatResponse;
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
         Response<AiMessage> response = chatLanguageModel.generate(messages);
-        consumer.accept(response);
+
+        ChatResponse chatResponse = ChatResponse.builder()
+                .aiMessage(response.content())
+                .metadata(
+                        ChatResponseMetadata.builder()
+                                .tokenUsage(response.tokenUsage())
+                                .finishReason(response.finishReason())
+                                .build()
+                )
+                .build();
+        consumer.accept(chatResponse);
+
         return response;
     }
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        Response<AiMessage> response = chatLanguageModel.generate(messages, toolSpecifications);
-        consumer.accept(response);
-        return response;
+    public ChatResponse chat(ChatRequest chatRequest) {
+        ChatResponse chatResponse = ChatLanguageModel.super.chat(chatRequest);
+        consumer.accept(chatResponse);
+        return chatResponse;
     }
 
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        Response<AiMessage> response = chatLanguageModel.generate(messages, toolSpecification);
-        consumer.accept(response);
-        return response;
-    }
 }

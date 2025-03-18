@@ -73,7 +73,6 @@ public class GraphRAG {
 
                         String response = "";
                         if (StringUtils.isNotBlank(segment.text())) {
-
                             if (!graphIngestParams.isFreeToken()) {
                                 ErrorEnum errorMsg = SpringUtil.getBean(QuotaHelper.class).checkTextQuota(user);
                                 if (null != errorMsg) {
@@ -81,7 +80,6 @@ public class GraphRAG {
                                     continue;
                                 }
                             }
-
                             log.info("请求LLM从文本中抽取实体及关系,segmentId:{}", segmentId);
                             Response<AiMessage> aiMessageResponse = graphIngestParams.getChatLanguageModel().generate(UserMessage.from(GraphExtractPrompt.GRAPH_EXTRACTION_PROMPT_CN.replace("{input_text}", segment.text())));
                             response = aiMessageResponse.content().text();

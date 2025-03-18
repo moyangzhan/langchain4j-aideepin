@@ -17,7 +17,7 @@ END;
 $$ language 'plpgsql';
 
 -- 原表名: adi_ai_image
-CREATE TABLE public.adi_draw
+CREATE TABLE adi_draw
 (
     id                    bigserial primary key,
     user_id               bigint        default 0                 not null,
@@ -48,30 +48,30 @@ CREATE TABLE public.adi_draw
     CONSTRAINT adi_draw_process_status_check CHECK ((process_status = ANY (ARRAY [1, 2, 3]))),
     CONSTRAINT adi_draw_user_id_check CHECK ((user_id >= 0))
 );
-ALTER TABLE ONLY public.adi_draw
+ALTER TABLE ONLY adi_draw
     ADD CONSTRAINT udx_uuid UNIQUE (uuid);
-COMMENT ON TABLE public.adi_draw IS '绘图任务 | Image generation task';
-COMMENT ON COLUMN public.adi_draw.user_id IS '用户ID | User ID';
-COMMENT ON COLUMN public.adi_draw.uuid IS '绘图任务的UUID | UUID of the request of generated images';
-COMMENT ON COLUMN public.adi_draw.ai_model_name IS '图像模型名称 | Image model name';
-COMMENT ON COLUMN public.adi_draw.prompt IS '生成图片的提示词 | The prompt for generating images';
-COMMENT ON COLUMN public.adi_draw.generate_size IS '生成图片的尺寸 | Image generation size';
-COMMENT ON COLUMN public.adi_draw.generate_quality IS '生成图片的质量 | Image generation quality';
-COMMENT ON COLUMN public.adi_draw.generate_number IS '生成图片的数量，必须在1到10之间，默认为1 | The number of images to generate. Must be between 1 and 10. Defaults to 1.';
-COMMENT ON COLUMN public.adi_draw.generate_seed IS '生成图片的随机种子，如果希望生成内容保持相对稳定，请使用相同的seed参数值 | The random seed of the generated image. If you want the generated content to remain relatively stable, use the same seed parameter value';
-COMMENT ON COLUMN public.adi_draw.original_image IS '原始图片的UUID，交互方式必须为2或3 | The UUID of the original image, interacting method must be 2 or 3';
-COMMENT ON COLUMN public.adi_draw.mask_image IS '遮罩图片的UUID，交互方式必须为2 | The UUID of the mask image, interacting method must be 2';
-COMMENT ON COLUMN public.adi_draw.resp_images_path IS '从OpenAI响应生成图片的URL，逗号隔开 | The URL of the generated images from OpenAI response, separated by commas';
-COMMENT ON COLUMN public.adi_draw.generated_images IS '生成的多张图片文件UUID，逗号隔开 | The UUID of the generated images, separated by commas';
-COMMENT ON COLUMN public.adi_draw.interacting_method IS '交互方式：1：文本生成图片；2：图片编辑；3：图片生成图片；4：背景生成；5：扩大图片；6：风格转化 | Image generation task type: 1: Text to Image; 2: Image Editing; 3: Image to Image; 4: Background Generation; 5: Style Transfer';
-COMMENT ON COLUMN public.adi_draw.process_status IS '任务执行状态，1：进行中，2：失败，3：成功 | Task execution status, 1: In progress, 2: Failed, 3: Success';
-COMMENT ON COLUMN public.adi_draw.process_status_remark IS '生成图片状态备注 | Image generation status remark';
-COMMENT ON COLUMN public.adi_draw.is_public IS '是否公开 | Is public';
-COMMENT ON COLUMN public.adi_draw.with_watermark IS '是否带水印 | With watermark';
-COMMENT ON COLUMN public.adi_draw.star_count IS '点赞数 | Number of Likes';
-COMMENT ON COLUMN public.adi_draw.create_time IS '记录创建的时间戳 | Timestamp of record creation';
-COMMENT ON COLUMN public.adi_draw.update_time IS '记录最后更新的时间戳，自动更新 | Timestamp of record last update, automatically updated on each update';
-COMMENT ON COLUMN public.adi_draw.is_deleted IS '记录是否被删除的标志（0：未删除，1：已删除） | Flag indicating whether the record is deleted (0: not deleted, 1: deleted)';
+COMMENT ON TABLE adi_draw IS '绘图任务 | Image generation task';
+COMMENT ON COLUMN adi_draw.user_id IS '用户ID | User ID';
+COMMENT ON COLUMN adi_draw.uuid IS '绘图任务的UUID | UUID of the request of generated images';
+COMMENT ON COLUMN adi_draw.ai_model_name IS '图像模型名称 | Image model name';
+COMMENT ON COLUMN adi_draw.prompt IS '生成图片的提示词 | The prompt for generating images';
+COMMENT ON COLUMN adi_draw.generate_size IS '生成图片的尺寸 | Image generation size';
+COMMENT ON COLUMN adi_draw.generate_quality IS '生成图片的质量 | Image generation quality';
+COMMENT ON COLUMN adi_draw.generate_number IS '生成图片的数量，必须在1到10之间，默认为1 | The number of images to generate. Must be between 1 and 10. Defaults to 1.';
+COMMENT ON COLUMN adi_draw.generate_seed IS '生成图片的随机种子，如果希望生成内容保持相对稳定，请使用相同的seed参数值 | The random seed of the generated image. If you want the generated content to remain relatively stable, use the same seed parameter value';
+COMMENT ON COLUMN adi_draw.original_image IS '原始图片的UUID，交互方式必须为2或3 | The UUID of the original image, interacting method must be 2 or 3';
+COMMENT ON COLUMN adi_draw.mask_image IS '遮罩图片的UUID，交互方式必须为2 | The UUID of the mask image, interacting method must be 2';
+COMMENT ON COLUMN adi_draw.resp_images_path IS '从OpenAI响应生成图片的URL，逗号隔开 | The URL of the generated images from OpenAI response, separated by commas';
+COMMENT ON COLUMN adi_draw.generated_images IS '生成的多张图片文件UUID，逗号隔开 | The UUID of the generated images, separated by commas';
+COMMENT ON COLUMN adi_draw.interacting_method IS '交互方式：1：文本生成图片；2：图片编辑；3：图片生成图片；4：背景生成；5：扩大图片；6：风格转化 | Image generation task type: 1: Text to Image; 2: Image Editing; 3: Image to Image; 4: Background Generation; 5: Style Transfer';
+COMMENT ON COLUMN adi_draw.process_status IS '任务执行状态，1：进行中，2：失败，3：成功 | Task execution status, 1: In progress, 2: Failed, 3: Success';
+COMMENT ON COLUMN adi_draw.process_status_remark IS '生成图片状态备注 | Image generation status remark';
+COMMENT ON COLUMN adi_draw.is_public IS '是否公开 | Is public';
+COMMENT ON COLUMN adi_draw.with_watermark IS '是否带水印 | With watermark';
+COMMENT ON COLUMN adi_draw.star_count IS '点赞数 | Number of Likes';
+COMMENT ON COLUMN adi_draw.create_time IS '记录创建的时间戳 | Timestamp of record creation';
+COMMENT ON COLUMN adi_draw.update_time IS '记录最后更新的时间戳，自动更新 | Timestamp of record last update, automatically updated on each update';
+COMMENT ON COLUMN adi_draw.is_deleted IS '记录是否被删除的标志（0：未删除，1：已删除） | Flag indicating whether the record is deleted (0: not deleted, 1: deleted)';
 
 CREATE TRIGGER trigger_draw_update_time
     BEFORE UPDATE
@@ -79,7 +79,7 @@ CREATE TRIGGER trigger_draw_update_time
     FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
 
-CREATE TABLE public.adi_draw_star
+CREATE TABLE adi_draw_star
 (
     id          bigserial primary key,
     user_id     bigint    default 0                 not null,
@@ -94,7 +94,7 @@ CREATE TRIGGER trigger_draw_star_update_time
     FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
 
-CREATE TABLE public.adi_draw_comment
+CREATE TABLE adi_draw_comment
 (
     id          bigserial primary key,
     uuid        varchar(32) default ''                not null,
@@ -111,7 +111,7 @@ CREATE TRIGGER trigger_draw_comment_update_time
     FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
 
-CREATE TABLE public.adi_ai_model
+CREATE TABLE adi_ai_model
 (
     id                bigserial primary key,
     name              varchar(45)   default ''                not null,
@@ -131,17 +131,17 @@ CREATE TABLE public.adi_ai_model
     is_deleted        boolean       default false             not null
 );
 
-COMMENT ON TABLE public.adi_ai_model IS 'AI模型 | AI model';
-COMMENT ON COLUMN public.adi_ai_model.type IS '模型类型(以输出类型或使用目的做判断，如dalle2可文本和图像输入，但使用方关注的是输出的图片，所以属于image类型),eg: text,image,embedding,rerank | Model type (judged by output type or usage purpose, e.g., dalle2 can input text and image, but users focus on the output image, so it belongs to the image type), e.g., text, image, embedding, rerank';
-COMMENT ON COLUMN public.adi_ai_model.name IS '模型名称 | Model name';
-COMMENT ON COLUMN public.adi_ai_model.remark IS '备注 | Additional remarks about the AI model';
-COMMENT ON COLUMN public.adi_ai_model.platform IS '平台 | Platform, e.g., openai, dashscope, qianfan, ollama';
-COMMENT ON COLUMN public.adi_ai_model.context_window IS '上下文窗口 | LLM context window';
-COMMENT ON COLUMN public.adi_ai_model.input_types IS '输入类型 | Input types, e.g., text, image, audio, video';
-COMMENT ON COLUMN public.adi_ai_model.is_enable IS '是否启用 | True: Normal usage, false: Not available';
-COMMENT ON COLUMN public.adi_ai_model.is_free IS '是否免费 | Is free, true: free, false: paid';
-COMMENT ON COLUMN public.adi_ai_model.create_time IS '创建时间 | Timestamp of record creation';
-COMMENT ON COLUMN public.adi_ai_model.update_time IS '更新时间 | Timestamp of record last update, automatically updated on each update';
+COMMENT ON TABLE adi_ai_model IS 'AI模型 | AI model';
+COMMENT ON COLUMN adi_ai_model.type IS '模型类型(以输出类型或使用目的做判断，如dalle2可文本和图像输入，但使用方关注的是输出的图片，所以属于image类型),eg: text,image,embedding,rerank | Model type (judged by output type or usage purpose, e.g., dalle2 can input text and image, but users focus on the output image, so it belongs to the image type), e.g., text, image, embedding, rerank';
+COMMENT ON COLUMN adi_ai_model.name IS '模型名称 | Model name';
+COMMENT ON COLUMN adi_ai_model.remark IS '备注 | Additional remarks about the AI model';
+COMMENT ON COLUMN adi_ai_model.platform IS '平台 | Platform, e.g., openai, dashscope, qianfan, ollama';
+COMMENT ON COLUMN adi_ai_model.context_window IS '上下文窗口 | LLM context window';
+COMMENT ON COLUMN adi_ai_model.input_types IS '输入类型 | Input types, e.g., text, image, audio, video';
+COMMENT ON COLUMN adi_ai_model.is_enable IS '是否启用 | True: Normal usage, false: Not available';
+COMMENT ON COLUMN adi_ai_model.is_free IS '是否免费 | Is free, true: free, false: paid';
+COMMENT ON COLUMN adi_ai_model.create_time IS '创建时间 | Timestamp of record creation';
+COMMENT ON COLUMN adi_ai_model.update_time IS '更新时间 | Timestamp of record last update, automatically updated on each update';
 
 CREATE TRIGGER trigger_ai_model_update_time
     BEFORE UPDATE
@@ -149,7 +149,7 @@ CREATE TRIGGER trigger_ai_model_update_time
     FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
 
-CREATE TABLE public.adi_conversation_preset
+CREATE TABLE adi_conversation_preset
 (
     id                bigserial primary key,
     uuid              varchar(32)   default ''                not null,
@@ -160,10 +160,10 @@ CREATE TABLE public.adi_conversation_preset
     update_time       timestamp     default CURRENT_TIMESTAMP not null,
     is_deleted        boolean       default false             not null
 );
-COMMENT ON TABLE public.adi_conversation_preset IS '预设会话(角色)表 | Preset conversation (role) table';
-COMMENT ON COLUMN public.adi_conversation_preset.title IS '标题 | Title';
-COMMENT ON COLUMN public.adi_conversation_preset.remark IS '描述 | Description';
-COMMENT ON COLUMN public.adi_conversation_preset.ai_system_message IS '提供给LLM的系统信息 | System message for LLM';
+COMMENT ON TABLE adi_conversation_preset IS '预设会话(角色)表 | Preset conversation (role) table';
+COMMENT ON COLUMN adi_conversation_preset.title IS '标题 | Title';
+COMMENT ON COLUMN adi_conversation_preset.remark IS '描述 | Description';
+COMMENT ON COLUMN adi_conversation_preset.ai_system_message IS '提供给LLM的系统信息 | System message for LLM';
 
 create trigger trigger_conversation_preset
     before update
@@ -171,7 +171,7 @@ create trigger trigger_conversation_preset
     for each row
 execute procedure update_modified_column();
 
-CREATE TABLE public.adi_conversation
+CREATE TABLE adi_conversation
 (
     id                        bigserial primary key,
     user_id                   bigint        default 0                 not null,
@@ -187,12 +187,12 @@ CREATE TABLE public.adi_conversation
     is_deleted                boolean       default false             not null
 );
 
-COMMENT ON TABLE public.adi_conversation IS '用户会话(角色)表 | User conversation (role) table';
-COMMENT ON COLUMN public.adi_conversation.user_id IS '用户ID | User ID';
-COMMENT ON COLUMN public.adi_conversation.title IS '标题，如：狄仁杰 | Title, e.g., Sherlock Holmes';
-COMMENT ON COLUMN public.adi_conversation.remark IS '备注，如：断案如神，手下能人众多 | Remark, e.g., Brilliant detective with keen observation skills';
-COMMENT ON COLUMN public.adi_conversation.ai_system_message IS '角色设定内容，如：你是唐朝的狄仁杰，破了很多大案、疑案 | Role setting content, e.g., You are Sherlock Holmes, a brilliant detective known for your keen observation skills';
-COMMENT ON COLUMN public.adi_conversation.llm_temperature IS 'LLM响应的创造性/随机性 | LLM response creativity/randomness';
+COMMENT ON TABLE adi_conversation IS '用户会话(角色)表 | User conversation (role) table';
+COMMENT ON COLUMN adi_conversation.user_id IS '用户ID | User ID';
+COMMENT ON COLUMN adi_conversation.title IS '标题，如：狄仁杰 | Title, e.g., Sherlock Holmes';
+COMMENT ON COLUMN adi_conversation.remark IS '备注，如：断案如神，手下能人众多 | Remark, e.g., Brilliant detective with keen observation skills';
+COMMENT ON COLUMN adi_conversation.ai_system_message IS '角色设定内容，如：你是唐朝的狄仁杰，破了很多大案、疑案 | Role setting content, e.g., You are Sherlock Holmes, a brilliant detective known for your keen observation skills';
+COMMENT ON COLUMN adi_conversation.llm_temperature IS 'LLM响应的创造性/随机性 | LLM response creativity/randomness';
 
 CREATE TRIGGER trigger_conv_update_time
     BEFORE UPDATE
@@ -201,7 +201,7 @@ CREATE TRIGGER trigger_conv_update_time
 EXECUTE PROCEDURE update_modified_column();
 
 
-CREATE TABLE public.adi_conversation_preset_rel
+CREATE TABLE adi_conversation_preset_rel
 (
     id             bigserial primary key,
     uuid           varchar(32) default ''                not null,
@@ -213,10 +213,10 @@ CREATE TABLE public.adi_conversation_preset_rel
     is_deleted     boolean     default false             not null
 );
 
-COMMENT ON TABLE public.adi_conversation_preset_rel IS '预设会话与用户会话关系表 | Preset conversation and user conversation relationship table';
-COMMENT ON COLUMN public.adi_conversation_preset_rel.user_id IS '用户ID | User ID';
-COMMENT ON COLUMN public.adi_conversation_preset_rel.preset_conv_id IS '预设会话ID | Preset conversation ID';
-COMMENT ON COLUMN public.adi_conversation_preset_rel.user_conv_id IS '用户会话ID | User conversation ID';
+COMMENT ON TABLE adi_conversation_preset_rel IS '预设会话与用户会话关系表 | Preset conversation and user conversation relationship table';
+COMMENT ON COLUMN adi_conversation_preset_rel.user_id IS '用户ID | User ID';
+COMMENT ON COLUMN adi_conversation_preset_rel.preset_conv_id IS '预设会话ID | Preset conversation ID';
+COMMENT ON COLUMN adi_conversation_preset_rel.user_conv_id IS '用户会话ID | User conversation ID';
 
 create trigger trigger_conversation_preset_rel
     before update
@@ -224,7 +224,7 @@ create trigger trigger_conversation_preset_rel
     for each row
 execute procedure update_modified_column();
 
-CREATE TABLE public.adi_conversation_message
+CREATE TABLE adi_conversation_message
 (
     id                              bigserial primary key,
     parent_message_id               bigint        default 0                 not null,
@@ -243,18 +243,18 @@ CREATE TABLE public.adi_conversation_message
     is_deleted                      boolean       default false             not null
 );
 
-COMMENT ON TABLE public.adi_conversation_message IS '对话消息表 | Conversation message table';
-COMMENT ON COLUMN public.adi_conversation_message.parent_message_id IS '父级消息id | Parent message ID';
-COMMENT ON COLUMN public.adi_conversation_message.conversation_id IS '对话id | Conversation ID';
-COMMENT ON COLUMN public.adi_conversation_message.conversation_uuid IS '对话的UUID | Conversation UUID';
-COMMENT ON COLUMN public.adi_conversation_message.remark IS 'AI回复的消息 | AI response message';
-COMMENT ON COLUMN public.adi_conversation_message.uuid IS '唯一标识消息的UUID | Unique identifier for the message';
-COMMENT ON COLUMN public.adi_conversation_message.message_role IS '产生该消息的角色：1: 用户, 2: 系统, 3: 助手 | Role that generated the message: 1: User, 2: System, 3: Assistant';
-COMMENT ON COLUMN public.adi_conversation_message.tokens IS '消耗的token数量 | Number of tokens consumed';
-COMMENT ON COLUMN public.adi_conversation_message.user_id IS '用户ID | User ID';
-COMMENT ON COLUMN public.adi_conversation_message.ai_model_id IS '模型表的ID | adi_ai_model id';
-COMMENT ON COLUMN public.adi_conversation_message.understand_context_msg_pair_num IS '上下文消息对数量 | Number of context message pairs';
-COMMENT ON COLUMN public.adi_conversation_message.attachments IS '附件,存储格式: uuid,uuid | Attachments, stored as: uuid,uuid';
+COMMENT ON TABLE adi_conversation_message IS '对话消息表 | Conversation message table';
+COMMENT ON COLUMN adi_conversation_message.parent_message_id IS '父级消息id | Parent message ID';
+COMMENT ON COLUMN adi_conversation_message.conversation_id IS '对话id | Conversation ID';
+COMMENT ON COLUMN adi_conversation_message.conversation_uuid IS '对话的UUID | Conversation UUID';
+COMMENT ON COLUMN adi_conversation_message.remark IS 'AI回复的消息 | AI response message';
+COMMENT ON COLUMN adi_conversation_message.uuid IS '唯一标识消息的UUID | Unique identifier for the message';
+COMMENT ON COLUMN adi_conversation_message.message_role IS '产生该消息的角色：1: 用户, 2: 系统, 3: 助手 | Role that generated the message: 1: User, 2: System, 3: Assistant';
+COMMENT ON COLUMN adi_conversation_message.tokens IS '消耗的token数量 | Number of tokens consumed';
+COMMENT ON COLUMN adi_conversation_message.user_id IS '用户ID | User ID';
+COMMENT ON COLUMN adi_conversation_message.ai_model_id IS '模型表的ID | adi_ai_model id';
+COMMENT ON COLUMN adi_conversation_message.understand_context_msg_pair_num IS '上下文消息对数量 | Number of context message pairs';
+COMMENT ON COLUMN adi_conversation_message.attachments IS '附件,存储格式: uuid,uuid | Attachments, stored as: uuid,uuid';
 
 CREATE TRIGGER trigger_conv_message_update_time
     BEFORE UPDATE
@@ -262,10 +262,10 @@ CREATE TRIGGER trigger_conv_message_update_time
     FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
 
-CREATE TABLE public.adi_file
+CREATE TABLE adi_file
 (
     id               bigserial primary key,
-    name             varchar(120)  default ''                not null,
+    name             varchar(120) default ''                not null,
     uuid             varchar(32)  default ''                not null,
     ext              varchar(36)  default ''                not null,
     user_id          bigint       default 0                 not null,
@@ -278,25 +278,25 @@ CREATE TABLE public.adi_file
     sha256           varchar(64)  default ''                not null
 );
 
-COMMENT ON TABLE public.adi_file IS '文件 | File';
-COMMENT ON COLUMN public.adi_file.name IS '文件名 | File name';
-COMMENT ON COLUMN public.adi_file.uuid IS '文件的UUID | UUID of the file';
-COMMENT ON COLUMN public.adi_file.ext IS '文件扩展名 | File extension';
-COMMENT ON COLUMN public.adi_file.user_id IS '用户ID，0: 系统；其他: 用户 | User ID, 0: System; Other: User';
-COMMENT ON COLUMN public.adi_file.path IS '文件路径或对象名称(OSS)，如https://*.png 或 123.png | File path or object name, eg: httts://*.png or 123.png(name in OSS bucket)';
-COMMENT ON COLUMN public.adi_file.storage_location IS '存储位置，1：本地存储，2：阿里云OSS | Storage Location: 1 - Local Storage, 2 - Alibaba Cloud OSS';
-COMMENT ON COLUMN public.adi_file.ref_count IS '引用此文件的次数 | The number of references to this file';
-COMMENT ON COLUMN public.adi_file.create_time IS '记录创建的时间戳 | Timestamp of record creation';
-COMMENT ON COLUMN public.adi_file.update_time IS '记录最后更新的时间戳，自动更新 | Timestamp of record last update, automatically updated on each update';
-COMMENT ON COLUMN public.adi_file.is_deleted IS '是否删除，0: 正常；1: 删除 | Deletion status, 0: Normal; 1: Deleted';
-COMMENT ON COLUMN public.adi_file.sha256 IS '文件的哈希值 | Hash of the file';
+COMMENT ON TABLE adi_file IS '文件 | File';
+COMMENT ON COLUMN adi_file.name IS '文件名 | File name';
+COMMENT ON COLUMN adi_file.uuid IS '文件的UUID | UUID of the file';
+COMMENT ON COLUMN adi_file.ext IS '文件扩展名 | File extension';
+COMMENT ON COLUMN adi_file.user_id IS '用户ID，0: 系统；其他: 用户 | User ID, 0: System; Other: User';
+COMMENT ON COLUMN adi_file.path IS '文件路径或对象名称(OSS)，如https://*.png 或 123.png | File path or object name, eg: httts://*.png or 123.png(name in OSS bucket)';
+COMMENT ON COLUMN adi_file.storage_location IS '存储位置，1：本地存储，2：阿里云OSS | Storage Location: 1 - Local Storage, 2 - Alibaba Cloud OSS';
+COMMENT ON COLUMN adi_file.ref_count IS '引用此文件的次数 | The number of references to this file';
+COMMENT ON COLUMN adi_file.create_time IS '记录创建的时间戳 | Timestamp of record creation';
+COMMENT ON COLUMN adi_file.update_time IS '记录最后更新的时间戳，自动更新 | Timestamp of record last update, automatically updated on each update';
+COMMENT ON COLUMN adi_file.is_deleted IS '是否删除，0: 正常；1: 删除 | Deletion status, 0: Normal; 1: Deleted';
+COMMENT ON COLUMN adi_file.sha256 IS '文件的哈希值 | Hash of the file';
 CREATE TRIGGER trigger_file_update_time
     BEFORE UPDATE
     ON adi_file
     FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
 
-CREATE TABLE public.adi_prompt
+CREATE TABLE adi_prompt
 (
     id          bigserial primary key,
     user_id     bigint                 default 0                 not null,
@@ -307,19 +307,19 @@ CREATE TABLE public.adi_prompt
     is_deleted  boolean                default false             not null
 );
 
-COMMENT ON TABLE public.adi_prompt IS '提示词';
+COMMENT ON TABLE adi_prompt IS '提示词';
 
-COMMENT ON COLUMN public.adi_prompt.user_id IS '所属用户(0: system)';
+COMMENT ON COLUMN adi_prompt.user_id IS '所属用户(0: system)';
 
-COMMENT ON COLUMN public.adi_prompt.act IS '提示词标题';
+COMMENT ON COLUMN adi_prompt.act IS '提示词标题';
 
-COMMENT ON COLUMN public.adi_prompt.prompt IS '提示词内容';
+COMMENT ON COLUMN adi_prompt.prompt IS '提示词内容';
 
-COMMENT ON COLUMN public.adi_prompt.create_time IS 'Timestamp of record creation';
+COMMENT ON COLUMN adi_prompt.create_time IS 'Timestamp of record creation';
 
-COMMENT ON COLUMN public.adi_prompt.update_time IS 'Timestamp of record last update, automatically updated on each update';
+COMMENT ON COLUMN adi_prompt.update_time IS 'Timestamp of record last update, automatically updated on each update';
 
-COMMENT ON COLUMN public.adi_prompt.is_deleted IS '0:未删除；1：已删除';
+COMMENT ON COLUMN adi_prompt.is_deleted IS '0:未删除；1：已删除';
 
 CREATE TRIGGER trigger_prompt_update_time
     BEFORE UPDATE
@@ -327,7 +327,7 @@ CREATE TRIGGER trigger_prompt_update_time
     FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
 
-CREATE TABLE public.adi_sys_config
+CREATE TABLE adi_sys_config
 (
     id          bigserial primary key,
     name        character varying(100)  default ''             not null,
@@ -337,12 +337,12 @@ CREATE TABLE public.adi_sys_config
     is_deleted  boolean                 default false          not null
 );
 
-COMMENT ON TABLE public.adi_sys_config IS '系统配置表 | System configuration table';
-COMMENT ON COLUMN public.adi_sys_config.name IS '配置项名称 | Configuration item name';
-COMMENT ON COLUMN public.adi_sys_config.value IS '配置项值 | Configuration item value';
-COMMENT ON COLUMN public.adi_sys_config.create_time IS '记录创建的时间戳 | Timestamp of record creation';
-COMMENT ON COLUMN public.adi_sys_config.update_time IS '记录最后更新的时间戳，自动更新 | Timestamp of record last update, automatically updated on each update';
-COMMENT ON COLUMN public.adi_sys_config.is_deleted IS '是否删除，0：未删除；1：已删除 | Deletion status, 0: Not deleted; 1: Deleted';
+COMMENT ON TABLE adi_sys_config IS '系统配置表 | System configuration table';
+COMMENT ON COLUMN adi_sys_config.name IS '配置项名称 | Configuration item name';
+COMMENT ON COLUMN adi_sys_config.value IS '配置项值 | Configuration item value';
+COMMENT ON COLUMN adi_sys_config.create_time IS '记录创建的时间戳 | Timestamp of record creation';
+COMMENT ON COLUMN adi_sys_config.update_time IS '记录最后更新的时间戳，自动更新 | Timestamp of record last update, automatically updated on each update';
+COMMENT ON COLUMN adi_sys_config.is_deleted IS '是否删除，0：未删除；1：已删除 | Deletion status, 0: Not deleted; 1: Deleted';
 
 CREATE TRIGGER trigger_sys_config_update_time
     BEFORE UPDATE
@@ -350,7 +350,7 @@ CREATE TRIGGER trigger_sys_config_update_time
     FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
 
-CREATE TABLE public.adi_user
+CREATE TABLE adi_user
 (
     id                              bigserial primary key,
     name                            character varying(45)  default ''                not null,
@@ -373,25 +373,25 @@ CREATE TABLE public.adi_user
     is_deleted                      boolean                default false             not null
 );
 
-COMMENT ON TABLE public.adi_user IS '用户表 | User table';
-COMMENT ON COLUMN public.adi_user.name IS '用户名 | Username';
-COMMENT ON COLUMN public.adi_user.password IS '密码 | Password';
-COMMENT ON COLUMN public.adi_user.uuid IS '用户的UUID | UUID of the user';
-COMMENT ON COLUMN public.adi_user.email IS '用户邮箱 | User email';
-COMMENT ON COLUMN public.adi_user.active_time IS '激活时间 | Activation time';
-COMMENT ON COLUMN public.adi_user.create_time IS '记录创建的时间戳 | Timestamp of record creation';
-COMMENT ON COLUMN public.adi_user.update_time IS '记录最后更新的时间戳，自动更新 | Timestamp of record last update, automatically updated on each update';
-COMMENT ON COLUMN public.adi_user.user_status IS '用户状态，1：待验证；2：正常；3：冻结 | User status, 1: Pending verification; 2: Active; 3: Frozen';
-COMMENT ON COLUMN public.adi_user.is_admin IS '是否管理员，0：否；1：是 | Is admin, 0: No; 1: Yes';
-COMMENT ON COLUMN public.adi_user.is_deleted IS '是否删除，0：未删除；1：已删除 | Deletion status, 0: Not deleted; 1: Deleted';
-COMMENT ON COLUMN public.adi_user.quota_by_token_daily IS '每日token配额 | Daily token quota';
-COMMENT ON COLUMN public.adi_user.quota_by_token_monthly IS '每月token配额 | Monthly token quota';
-COMMENT ON COLUMN public.adi_user.quota_by_request_daily IS '每日请求配额 | Daily request quota';
-COMMENT ON COLUMN public.adi_user.quota_by_request_monthly IS '每月请求配额 | Monthly request quota';
-COMMENT ON COLUMN public.adi_user.understand_context_enable IS '上下文理解开关 | Context understanding switch';
-COMMENT ON COLUMN public.adi_user.understand_context_msg_pair_num IS '上下文消息对数量 | Number of context message pairs';
-COMMENT ON COLUMN public.adi_user.quota_by_image_daily IS '每日图片配额 | Daily image quota';
-COMMENT ON COLUMN public.adi_user.quota_by_image_monthly IS '每月图片配额 | Monthly image quota';
+COMMENT ON TABLE adi_user IS '用户表 | User table';
+COMMENT ON COLUMN adi_user.name IS '用户名 | Username';
+COMMENT ON COLUMN adi_user.password IS '密码 | Password';
+COMMENT ON COLUMN adi_user.uuid IS '用户的UUID | UUID of the user';
+COMMENT ON COLUMN adi_user.email IS '用户邮箱 | User email';
+COMMENT ON COLUMN adi_user.active_time IS '激活时间 | Activation time';
+COMMENT ON COLUMN adi_user.create_time IS '记录创建的时间戳 | Timestamp of record creation';
+COMMENT ON COLUMN adi_user.update_time IS '记录最后更新的时间戳，自动更新 | Timestamp of record last update, automatically updated on each update';
+COMMENT ON COLUMN adi_user.user_status IS '用户状态，1：待验证；2：正常；3：冻结 | User status, 1: Pending verification; 2: Active; 3: Frozen';
+COMMENT ON COLUMN adi_user.is_admin IS '是否管理员，0：否；1：是 | Is admin, 0: No; 1: Yes';
+COMMENT ON COLUMN adi_user.is_deleted IS '是否删除，0：未删除；1：已删除 | Deletion status, 0: Not deleted; 1: Deleted';
+COMMENT ON COLUMN adi_user.quota_by_token_daily IS '每日token配额 | Daily token quota';
+COMMENT ON COLUMN adi_user.quota_by_token_monthly IS '每月token配额 | Monthly token quota';
+COMMENT ON COLUMN adi_user.quota_by_request_daily IS '每日请求配额 | Daily request quota';
+COMMENT ON COLUMN adi_user.quota_by_request_monthly IS '每月请求配额 | Monthly request quota';
+COMMENT ON COLUMN adi_user.understand_context_enable IS '上下文理解开关 | Context understanding switch';
+COMMENT ON COLUMN adi_user.understand_context_msg_pair_num IS '上下文消息对数量 | Number of context message pairs';
+COMMENT ON COLUMN adi_user.quota_by_image_daily IS '每日图片配额 | Daily image quota';
+COMMENT ON COLUMN adi_user.quota_by_image_monthly IS '每月图片配额 | Monthly image quota';
 
 CREATE TRIGGER trigger_user_update_time
     BEFORE UPDATE
@@ -399,7 +399,7 @@ CREATE TRIGGER trigger_user_update_time
     FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
 
-CREATE TABLE public.adi_user_day_cost
+CREATE TABLE adi_user_day_cost
 (
     id            bigserial primary key,
     user_id       bigint    default 0                 not null,
@@ -413,15 +413,15 @@ CREATE TABLE public.adi_user_day_cost
     is_deleted    boolean   default false             not null
 );
 
-COMMENT ON TABLE public.adi_user_day_cost IS '用户每天消耗总量表 | User daily consumption table';
-COMMENT ON COLUMN public.adi_user_day_cost.user_id IS '用户ID | User ID';
-COMMENT ON COLUMN public.adi_user_day_cost.day IS '日期，用7位整数表示，如20230901 | Date, represented as a 7-digit integer, e.g., 20230901';
-COMMENT ON COLUMN public.adi_user_day_cost.request_times IS '请求数量 | Number of requests';
-COMMENT ON COLUMN public.adi_user_day_cost.tokens IS '消耗的token数量 | Number of tokens consumed';
-COMMENT ON COLUMN public.adi_user_day_cost.is_free IS '是：免费额度(即该行统计的是免费模型消耗的额度)；否：收费额度(即该行统计的是收费模型消耗的额度) | Yes: Free quota (the row counts the consumption of free models); No: Paid quota (the row counts the consumption of paid models)';
-COMMENT ON COLUMN public.adi_user_day_cost.create_time IS '记录创建的时间戳 | Timestamp of record creation';
-COMMENT ON COLUMN public.adi_user_day_cost.update_time IS '记录最后更新的时间戳，自动更新 | Timestamp of record last update, automatically updated on each update';
-COMMENT ON COLUMN public.adi_user_day_cost.draw_times IS '图片数量 | Number of images';
+COMMENT ON TABLE adi_user_day_cost IS '用户每天消耗总量表 | User daily consumption table';
+COMMENT ON COLUMN adi_user_day_cost.user_id IS '用户ID | User ID';
+COMMENT ON COLUMN adi_user_day_cost.day IS '日期，用7位整数表示，如20230901 | Date, represented as a 7-digit integer, e.g., 20230901';
+COMMENT ON COLUMN adi_user_day_cost.request_times IS '请求数量 | Number of requests';
+COMMENT ON COLUMN adi_user_day_cost.tokens IS '消耗的token数量 | Number of tokens consumed';
+COMMENT ON COLUMN adi_user_day_cost.is_free IS '是：免费额度(即该行统计的是免费模型消耗的额度)；否：收费额度(即该行统计的是收费模型消耗的额度) | Yes: Free quota (the row counts the consumption of free models); No: Paid quota (the row counts the consumption of paid models)';
+COMMENT ON COLUMN adi_user_day_cost.create_time IS '记录创建的时间戳 | Timestamp of record creation';
+COMMENT ON COLUMN adi_user_day_cost.update_time IS '记录最后更新的时间戳，自动更新 | Timestamp of record last update, automatically updated on each update';
+COMMENT ON COLUMN adi_user_day_cost.draw_times IS '图片数量 | Number of images';
 
 CREATE TRIGGER trigger_user_day_cost_update_time
     BEFORE UPDATE
@@ -690,6 +690,142 @@ create trigger trigger_ai_search_record
     for each row
 execute procedure update_modified_column();
 
+-- workflow
+create table adi_workflow_component
+(
+    id          bigserial primary key,
+    uuid        varchar(32)  default ''                not null,
+    name        varchar(32)  default ''                not null,
+    title       varchar(100) default ''                not null,
+    remark      text         default ''                not null,
+    is_enable   boolean      default false             not null,
+    create_time timestamp    default CURRENT_TIMESTAMP not null,
+    update_time timestamp    default CURRENT_TIMESTAMP not null,
+    is_deleted  boolean      default false             not null
+);
+create trigger trigger_workflow_component
+    before update
+    on adi_workflow_component
+    for each row
+execute procedure update_modified_column();
+
+-- 工作流定义（用户定义的工作流）| Workflow Definition (User-defined Workflow)
+create table adi_workflow
+(
+    id          bigserial primary key,
+    uuid        varchar(32)  default ''                not null,
+    title       varchar(100) default ''                not null,
+    remark      text         default ''                not null,
+    user_id     bigint       default 0                 not null,
+    is_public   boolean      default false             not null,
+    is_enable   boolean      default false             not null,
+    create_time timestamp    default CURRENT_TIMESTAMP not null,
+    update_time timestamp    default CURRENT_TIMESTAMP not null,
+    is_deleted  boolean      default false             not null
+);
+-- definition
+-- template
+comment on table adi_workflow is '工作流定义（用户定义的工作流）| Workflow Definition (User-defined Workflow)';
+create trigger trigger_workflow
+    before update
+    on adi_workflow
+    for each row
+execute procedure update_modified_column();
+
+create table adi_workflow_node
+(
+    id                    bigserial primary key,
+    uuid                  varchar(32)      default ''                not null,
+    workflow_id           bigint           default 0                 not null,
+    workflow_component_id bigint           default 0                 not null,
+    user_id               bigint           default 0                 not null,
+    title                 varchar(100)     default ''                not null,
+    remark                varchar(500)     default ''                not null,
+    input_config          jsonb            default '{}'              not null,
+    node_config           jsonb            default '{}'              not null,
+    position_x            double precision default 0                 not null,
+    position_y            double precision default 0                 not null,
+    create_time           timestamp        default CURRENT_TIMESTAMP not null,
+    update_time           timestamp        default CURRENT_TIMESTAMP not null,
+    is_deleted            boolean          default false             not null
+);
+comment on table adi_workflow_node is '工作流定义的节点 | Node of Workflow Definition';
+comment on column adi_workflow_node.input_config is '{"params":[{"name":"user_define_param01","type":"string"}]}';
+comment on column adi_workflow_node.node_config is '{"params":[{"prompt":"Summarize the following content:{user_define_param01}"}]}';
+create trigger trigger_workflow_node
+    before update
+    on adi_workflow_node
+    for each row
+execute procedure update_modified_column();
+
+create table adi_workflow_edge
+(
+    id               bigserial primary key,
+    uuid             varchar(32) default ''                not null,
+    workflow_id      bigint      default 0                 not null,
+    source_node_uuid varchar(32) default ''                not null,
+    source_handle    varchar(32) default ''                not null,
+    target_node_uuid varchar(32) default ''                not null,
+    create_time      timestamp   default CURRENT_TIMESTAMP not null,
+    update_time      timestamp   default CURRENT_TIMESTAMP not null,
+    is_deleted       boolean     default false             not null
+);
+create trigger trigger_workflow_edge
+    before update
+    on adi_workflow_edge
+    for each row
+execute procedure update_modified_column();
+
+-- 工作流实例（运行时）| Workflow Runtime
+create table adi_workflow_runtime
+(
+    id            bigserial primary key,
+    uuid          varchar(32)  default ''                not null,
+    user_id       bigint       default 0                 not null,
+    workflow_id   bigint       default 0                 not null,
+    input         jsonb        default '{}'              not null,
+    output        jsonb        default '{}'              not null,
+    status        smallint     default 1                 not null,
+    status_remark varchar(250) default ''                not null,
+    create_time   timestamp    default CURRENT_TIMESTAMP not null,
+    update_time   timestamp    default CURRENT_TIMESTAMP not null,
+    is_deleted    boolean      default false             not null
+);
+COMMENT ON COLUMN adi_workflow_runtime.input IS '{"userInput01":"text01","userInput02":true,"userInput03":10,"userInput04":["selectedA","selectedB"],"userInput05":["https://a.com/a.xlxs","https://a.com/b.png"]}';
+COMMENT ON COLUMN adi_workflow_runtime.status IS '执行状态，1：进行中，2：失败，3：成功 | Execution status, 1: In progress, 2: Failed, 3: Success';
+COMMENT ON COLUMN adi_workflow_runtime.status_remark IS '状态备注 | Status remark';
+create trigger trigger_workflow_runtime
+    before update
+    on adi_workflow_runtime
+    for each row
+execute procedure update_modified_column();
+
+-- 工作流实例（运行时）- 节点| Workflow Runtime - node
+create table adi_workflow_runtime_node
+(
+    id                  bigserial primary key,
+    uuid                varchar(32)  default ''                not null,
+    user_id             bigint       default 0                 not null,
+    workflow_runtime_id bigint       default 0                 not null,
+    node_id             bigint       default 0                 not null,
+    input               jsonb        default '{}'              not null,
+    output              jsonb        default '{}'              not null,
+    status              smallint     default 1                 not null,
+    status_remark       varchar(250) default ''                not null,
+    create_time         timestamp    default CURRENT_TIMESTAMP not null,
+    update_time         timestamp    default CURRENT_TIMESTAMP not null,
+    is_deleted          boolean      default false             not null
+);
+COMMENT ON COLUMN adi_workflow_runtime_node.status IS '执行状态，1：进行中，2：失败，3：成功 | Execution status, 1: In progress, 2: Failed, 3: Success';
+COMMENT ON COLUMN adi_workflow_runtime_node.status_remark IS '状态备注 | Status remark';
+create trigger trigger_workflow_runtime_node
+    before update
+    on adi_workflow_runtime_node
+    for each row
+execute procedure update_modified_column();
+
+
+
 -- 初始化数据 --
 
 -- 管理员账号：catkeeper@aideepin.com  密码：123456
@@ -783,3 +919,258 @@ VALUES ('26a8f54c560948d6b2d4969f08f3f2fb', '开发工程师', '技术好', '你
 INSERT INTO adi_conversation_preset (uuid, title, remark, ai_system_message)
 VALUES ('16a8f54c560949d6b2d4969f08f3f2fc', '财务专家', '算数很厉害,相关法律知识也很了解',
         '你是一个经验丰富的财务专家,精通财务分析、预算编制、财务报告、税务法规等领域知识');
+
+-- workflow
+-- 如果不定义输入的变量名，则默认设置为input
+-- 如果不定义输出的变量名，则默认设置为output
+insert into adi_workflow_component(uuid, name, title, remark, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'Start', '开始', '流程由此开始', true);
+insert into adi_workflow_component(uuid, name, title, remark, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'End', '结束', '流程由此结束', true);
+insert into adi_workflow_component(uuid, name, title, remark, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'Answer', '生成回答', '调用大语言模型回答问题', true);
+insert into adi_workflow_component(uuid, name, title, remark, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'Draw', '画图', '调用文生图模型生成图片', true);
+insert into adi_workflow_component(uuid, name, title, remark, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'DocumentExtractor', '文档提取', '从文档中提取信息', true);
+insert into adi_workflow_component(uuid, name, title, remark, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'KeywordExtractor', '关键词提取',
+        '从用户的问题中提取关键词，Top N指定需要提取的关键词数量。', true);
+insert into adi_workflow_component(uuid, name, title, remark, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'KnowledgeRetrieval', '知识检索', '从知识库中检索信息，需选中知识库',
+        true);
+insert into adi_workflow_component(uuid, name, title, remark, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'Switcher', '条件分支', '根据设置的条件引导执行不同的流程', true);
+insert into adi_workflow_component(uuid, name, title, remark, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'Classifier', '内容归类',
+        '使用大语言模型对输入信息进行分析并归类，根据类别调用对应的下游节点', true);
+insert into adi_workflow_component(uuid, name, title, remark, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'Template', '模板转换',
+        '将多个变量合并成一个输出内容', true);
+insert into adi_workflow_component(uuid, name, title, remark, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'Google', 'Google搜索', '从Google中检索信息', true);
+-- 工作流示例
+insert into adi_workflow(uuid, title, user_id, is_public, is_enable)
+values ('c40cfc1792264130b1c1f82d1448648f', '中文转英文', 1, true, true);
+
+-- 如果不定义输入的变量名，则默认设置为input
+-- 如果不定义输出的变量名，则默认设置为output
+INSERT INTO adi_workflow_node (uuid, workflow_id, workflow_component_id, user_id, title, input_config, node_config,
+                               position_x, position_y)
+VALUES ('6cbc919774aa4e779d97e3dd9c836e16', 1, 1, 0, '开始', '{
+  "ref_inputs": [],
+  "user_inputs": [
+    {
+      "name": "var_input",
+      "type": 1,
+      "uuid": "aed4841dfabf4e08a9cfaea98f143c08",
+      "title": "翻译内容",
+      "required": true
+    }
+  ]
+}', '{}', -402.11898718515704, 325.1042741060348);
+INSERT INTO adi_workflow_node (uuid, workflow_id, workflow_component_id, user_id, title, input_config, node_config,
+                               position_x, position_y)
+VALUES ('7bb3d7b63d2c4773aafde36fca9b67e9', 1, 3, 0, '翻译', '{
+  "ref_inputs": [
+    {
+      "name": "var_rising",
+      "node_uuid": "6cbc919774aa4e779d97e3dd9c836e16",
+      "node_param_name": "var_input"
+    }
+  ],
+  "user_inputs": []
+}', '{
+  "prompt": "将以下内容翻译成英文：{var_rising}",
+  "model_name": "ERNIE-Speed-128K"
+}', -105.91822303004142, 328.82173298096063);
+INSERT INTO adi_workflow_node (uuid, workflow_id, workflow_component_id, user_id, title, input_config, node_config,
+                               position_x, position_y)
+VALUES ('7a71f5860723457ba5815a71cb21f4d5', 1, 9, 0, '内容分类', '{
+  "ref_inputs": [],
+  "user_inputs": []
+}', '{
+  "categories": [
+    {
+      "category_name": "消极的",
+      "category_uuid": "f325d5e3545a42a184648b88eaaa9f3a",
+      "target_node_uuid": "4892a70af36b498e89ae461e9d9a9525"
+    },
+    {
+      "category_name": "积极的",
+      "category_uuid": "caa11c60ac86409a9c0284ef5ea6a284",
+      "target_node_uuid": "e87c362ff13f489dad9568f94e8219ca"
+    },
+    {
+      "category_name": "其他的",
+      "category_uuid": "ba542068bcb642f6a9287bcd0628af50",
+      "target_node_uuid": "444bdaf7e35c4bb08aba35cfe42d7ee5"
+    }
+  ],
+  "model_name": "ERNIE-Speed-128K"
+}', 178.36431809503244, 256.2306178307531);
+INSERT INTO adi_workflow_node (uuid, workflow_id, workflow_component_id, user_id, title, input_config, node_config,
+                               position_x, position_y)
+VALUES ('4892a70af36b498e89ae461e9d9a9525', 1, 8, 0, '条件分支', '{
+  "ref_inputs": [],
+  "user_inputs": []
+}', '{
+  "cases": [
+    {
+      "uuid": "cac3c57446584c2b8f809daa51091ebc",
+      "operator": "or",
+      "conditions": [
+        {
+          "uuid": "1ac3c57446584c2b8f809daa51091eb1",
+          "value": "sad",
+          "operator": "contains",
+          "node_uuid": "7bb3d7b63d2c4773aafde36fca9b67e9",
+          "node_param_name": "output"
+        },
+        {
+          "uuid": "7113d7b63d2c4773aafde36fca9b6119",
+          "value": "pain",
+          "operator": "contains",
+          "node_uuid": "7bb3d7b63d2c4773aafde36fca9b67e9",
+          "node_param_name": "output"
+        }
+      ],
+      "target_node_uuid": "7ac3c57446584c2b8f809daa51091eb0"
+    },
+    {
+      "uuid": "ccb59926da754b7a8938eb3f400920ac",
+      "operator": "and",
+      "conditions": [
+        {
+          "uuid": "7111d7b63d2c4773aafde36fca9b1119",
+          "value": "happy",
+          "operator": "not contains",
+          "node_uuid": "7bb3d7b63d2c4773aafde36fca9b67e9",
+          "node_param_name": "output"
+        }
+      ],
+      "target_node_uuid": "f2b59926da754b7a8938eb3f400920ac"
+    }
+  ],
+  "default_target_node_uuid": "444bdaf7e35c4bb08aba35cfe42d7ee5"
+}', 494.20826320047456, 21.11177315139355);
+INSERT INTO adi_workflow_node (uuid, workflow_id, workflow_component_id, user_id, title, input_config, node_config,
+                               position_x, position_y)
+VALUES ('f2b59926da754b7a8938eb3f400920ac', 1, 3, 0, '给出1个反义词', '{
+  "ref_inputs": [
+    {
+      "name": "var_feel",
+      "node_uuid": "7bb3d7b63d2c4773aafde36fca9b67e9",
+      "node_param_name": "output"
+    }
+  ],
+  "user_inputs": []
+}', '{
+  "prompt": "给出一个以下内容的反义词：{var_feel}",
+  "model_name": "ERNIE-Speed-128K"
+}', 891.5056599104687, 142.47976951620672);
+INSERT INTO adi_workflow_node (uuid, workflow_id, workflow_component_id, user_id, title, input_config, node_config,
+                               position_x, position_y)
+VALUES ('7ac3c57446584c2b8f809daa51091eb0', 1, 3, 0, '给出10个反义词', '{
+  "ref_inputs": [
+    {
+      "name": "var_fine",
+      "node_uuid": "7bb3d7b63d2c4773aafde36fca9b67e9",
+      "node_param_name": "output"
+    }
+  ],
+  "user_inputs": []
+}', '{
+  "prompt": "给出10个以下内容的反义词：{var_fine},\\n##注意\\n直接列出反义词，用逗号隔开，不需要其他多余的话",
+  "model_name": "ERNIE-Speed-128K"
+}', 844.9517549754598, -7.5875938393296565);
+INSERT INTO adi_workflow_node (uuid, workflow_id, workflow_component_id, user_id, title, input_config, node_config,
+                               position_x, position_y)
+VALUES ('1deb0f2df58c49768a3a5e59f825814d', 1, 10, 0, '内容模板', '{
+  "ref_inputs": [
+    {
+      "name": "var_among",
+      "node_uuid": "6cbc919774aa4e779d97e3dd9c836e16",
+      "node_param_name": "var_input"
+    },
+    {
+      "name": "var_taught",
+      "node_uuid": "7ac3c57446584c2b8f809daa51091eb0",
+      "node_param_name": "output"
+    }
+  ],
+  "user_inputs": []
+}', '{
+  "template": "翻译结果：{var_among},10个反义词：{var_taught}"
+}', 1190.5986141955661, 70.7027457958036);
+INSERT INTO adi_workflow_node (uuid, workflow_id, workflow_component_id, user_id, title, input_config, node_config,
+                               position_x, position_y)
+VALUES ('e87c362ff13f489dad9568f94e8219ca', 1, 3, 0, '给出1个近义词', '{
+  "ref_inputs": [
+    {
+      "name": "var_muscle",
+      "node_uuid": "7bb3d7b63d2c4773aafde36fca9b67e9",
+      "node_param_name": "output"
+    }
+  ],
+  "user_inputs": []
+}', '{
+  "prompt": "给出一个以下内容的近义词：{var_muscle}",
+  "model_name": "ERNIE-Speed-128K"
+}', 575.9071882206999, 331.8698354997035);
+INSERT INTO adi_workflow_node (uuid, workflow_id, workflow_component_id, user_id, title, input_config, node_config,
+                               position_x, position_y)
+VALUES ('444bdaf7e35c4bb08aba35cfe42d7ee5', 1, 2, 0, '结束', '{
+  "ref_inputs": [
+    {
+      "name": "var_again",
+      "node_uuid": "6cbc919774aa4e779d97e3dd9c836e16",
+      "node_param_name": "var_input"
+    },
+    {
+      "name": "var_soon",
+      "node_uuid": "7bb3d7b63d2c4773aafde36fca9b67e9",
+      "node_param_name": "output"
+    }
+  ],
+  "user_inputs": []
+}', '{
+  "result": "用户输入的内容：{var_again}，\n类别判断结果（使用默认输入，即上游节点的输出）：{input}，\n翻译结果（主动引入变量显示）：{var_soon}"
+}', 1501.1327431135007, 486.4987875032814);
+
+INSERT INTO adi_workflow_edge (uuid, workflow_id, source_node_uuid, source_handle, target_node_uuid)
+VALUES ('e4f31f7b94f948339fd8a1a4800f665b', 1, '6cbc919774aa4e779d97e3dd9c836e16', '',
+        '7bb3d7b63d2c4773aafde36fca9b67e9');
+INSERT INTO adi_workflow_edge (uuid, workflow_id, source_node_uuid, source_handle, target_node_uuid)
+VALUES ('44cb1e8fa83c4a27abd3c2932b620b32', 1, '7bb3d7b63d2c4773aafde36fca9b67e9', '',
+        '7a71f5860723457ba5815a71cb21f4d5');
+INSERT INTO adi_workflow_edge (uuid, workflow_id, source_node_uuid, source_handle, target_node_uuid)
+VALUES ('f71209d95e824137b7016a9dc4c3d6f4', 1, '7a71f5860723457ba5815a71cb21f4d5', 'ba542068bcb642f6a9287bcd0628af50',
+        '444bdaf7e35c4bb08aba35cfe42d7ee5');
+INSERT INTO adi_workflow_edge (uuid, workflow_id, source_node_uuid, source_handle, target_node_uuid)
+VALUES ('2b724ee9e7334e70b2d762859afad578', 1, '4892a70af36b498e89ae461e9d9a9525', 'default_handle',
+        '444bdaf7e35c4bb08aba35cfe42d7ee5');
+INSERT INTO adi_workflow_edge (uuid, workflow_id, source_node_uuid, source_handle, target_node_uuid)
+VALUES ('3699e97130634a409e533f685bb291d8', 1, 'e87c362ff13f489dad9568f94e8219ca', '',
+        '444bdaf7e35c4bb08aba35cfe42d7ee5');
+INSERT INTO adi_workflow_edge (uuid, workflow_id, source_node_uuid, source_handle, target_node_uuid)
+VALUES ('2fffb3c242254fe080a965dfe6adfc39', 1, 'f2b59926da754b7a8938eb3f400920ac', '',
+        '444bdaf7e35c4bb08aba35cfe42d7ee5');
+INSERT INTO adi_workflow_edge (uuid, workflow_id, source_node_uuid, source_handle, target_node_uuid)
+VALUES ('bdd6b9530a284e13a083e8aba5bf3b19', 1, '7ac3c57446584c2b8f809daa51091eb0', '',
+        '1deb0f2df58c49768a3a5e59f825814d');
+INSERT INTO adi_workflow_edge (uuid, workflow_id, source_node_uuid, source_handle, target_node_uuid)
+VALUES ('4bec71f5af29429b87f3928a9a20e3d8', 1, '1deb0f2df58c49768a3a5e59f825814d', '',
+        '444bdaf7e35c4bb08aba35cfe42d7ee5');
+INSERT INTO adi_workflow_edge (uuid, workflow_id, source_node_uuid, source_handle, target_node_uuid)
+VALUES ('2e008c4200744f03a4ce0fba352d3d6c', 1, '7a71f5860723457ba5815a71cb21f4d5', 'f325d5e3545a42a184648b88eaaa9f3a',
+        '4892a70af36b498e89ae461e9d9a9525');
+INSERT INTO adi_workflow_edge (uuid, workflow_id, source_node_uuid, source_handle, target_node_uuid)
+VALUES ('ecada0274c38429c99c6bce200d1d132', 1, '7a71f5860723457ba5815a71cb21f4d5', 'caa11c60ac86409a9c0284ef5ea6a284',
+        'e87c362ff13f489dad9568f94e8219ca');
+INSERT INTO adi_workflow_edge (uuid, workflow_id, source_node_uuid, source_handle, target_node_uuid)
+VALUES ('9555c30dcc35410582029b1310321c63', 1, '4892a70af36b498e89ae461e9d9a9525', 'cac3c57446584c2b8f809daa51091ebc',
+        '7ac3c57446584c2b8f809daa51091eb0');
+INSERT INTO adi_workflow_edge (uuid, workflow_id, source_node_uuid, source_handle, target_node_uuid)
+VALUES ('768794ce3d9d4484b2f3d1fcf7cf29ad', 1, '4892a70af36b498e89ae461e9d9a9525', 'ccb59926da754b7a8938eb3f400920ac',
+        'f2b59926da754b7a8938eb3f400920ac');

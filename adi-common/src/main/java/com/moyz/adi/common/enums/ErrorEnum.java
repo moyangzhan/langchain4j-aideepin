@@ -1,5 +1,8 @@
 package com.moyz.adi.common.enums;
 
+import lombok.Getter;
+
+@Getter
 public enum ErrorEnum {
     SUCCESS("00000", "成功"),
     A_URL_NOT_FOUND("A0001", "地址不存在"),
@@ -36,7 +39,18 @@ public enum ErrorEnum {
     A_ACTIVE_CODE_INVALID("A0031", "激活码已失效"),
     A_OLD_PASSWORD_INVALID("A0032", "原密码不正确"),
     A_OPT_TOO_FREQUENTLY("A0032", "操作太频繁"),
-    A_DRAW_NOT_FOUND("A00233", "绘图记录找不到"),
+    A_DRAW_NOT_FOUND("A00033", "绘图记录找不到"),
+    A_WF_NOT_FOUND("A00034", "工作流找不到"),
+    A_WF_DISABLED("A0035", "工作流已禁用"),
+    A_WF_NODE_NOT_FOUND("A0036", "工作流节点找不到"),
+    A_WF_NODE_CONFIG_NOT_FOUND("A0037", "工作流节点配置找不到"),
+    A_WF_NODE_CONFIG_ERROR("A0038", "工作流节点配置异常"),
+    A_WF_INPUT_INVALID("A0039", "工作流输入参数错误"),
+    A_WF_INPUT_MISSING("A0040", "工作流输入缺少参数"),
+    A_WF_MULTIPLE_START_NODE("A0041", "多个开始节点"),
+    A_WF_START_NODE_NOT_FOUND("A0042", "没有开始节点"),
+    A_WF_END_NODE_NOT_FOUND("A0043", "没有结束节点"),
+    A_WF_EDGE_NOT_FOUND("A0044", "工作流的边找不到"),
     B_UNCAUGHT_ERROR("B0001", "未捕捉异常"),
     B_COMMON_ERROR("B0002", "业务出错"),
     B_GLOBAL_ERROR("B0003", "全局异常"),
@@ -59,9 +73,12 @@ public enum ErrorEnum {
     B_IMAGE_LOAD_ERROR("B0018", "加载图片失败"),
     B_IO_EXCEPTION("B0019", "IO异常"),
     B_SERVER_EXCEPTION("B0020", "服务端异常"),
-    B_DELETE_FILE_ERROR("B0020", "删除文件异常"),
+    B_DELETE_FILE_ERROR("B0021", "删除文件异常"),
+    B_WF_RUN_ERROR("B0022", "工作流运行异常"),
+    B_WF_NODE_DEFINITION_NOT_FOUND("B0023", "工作流节点定义找不到"),
     C_DRAW_FAIL("C0001", "大模型生成图片失败,原因:{0}"),
-    C_ALI_OSS_CONFIG_ERROR("C0002", "阿里云OSS初始化失败,原因:{0}");
+    C_ALI_OSS_CONFIG_ERROR("C0002", "阿里云OSS初始化失败,原因:{0}"),
+    C_LLM_RESPONSE_INVALID("C0003", "大模型生成结果内容无效");
 
     private final String code;
     private final String info;
@@ -83,14 +100,6 @@ public enum ErrorEnum {
             result = B_COMMON_ERROR;
         }
         return result;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public String getInfo() {
-        return info;
     }
 
 }

@@ -15,7 +15,10 @@ import com.moyz.adi.common.helper.QuotaHelper;
 import com.moyz.adi.common.helper.RateLimitHelper;
 import com.moyz.adi.common.interfaces.AbstractImageModelService;
 import com.moyz.adi.common.mapper.DrawMapper;
-import com.moyz.adi.common.util.*;
+import com.moyz.adi.common.util.LocalCache;
+import com.moyz.adi.common.util.LocalDateTimeUtil;
+import com.moyz.adi.common.util.PrivilegeUtil;
+import com.moyz.adi.common.util.UuidUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -39,7 +42,6 @@ import java.util.stream.Collectors;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.GenerateImage.*;
 import static com.moyz.adi.common.cosntant.AdiConstant.MP_LIMIT_1;
-import static com.moyz.adi.common.cosntant.AdiConstant.URL_PREFIX_IMAGE;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 import static com.moyz.adi.common.util.LocalCache.MODEL_ID_TO_OBJ;
 
@@ -373,7 +375,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         //公开的图片或者自己的图片，都可以获取到
         if (
                 null != draw
-                        && (draw.getIsPublic() || (ThreadContext.isLogin() && ThreadContext.getCurrentUserId().equals(draw.getUserId())))
+                && (draw.getIsPublic() || (ThreadContext.isLogin() && ThreadContext.getCurrentUserId().equals(draw.getUserId())))
         ) {
             return convertDrawToDto(draw);
         } else {

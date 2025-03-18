@@ -20,10 +20,7 @@ import com.moyz.adi.common.rag.AdiEmbeddingStoreContentRetriever;
 import com.moyz.adi.common.rag.CompositeRAG;
 import com.moyz.adi.common.rag.EmbeddingRAG;
 import com.moyz.adi.common.rag.GraphStoreContentRetriever;
-import com.moyz.adi.common.util.BizPager;
-import com.moyz.adi.common.util.LocalDateTimeUtil;
-import com.moyz.adi.common.util.MPPageUtil;
-import com.moyz.adi.common.util.UuidUtil;
+import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.vo.AssistantChatParams;
 import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.SseAskParams;
@@ -36,6 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.BeanUtils;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -400,7 +398,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             if (Boolean.TRUE.equals(knowledgeBase.getIsStrict())) {
                 sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "提问内容过长，最多不超过 " + maxInputTokens + " tokens");
             } else {
-                sseEmitterHelper.commonProcess(sseAskParams, (response, questionMeta, answerMeta) -> updateQaRecord(
+                sseEmitterHelper.call(sseAskParams, true, (response, questionMeta, answerMeta) -> updateQaRecord(
                         UpdateQaParams.builder()
                                 .user(user)
                                 .qaRecord(qaRecord)
@@ -433,21 +431,8 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     }
 
     private void updateQaRecord(UpdateQaParams updateQaParams) {
-        List<String> tokenCountList = stringRedisTemplate.opsForList().range(MessageFormat.format(TOKEN_USAGE_KEY, updateQaParams.getSseAskParams().getUuid()), 0, -1);
-        int inputTokenCount = 0;
-        int outputTokenCount = 0;
-        if (!CollectionUtils.isEmpty(tokenCountList) && tokenCountList.size() > 1) {
-            int tokenCountListSize = tokenCountList.size();
-            int i = 0;
-            while (i < tokenCountListSize) {
-                inputTokenCount += Integer.parseInt(tokenCountList.get(i));
-                i++;
-                if (i < tokenCountListSize) {
-                    outputTokenCount += Integer.parseInt(tokenCountList.get(i));
-                }
-                i++;
-            }
-        }
+
+        Pair<Integer, Integer> inputOutputTokenCost = LLMTokenUtil.calAllTokenCostByUuid(stringRedisTemplate, updateQaParams.getSseAskParams().getUuid());
 
         KnowledgeBaseQa qaRecord = updateQaParams.getQaRecord();
         User user = updateQaParams.getUser();
@@ -455,16 +440,16 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         KnowledgeBaseQa updateRecord = new KnowledgeBaseQa();
         updateRecord.setId(qaRecord.getId());
         updateRecord.setPrompt(updateQaParams.getSseAskParams().getAssistantChatParams().getUserMessage());
-        updateRecord.setPromptTokens(inputTokenCount);
+        updateRecord.setPromptTokens(inputOutputTokenCost.getLeft());
         updateRecord.setAnswer(updateQaParams.getResponse());
-        updateRecord.setAnswerTokens(outputTokenCount);
+        updateRecord.setAnswerTokens(inputOutputTokenCost.getRight());
         knowledgeBaseQaRecordService.updateById(updateRecord);
 
         createRef(updateQaParams.getRetrievers(), user, qaRecord.getId());
         //用户本次请求消耗的token数指的是整个RAG过程中消耗的token数量，其中可能涉及到多次LLM请求
-        if (null != tokenCountList) {
-            int allToken = tokenCountList.stream().map(Integer::parseInt).reduce(0, Integer::sum);
-            log.info("用户{}本次请示消耗总token:{}", user.getName(), allToken);
+        int allToken = inputOutputTokenCost.getLeft() + inputOutputTokenCost.getRight();
+        log.info("用户{}本次请示消耗总token:{}", user.getName(), allToken);
+        if (allToken > 0) {
             userDayCostService.appendCostToUser(user, allToken, updateQaParams.isTokenFree());
         }
     }

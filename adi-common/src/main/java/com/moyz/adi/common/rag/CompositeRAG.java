@@ -6,11 +6,11 @@ import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
-import com.moyz.adi.common.interfaces.IChatAssistant;
+import com.moyz.adi.common.interfaces.IStreamingChatAssistant;
+import com.moyz.adi.common.interfaces.ITempStreamingChatAssistant;
 import com.moyz.adi.common.interfaces.TriConsumer;
 import com.moyz.adi.common.util.MapDBChatMemoryStore;
 import com.moyz.adi.common.vo.*;
-import dev.langchain4j.data.document.Document;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -25,6 +25,7 @@ import dev.langchain4j.service.TokenStream;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -66,7 +67,7 @@ public class CompositeRAG {
      */
     public void ragChat(List<ContentRetriever> retrievers, SseAskParams sseAskParams, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
         User user = sseAskParams.getUser();
-        String askingKey = sseEmitterHelper.registerSseEventCallBack(sseAskParams);
+        String askingKey = sseEmitterHelper.registerEventStreamListener(sseAskParams);
         try {
             query(retrievers, sseAskParams, (response, promptMeta, answerMeta) -> {
                 try {
@@ -125,18 +126,18 @@ public class CompositeRAG {
                         }
                     })
                     .build();
-            IChatAssistant assistant = AdiAiServices.builder(IChatAssistant.class, aiModel.getMaxInputTokens())
+            IStreamingChatAssistant assistant = AdiAiServices.builder(IStreamingChatAssistant.class, aiModel.getMaxInputTokens())
                     .streamingChatLanguageModel(llmService.buildStreamingChatLLM(params.getLlmBuilderProperties()))
                     .retrievalAugmentor(retrievalAugmentor)
                     .chatMemoryProvider(chatMemoryProvider)
                     .build();
             if (StringUtils.isNotBlank(assistantChatParams.getSystemMessage())) {
-                tokenStream = assistant.chatWith(assistantChatParams.getMessageId(), assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage(), new ArrayList<>());
+                tokenStream = assistant.chatWithSystem(assistantChatParams.getMessageId(), assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage(), new ArrayList<>());
             } else {
-                tokenStream = assistant.chatWithMemory(assistantChatParams.getMessageId(), assistantChatParams.getUserMessage(), new ArrayList<>());
+                tokenStream = assistant.chat(assistantChatParams.getMessageId(), assistantChatParams.getUserMessage(), new ArrayList<>());
             }
         } else {
-            IChatAssistant assistant = AiServices.builder(IChatAssistant.class)
+            ITempStreamingChatAssistant assistant = AiServices.builder(ITempStreamingChatAssistant.class)
                     .streamingChatLanguageModel(llmService.buildStreamingChatLLM(params.getLlmBuilderProperties()))
                     .retrievalAugmentor(AdiKnowledgeBaseRetrievalAugmentor.builder().queryRouter(queryRouter).build())
                     .build();
@@ -146,7 +147,14 @@ public class CompositeRAG {
                 tokenStream = assistant.chatSimple(assistantChatParams.getUserMessage(), new ArrayList<>());
             }
         }
-        SSEEmitterHelper.registerTokenStreamCallBack(tokenStream, params, consumer);
+        tokenStream
+                .onPartialResponse(content -> SSEEmitterHelper.parseAndSendPartialMsg(params.getSseEmitter(), content))
+                .onCompleteResponse(response -> {
+                    Pair<PromptMeta, AnswerMeta> pair = SSEEmitterHelper.calculateTokenAndShutdown(response, params.getSseEmitter(), params.getUuid(), true);
+                    consumer.accept(response.aiMessage().text(), pair.getLeft(), pair.getRight());
+                })
+                .onError(error -> SSEEmitterHelper.errorAndShutdown(error, params.getSseEmitter()))
+                .start();
     }
 
     public EmbeddingRAG getEmbeddingRAGService() {

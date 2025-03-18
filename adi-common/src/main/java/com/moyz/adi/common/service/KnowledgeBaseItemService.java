@@ -20,6 +20,7 @@ import com.moyz.adi.common.rag.CompositeRAG;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.GraphIngestParams;
 import com.moyz.adi.common.vo.LLMBuilderProperties;
+import dev.langchain4j.data.document.DefaultDocument;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -109,7 +110,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
      *
      * @param knowledgeBase 知识库
      * @param kbItemUuids   知识点uuid列表
-     * @param indexTypes 索引类型，如embedding,graphical
+     * @param indexTypes    索引类型，如embedding,graphical
      * @return 成功或失败
      */
     public boolean checkAndIndexing(KnowledgeBase knowledgeBase, List<String> kbItemUuids, List<String> indexTypes) {
@@ -138,7 +139,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                 Metadata metadata = new Metadata();
                 metadata.put(AdiConstant.MetadataKey.KB_UUID, kbItem.getKbUuid());
                 metadata.put(AdiConstant.MetadataKey.KB_ITEM_UUID, kbItem.getUuid());
-                Document document = new Document(kbItem.getRemark(), metadata);
+                Document document = new DefaultDocument(kbItem.getRemark(), metadata);
                 knowledgeBaseEmbeddingService.deleteByItemUuid(kbItem.getUuid());
                 indexingEmbedding(knowledgeBase, kbItem, document);
             }
@@ -146,7 +147,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                 Metadata metadata = new Metadata();
                 metadata.put(AdiConstant.MetadataKey.KB_UUID, kbItem.getKbUuid());
                 metadata.put(AdiConstant.MetadataKey.KB_ITEM_UUID, kbItem.getUuid());
-                Document document = new Document(kbItem.getRemark(), metadata);
+                Document document = new DefaultDocument(kbItem.getRemark(), metadata);
                 indexingGraph(user, knowledgeBase, kbItem, document);
             }
         } finally {

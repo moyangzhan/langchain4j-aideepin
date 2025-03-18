@@ -1,20 +1,18 @@
 package com.moyz.adi.common.interfaces;
 
 import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.service.*;
+import dev.langchain4j.service.MemoryId;
+import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 
 import java.util.List;
 
 public interface IChatAssistant {
 
     @SystemMessage("{{sm}}")
-    TokenStream chatWith(@MemoryId String memoryId, @V("sm") String systemMessage, @UserMessage String prompt, @UserMessage List<ImageContent> images);
+    String chatWithSystem(@MemoryId String memoryId, @V("sm") String systemMessage, @UserMessage String prompt, @UserMessage List<ImageContent> images);
 
-    @SystemMessage("{{sm}}")
-    TokenStream chatWithSystem(@V("sm") String systemMessage, @UserMessage String prompt, @UserMessage List<ImageContent> images);
-
-    TokenStream chatWithMemory(@MemoryId String memoryId, @UserMessage String prompt, @UserMessage List<ImageContent> images);
-
-    TokenStream chatSimple(@UserMessage String prompt, @UserMessage List<ImageContent> images);
+    String chat(@MemoryId String memoryId, @UserMessage String prompt, @UserMessage List<ImageContent> images);
 
 }

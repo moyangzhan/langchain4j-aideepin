@@ -33,7 +33,8 @@ public class TokenFilter extends OncePerRequestFilter {
             "/draw/public/",
             "/draw/detail/",
             "/draw/comment/",
-            "/knowledge-base/public/"
+            "/knowledge-base/public/",
+            "/workflow/public"
     };
 
     protected static final String[] TOKEN_IN_PARAMS = {
@@ -56,7 +57,9 @@ public class TokenFilter extends OncePerRequestFilter {
         if (StringUtils.isBlank(token) && checkPathWithToken(requestUri)) {
             token = request.getParameter("token");
         }
-        if (StringUtils.isNotBlank(token)) {
+        if (excludePath(requestUri)) {
+            filterChain.doFilter(request, response);
+        } else if (StringUtils.isNotBlank(token)) {
             String tokenKey = MessageFormat.format(RedisKeyConstant.USER_TOKEN, token);
             String userJson = stringRedisTemplate.opsForValue().get(tokenKey);
             if (StringUtils.isBlank(userJson)) {
@@ -78,8 +81,6 @@ public class TokenFilter extends OncePerRequestFilter {
             }
             ThreadContext.setCurrentUser(user);
             ThreadContext.setToken(token);
-            filterChain.doFilter(request, response);
-        } else if (excludePath(requestUri)) {
             filterChain.doFilter(request, response);
         } else {
             log.warn("未授权:{}", requestUri);
