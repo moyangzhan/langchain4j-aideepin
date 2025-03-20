@@ -718,7 +718,7 @@ create table adi_workflow
     remark      text         default ''                not null,
     user_id     bigint       default 0                 not null,
     is_public   boolean      default false             not null,
-    is_enable   boolean      default false             not null,
+    is_enable   boolean      default true              not null,
     create_time timestamp    default CURRENT_TIMESTAMP not null,
     update_time timestamp    default CURRENT_TIMESTAMP not null,
     is_deleted  boolean      default false             not null
@@ -1090,7 +1090,7 @@ VALUES ('1deb0f2df58c49768a3a5e59f825814d', 1, 10, 0, '内容模板', '{
   "ref_inputs": [
     {
       "name": "var_among",
-      "node_uuid": "6cbc919774aa4e779d97e3dd9c836e16",
+      "node_uuid": "6cbc919774aa4e77app9d97e3dd9c836e16",
       "node_param_name": "var_input"
     },
     {

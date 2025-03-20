@@ -24,7 +24,7 @@ import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 /**
  * 【节点】LLM问题分类器 <br/>
- * 节点内容固定格式：LLMAnswerNodeConfig
+ * 节点内容固定格式：ClassifierNodeConfig
  */
 @Slf4j
 public class ClassifierNode extends AbstractWfNode {

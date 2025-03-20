@@ -10,6 +10,7 @@ import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.SseAskParams;
 import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.data.NodeIODataContent;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -44,7 +45,7 @@ public class WorkflowUtil {
         return result;
     }
 
-    public static void streamingInvokeLLM(WfState wfState, WfNodeState state, WorkflowNode node, String modelName, String prompt) {
+    public static void streamingInvokeLLM(WfState wfState, WfNodeState state, WorkflowNode node, String modelName, List<ChatMessage> msgs) {
         log.info("stream invoke");
         AbstractLLMService<?> llmService = LLMContext.getLLMServiceByName(modelName);
         StreamingChatGenerator<AgentState> streamingGenerator = StreamingChatGenerator.builder()
@@ -65,7 +66,7 @@ public class WorkflowUtil {
                         .build()
         );
         ChatRequest request = ChatRequest.builder()
-                .messages(UserMessage.from(prompt))
+                .messages(msgs)
                 .build();
         streamingLLM.chat(request, streamingGenerator.handler());
         wfState.getNodeToStreamingGenerator().put(node.getUuid(), streamingGenerator);

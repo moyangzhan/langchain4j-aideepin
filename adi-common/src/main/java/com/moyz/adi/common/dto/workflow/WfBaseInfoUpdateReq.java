@@ -12,4 +12,5 @@ public class WfBaseInfoUpdateReq {
     @NotBlank
     private String title;
     private String remark;
+    private Boolean isPublic;
 }

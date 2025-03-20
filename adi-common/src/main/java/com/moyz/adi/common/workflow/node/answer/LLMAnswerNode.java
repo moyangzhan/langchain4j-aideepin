@@ -7,8 +7,11 @@ import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.workflow.*;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
+import dev.langchain4j.data.message.UserMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+
+import java.util.List;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_WF_NODE_CONFIG_ERROR;
 import static com.moyz.adi.common.enums.ErrorEnum.A_WF_NODE_CONFIG_NOT_FOUND;
@@ -26,7 +29,7 @@ public class LLMAnswerNode extends AbstractWfNode {
 
     /**
      * nodeConfig格式：<br/>
-     * {"param_map":{"prompt": "将以下内容翻译成英文：{input}","model_name":"deepseek-chat"}}<br/>
+     * {"prompt": "将以下内容翻译成英文：{input}","model_name":"deepseek-chat"}<br/>
      *
      * @return LLM的返回内容
      */
@@ -46,7 +49,7 @@ public class LLMAnswerNode extends AbstractWfNode {
         log.info("LLM prompt:{}", prompt);
         String modelName = nodeConfigObj.getModelName();
         //调用LLM
-        WorkflowUtil.streamingInvokeLLM(wfState, state, node, modelName, prompt);
+        WorkflowUtil.streamingInvokeLLM(wfState, state, node, modelName, List.of(UserMessage.from(prompt)));
         return new NodeProcessResult();
     }
 }

@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.Resource;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -35,17 +36,32 @@ public class WorkflowController {
 
     @PostMapping("/add")
     public WorkflowResp add(@RequestBody @Validated WfAddReq addReq) {
-        return workflowService.add(addReq.getTitle(), addReq.getRemark());
+        return workflowService.add(addReq.getTitle(), addReq.getRemark(), addReq.getIsPublic());
+    }
+
+    @PostMapping("/copy/{wfUuid}")
+    public WorkflowResp copy(@PathVariable String wfUuid) {
+        return workflowService.copy(wfUuid);
+    }
+
+    @PostMapping("/set-public/{wfUuid}")
+    public void setPublic(@PathVariable String wfUuid) {
+        workflowService.setPublic(wfUuid);
     }
 
     @PostMapping("/update")
-    public void update(@RequestBody @Validated WorkflowUpdateReq req) {
-        workflowService.update(req);
+    public WorkflowResp update(@RequestBody @Validated WorkflowUpdateReq req) {
+        return workflowService.update(req);
+    }
+
+    @PostMapping("/del/{uuid}")
+    public void delete(@PathVariable String uuid) {
+        workflowService.softDelete(uuid);
     }
 
     @PostMapping("/base-info/update")
-    public void updateBaseInfo(@RequestBody @Validated WfBaseInfoUpdateReq req) {
-        workflowService.updateBaseInfo(req.getUuid(), req.getTitle(), req.getRemark());
+    public WorkflowResp updateBaseInfo(@RequestBody @Validated WfBaseInfoUpdateReq req) {
+        return workflowService.updateBaseInfo(req.getUuid(), req.getTitle(), req.getRemark(), req.getIsPublic());
     }
 
     @Operation(summary = "流式响应")

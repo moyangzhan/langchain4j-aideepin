@@ -9,6 +9,7 @@ import com.moyz.adi.common.entity.Workflow;
 import com.moyz.adi.common.entity.WorkflowComponent;
 import com.moyz.adi.common.entity.WorkflowNode;
 import com.moyz.adi.common.enums.ErrorEnum;
+import com.moyz.adi.common.enums.WfIODataTypeEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.WorkflowNodeMapper;
 import com.moyz.adi.common.util.JsonUtil;
@@ -53,9 +54,39 @@ public class WorkflowNodeService extends ServiceImpl<WorkflowNodeMapper, Workflo
         });
     }
 
-    public WorkflowNode getByUuid(String uuid) {
+    public WorkflowNode getByUuid(long workflowId, String uuid) {
         return ChainWrappers.lambdaQueryChain(baseMapper)
+                .eq(WorkflowNode::getWorkflowId, workflowId)
                 .eq(WorkflowNode::getUuid, uuid)
+                .eq(WorkflowNode::getIsDeleted, false)
+                .last("limit 1")
+                .one();
+    }
+
+    public List<WorkflowNode> listByWorkflowId(Long workflowId) {
+        return ChainWrappers.lambdaQueryChain(baseMapper)
+                .eq(WorkflowNode::getWorkflowId, workflowId)
+                .eq(WorkflowNode::getIsDeleted, false)
+                .list();
+    }
+
+    public List<WorkflowNode> copyByWorkflowId(long workflowId, long targetWorkflowId) {
+        List<WorkflowNode> result = new ArrayList<>();
+        self.listByWorkflowId(workflowId).forEach(node -> {
+            result.add(self.copyNode(targetWorkflowId, node));
+        });
+        return result;
+    }
+
+    public WorkflowNode copyNode(Long targetWorkflowId, WorkflowNode sourceNode) {
+        WorkflowNode newNode = new WorkflowNode();
+        BeanUtils.copyProperties(sourceNode, newNode, "id", "createTime", "updateTime");
+        newNode.setWorkflowId(targetWorkflowId);
+        baseMapper.insert(newNode);
+
+        return ChainWrappers.lambdaQueryChain(baseMapper)
+                .eq(WorkflowNode::getWorkflowId, targetWorkflowId)
+                .eq(WorkflowNode::getUuid, newNode.getUuid())
                 .eq(WorkflowNode::getIsDeleted, false)
                 .last("limit 1")
                 .one();
@@ -69,7 +100,7 @@ public class WorkflowNodeService extends ServiceImpl<WorkflowNodeMapper, Workflo
             newOrUpdate.setInputConfig(NodeInputConfigTypeHandler.createNodeInputConfig(node.getInputConfig()));
             newOrUpdate.setWorkflowId(workflowId);
 
-            WorkflowNode old = self.getByUuid(node.getUuid());
+            WorkflowNode old = self.getByUuid(workflowId, node.getUuid());
             if (null != old) {
                 if (!old.getWorkflowId().equals(node.getWorkflowId())) {
                     log.error("节点不属于指定的工作流,保存失败,workflowId:{},old workflowId:{},new workflowId:{},node uuid:{},title:{}",
@@ -91,7 +122,7 @@ public class WorkflowNodeService extends ServiceImpl<WorkflowNodeMapper, Workflo
             return;
         }
         for (String uuid : uuids) {
-            WorkflowNode old = self.getByUuid(uuid);
+            WorkflowNode old = self.getByUuid(workflowId, uuid);
             if (null == old) {
                 continue;
             }
@@ -129,6 +160,8 @@ public class WorkflowNodeService extends ServiceImpl<WorkflowNodeMapper, Workflo
      */
     public WorkflowNode createStartNode(Workflow workflow) {
         WfNodeIOText wfNodeIOText = WfNodeIOText.builder()
+                .uuid(UuidUtil.createShort())
+                .type(WfIODataTypeEnum.TEXT.getValue())
                 .name("var_user_input")
                 .title("用户输入")
                 .required(false)

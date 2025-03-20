@@ -1,9 +1,13 @@
 package com.moyz.adi.common.util;
 
 import com.baomidou.mybatisplus.extension.conditions.query.QueryChainWrapper;
+import com.baomidou.mybatisplus.extension.conditions.update.LambdaUpdateChainWrapper;
+import com.baomidou.mybatisplus.extension.conditions.update.UpdateChainWrapper;
 import com.moyz.adi.common.base.ThreadContext;
+import com.moyz.adi.common.entity.BaseEntity;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
+import org.apache.poi.ss.formula.functions.T;
 
 public class PrivilegeUtil {
 
@@ -40,6 +44,16 @@ public class PrivilegeUtil {
         if (null == target) {
             throw new BaseException(exceptionMessage);
         }
+        return target;
+    }
+
+    public static <T extends BaseEntity> T checkAndDelete(String uuid, QueryChainWrapper<T> lambdaQueryChainWrapper, UpdateChainWrapper<T> updateChainWrapper, ErrorEnum exceptionMessage) {
+        return checkAndDelete(null, uuid, lambdaQueryChainWrapper, updateChainWrapper, exceptionMessage);
+    }
+
+    public static <T extends BaseEntity> T checkAndDelete(Long id, String uuid, QueryChainWrapper<T> lambdaQueryChainWrapper, UpdateChainWrapper<T> updateChainWrapper, ErrorEnum exceptionMessage) {
+        T target = checkAndGet(id, uuid, lambdaQueryChainWrapper, exceptionMessage);
+        updateChainWrapper.eq("id", target.getId()).set(DELETE_COLUMN_NAME, true).update();
         return target;
     }
 }

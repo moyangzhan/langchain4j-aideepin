@@ -4,10 +4,12 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.moyz.adi.common.dto.workflow.WfEdgeReq;
 import com.moyz.adi.common.entity.WorkflowEdge;
+import com.moyz.adi.common.entity.WorkflowNode;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.WorkflowEdgeMapper;
 import com.moyz.adi.common.util.MPPageUtil;
+import com.moyz.adi.common.util.UuidUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -16,6 +18,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -56,6 +59,30 @@ public class WorkflowEdgeService extends ServiceImpl<WorkflowEdgeMapper, Workflo
             }
             self.saveOrUpdate(newOne);
         }
+    }
+
+    public List<WorkflowEdge> listByWorkflowId(Long workflowId) {
+        return ChainWrappers.lambdaQueryChain(baseMapper)
+                .eq(WorkflowEdge::getWorkflowId, workflowId)
+                .eq(WorkflowEdge::getIsDeleted, false)
+                .list();
+    }
+
+    public List<WorkflowEdge> copyByWorkflowId(long workflowId, long targetWorkflow) {
+        List<WorkflowEdge> result = new ArrayList<>();
+        self.listByWorkflowId(workflowId).forEach(edge -> {
+            result.add(self.copyEdge(targetWorkflow, edge));
+        });
+        return result;
+    }
+
+    public WorkflowEdge copyEdge(long targetWorkflow, WorkflowEdge sourceEdge) {
+        WorkflowEdge newEdge = new WorkflowEdge();
+        BeanUtils.copyProperties(sourceEdge, newEdge, "id", "uuid", "createTime", "updateTime");
+        newEdge.setUuid(UuidUtil.createShort());
+        newEdge.setWorkflowId(targetWorkflow);
+        baseMapper.insert(newEdge);
+        return getById(newEdge.getId());
     }
 
     @Transactional

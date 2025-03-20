@@ -25,7 +25,7 @@ public class WorkflowComponentService extends ServiceImpl<WorkflowComponentMappe
                 .list();
     }
 
-    @Cacheable(cacheNames = WORKFLOW_KEY, key = WORKFLOW_COMPONENT_START_KEY)
+    @Cacheable(cacheNames = WORKFLOW_COMPONENT_START_KEY)
     public WorkflowComponent getStartComponent() {
         return ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(WorkflowComponent::getName, WfComponentNameEnum.START.getName())

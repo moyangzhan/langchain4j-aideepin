@@ -65,7 +65,7 @@ public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
             throw new BaseException(B_LLM_SECRET_KEY_NOT_SET);
         }
         float temperature = 0.7f;
-        if (null != properties && properties.getTemperature() > 0 && properties.getTemperature() <= 1) {
+        if (null != properties && null != properties.getTemperature() && properties.getTemperature() > 0 && properties.getTemperature() <= 1) {
             temperature = properties.getTemperature().floatValue();
         }
         return QwenStreamingChatModel.builder()

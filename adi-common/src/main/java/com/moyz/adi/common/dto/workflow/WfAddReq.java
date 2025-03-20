@@ -12,4 +12,6 @@ public class WfAddReq {
     private String title;
 
     private String remark;
+
+    private Boolean isPublic;
 }
