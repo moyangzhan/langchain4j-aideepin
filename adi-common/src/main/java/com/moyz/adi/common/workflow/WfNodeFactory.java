@@ -7,6 +7,7 @@ import com.moyz.adi.common.workflow.node.EndNode;
 import com.moyz.adi.common.workflow.node.StartNode;
 import com.moyz.adi.common.workflow.node.answer.LLMAnswerNode;
 import com.moyz.adi.common.workflow.node.classifier.ClassifierNode;
+import com.moyz.adi.common.workflow.node.documentextractor.DocumentExtractorNode;
 import com.moyz.adi.common.workflow.node.keywordextractor.KeywordExtractorNode;
 import com.moyz.adi.common.workflow.node.switcher.SwitcherNode;
 import com.moyz.adi.common.workflow.node.template.TemplateNode;
@@ -32,6 +33,9 @@ public class WfNodeFactory {
                 break;
             case KEYWORD_EXTRACTOR:
                 wfNode = new KeywordExtractorNode(wfComponent, nodeDefinition, wfState, nodeState);
+                break;
+            case DOCUMENT_EXTRACTOR:
+                wfNode = new DocumentExtractorNode(wfComponent, nodeDefinition, wfState, nodeState);
                 break;
             case END:
                 wfNode = new EndNode(wfComponent, nodeDefinition, wfState, nodeState);

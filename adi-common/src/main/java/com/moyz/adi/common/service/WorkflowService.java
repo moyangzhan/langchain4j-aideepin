@@ -3,6 +3,7 @@ package com.moyz.adi.common.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.RedisKeyConstant;
 import com.moyz.adi.common.dto.TmpNode;
@@ -10,18 +11,17 @@ import com.moyz.adi.common.dto.workflow.WfEdgeReq;
 import com.moyz.adi.common.dto.workflow.WfNodeDto;
 import com.moyz.adi.common.dto.workflow.WorkflowResp;
 import com.moyz.adi.common.dto.workflow.WorkflowUpdateReq;
-import com.moyz.adi.common.entity.User;
-import com.moyz.adi.common.entity.Workflow;
-import com.moyz.adi.common.entity.WorkflowEdge;
-import com.moyz.adi.common.entity.WorkflowNode;
+import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.WorkflowMapper;
-import com.moyz.adi.common.util.MPPageUtil;
-import com.moyz.adi.common.util.PrivilegeUtil;
-import com.moyz.adi.common.util.RedisTemplateUtil;
-import com.moyz.adi.common.util.UuidUtil;
-import com.moyz.adi.common.workflow.WfNodeInputConfig;
+import com.moyz.adi.common.util.*;
+import com.moyz.adi.common.workflow.WfComponentNameEnum;
+import com.moyz.adi.common.workflow.WorkflowUtil;
+import com.moyz.adi.common.workflow.def.WfNodeParamRef;
+import com.moyz.adi.common.workflow.node.classifier.ClassifierNodeConfig;
+import com.moyz.adi.common.workflow.node.switcher.SwitcherCase;
+import com.moyz.adi.common.workflow.node.switcher.SwitcherNodeConfig;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -29,6 +29,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -37,7 +38,6 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.moyz.adi.common.cosntant.RedisKeyConstant.DRAW_COMMENT_LIMIT_KEY;
 import static com.moyz.adi.common.enums.ErrorEnum.A_OPT_TOO_FREQUENTLY;
 
 @Slf4j
@@ -53,6 +53,9 @@ public class WorkflowService extends ServiceImpl<WorkflowMapper, Workflow> {
 
     @Resource
     private WorkflowEdgeService workflowEdgeService;
+
+    @Resource
+    private WorkflowComponentService workflowComponentService;
 
     @Resource
     private UserService userService;
@@ -98,16 +101,17 @@ public class WorkflowService extends ServiceImpl<WorkflowMapper, Workflow> {
         List<TmpNode> tmpNodes = newNodes.stream().map(node -> {
             TmpNode tmpNode = new TmpNode();
             tmpNode.setId(node.getId());
-            tmpNode.setUuid(UuidUtil.createShort());
+            tmpNode.setComponentId(node.getWorkflowComponentId());
+            tmpNode.setNewUuid(UuidUtil.createShort());
             tmpNode.setOldUuid(node.getUuid());
             tmpNode.setInputConfig(node.getInputConfig());
+            tmpNode.setNodeConfig(node.getNodeConfig());
             return tmpNode;
         }).toList();
         List<WorkflowEdge> updateEdges = newEdges.stream().map(edge -> {
-
             tmpNodes.forEach(tmp -> {
                 String oldNodeUuid = tmp.getOldUuid();
-                String newNodeUuid = tmp.getUuid();
+                String newNodeUuid = tmp.getNewUuid();
                 if (oldNodeUuid.equals(edge.getSourceNodeUuid())) {
                     edge.setSourceNodeUuid(newNodeUuid);
                 } else if (oldNodeUuid.equals(edge.getSourceHandle())) {
@@ -125,20 +129,22 @@ public class WorkflowService extends ServiceImpl<WorkflowMapper, Workflow> {
             forUpdateEdge.setSourceHandle(edge.getSourceHandle());
             return forUpdateEdge;
         }).toList();
-        List<WorkflowNode> updateNodes = tmpNodes.stream().map(tmpNode -> {
-            String oldNodeUuid = tmpNode.getOldUuid();
-            String newNodeUuid = tmpNode.getUuid();
-            tmpNodes.forEach(tmp -> {
-                tmp.getInputConfig().getRefInputs().forEach(refInput -> {
-                    if (refInput.getNodeUuid().equals(oldNodeUuid)) {
-                        refInput.setNodeUuid(newNodeUuid);
-                    }
-                });
+        List<WorkflowNode> updateNodes = tmpNodes.stream().map(item -> {
+            String newNodeUuid = item.getNewUuid();
+            List<WfNodeParamRef> refInputs = item.getInputConfig().getRefInputs();
+            //更新引用输入的节点uuid
+            refInputs.forEach(refInput -> {
+                tmpNodes.stream()
+                        .filter(tmpNode -> tmpNode.getOldUuid().equals(refInput.getNodeUuid()))
+                        .findFirst()
+                        .ifPresent(item1 -> refInput.setNodeUuid(item1.getNewUuid()));
             });
+            updateNodeConfigToNewNode(item, tmpNodes);
             WorkflowNode forUpdateNode = new WorkflowNode();
-            forUpdateNode.setId(tmpNode.getId());
-            forUpdateNode.setUuid(tmpNode.getUuid());
-            forUpdateNode.setInputConfig(tmpNode.getInputConfig());
+            forUpdateNode.setId(item.getId());
+            forUpdateNode.setUuid(newNodeUuid);
+            forUpdateNode.setInputConfig(item.getInputConfig());
+            forUpdateNode.setNodeConfig(item.getNodeConfig());
             return forUpdateNode;
         }).toList();
         workflowNodeService.updateBatchById(updateNodes);
@@ -279,6 +285,58 @@ public class WorkflowService extends ServiceImpl<WorkflowMapper, Workflow> {
                 workflowResp.setUserUuid(user.getUuid());
                 workflowResp.setUserName(user.getName());
             }
+        }
+    }
+
+    /**
+     * 更新节点配置中涉及到其他节点的uuid
+     *
+     * @param tmpNode  要更新的节点
+     * @param tmpNodes 工作流复制时的临时节点
+     */
+    private void updateNodeConfigToNewNode(TmpNode tmpNode, List<TmpNode> tmpNodes) {
+        WorkflowComponent wfComponent = workflowComponentService.getComponent(tmpNode.getComponentId());
+        if (wfComponent.getName().equals(WfComponentNameEnum.CLASSIFIER.getName())) {
+            ClassifierNodeConfig classifierNodeConfig = JsonUtil.fromJson(tmpNode.getNodeConfig(), ClassifierNodeConfig.class);
+            if (null == classifierNodeConfig || CollectionUtils.isEmpty(classifierNodeConfig.getCategories())) {
+                log.warn("找不到问题分类器的配置,new uuid:{},old uuid:{}", tmpNode.getNewUuid(), tmpNode.getOldUuid());
+                return;
+            }
+            classifierNodeConfig.getCategories().forEach(category -> {
+                tmpNodes.stream()
+                        .filter(innerItem -> innerItem.getOldUuid().equals(category.getTargetNodeUuid()))
+                        .findFirst()
+                        .ifPresent(innerItem -> category.setTargetNodeUuid(innerItem.getNewUuid()));
+            });
+            tmpNode.setNodeConfig((ObjectNode) JsonUtil.classToJsonNode(classifierNodeConfig));
+        } else if (wfComponent.getName().equals(WfComponentNameEnum.SWITCHER.getName())) {
+            SwitcherNodeConfig nodeConfig = JsonUtil.fromJson(tmpNode.getNodeConfig(), SwitcherNodeConfig.class);
+            if (null == nodeConfig || CollectionUtils.isEmpty(nodeConfig.getCases())) {
+                log.warn("找不到条件分支节点的配置,new uuid:{},old uuid:{}", tmpNode.getNewUuid(), tmpNode.getOldUuid());
+                return;
+            }
+            nodeConfig.getCases().forEach(switcherCase -> {
+                tmpNodes.forEach(innerItem -> {
+                    String oldNodeUuid = innerItem.getOldUuid();
+                    String newNodeUuid = innerItem.getNewUuid();
+                    if (switcherCase.getTargetNodeUuid().equals(oldNodeUuid)) {
+                        switcherCase.setTargetNodeUuid(newNodeUuid);
+                    }
+                    for (SwitcherCase.Condition condition : switcherCase.getConditions()) {
+                        if (condition.getNodeUuid().equals(oldNodeUuid)) {
+                            condition.setNodeUuid(newNodeUuid);
+                        }
+                    }
+                });
+            });
+            tmpNodes.forEach(innerItem -> {
+                String oldNodeUuid = innerItem.getOldUuid();
+                String newNodeUuid = innerItem.getNewUuid();
+                if (nodeConfig.getDefaultTargetNodeUuid().equals(oldNodeUuid)) {
+                    nodeConfig.setDefaultTargetNodeUuid(newNodeUuid);
+                }
+            });
+            tmpNode.setNodeConfig((ObjectNode) JsonUtil.classToJsonNode(nodeConfig));
         }
     }
 }

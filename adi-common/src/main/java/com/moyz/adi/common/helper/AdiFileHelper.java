@@ -3,8 +3,10 @@ package com.moyz.adi.common.helper;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.service.FileService;
 import com.moyz.adi.common.service.SysConfigService;
 import com.moyz.adi.common.util.LocalFileUtil;
+import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.vo.SaveRemoteImageResult;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
@@ -152,7 +154,7 @@ public class AdiFileHelper {
         }
     }
 
-    public Document loadDocument(AdiFile adiFile) {
+    public static Document loadDocument(AdiFile adiFile) {
         Document result = null;
         String path = adiFile.getPath();
         String ext = adiFile.getExt();

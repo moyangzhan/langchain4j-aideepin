@@ -156,7 +156,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             AdiFile adiFile = fileService.saveFile(doc, false);
 
             //解析文档
-            Document document = adiFileHelper.loadDocument(adiFile);
+            Document document = AdiFileHelper.loadDocument(adiFile);
             if (null == document) {
                 log.warn("该文件类型:{}无法解析，忽略", adiFile.getExt());
                 return adiFile;

@@ -131,7 +131,11 @@ public class RedisKeyConstant {
 
     public static final String WORKFLOW_KEY = "workflow";
 
+    public static final String WORKFLOW_COMPONENTS = "workflow:components";
+
     public static final String WORKFLOW_COMPONENT_START_KEY = "workflow:component:start";
+
+    public static final String WORKFLOW_COMPONENT_KEY = "workflow:component";
 
     public static final String WORKFLOW_COPY_DOING = "workflow:copy:doing:{0}";
 }
