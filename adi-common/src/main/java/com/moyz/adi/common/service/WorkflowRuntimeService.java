@@ -5,8 +5,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.base.ThreadContext;
-import com.moyz.adi.common.dto.workflow.*;
-import com.moyz.adi.common.entity.KnowledgeBase;
+import com.moyz.adi.common.dto.workflow.WfRuntimeNodeDto;
+import com.moyz.adi.common.dto.workflow.WfRuntimeResp;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.entity.Workflow;
 import com.moyz.adi.common.entity.WorkflowRuntime;
@@ -90,6 +90,7 @@ public class WorkflowRuntimeService extends ServiceImpl<WorkflowRunMapper, Workf
 
     public WorkflowRuntime getByUuid(String uuid) {
         return ChainWrappers.lambdaQueryChain(baseMapper)
+                .eq(!ThreadContext.getCurrentUser().getIsAdmin(), WorkflowRuntime::getUserId, ThreadContext.getCurrentUserId())
                 .eq(WorkflowRuntime::getUuid, uuid)
                 .eq(WorkflowRuntime::getIsDeleted, false)
                 .last("limit 1")
@@ -107,11 +108,15 @@ public class WorkflowRuntimeService extends ServiceImpl<WorkflowRunMapper, Workf
                 .page(new Page<>(currentPage, pageSize));
         Page<WfRuntimeResp> result = new Page<>();
         MPPageUtil.convertToPage(page, result, WfRuntimeResp.class, (source, target) -> {
-            fillNodes(target);
             fillInputOutput(target);
             return target;
         });
         return result;
+    }
+
+    public List<WfRuntimeNodeDto> listByRuntimeUuid(String runtimeUuid) {
+        WorkflowRuntime runtime = PrivilegeUtil.checkAndGetByUuid(runtimeUuid, this.query(), ErrorEnum.A_WF_RUNTIME_NOT_FOUND);
+        return workflowRuntimeNodeService.listByWfRuntimeId(runtime.getId());
     }
 
     public boolean deleteAll(String wfUuid) {
@@ -127,15 +132,14 @@ public class WorkflowRuntimeService extends ServiceImpl<WorkflowRunMapper, Workf
     private WfRuntimeResp changeToDTO(WorkflowRuntime runtime) {
         WfRuntimeResp result = new WfRuntimeResp();
         BeanUtils.copyProperties(runtime, result);
-        fillNodes(result);
         fillInputOutput(result);
         return result;
     }
 
-    private void fillNodes(WfRuntimeResp runtimeResp) {
-        List<WfRuntimeNodeDto> nodes = workflowRuntimeNodeService.listByWfRuntimeId(runtimeResp.getId());
-        runtimeResp.setNodes(nodes);
-    }
+//    private void fillNodes(WfRuntimeResp runtimeResp) {
+//        List<WfRuntimeNodeDto> nodes = workflowRuntimeNodeService.listByWfRuntimeId(runtimeResp.getId());
+//        runtimeResp.setNodes(nodes);
+//    }
 
     private void fillInputOutput(WfRuntimeResp target) {
         if (null == target.getInput()) {

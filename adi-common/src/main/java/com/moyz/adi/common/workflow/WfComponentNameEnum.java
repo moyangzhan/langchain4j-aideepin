@@ -18,6 +18,8 @@ public enum WfComponentNameEnum {
 
     KEYWORD_EXTRACTOR("KeywordExtractor"),
 
+    FAQ_EXTRACTOR("FaqExtractor"),
+
     KNOWLEDGE_RETRIEVER("KnowledgeRetrieval"),
 
     SWITCHER("Switcher"),

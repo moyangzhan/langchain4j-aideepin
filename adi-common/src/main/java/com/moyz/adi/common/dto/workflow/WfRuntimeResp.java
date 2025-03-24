@@ -16,7 +16,6 @@ public class WfRuntimeResp {
     private ObjectNode output;
     private Integer status;
     private String statusRemark;
-    private List<WfRuntimeNodeDto> nodes;
 
     private String workflowUuid;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

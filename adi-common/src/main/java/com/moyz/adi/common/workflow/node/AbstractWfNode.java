@@ -2,6 +2,7 @@ package com.moyz.adi.common.workflow.node;
 
 import com.moyz.adi.common.entity.WorkflowComponent;
 import com.moyz.adi.common.entity.WorkflowNode;
+import com.moyz.adi.common.enums.WfIODataTypeEnum;
 import com.moyz.adi.common.util.CollectionUtil;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.workflow.NodeProcessResult;
@@ -158,5 +159,20 @@ public abstract class AbstractWfNode {
     }
 
     protected abstract NodeProcessResult onProcess();
+
+    protected String getFirstInputText() {
+        String firstInputText;
+        if (state.getInputs().size() > 1) {
+            firstInputText = state.getInputs()
+                    .stream()
+                    .filter(item -> WfIODataTypeEnum.TEXT.getValue().equals(item.getContent().getType()) && !DEFAULT_INPUT_PARAM_NAME.equals(item.getName()))
+                    .map(NodeIOData::valueToString)
+                    .findFirst()
+                    .orElse("");
+        } else {
+            firstInputText = state.getInputs().get(0).valueToString();
+        }
+        return firstInputText;
+    }
 
 }

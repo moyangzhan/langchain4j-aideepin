@@ -693,15 +693,16 @@ execute procedure update_modified_column();
 -- workflow
 create table adi_workflow_component
 (
-    id          bigserial primary key,
-    uuid        varchar(32)  default ''                not null,
-    name        varchar(32)  default ''                not null,
-    title       varchar(100) default ''                not null,
-    remark      text         default ''                not null,
-    is_enable   boolean      default false             not null,
-    create_time timestamp    default CURRENT_TIMESTAMP not null,
-    update_time timestamp    default CURRENT_TIMESTAMP not null,
-    is_deleted  boolean      default false             not null
+    id            bigserial primary key,
+    uuid          varchar(32)  default ''                not null,
+    name          varchar(32)  default ''                not null,
+    title         varchar(100) default ''                not null,
+    remark        text         default ''                not null,
+    display_order int          default 0                 not null,
+    is_enable     boolean      default false             not null,
+    create_time   timestamp    default CURRENT_TIMESTAMP not null,
+    update_time   timestamp    default CURRENT_TIMESTAMP not null,
+    is_deleted    boolean      default false             not null
 );
 create trigger trigger_workflow_component
     before update
@@ -931,11 +932,11 @@ insert into adi_workflow_component(uuid, name, title, remark, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'Answer', '生成回答', '调用大语言模型回答问题', true);
 insert into adi_workflow_component(uuid, name, title, remark, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'Draw', '画图', '调用文生图模型生成图片', true);
-insert into adi_workflow_component(uuid, name, title, remark, is_enable)
-values (replace(gen_random_uuid()::text, '-', ''), 'DocumentExtractor', '文档提取', '从文档中提取信息', true);
-insert into adi_workflow_component(uuid, name, title, remark, is_enable)
+insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'DocumentExtractor', '文档提取', '从文档中提取信息', 4, true);
+insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'KeywordExtractor', '关键词提取',
-        '从用户的问题中提取关键词，Top N指定需要提取的关键词数量。', true);
+        '从内容中提取关键词，Top N指定需要提取的关键词数量', 5, true);
 insert into adi_workflow_component(uuid, name, title, remark, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'KnowledgeRetrieval', '知识检索', '从知识库中检索信息，需选中知识库',
         true);
@@ -949,6 +950,10 @@ values (replace(gen_random_uuid()::text, '-', ''), 'Template', '模板转换',
         '将多个变量合并成一个输出内容', true);
 insert into adi_workflow_component(uuid, name, title, remark, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'Google', 'Google搜索', '从Google中检索信息', true);
+insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'FaqExtractor', 'FAQ提取',
+        '从内容中提取出常见问题及答案，Top N为提取的数量',
+        6, true);
 -- 工作流示例
 insert into adi_workflow(uuid, title, user_id, is_public, is_enable)
 values ('c40cfc1792264130b1c1f82d1448648f', '中文转英文', 1, true, true);

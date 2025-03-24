@@ -51,6 +51,7 @@ public enum ErrorEnum {
     A_WF_START_NODE_NOT_FOUND("A0042", "没有开始节点"),
     A_WF_END_NODE_NOT_FOUND("A0043", "没有结束节点"),
     A_WF_EDGE_NOT_FOUND("A0044", "工作流的边找不到"),
+    A_WF_RUNTIME_NOT_FOUND("A00045", "工作流运行时数据找不到"),
     B_UNCAUGHT_ERROR("B0001", "未捕捉异常"),
     B_COMMON_ERROR("B0002", "业务出错"),
     B_GLOBAL_ERROR("B0003", "全局异常"),

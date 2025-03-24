@@ -4,7 +4,9 @@ import com.moyz.adi.common.entity.WorkflowComponent;
 import com.moyz.adi.common.entity.WorkflowNode;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
 import com.moyz.adi.common.workflow.node.EndNode;
-import com.moyz.adi.common.workflow.node.StartNode;
+import com.moyz.adi.common.workflow.node.faqextractor.FaqExtractorNode;
+import com.moyz.adi.common.workflow.node.knowledgeretrieval.KnowledgeRetrievalNode;
+import com.moyz.adi.common.workflow.node.start.StartNode;
 import com.moyz.adi.common.workflow.node.answer.LLMAnswerNode;
 import com.moyz.adi.common.workflow.node.classifier.ClassifierNode;
 import com.moyz.adi.common.workflow.node.documentextractor.DocumentExtractorNode;
@@ -36,6 +38,12 @@ public class WfNodeFactory {
                 break;
             case DOCUMENT_EXTRACTOR:
                 wfNode = new DocumentExtractorNode(wfComponent, nodeDefinition, wfState, nodeState);
+                break;
+            case FAQ_EXTRACTOR:
+                wfNode = new FaqExtractorNode(wfComponent, nodeDefinition, wfState, nodeState);
+                break;
+            case KNOWLEDGE_RETRIEVER:
+                wfNode = new KnowledgeRetrievalNode(wfComponent, nodeDefinition, wfState, nodeState);
                 break;
             case END:
                 wfNode = new EndNode(wfComponent, nodeDefinition, wfState, nodeState);

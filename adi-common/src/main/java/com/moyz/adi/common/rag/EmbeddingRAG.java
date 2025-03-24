@@ -82,7 +82,7 @@ public class EmbeddingRAG implements IRAGService {
         return AdiEmbeddingStoreContentRetriever.builder()
                 .embeddingStore(embeddingStore)
                 .embeddingModel(embeddingModel)
-                .maxResults(maxResults)
+                .maxResults(maxResults <= 0 ? 3 : maxResults)
                 .minScore(minScore <= 0 ? RAG_MIN_SCORE : minScore)
                 .filter(filter)
                 .breakIfSearchMissed(breakIfSearchMissed)

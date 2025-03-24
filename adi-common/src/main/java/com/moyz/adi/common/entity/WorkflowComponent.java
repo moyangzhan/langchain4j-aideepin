@@ -29,6 +29,9 @@ public class WorkflowComponent extends BaseEntity {
     @TableField("remark")
     private String remark;
 
+    @TableField("display_order")
+    private Integer displayOrder;
+
     @TableField("is_enable")
     private Boolean isEnable;
 }

@@ -33,7 +33,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.*;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.WorkflowConstant.DEFAULT_OUTPUT_PARAM_NAME;
-import static com.moyz.adi.common.cosntant.AdiConstant.WorkflowConstant.WORKFLOW_NODE_PROCESS_TYPE_CONDITIONAL;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 import static org.bsc.langgraph4j.StateGraph.END;
 import static org.bsc.langgraph4j.StateGraph.START;
