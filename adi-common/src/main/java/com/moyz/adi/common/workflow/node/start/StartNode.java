@@ -31,7 +31,7 @@ public class StartNode extends AbstractWfNode {
     @Override
     public NodeProcessResult onProcess() {
         ObjectNode objectConfig = node.getNodeConfig();
-        if (objectConfig.isEmpty()) {
+        if (null == objectConfig) {
             throw new BaseException(A_WF_NODE_CONFIG_NOT_FOUND);
         }
         List<NodeIOData> result;
