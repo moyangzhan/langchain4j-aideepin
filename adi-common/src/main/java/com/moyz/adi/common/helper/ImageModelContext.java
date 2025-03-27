@@ -43,6 +43,13 @@ public class ImageModelContext {
         }
     }
 
+    public static AbstractImageModelService<?> getFirstModelService(String platform) {
+        return NAME_TO_LLM_SERVICE.values()
+                .stream()
+                .filter(item -> item.getAiModel().getPlatform().equalsIgnoreCase(platform) && Boolean.TRUE.equals(item.getAiModel().getIsEnable()))
+                .findFirst().orElse(null);
+    }
+
     public static AbstractImageModelService<?> getModelService(String modelName) {
         AbstractImageModelService<?> service = NAME_TO_LLM_SERVICE.get(modelName);
         if (null == service) {

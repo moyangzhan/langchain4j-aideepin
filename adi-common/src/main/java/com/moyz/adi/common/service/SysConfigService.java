@@ -10,7 +10,7 @@ import com.moyz.adi.common.dto.SysConfigSearchReq;
 import com.moyz.adi.common.entity.SysConfig;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.helper.AliyunOssHelper;
+import com.moyz.adi.common.file.AliyunOssFileHelper;
 import com.moyz.adi.common.mapper.SysConfigMapper;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.LocalCache;
@@ -30,7 +30,7 @@ import java.util.List;
 public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
 
     @Resource
-    private AliyunOssHelper aliyunOssHelper;
+    private AliyunOssFileHelper aliyunOssFileHelper;
 
     public void loadAndCache() {
         List<SysConfig> configsFromDB = this.lambdaQuery().eq(SysConfig::getIsDeleted, false).list();
@@ -60,7 +60,7 @@ public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
         LocalCache.TEXT_RATE_LIMIT_CONFIG.setType(RequestRateLimit.TYPE_TEXT);
         LocalCache.IMAGE_RATE_LIMIT_CONFIG.setType(RequestRateLimit.TYPE_IMAGE);
 
-        aliyunOssHelper.reload();
+        aliyunOssFileHelper.reload();
     }
 
     public void edit(SysConfigEditDto sysConfigDto) {

@@ -165,26 +165,19 @@ public class SSEEmitterHelper {
     }
 
     public static void parseAndSendPartialMsg(SseEmitter sseEmitter, String name, String content) {
-//        log.info("get content:{}", content);
-        //加空格配合前端的fetchEventSource进行解析，见https://github.com/Azure/fetch-event-source/blob/45ac3cfffd30b05b79fbf95c21e67d4ef59aa56a/src/parse.ts#L129-L133
         try {
-//            String[] lines = content.split("[\\r\\n]", -1);
-//            if (lines.length > 1) {
-//                sendPartial(sseEmitter, name, prefix, " " + lines[0]);
-//                for (int i = 1; i < lines.length; i++) {
-//                    /**
-//                     * 当响应结果的content中包含有多行文本时，
-//                     * 前端的fetch-event-source框架的BUG会将包含有换行符的那一行内容替换为空字符串，
-//                     * 故需要先将换行符与后面的内容拆分并转成，前端碰到换行标志时转成换行符处理
-//                     */
-//                    sendPartial(sseEmitter, name, prefix, "-_-_wrap_-_-");
-//                    sendPartial(sseEmitter, name, prefix, " " + lines[i]);
-//                }
-//            } else {
-//                sendPartial(sseEmitter, name, prefix, " " + content);
-//            }
-            content = content.replaceAll("[\\r\\n]", "\ndata:");
-            sendPartial(sseEmitter, name, content);
+            String[] lines = content.split("[\\r\\n]", -1);
+            if (lines.length > 1) {
+                sendPartial(sseEmitter, name, " " + lines[0]);
+                for (int i = 1; i < lines.length; i++) {
+                    sendPartial(sseEmitter, name, "-_wrap_-");
+                    sendPartial(sseEmitter, name, " " + lines[i]);
+                }
+            } else {
+                sendPartial(sseEmitter, name, " " + content);
+            }
+//            content = content.replaceAll("[\\r\\n]", "\ndata:");
+//            sendPartial(sseEmitter, name, " " + content);
         } catch (IOException e) {
             log.error("stream onNext error", e);
         }

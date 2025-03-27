@@ -29,7 +29,7 @@ public class WorkflowComponentService extends ServiceImpl<WorkflowComponentMappe
     public List<WorkflowComponent> getAllEnable() {
         return ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(WorkflowComponent::getIsEnable, true)
-                .orderByAsc(List.of(WorkflowComponent::getId, WorkflowComponent::getDisplayOrder))
+                .orderByAsc(List.of(WorkflowComponent::getDisplayOrder, WorkflowComponent::getId))
                 .list();
     }
 

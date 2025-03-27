@@ -4,14 +4,10 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.moyz.adi.common.base.JsonNodeTypeHandler;
-import com.moyz.adi.common.base.JsonStrTypeHandler;
-import com.moyz.adi.common.base.SearchEngineRespTypeHandler;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.apache.ibatis.type.JdbcType;
-
-import java.util.Map;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
@@ -26,10 +22,10 @@ public class Draw extends BaseEntity {
     private String uuid;
 
     @TableField("ai_model_id")
-    private Long AiModelId;
+    private Long aiModelId;
 
     @TableField("ai_model_name")
-    private String AiModelName;
+    private String aiModelName;
 
     @TableField("prompt")
     private String prompt;

@@ -1,6 +1,8 @@
 package com.moyz.adi.common.service;
 
-import com.moyz.adi.common.helper.AliyunOssHelper;
+import com.moyz.adi.common.file.AliyunOssFileHelper;
+import com.moyz.adi.common.file.AliyunOssFileOperator;
+import com.moyz.adi.common.file.LocalFileOperator;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +13,12 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 public class Initializer {
+
+    @Value("${local.images}")
+    private String imagePath;
+
+    @Value("${local.files}")
+    private String filePath;
 
     @Value("${adi.proxy.enable:false}")
     protected boolean proxyEnable;
@@ -28,7 +36,7 @@ public class Initializer {
     private SysConfigService sysConfigService;
 
     @Resource
-    private AliyunOssHelper aliyunOssHelper;
+    private AliyunOssFileHelper aliyunOssFileHelper;
 
     /**
      * 应用初始化
@@ -37,6 +45,7 @@ public class Initializer {
     public void init() {
         sysConfigService.loadAndCache();
         aiModelService.init();
+        checkAndInitFileOperator();
     }
 
     /**
@@ -45,5 +54,12 @@ public class Initializer {
     @Scheduled(initialDelay = 10 * 60 * 1000, fixedDelay = 10 * 60 * 1000)
     public void reloadConfig() {
         sysConfigService.loadAndCache();
+    }
+
+    public void checkAndInitFileOperator() {
+        LocalFileOperator.checkAndCreateDir(imagePath);
+        LocalFileOperator.checkAndCreateDir(filePath);
+        LocalFileOperator.init(imagePath, filePath);
+        AliyunOssFileOperator.init(aliyunOssFileHelper);
     }
 }

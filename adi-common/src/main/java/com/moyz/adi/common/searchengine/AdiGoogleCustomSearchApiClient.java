@@ -36,7 +36,6 @@ class AdiGoogleCustomSearchApiClient {
     private final CustomSearchAPIRequest<Search> customSearchRequest;
     private final boolean logResponses;
 
-    private final Proxy proxy;
     @Builder
     AdiGoogleCustomSearchApiClient(String apiKey,
                                    String csi,
@@ -56,14 +55,13 @@ class AdiGoogleCustomSearchApiClient {
                 throw new IllegalArgumentException("Google Custom Search Engine ID must be defined. " +
                         "It can be created here: https://cse.google.com/cse/create/new");
             }
-            this.proxy = proxy;
             this.logResponses = logResponses;
 
             // ===》aideepin add
             NetHttpTransport transport;
-            if(null == this.proxy){
+            if (null == proxy) {
                 transport = GoogleNetHttpTransport.newTrustedTransport();
-            }else{
+            } else {
                 transport = newTrustedTransport(MtlsUtils.getDefaultMtlsProvider(), proxy);
             }
             // aideepin add 《===

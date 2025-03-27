@@ -225,8 +225,8 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
             }
             List<String> imageUuids = new ArrayList<>();
             images.forEach(imageUrl -> {
-                String imageUuid = fileService.saveImageFromUrl(user, imageUrl);
-                imageUuids.add(imageUuid);
+                AdiFile adiFile = fileService.saveImageFromUrl(user, imageUrl);
+                imageUuids.add(adiFile.getUuid());
             });
             String imageUuidsJoin = String.join(",", imageUuids);
             if (StringUtils.isBlank(imageUuidsJoin)) {

@@ -36,7 +36,7 @@ public abstract class AbstractSearchEngineService<T> {
         return engineName;
     }
 
-    public abstract SearchReturn search(String searchTxt);
+    public abstract SearchReturn search(String searchTxt, String country, String language, Integer topN);
 
     protected RestTemplate getRestTemplate() {
         RestTemplate restTemplate = SpringUtil.getBean(RestTemplate.class);

@@ -40,12 +40,16 @@ public class LLMAnswerNode extends AbstractWfNode {
             throw new BaseException(A_WF_NODE_CONFIG_NOT_FOUND);
         }
         LLMAnswerNodeConfig nodeConfigObj = JsonUtil.fromJson(objectConfig, LLMAnswerNodeConfig.class);
-        if (null == nodeConfigObj || StringUtils.isBlank(nodeConfigObj.getPrompt())) {
+        if (null == nodeConfigObj) {
             log.warn("找不到问答节点的配置");
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
+        String inputText = getFirstInputText();
         log.info("LLM answer node config:{}", nodeConfigObj);
-        String prompt = WorkflowUtil.renderTemplate(nodeConfigObj.getPrompt(), state.getInputs());
+        String prompt = inputText;
+        if (StringUtils.isNotBlank(nodeConfigObj.getPrompt())) {
+            prompt = WorkflowUtil.renderTemplate(nodeConfigObj.getPrompt(), state.getInputs());
+        }
         log.info("LLM prompt:{}", prompt);
         String modelName = nodeConfigObj.getModelName();
         //调用LLM

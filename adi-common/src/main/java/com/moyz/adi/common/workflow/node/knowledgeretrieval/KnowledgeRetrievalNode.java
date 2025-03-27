@@ -24,6 +24,7 @@ import java.util.Map;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.WorkflowConstant.DEFAULT_OUTPUT_PARAM_NAME;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
+import static com.moyz.adi.common.enums.ErrorEnum.B_BREAK_SEARCH;
 
 /**
  * 【节点】知识抽取 <br/>
@@ -77,7 +78,6 @@ public class KnowledgeRetrievalNode extends AbstractWfNode {
                 throw e;
             }
         }
-
         String respText = resp.toString();
         if (StringUtils.isBlank(respText) && StringUtils.isNotBlank(nodeConfigObj.getDefaultResponse())) {
             respText = nodeConfigObj.getDefaultResponse();

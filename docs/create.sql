@@ -903,8 +903,8 @@ VALUES ('qwen2-vl-7b-instruct', '通义千问-识图', 'text', 'dashscope', 3276
 INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
 VALUES ('wanx2.1-t2i-turbo', '通义万相-文生图', 'image', 'dashscope', false);
 -- 通义万相-切换背景
-INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
-VALUES ('wanx-background-generation-v2', '通义万相-背景生成', 'image', 'dashscope', false);
+INSERT INTO adi_ai_model (name, title, type, platform, input_types, is_enable)
+VALUES ('wanx-background-generation-v2', '通义万相-背景生成', 'image', 'dashscope', 'text,image', false);
 -- https://console.bce.baidu.com/qianfan/modelcenter/model/buildIn/detail/am-bg7n2rn2gsbb
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_free,
                           is_enable,
@@ -930,8 +930,8 @@ insert into adi_workflow_component(uuid, name, title, remark, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'End', '结束', '流程由此结束', true);
 insert into adi_workflow_component(uuid, name, title, remark, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'Answer', '生成回答', '调用大语言模型回答问题', true);
-insert into adi_workflow_component(uuid, name, title, remark, is_enable)
-values (replace(gen_random_uuid()::text, '-', ''), 'Draw', '画图', '调用文生图模型生成图片', true);
+insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'Dalle3', 'DALL-E 3 画图', '调用Dall-e-3生成图片', 11, true);
 insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'DocumentExtractor', '文档提取', '从文档中提取信息', 4, true);
 insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
@@ -945,15 +945,17 @@ values (replace(gen_random_uuid()::text, '-', ''), 'Switcher', '条件分支', '
 insert into adi_workflow_component(uuid, name, title, remark, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'Classifier', '内容归类',
         '使用大语言模型对输入信息进行分析并归类，根据类别调用对应的下游节点', true);
-insert into adi_workflow_component(uuid, name, title, remark, is_enable)
-values (replace(gen_random_uuid()::text, '-', ''), 'Template', '模板转换',
-        '将多个变量合并成一个输出内容', true);
-insert into adi_workflow_component(uuid, name, title, remark, is_enable)
-values (replace(gen_random_uuid()::text, '-', ''), 'Google', 'Google搜索', '从Google中检索信息', true);
 insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
-values (replace(gen_random_uuid()::text, '-', ''), 'FaqExtractor', 'FAQ提取',
-        '从内容中提取出常见问题及答案，Top N为提取的数量',
+values (replace(gen_random_uuid()::text, '-', ''), 'Template', '模板转换',
+        '将多个变量合并成一个输出内容', 10, true);
+insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'Google', 'Google搜索', '从Google中检索信息', 13, true);
+insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'FaqExtractor', '常见问题提取',
+        '从内容中提取出常见问题及对应的答案，Top N为提取的数量',
         6, true);
+insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'Tongyiwanx', '通义万相-画图', '调用文生图模型生成图片', 12, true);
 -- 工作流示例
 insert into adi_workflow(uuid, title, user_id, is_public, is_enable)
 values ('c40cfc1792264130b1c1f82d1448648f', '中文转英文', 1, true, true);

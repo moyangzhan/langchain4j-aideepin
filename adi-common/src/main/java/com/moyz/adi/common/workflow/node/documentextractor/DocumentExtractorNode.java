@@ -4,7 +4,7 @@ import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.entity.WorkflowComponent;
 import com.moyz.adi.common.entity.WorkflowNode;
 import com.moyz.adi.common.enums.WfIODataTypeEnum;
-import com.moyz.adi.common.helper.AdiFileHelper;
+import com.moyz.adi.common.file.FileOperatorContext;
 import com.moyz.adi.common.service.FileService;
 import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.workflow.NodeProcessResult;
@@ -48,7 +48,7 @@ public class DocumentExtractorNode extends AbstractWfNode {
         try {
             for (String uuid : fileUuids) {
                 AdiFile adiFile = fileService.getFile(uuid);
-                Document document = AdiFileHelper.loadDocument(adiFile);
+                Document document = FileOperatorContext.loadDocument(adiFile);
                 if (null == document) {
                     log.warn("{}的文件类型:{}无法解析，忽略", adiFile.getUuid(), adiFile.getExt());
                     continue;

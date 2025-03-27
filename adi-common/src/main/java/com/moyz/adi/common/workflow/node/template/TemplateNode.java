@@ -5,10 +5,7 @@ import com.moyz.adi.common.entity.WorkflowComponent;
 import com.moyz.adi.common.entity.WorkflowNode;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.JsonUtil;
-import com.moyz.adi.common.workflow.NodeProcessResult;
-import com.moyz.adi.common.workflow.WfNodeState;
-import com.moyz.adi.common.workflow.WfState;
-import com.moyz.adi.common.workflow.WorkflowUtil;
+import com.moyz.adi.common.workflow.*;
 import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +37,7 @@ public class TemplateNode extends AbstractWfNode {
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
         log.info("Template node config:{}", nodeConfigObj);
+        WfNodeIODataUtil.changeFilesContentToMarkdown(state.getInputs());
         String content = WorkflowUtil.renderTemplate(nodeConfig.getTemplate(), state.getInputs());
         NodeIOData output = NodeIOData.createByText(DEFAULT_OUTPUT_PARAM_NAME, "", content);
         return NodeProcessResult.builder().content(List.of(output)).build();

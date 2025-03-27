@@ -1,4 +1,4 @@
-package com.moyz.adi.common.util;
+package com.moyz.adi.common.file;
 
 import cn.hutool.core.img.ImgUtil;
 import com.moyz.adi.common.entity.AdiFile;

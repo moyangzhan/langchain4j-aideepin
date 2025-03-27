@@ -85,7 +85,7 @@ public class SearchService {
 
     @Async
     public void asyncSearch(User user, SseEmitter sseEmitter, boolean isBriefSearch, String searchText, String searchName, String modelName) {
-        SearchReturn searchResult = SearchEngineServiceContext.getService(searchName).search(searchText);
+        SearchReturn searchResult = SearchEngineServiceContext.getService(searchName).search(searchText, "", "", 5);
         if (StringUtils.isNotBlank(searchResult.getErrorMessage())) {
             sseEmitterHelper.sendAndComplete(user.getId(), sseEmitter, searchResult.getErrorMessage());
             return;

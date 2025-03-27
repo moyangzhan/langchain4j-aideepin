@@ -9,11 +9,13 @@ import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.CollectionUtil;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.workflow.data.NodeIOData;
+import com.moyz.adi.common.workflow.data.NodeIODataFilesContent;
 import com.moyz.adi.common.workflow.def.*;
 import org.apache.commons.collections4.CollectionUtils;
 
 import java.util.*;
 
+import static com.moyz.adi.common.cosntant.AdiConstant.IMAGE_EXTENSIONS;
 import static com.moyz.adi.common.cosntant.AdiConstant.WorkflowConstant.DEFAULT_INPUT_PARAM_NAME;
 import static com.moyz.adi.common.cosntant.AdiConstant.WorkflowConstant.DEFAULT_OUTPUT_PARAM_NAME;
 
@@ -106,5 +108,27 @@ public class WfNodeIODataUtil {
         }
 
         return result;
+    }
+
+    /**
+     * 将输入输出中的文件url转成markdown格式的文件地址<br/>
+     * 将变量渲染到模板时使用该方法，其他情况交由前端处理
+     *
+     * @param ioDataList 输入输出列表
+     */
+    public static void changeFilesContentToMarkdown(List<NodeIOData> ioDataList) {
+        ioDataList.forEach(input -> {
+            if (input.getContent() instanceof NodeIODataFilesContent filesContent) {
+                List<String> newValues = new ArrayList<>();
+                for (String s : filesContent.getValue()) {
+                    if (IMAGE_EXTENSIONS.contains(s.substring(s.lastIndexOf(".") + 1))) {
+                        newValues.add("![" + filesContent.getTitle() + "](" + s + ")");
+                    } else {
+                        newValues.add("[" + filesContent.getTitle() + "](" + s + ")");
+                    }
+                }
+                filesContent.setValue(newValues);
+            }
+        });
     }
 }

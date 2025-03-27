@@ -12,7 +12,7 @@ import com.moyz.adi.common.dto.KbInfoResp;
 import com.moyz.adi.common.dto.KbSearchReq;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.helper.AdiFileHelper;
+import com.moyz.adi.common.file.FileOperatorContext;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
@@ -50,7 +50,8 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.SysConfigKey.QUOTA_BY_QA_ASK_DAILY;
-import static com.moyz.adi.common.cosntant.RedisKeyConstant.*;
+import static com.moyz.adi.common.cosntant.RedisKeyConstant.KB_STATISTIC_RECALCULATE_SIGNAL;
+import static com.moyz.adi.common.cosntant.RedisKeyConstant.USER_INDEXING;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 @Slf4j
@@ -87,9 +88,6 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
     @Resource
     private AiModelService aiModelService;
-
-    @Resource
-    private AdiFileHelper adiFileHelper;
 
     public KnowledgeBase saveOrUpdate(KbEditReq kbEditReq) {
         KnowledgeBase knowledgeBase = new KnowledgeBase();
@@ -156,7 +154,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             AdiFile adiFile = fileService.saveFile(doc, false);
 
             //解析文档
-            Document document = adiFileHelper.loadDocument(adiFile);
+            Document document = FileOperatorContext.loadDocument(adiFile);
             if (null == document) {
                 log.warn("该文件类型:{}无法解析，忽略", adiFile.getExt());
                 return adiFile;
@@ -179,7 +177,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             }
 
             //Replace file path with url
-            adiFile.setPath(adiFileHelper.getFileUrl(adiFile));
+            adiFile.setPath(FileOperatorContext.getFileUrl(adiFile));
             return adiFile;
         } catch (Exception e) {
             log.error("upload error", e);

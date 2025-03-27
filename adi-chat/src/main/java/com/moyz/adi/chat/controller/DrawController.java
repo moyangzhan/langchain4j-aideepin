@@ -4,6 +4,7 @@ import com.moyz.adi.common.dto.*;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.service.DrawService;
 import com.moyz.adi.common.service.FileService;
+import com.moyz.adi.common.util.UrlUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletResponse;
@@ -148,12 +149,13 @@ public class DrawController {
     }
 
     @Operation(summary = "公开的图片,可能带水印（根据水印设置决定）")
-    @GetMapping(value = "/public/image/{drawUuid}/{imageUuid}", produces = MediaType.IMAGE_PNG_VALUE)
-    public void publicImage(@Length(min = 32, max = 32) @PathVariable String drawUuid, @Length(min = 32, max = 32) @PathVariable String imageUuid, HttpServletResponse response) {
+    @GetMapping(value = "/public/image/{drawUuid}/{imageUuidWithExt}", produces = MediaType.IMAGE_PNG_VALUE)
+    public void publicImage(@Length(min = 32) @PathVariable String drawUuid, @Length(min = 32, max = 32) @PathVariable String imageUuidWithExt, HttpServletResponse response) {
         DrawDto drawDto = drawService.getPublicOrMine(drawUuid);
         if (null == drawDto) {
             throw new BaseException(A_AI_IMAGE_NO_AUTH);
         }
+        String imageUuid = UrlUtil.getUuid(imageUuidWithExt);
         BufferedImage bufferedImage = fileService.readImage(imageUuid, false);
         //把图片写给浏览器
         try {
@@ -165,12 +167,13 @@ public class DrawController {
     }
 
     @Operation(summary = "公开的缩略图,可能带水印（根据水印设置决定）")
-    @GetMapping(value = "/public/thumbnail/{drawUuid}/{imageUuid}", produces = MediaType.IMAGE_PNG_VALUE)
-    public void publicThumbnail(@Length(min = 32, max = 32) @PathVariable String drawUuid, @Length(min = 32, max = 32) @PathVariable String imageUuid, HttpServletResponse response) {
+    @GetMapping(value = "/public/thumbnail/{drawUuid}/{imageUuidWithExt}", produces = MediaType.IMAGE_PNG_VALUE)
+    public void publicThumbnail(@Length(min = 32) @PathVariable String drawUuid, @Length(min = 32) @PathVariable String imageUuidWithExt, HttpServletResponse response) {
         DrawDto drawDto = drawService.getPublicOrMine(drawUuid);
         if (null == drawDto) {
             throw new BaseException(A_AI_IMAGE_NO_AUTH);
         }
+        String imageUuid = UrlUtil.getUuid(imageUuidWithExt);
         BufferedImage bufferedImage = fileService.readImage(imageUuid, true);
         try {
             ImageIO.write(bufferedImage, "png", response.getOutputStream());

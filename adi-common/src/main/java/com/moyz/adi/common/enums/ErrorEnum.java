@@ -52,6 +52,7 @@ public enum ErrorEnum {
     A_WF_END_NODE_NOT_FOUND("A0043", "没有结束节点"),
     A_WF_EDGE_NOT_FOUND("A0044", "工作流的边找不到"),
     A_WF_RUNTIME_NOT_FOUND("A00045", "工作流运行时数据找不到"),
+    A_SEARCH_QUERY_IS_EMPTY("A00046", "搜索内容不能为空"),
     B_UNCAUGHT_ERROR("B0001", "未捕捉异常"),
     B_COMMON_ERROR("B0002", "业务出错"),
     B_GLOBAL_ERROR("B0003", "全局异常"),
@@ -77,6 +78,7 @@ public enum ErrorEnum {
     B_DELETE_FILE_ERROR("B0021", "删除文件异常"),
     B_WF_RUN_ERROR("B0022", "工作流运行异常"),
     B_WF_NODE_DEFINITION_NOT_FOUND("B0023", "工作流节点定义找不到"),
+    B_DIR_CREATE_FAIL("B0024", "创建目录失败"),
     C_DRAW_FAIL("C0001", "大模型生成图片失败,原因:{0}"),
     C_ALI_OSS_CONFIG_ERROR("C0002", "阿里云OSS初始化失败,原因:{0}"),
     C_LLM_RESPONSE_INVALID("C0003", "大模型生成结果内容无效");

@@ -2,10 +2,10 @@ package com.moyz.adi.chat.controller;
 
 import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.helper.AdiFileHelper;
+import com.moyz.adi.common.file.FileOperatorContext;
+import com.moyz.adi.common.file.LocalFileUtil;
 import com.moyz.adi.common.service.FileService;
-import com.moyz.adi.common.util.LocalFileUtil;
-import io.swagger.v3.oas.annotations.Operation;
+import com.moyz.adi.common.util.UrlUtil;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -40,9 +40,6 @@ public class FileController {
     @Resource
     private FileService fileService;
 
-    @Resource
-    private AdiFileHelper adiFileHelper;
-
 //    @Operation(summary = "我的图片")
 //    @GetMapping(value = "/my-image/{uuid}", produces = MediaType.IMAGE_PNG_VALUE)
 //    public void myImage(@Length(min = 32, max = 32) @PathVariable String uuid, HttpServletResponse response) {
@@ -53,8 +50,9 @@ public class FileController {
 //        responseImage(uuid, adiFile.getExt(), false, response);
 //    }
 
-    @GetMapping(value = "/my-thumbnail/{uuid}", produces = MediaType.IMAGE_PNG_VALUE)
-    public void thumbnail(@Length(min = 32, max = 32) @PathVariable String uuid, HttpServletResponse response) {
+    @GetMapping(value = "/my-thumbnail/{uuidWithExt}", produces = MediaType.IMAGE_PNG_VALUE)
+    public void thumbnail(@Length(min = 32) @PathVariable String uuidWithExt, HttpServletResponse response) {
+        String uuid = UrlUtil.getUuid(uuidWithExt);
         AdiFile adiFile = fileService.getByUuid(uuid);
         if (null == adiFile) {
             throw new BaseException(A_FILE_NOT_EXIST);
@@ -77,8 +75,9 @@ public class FileController {
 //        responseImage(uuid, adiFile.getExt(), false, response);
 //    }
 
-    @GetMapping(value = "/file/{uuid}")
-    public ResponseEntity<org.springframework.core.io.Resource> file(@Length(min = 32, max = 32) @PathVariable String uuid, HttpServletResponse response) {
+    @GetMapping(value = "/file/{uuidWithExt}")
+    public ResponseEntity<org.springframework.core.io.Resource> file(@Length(min = 32) @PathVariable String uuidWithExt, HttpServletResponse response) {
+        String uuid = UrlUtil.getUuid(uuidWithExt);
         AdiFile adiFile = fileService.getByUuid(uuid);
         if (null == adiFile) {
             throw new BaseException(A_FILE_NOT_EXIST);
@@ -118,7 +117,7 @@ public class FileController {
         Map<String, String> result = new HashMap<>();
         AdiFile adiFile = fileService.saveFile(file, false);
         result.put("uuid", adiFile.getUuid());
-        result.put("url", adiFileHelper.getFileUrl(adiFile));
+        result.put("url", FileOperatorContext.getFileUrl(adiFile));
         return result;
     }
 
@@ -127,7 +126,7 @@ public class FileController {
         Map<String, String> result = new HashMap<>();
         AdiFile adiFile = fileService.saveFile(file, true);
         result.put("uuid", adiFile.getUuid());
-        result.put("url", adiFileHelper.getFileUrl(adiFile));
+        result.put("url", FileOperatorContext.getFileUrl(adiFile));
         return result;
     }
 

@@ -6,13 +6,12 @@ import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.helper.AdiFileHelper;
+import com.moyz.adi.common.file.FileOperatorContext;
+import com.moyz.adi.common.file.LocalFileUtil;
 import com.moyz.adi.common.mapper.FileMapper;
 import com.moyz.adi.common.util.HashUtil;
-import com.moyz.adi.common.util.LocalFileUtil;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.SaveRemoteImageResult;
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -52,9 +51,6 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
     @Value("${local.tmp-images}")
     private String tmpImagesPath;
 
-    @Resource
-    private AdiFileHelper adiFileHelper;
-
     public AdiFile saveFile(MultipartFile file, boolean image) {
         String sha256 = HashUtil.sha256(file);
         Optional<AdiFile> existFile = this.lambdaQuery()
@@ -64,7 +60,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
                 .oneOpt();
         if (existFile.isPresent()) {
             AdiFile adiFile = existFile.get();
-            boolean exist = adiFileHelper.checkIfExist(adiFile);
+            boolean exist = new FileOperatorContext(adiFile.getStorageLocation()).checkIfExist(adiFile);
             if (exist) {
                 return adiFile;
             } else {
@@ -73,7 +69,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
             }
         }
         String uuid = UuidUtil.createShort();
-        Pair<String, String> originalFile = adiFileHelper.save(file, image, uuid);
+        Pair<String, String> originalFile = new FileOperatorContext().save(file, image, uuid);
         AdiFile adiFile = new AdiFile();
         adiFile.setName(file.getOriginalFilename());
         adiFile.setUuid(uuid);
@@ -81,15 +77,15 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         adiFile.setPath(originalFile.getLeft());
         adiFile.setExt(originalFile.getRight());
         adiFile.setUserId(ThreadContext.getCurrentUserId());
-        adiFile.setStorageLocation(AdiFileHelper.getStorageLocation());
+        adiFile.setStorageLocation(FileOperatorContext.getStorageLocation());
         this.getBaseMapper().insert(adiFile);
         return adiFile;
     }
 
-    public String saveImageFromUrl(User user, String sourceImageUrl) {
+    public AdiFile saveImageFromUrl(User user, String sourceImageUrl) {
         log.info("saveImageFromUrl,sourceImageUrl:{}", sourceImageUrl);
         String uuid = UuidUtil.createShort();
-        SaveRemoteImageResult saveResult = adiFileHelper.saveImageFromUrl(sourceImageUrl, uuid);
+        SaveRemoteImageResult saveResult = new FileOperatorContext().saveImageFromUrl(sourceImageUrl, uuid);
         AdiFile adiFile = new AdiFile();
         adiFile.setName(saveResult.getOriginalName());
         adiFile.setUuid(uuid);
@@ -97,9 +93,9 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         adiFile.setPath(saveResult.getPathOrUrl());
         adiFile.setUserId(user.getId());
         adiFile.setExt(saveResult.getExt());
-        adiFile.setStorageLocation(AdiFileHelper.getStorageLocation());
+        adiFile.setStorageLocation(FileOperatorContext.getStorageLocation());
         this.getBaseMapper().insert(adiFile);
-        return uuid;
+        return adiFile;
     }
 
     public boolean softDel(String uuid) {
@@ -119,7 +115,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         if (null == adiFile) {
             return false;
         }
-        adiFileHelper.delete(adiFile);
+        FileOperatorContext.delete(adiFile);
         return this.softDel(uuid);
     }
 
@@ -233,7 +229,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
                 .eq(AdiFile::getIsDeleted, false)
                 .list()
                 .forEach(adiFile -> {
-                    result.add(adiFileHelper.getFileUrl(adiFile));
+                    result.add(new FileOperatorContext(adiFile.getStorageLocation()).getFileUrl(adiFile));
                 });
         return result;
     }

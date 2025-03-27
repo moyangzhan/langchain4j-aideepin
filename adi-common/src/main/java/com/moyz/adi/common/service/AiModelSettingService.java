@@ -98,7 +98,7 @@ public class AiModelSettingService {
         SearchEngineServiceContext.addWebSearcher(AdiConstant.SearchEngineName.GOOGLE, new GoogleSearchEngineService(proxy));
     }
 
-    private void initLLMService(String platform, Function<AiModel, AbstractLLMService> function) {
+    private void initLLMService(String platform, Function<AiModel, AbstractLLMService<?>> function) {
         List<AiModel> models = all.stream().filter(item -> item.getType().equals(AdiConstant.ModelType.TEXT) && item.getPlatform().equals(platform)).toList();
         if (CollectionUtils.isEmpty(models)) {
             log.warn("{} service is disabled", platform);
@@ -110,7 +110,7 @@ public class AiModelSettingService {
         }
     }
 
-    private void initImageModelService(String platform, Function<AiModel, AbstractImageModelService> function) {
+    private void initImageModelService(String platform, Function<AiModel, AbstractImageModelService<?>> function) {
         List<AiModel> models = all.stream().filter(item -> item.getType().equals(AdiConstant.ModelType.IMAGE) && item.getPlatform().equals(platform)).toList();
         if (CollectionUtils.isEmpty(models)) {
             log.warn("{} service is disabled", platform);

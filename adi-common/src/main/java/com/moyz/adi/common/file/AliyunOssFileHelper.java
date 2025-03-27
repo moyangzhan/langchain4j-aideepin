@@ -1,4 +1,4 @@
-package com.moyz.adi.common.helper;
+package com.moyz.adi.common.file;
 
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
@@ -24,7 +24,7 @@ import static com.moyz.adi.common.cosntant.AdiConstant.STORAGE_LOCATION_ALI_OSS;
 
 @Slf4j
 @Service
-public class AliyunOssHelper {
+public class AliyunOssFileHelper {
 
     private OSS client = null;
     @Getter

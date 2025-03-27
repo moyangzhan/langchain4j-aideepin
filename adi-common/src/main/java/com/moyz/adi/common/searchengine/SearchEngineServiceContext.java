@@ -12,17 +12,17 @@ import java.util.Map;
  */
 @Slf4j
 public class SearchEngineServiceContext {
-    public static final Map<String, AbstractSearchEngineService> NAME_TO_SEARCHER = new LinkedHashMap<>();
+    public static final Map<String, AbstractSearchEngineService<?>> NAME_TO_SEARCHER = new LinkedHashMap<>();
 
     private SearchEngineServiceContext() {
     }
 
-    public static void addWebSearcher(String engineName, AbstractSearchEngineService searcher) {
+    public static void addWebSearcher(String engineName, AbstractSearchEngineService<?> searcher) {
         NAME_TO_SEARCHER.put(engineName, searcher);
     }
 
-    public static AbstractSearchEngineService getService(String searcherName) {
-        AbstractSearchEngineService searcher = NAME_TO_SEARCHER.get(searcherName);
+    public static AbstractSearchEngineService<?> getService(String searcherName) {
+        AbstractSearchEngineService<?> searcher = NAME_TO_SEARCHER.get(searcherName);
         if (null == searcher) {
             log.warn("︿︿︿ Can not find {}, use the default engine GOOGLE ︿︿︿", searcherName);
             return NAME_TO_SEARCHER.get(AdiConstant.SearchEngineName.GOOGLE);
@@ -31,7 +31,7 @@ public class SearchEngineServiceContext {
         }
     }
 
-    public static Map<String, AbstractSearchEngineService> getAllService() {
+    public static Map<String, AbstractSearchEngineService<?>> getAllService() {
         return NAME_TO_SEARCHER;
     }
 }

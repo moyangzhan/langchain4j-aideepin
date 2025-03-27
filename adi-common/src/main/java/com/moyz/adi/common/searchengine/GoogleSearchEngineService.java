@@ -4,7 +4,9 @@ import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.SearchReturn;
 import com.moyz.adi.common.dto.SearchReturnWebPage;
 import com.moyz.adi.common.interfaces.AbstractSearchEngineService;
+import com.moyz.adi.common.util.SearchEngineUtil;
 import com.moyz.adi.common.vo.GoogleSetting;
+import dev.langchain4j.web.search.WebSearchRequest;
 import dev.langchain4j.web.search.WebSearchResults;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -41,11 +43,24 @@ public class GoogleSearchEngineService extends AbstractSearchEngineService<Googl
     }
 
     @Override
-    public SearchReturn search(String searchTxt) {
+    public SearchReturn search(String searchTxt, String country, String language, Integer topN) {
         SearchReturn result = new SearchReturn();
         List<SearchReturnWebPage> items = new ArrayList<>();
+        result.setItems(items);
+        if (StringUtils.isBlank(searchTxt)) {
+            log.warn("google search terms is empty");
+            return result;
+        }
+        String tmpCountry = SearchEngineUtil.checkGoogleCountry(country) ? country : "cn";
+        String tmpLang = SearchEngineUtil.checkGoogleLanguage(country) ? country : "zh-cn";
         try {
-            WebSearchResults webSearchResults = searchEngine.search(searchTxt);
+            WebSearchRequest webSearchRequest = WebSearchRequest.builder()
+                    .searchTerms(searchTxt)
+                    .language(tmpLang)
+                    .geoLocation(tmpCountry)
+                    .maxResults(topN)
+                    .build();
+            WebSearchResults webSearchResults = searchEngine.search(webSearchRequest);
             if (null != webSearchResults && webSearchResults.searchInformation().totalResults() > 0) {
                 List<SearchReturnWebPage> wrapItems = webSearchResults.results()
                         .stream()
@@ -65,7 +80,6 @@ public class GoogleSearchEngineService extends AbstractSearchEngineService<Googl
         } catch (Exception e) {
             log.error("google search error", e);
         }
-        result.setItems(items);
         return result;
     }
 

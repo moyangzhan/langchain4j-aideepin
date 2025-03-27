@@ -12,7 +12,9 @@ public enum WfComponentNameEnum {
 
     LLM_ANSWER("Answer"),
 
-    IMAGE_MODEL("Draw"),
+    DALLE3("Dalle3"),
+
+    TONGYI_WANX("Tongyiwanx"),
 
     DOCUMENT_EXTRACTOR("DocumentExtractor"),
 

@@ -223,6 +223,7 @@ public class WorkflowService extends ServiceImpl<WorkflowMapper, Workflow> {
                 .eq(Workflow::getIsDeleted, false)
                 .like(StringUtils.isNotBlank(keyword), Workflow::getTitle, keyword)
                 .eq(!user.getIsAdmin(), Workflow::getUserId, user.getId())
+                .orderByDesc(Workflow::getUpdateTime)
                 .page(new Page<>(currentPage, pageSize));
         Page<WorkflowResp> result = new Page<>();
         List<Long> userIds = new ArrayList<>();
@@ -240,6 +241,7 @@ public class WorkflowService extends ServiceImpl<WorkflowMapper, Workflow> {
                 .eq(Workflow::getIsDeleted, false)
                 .eq(Workflow::getIsPublic, true)
                 .like(StringUtils.isNotBlank(keyword), Workflow::getTitle, keyword)
+                .orderByDesc(Workflow::getUpdateTime)
                 .page(new Page<>(currentPage, pageSize));
         Page<WorkflowResp> result = new Page<>();
         List<Long> userIds = new ArrayList<>();
