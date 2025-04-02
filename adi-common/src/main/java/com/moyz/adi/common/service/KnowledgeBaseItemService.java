@@ -17,6 +17,7 @@ import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
 import com.moyz.adi.common.mapper.KnowledgeBaseItemMapper;
 import com.moyz.adi.common.rag.CompositeRAG;
+import com.moyz.adi.common.service.embedding.IEmbeddingService;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.GraphIngestParams;
 import com.moyz.adi.common.vo.LLMBuilderProperties;
@@ -59,7 +60,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
     private CompositeRAG compositeRAG;
 
     @Resource
-    private KnowledgeBaseEmbeddingService knowledgeBaseEmbeddingService;
+    private IEmbeddingService iEmbeddingService;
 
     @Resource
     private FileService fileService;
@@ -140,7 +141,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                 metadata.put(AdiConstant.MetadataKey.KB_UUID, kbItem.getKbUuid());
                 metadata.put(AdiConstant.MetadataKey.KB_ITEM_UUID, kbItem.getUuid());
                 Document document = new DefaultDocument(kbItem.getRemark(), metadata);
-                knowledgeBaseEmbeddingService.deleteByItemUuid(kbItem.getUuid());
+                iEmbeddingService.deleteByItemUuid(kbItem.getUuid());
                 indexingEmbedding(knowledgeBase, kbItem, document);
             }
             if (indexTypes.contains(DOC_INDEX_TYPE_GRAPHICAL) && kbItem.getGraphicalStatus() != GraphicalStatusEnum.DOING) {
@@ -231,7 +232,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
         if (!success) {
             return false;
         }
-        knowledgeBaseEmbeddingService.deleteByItemUuid(uuid);
+        iEmbeddingService.deleteByItemUuid(uuid);
 
         KnowledgeBaseItem item = baseMapper.getByUuid(uuid);
         if (null != item) {

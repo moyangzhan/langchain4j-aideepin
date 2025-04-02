@@ -1,4 +1,4 @@
-package com.moyz.adi.common.service;
+package com.moyz.adi.common.service.embedding;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -8,6 +8,7 @@ import com.moyz.adi.common.entity.KnowledgeBaseEmbedding;
 import com.moyz.adi.common.mapper.KnowledgeBaseEmbeddingMapper;
 import com.moyz.adi.common.util.MPPageUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,12 +16,17 @@ import java.util.UUID;
 
 @Slf4j
 @Service
-public class KnowledgeBaseEmbeddingService extends ServiceImpl<KnowledgeBaseEmbeddingMapper, KnowledgeBaseEmbedding> {
+@ConditionalOnProperty(value = "adi.vector-database", havingValue = "pgvector")
+public class KnowledgeBaseEmbeddingService extends ServiceImpl<KnowledgeBaseEmbeddingMapper, KnowledgeBaseEmbedding> implements IEmbeddingService {
 
-    public List<KnowledgeBaseEmbedding> listByEmbeddingIds(List<String> embeddingIds) {
+    public List<KbItemEmbeddingDto> listByEmbeddingIds(List<String> embeddingIds) {
         LambdaQueryWrapper<KnowledgeBaseEmbedding> lambdaQueryWrapper = new LambdaQueryWrapper<>();
         lambdaQueryWrapper.in(KnowledgeBaseEmbedding::getEmbeddingId, embeddingIds.stream().map(UUID::fromString).toList());
-        return baseMapper.selectList(lambdaQueryWrapper);
+        List<KnowledgeBaseEmbedding> embeddingList = baseMapper.selectList(lambdaQueryWrapper);
+        return MPPageUtil.convertToList(embeddingList, KbItemEmbeddingDto.class, (s, t) -> {
+            t.setEmbedding(s.getEmbedding().toArray());
+            return t;
+        });
     }
 
     public Page<KbItemEmbeddingDto> listByItemUuid(String kbItemUuid, int currentPage, int pageSize) {

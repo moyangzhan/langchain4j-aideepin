@@ -70,5 +70,5 @@ local:
   watermark-images: /data/aideepin/mark-images/
   thumbnails: /data/aideepin/thumbnails/
   watermark-thumbnails: /data/aideepin/watermark-thumbnails/
-  tmp-images: /data/aideepin/tmp_images/
-  chat-memory: /data/aideepin/chat_memory/
+  tmp-images: /data/aideepin/tmp-images/
+  chat-memory: /data/aideepin/chat-memory/

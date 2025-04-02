@@ -139,8 +139,8 @@ public class GraphExtractPrompt {
             给定一个可能与此活动相关的文本文档以及实体类型列表，从文本中识别出所有这些类型的实体以及识别出的实体之间的所有关系。
                         
             -步骤-
-            1. 识别所有实体。对于每个识别出的实体，提取以下信息：
-            - entity_name：实体的名称，首字母大写
+            1. 识别所有的实体，也即是独立存在的个体。对于每个识别出的实体，提取以下信息：
+            - entity_name：实体的名称
             - entity_type：以下类型之一：[{entity_types}]
             - entity_description：实体的属性和活动的全面描述
             将每个实体格式化为 ("entity"{tuple_delimiter}<entity_name>{tuple_delimiter}<entity_type>{tuple_delimiter}<entity_description>)
@@ -156,7 +156,8 @@ public class GraphExtractPrompt {
             3. 以英文返回输出，作为所有在步骤1和步骤2中识别的实体和关系的列表。使用 **{record_delimiter}** 作为列表分隔符。
                         
             4. 完成时，输出 {completion_delimiter}
-                        
+            
+            5. 如果没有实体和关系，只输出 {completion_delimiter}，不要添加多余的话
             ######################
             -示例-
             ######################
@@ -256,7 +257,7 @@ public class GraphExtractPrompt {
             ######################
             输出:
             """.replace("{tuple_delimiter}", AdiConstant.GRAPH_TUPLE_DELIMITER)
-            .replace("{entity_types}", Arrays.stream(AdiConstant.GRAPH_ENTITY_EXTRACTION_ENTITY_TYPES).collect(Collectors.joining(",")))
+            .replace("{entity_types}", String.join(",", AdiConstant.GRAPH_ENTITY_EXTRACTION_ENTITY_TYPES))
             .replace("{completion_delimiter}", AdiConstant.GRAPH_COMPLETION_DELIMITER)
             .replace("{record_delimiter}", AdiConstant.GRAPH_RECORD_DELIMITER);
     public static final String CONTINUE_PROMPT = "MANY entities and relationships were missed in the last extraction. Remember to ONLY emit entities that match any of the previously extracted types. Add them below using the same format:\n";

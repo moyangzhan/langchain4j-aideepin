@@ -16,6 +16,7 @@ import com.moyz.adi.common.dto.SearchEngineResp;
 import com.moyz.adi.common.rag.ApacheAgeGraphStore;
 import com.moyz.adi.common.rag.EmbeddingRAG;
 import com.moyz.adi.common.rag.GraphRAG;
+import com.moyz.adi.common.rag.GraphStore;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.pgvector.PGvector;
 import dev.langchain4j.data.segment.TextSegment;
@@ -126,81 +127,12 @@ public class BeanConfig {
         return bean.getObject();
     }
 
-    @Bean(name = "kbEmbeddingStore")
-    @Primary
-    public EmbeddingStore<TextSegment> initKbEmbeddingStore() {
-        // 正则表达式匹配
-        String regex = "jdbc:postgresql://([^:/]+):(\\d+)/(\\w+).+";
-        Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(dataBaseUrl);
-
-        String host = "";
-        String port = "";
-        String databaseName = "";
-        if (matcher.matches()) {
-            host = matcher.group(1);
-            port = matcher.group(2);
-            databaseName = matcher.group(3);
-
-            log.info("Host: " + host);
-            log.info("Port: " + port);
-            log.info("Database: " + databaseName);
-        } else {
-            throw new RuntimeException("parse url error");
-        }
-        return PgVectorEmbeddingStore.builder()
-                .host(host)
-                .port(Integer.parseInt(port))
-                .database(databaseName)
-                .user(dataBaseUserName)
-                .password(dataBasePassword)
-                .dimension(384)
-                .createTable(true)
-                .dropTableFirst(false)
-                .table("adi_knowledge_base_embedding")
-                .build();
-    }
-
     @Bean
     @Primary
     public EmbeddingRAG initKnowledgeBaseRAGService(EmbeddingStore<TextSegment> kbEmbeddingStore) {
         EmbeddingRAG ragService = new EmbeddingRAG(kbEmbeddingStore);
         ragService.init();
         return ragService;
-    }
-
-    @Bean(name = "searchEmbeddingStore")
-    public EmbeddingStore<TextSegment> initSearchEmbeddingStore() {
-        // 正则表达式匹配
-        String regex = "jdbc:postgresql://([^:/]+):(\\d+)/(\\w+).+";
-        Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(dataBaseUrl);
-
-        String host = "";
-        String port = "";
-        String databaseName = "";
-        if (matcher.matches()) {
-            host = matcher.group(1);
-            port = matcher.group(2);
-            databaseName = matcher.group(3);
-
-            log.info("Host: " + host);
-            log.info("Port: " + port);
-            log.info("Database: " + databaseName);
-        } else {
-            throw new RuntimeException("parse url error");
-        }
-        return PgVectorEmbeddingStore.builder()
-                .host(host)
-                .port(Integer.parseInt(port))
-                .database(databaseName)
-                .user(dataBaseUserName)
-                .password(dataBasePassword)
-                .dimension(384)
-                .createTable(true)
-                .dropTableFirst(false)
-                .table("adi_ai_search_embedding")
-                .build();
     }
 
     @Bean(name = "searchRagService")
@@ -210,43 +142,10 @@ public class BeanConfig {
         return ragService;
     }
 
-    @Bean(name = "kbGraphStore")
-    @Primary
-    public ApacheAgeGraphStore initApacheAgeGraphStore() {
-        String regex = "jdbc:postgresql://([^:/]+):(\\d+)/(\\w+).+";
-        Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(dataBaseUrl);
-
-        String host = "";
-        String port = "";
-        String databaseName = "";
-        if (matcher.matches()) {
-            host = matcher.group(1);
-            port = matcher.group(2);
-            databaseName = matcher.group(3);
-
-            log.info("Host: " + host);
-            log.info("Port: " + port);
-            log.info("Database: " + databaseName);
-        } else {
-            throw new RuntimeException("parse url error");
-        }
-        return ApacheAgeGraphStore.builder()
-                .host(host)
-                .port(Integer.parseInt(port))
-                .database(databaseName)
-                .user(dataBaseUserName)
-                .password(dataBasePassword)
-                .createGraph(true)
-                .dropGraphFirst(false)
-                .graphName("adi_knowledge_base_graph")
-                .build();
-    }
-
     @Bean(name = "graphRag")
     @Primary
-    public GraphRAG initGraphRAG(ApacheAgeGraphStore kbGraphStore) {
-        return new GraphRAG(kbGraphStore);
+    public GraphRAG initGraphRAG(GraphStore graphStore) {
+        return new GraphRAG(graphStore);
     }
 
 //    @Bean(name = "queryRouterRagService")

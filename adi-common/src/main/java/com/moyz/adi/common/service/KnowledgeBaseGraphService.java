@@ -1,7 +1,7 @@
 package com.moyz.adi.common.service;
 
 import com.moyz.adi.common.cosntant.AdiConstant;
-import com.moyz.adi.common.rag.ApacheAgeGraphStore;
+import com.moyz.adi.common.rag.GraphStore;
 import com.moyz.adi.common.vo.*;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
@@ -17,7 +17,7 @@ import java.util.List;
 public class KnowledgeBaseGraphService {
 
     @Resource
-    private ApacheAgeGraphStore kbGraphStore;
+    private GraphStore kbGraphStore;
 
     public List<GraphVertex> listVerticesByKbUuid(String kbUuid, long maxId, int limit) {
         Filter filter = new IsEqualTo(AdiConstant.MetadataKey.KB_UUID, kbUuid);

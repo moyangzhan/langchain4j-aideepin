@@ -32,7 +32,7 @@ public class GraphStoreContentRetriever implements ContentRetriever {
 
     public static final String DEFAULT_DISPLAY_NAME = "Default";
 
-    private final ApacheAgeGraphStore graphStore;
+    private final GraphStore graphStore;
     private final ChatLanguageModel chatLanguageModel;
 
     private final Function<Query, Integer> maxResultsProvider;
@@ -40,13 +40,13 @@ public class GraphStoreContentRetriever implements ContentRetriever {
 
     private final String displayName;
 
-    private boolean breakIfSearchMissed;
+    private final boolean breakIfSearchMissed;
 
-    private KbQaRefGraphDto kbQaRecordRefGraphDto = KbQaRefGraphDto.builder().vertices(Collections.emptyList()).edges(Collections.emptyList()).entitiesFromLlm(Collections.emptyList()).build();
+    private final KbQaRefGraphDto kbQaRecordRefGraphDto = KbQaRefGraphDto.builder().vertices(Collections.emptyList()).edges(Collections.emptyList()).entitiesFromLlm(Collections.emptyList()).build();
 
     @Builder
     private GraphStoreContentRetriever(String displayName,
-                                       ApacheAgeGraphStore graphStore,
+                                       GraphStore graphStore,
                                        ChatLanguageModel chatLanguageModel,
                                        Function<Query, Integer> dynamicMaxResults,
                                        Function<Query, Filter> dynamicFilter,
@@ -59,7 +59,7 @@ public class GraphStoreContentRetriever implements ContentRetriever {
         this.breakIfSearchMissed = breakIfSearchMissed;
     }
 
-    public static GraphStoreContentRetriever from(ApacheAgeGraphStore graphStore) {
+    public static GraphStoreContentRetriever from(GraphStore graphStore) {
         return builder().graphStore(graphStore).build();
     }
 
@@ -68,10 +68,11 @@ public class GraphStoreContentRetriever implements ContentRetriever {
         log.info("Graph retrieve,query:{}", query);
         String response = "";
         try {
-            response = chatLanguageModel.generate(GraphExtractPrompt.GRAPH_EXTRACTION_PROMPT_CN.replace("{input_text}", query.text()));
+            response = chatLanguageModel.chat(GraphExtractPrompt.GRAPH_EXTRACTION_PROMPT_CN.replace("{input_text}", query.text()));
         } catch (Exception e) {
             log.error("Graph retrieve. extract graph error", e);
         }
+        log.info("Graph extract from user query:{}", response);
         if (StringUtils.isBlank(response)) {
             return Collections.emptyList();
         }
@@ -112,7 +113,7 @@ public class GraphStoreContentRetriever implements ContentRetriever {
                         .build()
         );
 
-        Map<Long, GraphVertex> allVertices = new HashMap<>();
+        Map<String, GraphVertex> allVertices = new HashMap<>();
         List<GraphEdge> allEdges = new ArrayList<>();
         for (Triple<GraphVertex, GraphEdge, GraphVertex> triple : edgeWithVerticeList) {
             allVertices.put(triple.getLeft().getId(), triple.getLeft());
@@ -159,8 +160,8 @@ public class GraphStoreContentRetriever implements ContentRetriever {
     @Override
     public String toString() {
         return "GraphStoreContentRetriever{" +
-                "displayName='" + displayName + '\'' +
-                '}';
+               "displayName='" + displayName + '\'' +
+               '}';
     }
 
 }

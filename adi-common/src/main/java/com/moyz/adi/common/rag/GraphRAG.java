@@ -1,6 +1,5 @@
 package com.moyz.adi.common.rag;
 
-import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.KnowledgeBaseGraphSegment;
 import com.moyz.adi.common.entity.User;
@@ -11,13 +10,13 @@ import com.moyz.adi.common.service.UserDayCostService;
 import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.GraphIngestParams;
-import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.store.embedding.filter.Filter;
@@ -31,17 +30,16 @@ import java.util.List;
 import java.util.Map;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.RAG_MAX_SEGMENT_SIZE_IN_TOKENS;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 
 @Slf4j
 public class GraphRAG {
 
-    private ApacheAgeGraphStore apacheAgeGraphStore;
+    private final GraphStore graphStore;
 
     private KnowledgeBaseGraphSegmentService knowledgeBaseGraphSegmentService;
 
-    public GraphRAG(ApacheAgeGraphStore kbGraphStore) {
-        this.apacheAgeGraphStore = kbGraphStore;
+    public GraphRAG(GraphStore kbGraphStore) {
+        this.graphStore = kbGraphStore;
     }
 
     public KnowledgeBaseGraphSegmentService getKnowledgeBaseGraphSegmentService() {
@@ -54,7 +52,7 @@ public class GraphRAG {
     public void ingest(GraphIngestParams graphIngestParams) {
         log.info("GraphRAG ingest");
         User user = graphIngestParams.getUser();
-        DocumentSplitter documentSplitter = DocumentSplitters.recursive(RAG_MAX_SEGMENT_SIZE_IN_TOKENS, graphIngestParams.getOverlap(), new OpenAiTokenizer(GPT_3_5_TURBO));
+        DocumentSplitter documentSplitter = DocumentSplitters.recursive(RAG_MAX_SEGMENT_SIZE_IN_TOKENS, graphIngestParams.getOverlap(), new OpenAiTokenizer(OpenAiChatModelName.GPT_3_5_TURBO));
         GraphStoreIngestor ingestor = GraphStoreIngestor.builder()
                 .documentSplitter(documentSplitter)
                 .segmentsFunction(segments -> {
@@ -92,7 +90,7 @@ public class GraphRAG {
                 })
                 .identifyColumns(graphIngestParams.getIdentifyColumns())
                 .appendColumns(graphIngestParams.getAppendColumns())
-                .graphStore(apacheAgeGraphStore)
+                .graphStore(graphStore)
                 .build();
         ingestor.ingest(graphIngestParams.getDocument());
     }
@@ -109,7 +107,7 @@ public class GraphRAG {
             }
         }
         return GraphStoreContentRetriever.builder()
-                .graphStore(apacheAgeGraphStore)
+                .graphStore(graphStore)
                 .chatLanguageModel(chatLanguageModel)
                 .maxResults(maxResults)
                 .filter(filter)

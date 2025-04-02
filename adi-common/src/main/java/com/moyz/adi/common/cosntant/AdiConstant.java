@@ -2,6 +2,7 @@ package com.moyz.adi.common.cosntant;
 
 import dev.langchain4j.model.input.PromptTemplate;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class AdiConstant {
@@ -208,10 +209,12 @@ public class AdiConstant {
     public static final String LLM_INPUT_TYPE_AUDIO = "audio";
     public static final String LLM_INPUT_TYPE_VIDEO = "video";
 
-    public static final String[] GRAPH_ENTITY_EXTRACTION_ENTITY_TYPES = {"organization", "person", "geo", "event"};
+    public static final String[] GRAPH_ENTITY_EXTRACTION_ENTITY_TYPES = {"organization", "person", "location", "event"};
     public static final String GRAPH_TUPLE_DELIMITER = "<|>";
     public static final String GRAPH_RECORD_DELIMITER = "##";
     public static final String GRAPH_COMPLETION_DELIMITER = "<|COMPLETE|>";
+
+    public static final List<String> GRAPH_STORE_MAIN_FIELDS = List.of("name", "label", "textSegmentId", "description");
 
     /**
      * 唯一标识字段，如果该字段有指定，则根据该配置判断Vertex或Edge是否唯一，如知识库中根据 name、metadata->>kb_uuid 来做判断

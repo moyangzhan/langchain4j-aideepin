@@ -31,7 +31,7 @@ public class EmbeddingRAG implements IRAGService {
 
     private EmbeddingModel embeddingModel;
 
-    private EmbeddingStore<TextSegment> embeddingStore;
+    private final EmbeddingStore<TextSegment> embeddingStore;
 
     public EmbeddingRAG(EmbeddingStore<TextSegment> embeddingStore) {
         this.embeddingStore = embeddingStore;

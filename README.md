@@ -1,6 +1,6 @@
 ## Getting Started
 
-**LangChain4j-AIDeepin（得应） 是基于AI的工作效率提升工具。**
+**LangChain4j-AIDeepin（得应AI） 是基于AI的工作效率提升工具。**
 
  *可用于辅助企业/团队进行技术研发、产品设计、人事/财务/IT信息咨询、系统/商品咨询、客服话术支撑等工作*
 
@@ -37,7 +37,6 @@ AIDEEPIN
 
 ## 功能点
 
-* 注册&登录
 * 多会话（多角色）
 * 图片生成（文生图、修图、图生图）
 * 基于大模型的知识库（RAG）
@@ -45,10 +44,6 @@ AIDEEPIN
   * 图搜索
 * 基于大模型的网络搜索（RAG）
 * 工作流
-* 多模型随意切换
-* 多搜索引擎随意切换
-* 提示词管理
-* 额度控制
 
 ## 接入的模型：
 
@@ -78,9 +73,13 @@ Bing (TODO)
 * jdk17
 * springboot3.0.5
 * [langchain4j(Java version of LangChain)](https://github.com/langchain4j/langchain4j)
+* [langgraph4j](https://github.com/bsorrentino/langgraph4j)
 * Postgresql
   * pgvector扩展：https://github.com/pgvector/pgvector
-  * Apage AGE扩展：https://github.com/apache/age
+  * Apache AGE扩展：https://github.com/apache/age
+* [neo4j](https://neo4j.com/deployment-center/)
+
+ps: neo4j可代替pgvector与apache age
 
 前端技术栈：
 
@@ -97,7 +96,7 @@ Bing (TODO)
 
 **a. 初始化数据库**
 
-* 创建数据库aideepin
+* 创建主数据库aideepin(postgres)
 * 执行docs/create.sql
 * 配置模型(至少设置一个) 或者 使用[管理端](https://github.com/moyangzhan/langchain4j-aideepin-admin)在界面上配置
 
@@ -140,9 +139,13 @@ Bing (TODO)
 
 **b. 修改配置文件**
 
-* postgresql: application-[dev|prod].xml中的spring.datasource
-* redis: application-[dev|prod].xml中的spring.data.redis
-* mail: application.xml中的spring.mail
+* postgresql: application-[dev|prod].xml 中的 spring.datasource
+* redis: application-[dev|prod].xml 中的 spring.data.redis
+* mail: application.xml 中的 spring.mail
+* 向量数据库，默认为 pgvector
+  * application-[dev|prod].xml 中的 adi.vector-database=[pgvector|neo4j]
+* 图数据库，默认为 Apache age
+  * application-[dev|prod].xml 中的 adi.graph-database=[apache-age|neo4j]
 
 ### 编译及运行
 

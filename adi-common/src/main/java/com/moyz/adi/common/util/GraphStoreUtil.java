@@ -10,7 +10,8 @@ import java.util.stream.Collectors;
 
 public class GraphStoreUtil {
 
-    private GraphStoreUtil(){}
+    private GraphStoreUtil() {
+    }
 
     public static String buildMatchClause(String name, String textSegmentId) {
         List<String> criteriaList = new ArrayList<>();
@@ -35,17 +36,21 @@ public class GraphStoreUtil {
         return result;
     }
 
-    public static String buildWhereClause(GraphSearchCondition search, String alias, String varPrefix) {
+    public static String buildWhereClause(GraphSearchCondition search, String alias) {
         if (null == search) {
             return StringUtils.EMPTY;
         }
         StringBuilder whereClause = new StringBuilder();
         if (CollectionUtils.isNotEmpty(search.getNames())) {
-            whereClause.append(String.format("(%s.name in [$%s_name])", alias, varPrefix));
+            List<String> nameArgs = new ArrayList<>();
+            for (int i = 0; i < search.getNames().size(); i++) {
+                nameArgs.add("$" + alias + i + "_name");
+            }
+            whereClause.append(String.format("(%s.name in [%s])", alias, String.join(",", nameArgs)));
         }
         //Metadata直接拼接字符串，要防SQL注入
         if (null != search.getMetadataFilter()) {
-            if (whereClause.length() > 0) {
+            if (!whereClause.isEmpty()) {
                 whereClause.append(" and ");
             }
             AdiApacheAgeJSONFilterMapper adiJSONFilterMapper = new AdiApacheAgeJSONFilterMapper("metadata");
@@ -57,13 +62,16 @@ public class GraphStoreUtil {
         return whereClause.toString();
     }
 
-    public static Map<String, Object> buildWhereArgs(GraphSearchCondition search, String varPrefix) {
+    public static Map<String, Object> buildWhereArgs(GraphSearchCondition search, String alias) {
         if (null == search) {
             return Collections.emptyMap();
         }
         Map<String, Object> result = new HashMap<>();
         if (CollectionUtils.isNotEmpty(search.getNames())) {
-            result.put(varPrefix + "_name", search.getNames().stream().collect(Collectors.joining(",")));
+            for (int i = 0; i < search.getNames().size(); i++) {
+                result.put(alias + i + "_name", String.join(",", search.getNames()));
+            }
+
         }
         return result;
     }

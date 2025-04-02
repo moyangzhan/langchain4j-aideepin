@@ -12,7 +12,7 @@ import java.util.Map;
 @Builder
 @Data
 public class GraphEdge {
-    private Long id;
+    private String id;
     private String label;
     private Double weight;
     private String description;
@@ -20,12 +20,12 @@ public class GraphEdge {
     private Map<String, Object> metadata;
 
     //Source vertex
-    private Long startId;
+    private String startId;
     private String sourceName;
     private Map<String, Object> sourceMetadata;
 
     //Target vertex
-    private Long endId;
+    private String endId;
     private String targetName;
     private Map<String, Object> targetMetadata;
 }

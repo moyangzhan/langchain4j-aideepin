@@ -43,6 +43,17 @@ adi:
     enable: false
     host: 127.0.0.1
     http-port: 1087
+  # vector-database: pgvector、neo4j
+  vector-database: neo4j
+  # graph-database: apache-age、neo4j
+  graph-database: neo4j
+  datasource:
+    neo4j:
+      host: localhost
+      port: 7687
+      username: neo4j
+      password: your-db-password
+      database: neo4j
 
 local:
   files: D:/data/aideepin/files/
@@ -50,5 +61,5 @@ local:
   watermark-images: D:/data/aideepin/mark-images/
   thumbnails: D:/data/aideepin/thumbnails/
   watermark-thumbnails: D:/data/aideepin/watermark-thumbnails/
-  tmp-images: D:/data/aideepin/tmp_images/
-  chat-memory: D:/data/aideepin/chat_memory/
+  tmp-images: D:/data/aideepin/tmp-images/
+  chat-memory: D:/data/aideepin/chat-memory/

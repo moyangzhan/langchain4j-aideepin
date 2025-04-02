@@ -2,6 +2,7 @@ package com.moyz.adi.common.rag;
 
 import com.google.common.base.Joiner;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.util.AdiStringUtil;
 import com.moyz.adi.common.util.GraphStoreUtil;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.vo.*;
@@ -24,14 +25,10 @@ import static com.moyz.adi.common.enums.ErrorEnum.B_DB_ERROR;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.*;
 
-public class ApacheAgeGraphStore {
+public class ApacheAgeGraphStore implements GraphStore {
 
     private static final Logger log = LoggerFactory.getLogger(ApacheAgeGraphStore.class);
 
-    private static final String VAR_PREFIX_DEFAULT = "filter";
-    private static final String VAR_PREFIX_1 = "filter1";
-    private static final String VAR_PREFIX_2 = "filter2";
-    private static final String VAR_PREFIX_3 = "filter3";
     private final String host;
     private final Integer port;
     private final String user;
@@ -75,34 +72,40 @@ public class ApacheAgeGraphStore {
         }
     }
 
-    public void addVertexes(List<GraphVertex> vertexes) {
+    @Override
+    public boolean addVertexes(List<GraphVertex> vertexes) {
         ensureNotEmpty(vertexes, vertexes.toString());
-        vertexes.forEach(this::addVertex);
-    }
-
-    public boolean addVertex(GraphVertex vertex) {
-        log.info("Add vertex:{}", vertex);
-        ensureNotNull(vertex, vertex.toString());
-        ensureNotEmpty(vertex.getMetadata(), "Metadata");
         try (Connection connection = setupConnection()) {
-            String label = vertex.getLabel();
-            String prepareSql = """
-                    SELECT *
-                    FROM cypher('%s', $$
-                        create (%s {name:$name,textSegmentId:$textSegmentId,description:$description,metadata:$metadata})
-                    $$, ?) as (a agtype);
-                    """.formatted(graph, StringUtils.isNotBlank(label) ? ":" + label : "");
-            log.info("addVertex prepareSql:{}", prepareSql);
-            try (PreparedStatement upsertStmt = connection.prepareStatement(prepareSql)) {
-                Agtype agtype = new Agtype();
-                agtype.setValue(JsonUtil.toJson(vertex));
-                upsertStmt.setObject(1, agtype);
-                return upsertStmt.execute();
+            for (GraphVertex vertex : vertexes) {
+                vertex.setName(AdiStringUtil.tail(vertex.getName(), 20));
+                String label = vertex.getLabel();
+                String prepareSql = """
+                        SELECT *
+                        FROM cypher('%s', $$
+                            create (%s {name:$name,textSegmentId:$textSegmentId,description:$description,metadata:$metadata})
+                        $$, ?) as (a agtype);
+                        """.formatted(graph, StringUtils.isNotBlank(label) ? ":" + label : "");
+                log.info("addVertex prepareSql:{}", prepareSql);
+                try (PreparedStatement upsertStmt = connection.prepareStatement(prepareSql)) {
+                    Agtype agtype = new Agtype();
+                    agtype.setValue(JsonUtil.toJson(vertex));
+                    upsertStmt.setObject(1, agtype);
+                    upsertStmt.execute();
+                }
             }
         } catch (SQLException e) {
             log.error("addVertex error", e);
             throw new BaseException(B_DB_ERROR);
         }
+        return true;
+    }
+
+    @Override
+    public boolean addVertex(GraphVertex vertex) {
+        log.info("Add vertex:{}", vertex);
+        ensureNotNull(vertex, vertex.toString());
+        ensureNotEmpty(vertex.getMetadata(), "Metadata");
+        return addVertexes(List.of(vertex));
     }
 
     /**
@@ -111,6 +114,7 @@ public class ApacheAgeGraphStore {
      * @param updateInfo
      * @return
      */
+    @Override
     public GraphVertex updateVertex(GraphVertexUpdateInfo updateInfo) {
         log.info("Update vertex:{}", updateInfo.getNewData());
         ensureNotNull(updateInfo.getMetadataFilter(), "Metadata filter");
@@ -123,7 +127,7 @@ public class ApacheAgeGraphStore {
                     .names(List.of(updateInfo.getName()))
                     .metadataFilter(updateInfo.getMetadataFilter())
                     .build();
-            String whereClause = GraphStoreUtil.buildWhereClause(whereCondition, "v", VAR_PREFIX_DEFAULT);
+            String whereClause = GraphStoreUtil.buildWhereClause(whereCondition, "v");
             String setClause = GraphStoreUtil.buildSetClause(updateInfo.getNewData().getMetadata());
             String prepareSql = """
                     select * from cypher('%s', $$
@@ -137,7 +141,7 @@ public class ApacheAgeGraphStore {
             log.info("updateVertex prepareSql:{}", prepareSql);
             PreparedStatement stmt = connection.prepareStatement(prepareSql);
 
-            Map<String, Object> whereArgs = GraphStoreUtil.buildWhereArgs(whereCondition, VAR_PREFIX_DEFAULT);
+            Map<String, Object> whereArgs = GraphStoreUtil.buildWhereArgs(whereCondition, "v");
             Map<String, Object> setArgs = GraphStoreUtil.buildSetArgs(updateInfo.getNewData().getMetadata());
             whereArgs.putAll(setArgs);
             whereArgs.putAll(Map.of("new_textSegmentId", newData.getTextSegmentId(), "new_description", newData.getDescription()));
@@ -154,6 +158,7 @@ public class ApacheAgeGraphStore {
         }
     }
 
+    @Override
     public GraphVertex getVertex(GraphVertexSearch search) {
         List<GraphVertex> list = this.searchVertices(search);
         if (list.isEmpty()) {
@@ -162,7 +167,9 @@ public class ApacheAgeGraphStore {
         return list.get(0);
     }
 
-    public List<GraphVertex> getVertices(List<Long> ids) {
+    @Override
+    public List<GraphVertex> getVertices(List<String> ids) {
+        List<Long> longIds = ids.stream().map(Long::parseLong).toList();
         try (Connection connection = setupConnection()) {
             String query = """
                     select * from cypher('%s', $$
@@ -170,7 +177,7 @@ public class ApacheAgeGraphStore {
                         where id(v) in [%s]
                         return v
                     $$) as (v agtype);
-                    """.formatted(graph, Joiner.on(",").join(ids));
+                    """.formatted(graph, Joiner.on(",").join(longIds));
             log.info("getVertices query:{}", query);
             try (Statement stmt = connection.createStatement()) {
                 ResultSet resultSet = stmt.executeQuery(query);
@@ -186,10 +193,11 @@ public class ApacheAgeGraphStore {
      * @param search
      * @return
      */
+    @Override
     public List<GraphVertex> searchVertices(GraphVertexSearch search) {
         try (Connection connection = setupConnection()) {
             String label = search.getLabel();
-            String whereClause = GraphStoreUtil.buildWhereClause(search, "v", VAR_PREFIX_DEFAULT);
+            String whereClause = GraphStoreUtil.buildWhereClause(search, "v");
             String query = """
                     select * from cypher('%s', $$
                         match (%s)
@@ -202,7 +210,7 @@ public class ApacheAgeGraphStore {
                     """.formatted(graph, StringUtils.isNotBlank(label) ? "v:" + label : "v", whereClause, search.getMaxId(), search.getLimit());
             log.info("SearchVertices prepareSql:{}", query);
             try (PreparedStatement selectStmt = connection.prepareStatement(query)) {
-                Map<String, Object> whereArgs = GraphStoreUtil.buildWhereArgs(search, VAR_PREFIX_DEFAULT);
+                Map<String, Object> whereArgs = GraphStoreUtil.buildWhereArgs(search, "v");
                 log.info("getVertex args:{}", whereArgs);
                 Agtype agtype = new Agtype();
                 agtype.setValue(JsonUtil.toJson(whereArgs));
@@ -216,7 +224,8 @@ public class ApacheAgeGraphStore {
         }
     }
 
-    public List<Triple<GraphVertex, GraphEdge, GraphVertex>> getEdges(List<Long> ids) {
+    @Override
+    public List<Triple<GraphVertex, GraphEdge, GraphVertex>> getEdges(List<String> ids) {
         try (Connection connection = setupConnection()) {
             String query = """
                     select * from cypher('%s', $$
@@ -236,11 +245,12 @@ public class ApacheAgeGraphStore {
         }
     }
 
+    @Override
     public List<Triple<GraphVertex, GraphEdge, GraphVertex>> searchEdges(GraphEdgeSearch search) {
         try (Connection connection = setupConnection()) {
-            String filterClause1 = GraphStoreUtil.buildWhereClause(search.getSource(), "v1", VAR_PREFIX_1);
-            String filterClause2 = GraphStoreUtil.buildWhereClause(search.getTarget(), "v2", VAR_PREFIX_2);
-            String filterClause3 = GraphStoreUtil.buildWhereClause(search.getEdge(), "e", VAR_PREFIX_3);
+            String filterClause1 = GraphStoreUtil.buildWhereClause(search.getSource(), "v1");
+            String filterClause2 = GraphStoreUtil.buildWhereClause(search.getTarget(), "v2");
+            String filterClause3 = GraphStoreUtil.buildWhereClause(search.getEdge(), "e");
             String filterClause = filterClause1;
             if (StringUtils.isNotBlank(filterClause2)) {
                 filterClause += StringUtils.isNotBlank(filterClause) ? " and " + filterClause2 : filterClause2;
@@ -260,9 +270,9 @@ public class ApacheAgeGraphStore {
                     """.formatted(graph, filterClause, search.getMaxId(), search.getLimit());
             log.info("Search edges prepareSql:\n{}", query);
             try (PreparedStatement selectStmt = connection.prepareStatement(query)) {
-                Map<String, Object> whereArgs1 = GraphStoreUtil.buildWhereArgs(search.getSource(), VAR_PREFIX_1);
-                Map<String, Object> whereArgs2 = GraphStoreUtil.buildWhereArgs(search.getTarget(), VAR_PREFIX_2);
-                Map<String, Object> whereArgs3 = GraphStoreUtil.buildWhereArgs(search.getEdge(), VAR_PREFIX_3);
+                Map<String, Object> whereArgs1 = GraphStoreUtil.buildWhereArgs(search.getSource(), "v1");
+                Map<String, Object> whereArgs2 = GraphStoreUtil.buildWhereArgs(search.getTarget(), "v2");
+                Map<String, Object> whereArgs3 = GraphStoreUtil.buildWhereArgs(search.getEdge(), "e");
                 whereArgs1.putAll(whereArgs2);
                 whereArgs1.putAll(whereArgs3);
                 Agtype agtype = new Agtype();
@@ -278,6 +288,7 @@ public class ApacheAgeGraphStore {
         }
     }
 
+    @Override
     public Triple<GraphVertex, GraphEdge, GraphVertex> getEdge(GraphEdgeSearch search) {
         List<Triple<GraphVertex, GraphEdge, GraphVertex>> list = this.searchEdges(search);
         if (list.isEmpty()) {
@@ -286,11 +297,12 @@ public class ApacheAgeGraphStore {
         return list.get(0);
     }
 
+    @Override
     public Triple<GraphVertex, GraphEdge, GraphVertex> addEdge(GraphEdgeAddInfo addInfo) {
         ensureNotNull(addInfo.getEdge(), "Grahp edge");
         try (Connection connection = setupConnection()) {
-            String whereClause1 = GraphStoreUtil.buildWhereClause(addInfo.getSourceFilter(), "v1", VAR_PREFIX_1);
-            String whereClause2 = GraphStoreUtil.buildWhereClause(addInfo.getTargetFilter(), "v2", VAR_PREFIX_2);
+            String whereClause1 = GraphStoreUtil.buildWhereClause(addInfo.getSourceFilter(), "v1");
+            String whereClause2 = GraphStoreUtil.buildWhereClause(addInfo.getTargetFilter(), "v2");
             String prepareSql = """
                     select * from cypher('%s', $$
                       match (v1), (v2)
@@ -301,8 +313,8 @@ public class ApacheAgeGraphStore {
                     """.formatted(graph, whereClause1 + " and " + whereClause2);
             log.info("Add edge prepareSql:{}", prepareSql);
             try (PreparedStatement preparedStatement = connection.prepareStatement(prepareSql)) {
-                Map<String, Object> whereArgs1 = GraphStoreUtil.buildWhereArgs(addInfo.getSourceFilter(), VAR_PREFIX_1);
-                Map<String, Object> whereArgs2 = GraphStoreUtil.buildWhereArgs(addInfo.getTargetFilter(), VAR_PREFIX_2);
+                Map<String, Object> whereArgs1 = GraphStoreUtil.buildWhereArgs(addInfo.getSourceFilter(), "v1");
+                Map<String, Object> whereArgs2 = GraphStoreUtil.buildWhereArgs(addInfo.getTargetFilter(), "v2");
                 whereArgs1.putAll(whereArgs2);
                 whereArgs1.putAll(JsonUtil.toMap(addInfo.getEdge()));
                 Agtype agtype = new Agtype();
@@ -317,13 +329,14 @@ public class ApacheAgeGraphStore {
         }
     }
 
+    @Override
     public Triple<GraphVertex, GraphEdge, GraphVertex> updateEdge(GraphEdgeEditInfo edgeEditInfo) {
         log.info("Update edge:{}", edgeEditInfo);
         ensureNotNull(edgeEditInfo.getEdge(), "Graph edit info");
         GraphEdge newData = edgeEditInfo.getEdge();
         try (Connection connection = setupConnection()) {
-            String whereClause1 = GraphStoreUtil.buildWhereClause(edgeEditInfo.getSourceFilter(), "v1", VAR_PREFIX_1);
-            String whereClause2 = GraphStoreUtil.buildWhereClause(edgeEditInfo.getTargetFilter(), "v2", VAR_PREFIX_2);
+            String whereClause1 = GraphStoreUtil.buildWhereClause(edgeEditInfo.getSourceFilter(), "v1");
+            String whereClause2 = GraphStoreUtil.buildWhereClause(edgeEditInfo.getTargetFilter(), "v2");
             String setClause = GraphStoreUtil.buildSetClause(edgeEditInfo.getEdge().getMetadata());
             String prepareSql = """
                     select * from cypher('%s', $$
@@ -335,8 +348,8 @@ public class ApacheAgeGraphStore {
                     """.formatted(graph, whereClause1 + " and " + whereClause2, setClause);
             log.info("updateEdge prepareSql:{}", prepareSql);
             try (PreparedStatement upsertStmt = connection.prepareStatement(prepareSql)) {
-                Map<String, Object> whereArgs1 = GraphStoreUtil.buildWhereArgs(edgeEditInfo.getSourceFilter(), VAR_PREFIX_1);
-                Map<String, Object> whereArgs2 = GraphStoreUtil.buildWhereArgs(edgeEditInfo.getTargetFilter(), VAR_PREFIX_2);
+                Map<String, Object> whereArgs1 = GraphStoreUtil.buildWhereArgs(edgeEditInfo.getSourceFilter(), "v1");
+                Map<String, Object> whereArgs2 = GraphStoreUtil.buildWhereArgs(edgeEditInfo.getTargetFilter(), "v2");
                 Map<String, Object> setArgs = GraphStoreUtil.buildSetArgs(edgeEditInfo.getEdge().getMetadata());
                 whereArgs1.putAll(whereArgs2);
                 whereArgs1.putAll(setArgs);
@@ -365,11 +378,12 @@ public class ApacheAgeGraphStore {
      * @param filter
      * @param includeEdges
      */
+    @Override
     public void deleteVertices(GraphSearchCondition filter, boolean includeEdges) {
         ensureNotNull(filter, "Data filter");
         ensureNotNull(filter.getMetadataFilter(), "Metadata filter");
         try (Connection connection = setupConnection()) {
-            String whereClause = GraphStoreUtil.buildWhereClause(filter, "v", VAR_PREFIX_DEFAULT);
+            String whereClause = GraphStoreUtil.buildWhereClause(filter, "v");
             String prepareSql = """
                      select * from cypher('%s', $$
                       match (v)
@@ -378,7 +392,7 @@ public class ApacheAgeGraphStore {
                     """.formatted(graph, whereClause, includeEdges ? "DETACH DELETE v" : "DELETE v");
             log.info("deleteVertices prepareSql:{}", prepareSql);
             try (PreparedStatement upsertStmt = connection.prepareStatement(prepareSql)) {
-                Map<String, Object> whereArgs = GraphStoreUtil.buildWhereArgs(filter, VAR_PREFIX_DEFAULT);
+                Map<String, Object> whereArgs = GraphStoreUtil.buildWhereArgs(filter, "v");
                 Agtype agtype = new Agtype();
                 agtype.setValue(JsonUtil.toJson(whereArgs));
                 upsertStmt.setObject(1, agtype);
@@ -395,10 +409,11 @@ public class ApacheAgeGraphStore {
      *
      * @param filter
      */
+    @Override
     public void deleteEdges(GraphSearchCondition filter) {
         ensureNotNull(filter, "Data filter");
         try (Connection connection = setupConnection()) {
-            String whereClause = GraphStoreUtil.buildWhereClause(filter, "r", VAR_PREFIX_DEFAULT);
+            String whereClause = GraphStoreUtil.buildWhereClause(filter, "r");
             String prepareSql = """
                     select * from cypher('%s', $$
                         match ()-[r]->()
@@ -408,7 +423,7 @@ public class ApacheAgeGraphStore {
                     """.formatted(graph, whereClause);
             log.info("deleteEdges prepareSql:{}", prepareSql);
             try (PreparedStatement upsertStmt = connection.prepareStatement(prepareSql)) {
-                Map<String, Object> whereArgs = GraphStoreUtil.buildWhereArgs(filter, VAR_PREFIX_DEFAULT);
+                Map<String, Object> whereArgs = GraphStoreUtil.buildWhereArgs(filter, "r");
                 Agtype agtype = new Agtype();
                 agtype.setValue(JsonUtil.toJson(whereArgs));
                 upsertStmt.setObject(1, agtype);
@@ -468,7 +483,7 @@ public class ApacheAgeGraphStore {
 
     public GraphVertex agTypeToVertex(Agtype agtype) {
         AgtypeMap agtypeMap = agtype.getMap();
-        Long id = agtypeMap.getLong("id");
+        String id = String.valueOf(agtypeMap.getLong("id"));
         String label = agtypeMap.getObject("label").toString();
         AgtypeMap nodeProps = agtypeMap.getMap("properties");
         Map<String, Object> map = new HashMap<>();
@@ -497,9 +512,9 @@ public class ApacheAgeGraphStore {
             map.put(entry.getKey(), entry.getValue());
         }
         return GraphEdge.builder()
-                .id(id)
-                .startId(startId)
-                .endId(endId)
+                .id(id + "")
+                .startId(startId + "")
+                .endId(endId + "")
                 .label(nodeLabel)
                 .weight(null == nodeProps.getObject("weight") ? 0 : nodeProps.getDouble("weight"))
                 .description(nodeProps.getString("description"))

@@ -17,8 +17,17 @@ public class Initializer {
     @Value("${local.images}")
     private String imagePath;
 
+    @Value("${local.tmp-images}")
+    private String tmpImagePath;
+
+    @Value("${local.thumbnails}")
+    private String thumbnailsPath;
+
     @Value("${local.files}")
     private String filePath;
+
+    @Value("${local.chat-memory}")
+    private String chatMemoryPath;
 
     @Value("${adi.proxy.enable:false}")
     protected boolean proxyEnable;
@@ -58,7 +67,10 @@ public class Initializer {
 
     public void checkAndInitFileOperator() {
         LocalFileOperator.checkAndCreateDir(imagePath);
+        LocalFileOperator.checkAndCreateDir(tmpImagePath);
+        LocalFileOperator.checkAndCreateDir(thumbnailsPath);
         LocalFileOperator.checkAndCreateDir(filePath);
+        LocalFileOperator.checkAndCreateDir(chatMemoryPath);
         LocalFileOperator.init(imagePath, filePath);
         AliyunOssFileOperator.init(aliyunOssFileHelper);
     }

@@ -20,3 +20,16 @@ spring:
           max-idle: 5
           #连接池中的最小空闲连接
           min-idle: 1
+
+adi:
+  # vector-database: pgvector、neo4j
+  vector-database: pgvector
+  # graph-database: apache AGE、neo4j
+  graph-database: apache-age
+  datasource:
+    neo4j:
+      host: localhost
+      port: 7687
+      username: your-db-account
+      password: your-db-password
+      database: your-db-name

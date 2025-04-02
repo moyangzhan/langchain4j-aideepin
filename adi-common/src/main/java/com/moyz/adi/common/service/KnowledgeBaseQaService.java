@@ -9,6 +9,7 @@ import com.moyz.adi.common.dto.*;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.KnowledgeBaseQaRecordMapper;
+import com.moyz.adi.common.service.embedding.IEmbeddingService;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.MPPageUtil;
 import com.moyz.adi.common.util.UuidUtil;
@@ -35,7 +36,7 @@ public class KnowledgeBaseQaService extends ServiceImpl<KnowledgeBaseQaRecordMap
     private KnowledgeBaseQaRefGraphService knowledgeBaseQaRecordRefGraphService;
 
     @Resource
-    private KnowledgeBaseEmbeddingService knowledgeBaseEmbeddingService;
+    private IEmbeddingService iEmbeddingService;
 
     @Resource
     private AiModelService aiModelService;
@@ -127,11 +128,11 @@ public class KnowledgeBaseQaService extends ServiceImpl<KnowledgeBaseQaRecordMap
         if (CollectionUtils.isEmpty(embeddingIds)) {
             return Collections.emptyList();
         }
-        List<KnowledgeBaseEmbedding> embeddings = knowledgeBaseEmbeddingService.listByEmbeddingIds(embeddingIds);
+        List<KbItemEmbeddingDto> embeddings = iEmbeddingService.listByEmbeddingIds(embeddingIds);
         List<KbQaRefEmbeddingDto> result = new ArrayList<>();
-        for (KnowledgeBaseEmbedding embedding : embeddings) {
+        for (KbItemEmbeddingDto embedding : embeddings) {
             KbQaRefEmbeddingDto newOne = KbQaRefEmbeddingDto.builder()
-                    .embeddingId(embedding.getEmbeddingId().toString())
+                    .embeddingId(embedding.getEmbeddingId())
                     .text(embedding.getText())
                     .build();
             result.add(newOne);

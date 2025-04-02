@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @Data
@@ -13,7 +15,7 @@ import java.util.Map;
 @NoArgsConstructor
 public class GraphVertex {
 
-    private Long id;
+    private String id;
     //Apache AGE暂时不支持多标签
     private String label;
     private String name;
@@ -28,4 +30,17 @@ public class GraphVertex {
      * 如 kb_uuid=>123,kb_item_uuids=>['123456',['22222']
      */
     private Map<String, Object> metadata;
+
+    public String[] toParameters() {
+        return new String[]{
+                "label",
+                label,
+                "name",
+                name,
+                "textSegmentId",
+                null == textSegmentId ? "" : textSegmentId,
+                "description",
+                description
+        };
+    }
 }

@@ -40,7 +40,7 @@ public class GraphStoreIngestor {
 
     private final DocumentTransformer documentTransformer;
     private final TextSegmentTransformer textSegmentTransformer;
-    private final ApacheAgeGraphStore graphStore;
+    private final GraphStore graphStore;
     private final DocumentSplitter documentSplitter;
     private final Function<List<TextSegment>, List<Triple<TextSegment, String, String>>> segmentsFunction;
 
@@ -57,7 +57,7 @@ public class GraphStoreIngestor {
 
     public GraphStoreIngestor(DocumentTransformer documentTransformer,
                               DocumentSplitter documentSplitter,
-                              ApacheAgeGraphStore graphStore,
+                              GraphStore graphStore,
                               TextSegmentTransformer textSegmentTransformer,
                               Function<List<TextSegment>, List<Triple<TextSegment, String, String>>> segmentsFunction,
                               String identifyColumns,
@@ -75,7 +75,7 @@ public class GraphStoreIngestor {
         Collection<DocumentSplitterFactory> factories = loadFactories(DocumentSplitterFactory.class);
         if (factories.size() > 1) {
             throw new RuntimeException("Conflict: multiple document splitters have been found in the classpath. " +
-                    "Please explicitly specify the one you wish to use.");
+                                       "Please explicitly specify the one you wish to use.");
         }
 
         for (DocumentSplitterFactory factory : factories) {
@@ -154,7 +154,7 @@ public class GraphStoreIngestor {
                 String[] recordAttributes = StringUtils.split(graphRow, AdiConstant.GRAPH_TUPLE_DELIMITER);
                 if (recordAttributes.length >= 4 && (recordAttributes[0].contains("\"entity\"") || recordAttributes[0].contains("\"实体\""))) {
                     String entityName = AdiStringUtil.clearStr(recordAttributes[1].toUpperCase());
-                    String entityType = AdiStringUtil.clearStr(recordAttributes[2].toUpperCase()).replaceAll("[^a-zA-Z0-9\\s\\u4E00-\\u9FA5]+", "");
+                    String entityType = AdiStringUtil.clearStr(recordAttributes[2].toUpperCase()).replaceAll("[^a-zA-Z0-9\\s\\u4E00-\\u9FA5]+", "").replace(" ", "");
                     String entityDescription = AdiStringUtil.clearStr(recordAttributes[3]);
                     log.info("entityName:{},entityType:{},entityDescription:{}", entityName, entityType, entityDescription);
                     //实体如果不存在图数据库中，插入一个新的实体，否则追加textSegmentId、description以及metadata中指定的内容
@@ -185,6 +185,7 @@ public class GraphStoreIngestor {
                                 GraphVertex.builder()
                                         .label(entityType)
                                         .name(entityName)
+                                        .textSegmentId(textSegmentId)
                                         .description(entityDescription)
                                         .metadata(metadata)
                                         .build()
@@ -214,6 +215,7 @@ public class GraphStoreIngestor {
                         graphStore.addVertex(
                                 GraphVertex.builder()
                                         .name(sourceName)
+                                        .textSegmentId(chunkId)
                                         .metadata(metadata)
                                         .build()
                         );
@@ -229,6 +231,7 @@ public class GraphStoreIngestor {
                         graphStore.addVertex(
                                 GraphVertex.builder()
                                         .name(targetName)
+                                        .textSegmentId(chunkId)
                                         .metadata(metadata)
                                         .build()
                         );
@@ -293,7 +296,7 @@ public class GraphStoreIngestor {
 
     private void appendExistsToNewOne(Map<String, Object> existMetadata, Map<String, Object> newMetadata) {
         for (String columnName : appendColumns) {
-            String val = (String) existMetadata.get(columnName);
+            String val = String.valueOf(existMetadata.get(columnName));
             if (StringUtils.isNotBlank(val) && !val.contains(newMetadata.get(columnName).toString())) {
                 newMetadata.put(columnName, val + "," + newMetadata.get(columnName));
             }

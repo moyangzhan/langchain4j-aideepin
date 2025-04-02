@@ -74,10 +74,12 @@ Tech stack:
 
 * jdk17
 * springboot3.0.5
-* [langchain4j (Java version of LangChain)](https://github.com/langchain4j/langchain4j)
+* [langchain4j(Java version of LangChain)](https://github.com/langchain4j/langchain4j)
+* [langgraph4j](https://github.com/bsorrentino/langgraph4j)
 * Postgresql
     * pgvector extension: https://github.com/pgvector/pgvector
     * Apache AGE extension: https://github.com/apache/age
+* [neo4j](https://neo4j.com/deployment-center/)
 
 Frontend tech stack:
 
