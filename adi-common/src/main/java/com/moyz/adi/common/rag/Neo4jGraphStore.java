@@ -77,23 +77,23 @@ public class Neo4jGraphStore implements GraphStore {
                 for (GraphVertex vertex : vertexes) {
                     Map<String, Object> metadata = vertex.getMetadata();
                     String label = StringUtils.isNotBlank(vertex.getLabel()) ? ":" + vertex.getLabel() : "";
-                    Pair<String, Map<String, Object>> clauseToArgs = buildClauseByMetadata(metadata, true);
+                    Pair<String, Map<String, Object>> causeToArgs = buildCauseByMetadata(metadata, true);
                     String sql;
-                    if (StringUtils.isNotBlank(clauseToArgs.getLeft())) {
+                    if (StringUtils.isNotBlank(causeToArgs.getLeft())) {
                         sql = ("""
-                                create (:%s%s {name:$name,textSegmentId:$textSegmentId,description:$description,%s})
-                                """).formatted(graphName, label, clauseToArgs.getLeft());
+                                create (:%s%s {name:$name,text_segment_id:$text_segment_id,description:$description,%s})
+                                """).formatted(graphName, label, causeToArgs.getLeft());
                     } else {
                         sql = ("""
-                                create (:%s%s {name:$name,textSegmentId:$textSegmentId,description:$description})
+                                create (:%s%s {name:$name,text_segment_id:$text_segment_id,description:$description})
                                 """).formatted(graphName, label);
                     }
                     log.info("addVertexes,sql:{}", sql);
                     Map<String, Object> params = new HashMap<>();
                     params.put("name", AdiStringUtil.tail(vertex.getName(), 20));
-                    params.put("textSegmentId", null == vertex.getTextSegmentId() ? "" : vertex.getTextSegmentId());
+                    params.put("text_segment_id", null == vertex.getTextSegmentId() ? "" : vertex.getTextSegmentId());
                     params.put("description", vertex.getDescription());
-                    params.putAll(clauseToArgs.getRight());
+                    params.putAll(causeToArgs.getRight());
                     tx.run(sql, params);
                 }
                 return null;
@@ -124,32 +124,32 @@ public class Neo4jGraphStore implements GraphStore {
                         .build();
                 String alias = "v";
                 Pair<String, Map<String, Object>> whereClause = buildWhereClause(whereCondition, "v");
-                Pair<String, Map<String, Object>> clauseToArgs = buildClauseByMetadata(updateInfo.getNewData().getMetadata(), alias, false);
+                Pair<String, Map<String, Object>> causeToArgs = buildCauseByMetadata(updateInfo.getNewData().getMetadata(), alias, false);
 
                 String prepareSql;
-                if (StringUtils.isNotBlank(clauseToArgs.getLeft())) {
+                if (StringUtils.isNotBlank(causeToArgs.getLeft())) {
                     prepareSql = """
                                match (v:%1$s)
                                where %2$s
-                               set v.textSegmentId=$new_textSegmentId,v.description=$new_description,%3$s
+                               set v.text_segment_id=$new_text_segment_id,v.description=$new_description,%3$s
                                return v
                                limit 1
-                            """.formatted(graphName, whereClause.getLeft(), clauseToArgs.getLeft());
+                            """.formatted(graphName, whereClause.getLeft(), causeToArgs.getLeft());
                 } else {
                     prepareSql = """
                                match (v:%s)
                                where %s
-                               set v.textSegmentId=$new_textSegmentId,v.description=$new_description
+                               set v.text_segment_id=$new_text_segment_id,v.description=$new_description
                                return v
                                limit 1
                             """.formatted(graphName, whereClause.getLeft());
                 }
                 log.info("updateVertex prepareSql:{}", prepareSql);
                 Map<String, Object> params = new HashMap<>();
-                params.put("new_textSegmentId", newData.getTextSegmentId());
+                params.put("new_text_segment_id", newData.getTextSegmentId());
                 params.put("new_description", newData.getDescription());
                 params.putAll(whereClause.getRight());
-                params.putAll(clauseToArgs.getRight());
+                params.putAll(causeToArgs.getRight());
                 return tx.run(prepareSql, params).list();
             });
             return getVertexFromResultSet(records);
@@ -181,7 +181,7 @@ public class Neo4jGraphStore implements GraphStore {
     public List<GraphVertex> searchVertices(GraphVertexSearch search) {
         String label = search.getLabel();
         Neo4jFilterMapper neo4jFilterMapper = new Neo4jFilterMapper("v");
-        final AbstractMap.SimpleEntry<String, Map<?, ?>> filterEntry = neo4jFilterMapper.map(search.getMetadataFilter());
+        Pair<String, Map<String, Object>> filterClause = buildWhereClause(search, "v");
         //TODO and elementId(v) < %d ,search.getMaxId(),
         String query = """
                     match (v:%s%s)
@@ -190,10 +190,13 @@ public class Neo4jGraphStore implements GraphStore {
                     where %s
                     return v
                     limit %d
-                """.formatted(graphName, StringUtils.isNotBlank(label) ? ":" + label : "", filterEntry.getKey(), search.getLimit());
+                """.formatted(graphName, StringUtils.isNotBlank(label) ? ":" + label : "", filterClause.getLeft(), search.getLimit());
         log.info("SearchVertices prepareSql:{}", query);
         try (Session session = driver.session()) {
-            List<Record> records = session.executeRead(tx -> tx.run(query, neo4jFilterMapper.getIncrementalKeyMap().getMap()).list());
+            Map<String, Object> params = new HashMap<>();
+            params.putAll(neo4jFilterMapper.getIncrementalKeyMap().getMap());
+            params.putAll(filterClause.getRight());
+            List<Record> records = session.executeRead(tx -> tx.run(query, params).list());
             return getVerticesFromResultSet(records);
         }
     }
@@ -255,16 +258,16 @@ public class Neo4jGraphStore implements GraphStore {
         ensureNotNull(addInfo.getEdge(), "Grahp edge");
         try (Session session = driver.session()) {
             Pair<String, Map<String, Object>> filterClause1 = buildWhereClause(addInfo.getSourceFilter(), "v1");
-            Pair<String, Map<String, Object>> filterClause2 = buildWhereClause(addInfo.getSourceFilter(), "v2");
+            Pair<String, Map<String, Object>> filterClause2 = buildWhereClause(addInfo.getTargetFilter(), "v2");
             StringBuilder filterClause = new StringBuilder();
             appendSql(filterClause, filterClause1);
             appendSql(filterClause, filterClause2);
             String edgeAlias = "e";
-            Pair<String, Map<String, Object>> clauseToArgs = buildClauseByMetadata(addInfo.getEdge().getMetadata(), edgeAlias, true);
+            Pair<String, Map<String, Object>> clauseToArgs = buildCauseByMetadata(addInfo.getEdge().getMetadata(), edgeAlias, true);
             String query = """
                       match (v1:%1$s), (v2:%1$s)
                       where %2$s
-                      create (v1)-[e:%1$s {textSegmentId:$textSegmentId,weight:$weight,description:$description,%3$s}]->(v2)
+                      create (v1)-[e:%1$s {text_segment_id:$text_segment_id,weight:$weight,description:$description,%3$s}]->(v2)
                       return v1,e,v2
                     """.formatted(graphName, filterClause.toString(), clauseToArgs.getLeft());
             log.info("Add edge prepareSql:{}", query);
@@ -283,20 +286,20 @@ public class Neo4jGraphStore implements GraphStore {
 
     public Triple<GraphVertex, GraphEdge, GraphVertex> updateEdge(GraphEdgeEditInfo edgeEditInfo) {
         log.info("Update edge:{}", edgeEditInfo);
-        ensureNotNull(edgeEditInfo.getEdge(), "Graph edit info");
         GraphEdge newData = edgeEditInfo.getEdge();
+        ensureNotNull(newData, "Graph edit info");
         try (Session session = driver.session()) {
             String edgeAlias = "e";
             Pair<String, Map<String, Object>> filterClause1 = buildWhereClause(edgeEditInfo.getSourceFilter(), "v1");
-            Pair<String, Map<String, Object>> filterClause2 = buildWhereClause(edgeEditInfo.getSourceFilter(), "v2");
-            Pair<String, Map<String, Object>> causeToArgs = buildClauseByMetadata(edgeEditInfo.getEdge().getMetadata(), edgeAlias, false);
+            Pair<String, Map<String, Object>> filterClause2 = buildWhereClause(edgeEditInfo.getTargetFilter(), "v2");
+            Pair<String, Map<String, Object>> causeToArgs = buildCauseByMetadata(newData.getMetadata(), edgeAlias, false);
             StringBuilder filterClause = new StringBuilder();
             appendSql(filterClause, filterClause1);
             appendSql(filterClause, filterClause2);
             String prepareSql = """
                        match (v1:%1$s)-[e:%1$s]->(v2:%1$s)
                        where %2$s
-                       set e.weight=$new_weight,e.textSegmentId=$new_textSegmentId,e.description=$new_description %3$s
+                       set e.weight=$new_weight,e.text_segment_id=$new_text_segment_id,e.description=$new_description %3$s
                        return v1,e,v2
                     """.formatted(graphName, filterClause, causeToArgs.getLeft());
             log.info("updateEdge prepareSql:{}", prepareSql);
@@ -304,7 +307,7 @@ public class Neo4jGraphStore implements GraphStore {
                 Map<String, Object> whereArgs1 = filterClause1.getRight();
                 Map<String, Object> whereArgs2 = filterClause2.getRight();
                 whereArgs1.putAll(whereArgs2);
-                whereArgs1.putAll(JsonUtil.toMap(edgeEditInfo.getEdge()));
+                whereArgs1.putAll(JsonUtil.toMap(newData));
                 whereArgs1.putAll(causeToArgs.getRight());
                 return tx.run(prepareSql, whereArgs1).list();
             });
@@ -411,7 +414,7 @@ public class Neo4jGraphStore implements GraphStore {
                 .label(label)
                 .name(node.get("name").asString())
                 .description(node.get("description").asString())
-                .textSegmentId(node.get("textSegmentId").asString())
+                .textSegmentId(node.get("text_segment_id").asString())
                 .metadata(metadata)
                 .build();
     }
@@ -442,12 +445,12 @@ public class Neo4jGraphStore implements GraphStore {
                 .label(nodeLabel)
                 .weight(null == relationship.get("weight") ? 0 : relationship.get("weight").asDouble())
                 .description(relationship.get("description").asString())
-                .textSegmentId(relationship.get("textSegmentId").asString())
+                .textSegmentId(relationship.get("text_segment_id").asString())
                 .metadata(metadata)
                 .build();
     }
 
-    private Pair<String, Map<String, Object>> buildClauseByMetadata(Map<String, Object> metadata, String alias, boolean createCause) {
+    private Pair<String, Map<String, Object>> buildCauseByMetadata(Map<String, Object> metadata, String alias, boolean createCause) {
         String keyValueOperator = createCause ? ":" : "=";
 
         List<String> itemQuerySql = new ArrayList<>();
@@ -463,29 +466,29 @@ public class Neo4jGraphStore implements GraphStore {
         return new ImmutablePair<>(String.join(",", itemQuerySql), argNameToVal);
     }
 
-    private Pair<String, Map<String, Object>> buildClauseByMetadata(Map<String, Object> metadata, boolean createCause) {
-        return buildClauseByMetadata(metadata, "", createCause);
+    private Pair<String, Map<String, Object>> buildCauseByMetadata(Map<String, Object> metadata, boolean createCause) {
+        return buildCauseByMetadata(metadata, "", createCause);
     }
 
     private Pair<String, Map<String, Object>> buildWhereClause(GraphSearchCondition search, String alias) {
         if (null == search) {
             return new ImmutablePair<>("", new HashMap<>());
         }
-        StringBuilder whereClause = new StringBuilder();
+        StringBuilder whereCause = new StringBuilder();
         Map<String, Object> whereArgs = new HashMap<>();
         if (CollectionUtils.isNotEmpty(search.getNames())) {
-            buildNamesClause(search.getNames(), whereClause, whereArgs, alias);
+            buildNamesClause(search.getNames(), whereCause, whereArgs, alias);
         }
         if (null != search.getMetadataFilter()) {
-            if (!whereClause.isEmpty()) {
-                whereClause.append(" and ");
+            if (!whereCause.isEmpty()) {
+                whereCause.append(" and ");
             }
             Neo4jFilterMapper neo4jFilterMapper = new Neo4jFilterMapper(alias);
             final AbstractMap.SimpleEntry<String, Map<?, ?>> filterEntry = neo4jFilterMapper.map(search.getMetadataFilter());
-            whereClause.append(filterEntry.getKey());
+            whereCause.append(filterEntry.getKey());
             whereArgs.putAll(neo4jFilterMapper.getIncrementalKeyMap().getMap());
         }
-        return new ImmutablePair<>(whereClause.toString(), whereArgs);
+        return new ImmutablePair<>(whereCause.toString(), whereArgs);
     }
 
     private void buildNamesClause(List<String> names, StringBuilder whereClause, Map<String, Object> whereArgs, String alias) {

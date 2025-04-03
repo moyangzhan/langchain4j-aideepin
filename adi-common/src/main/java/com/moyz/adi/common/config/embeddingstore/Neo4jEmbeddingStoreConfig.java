@@ -3,6 +3,7 @@ package com.moyz.adi.common.config.embeddingstore;
 import com.moyz.adi.common.rag.neo4j.AdiNeo4jEmbeddingStore;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingStore;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -39,6 +40,7 @@ public class Neo4jEmbeddingStoreConfig {
                 .withBasicAuth("neo4j://" + dbHost + ":" + dbPort, dbUserName, dbPassword)
                 .dimension(384)
                 .label("adi_knowledge_base_embedding")
+                .metadataPrefix("meta_")
                 .build();
     }
 

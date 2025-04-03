@@ -82,7 +82,7 @@ public class ApacheAgeGraphStore implements GraphStore {
                 String prepareSql = """
                         SELECT *
                         FROM cypher('%s', $$
-                            create (%s {name:$name,textSegmentId:$textSegmentId,description:$description,metadata:$metadata})
+                            create (%s {name:$name,text_segment_id:$text_segment_id,description:$description,metadata:$metadata})
                         $$, ?) as (a agtype);
                         """.formatted(graph, StringUtils.isNotBlank(label) ? ":" + label : "");
                 log.info("addVertex prepareSql:{}", prepareSql);
@@ -133,7 +133,7 @@ public class ApacheAgeGraphStore implements GraphStore {
                     select * from cypher('%s', $$
                        match (v)
                        where %s
-                       set v.textSegmentId=$new_textSegmentId,v.description=$new_description%s
+                       set v.text_segment_id=$new_text_segment_id,v.description=$new_description%s
                        return v
                        limit 1
                     $$, ?) as (v agtype);
@@ -144,7 +144,7 @@ public class ApacheAgeGraphStore implements GraphStore {
             Map<String, Object> whereArgs = GraphStoreUtil.buildWhereArgs(whereCondition, "v");
             Map<String, Object> setArgs = GraphStoreUtil.buildSetArgs(updateInfo.getNewData().getMetadata());
             whereArgs.putAll(setArgs);
-            whereArgs.putAll(Map.of("new_textSegmentId", newData.getTextSegmentId(), "new_description", newData.getDescription()));
+            whereArgs.putAll(Map.of("new_text_segment_id", newData.getTextSegmentId(), "new_description", newData.getDescription()));
             log.info("updateVertex args:{}", whereArgs);
 
             Agtype agtype = new Agtype();
@@ -307,7 +307,7 @@ public class ApacheAgeGraphStore implements GraphStore {
                     select * from cypher('%s', $$
                       match (v1), (v2)
                       where %s
-                      create (v1)-[e:RELTYPE {textSegmentId:$textSegmentId,weight:$weight,description:$description,metadata:$metadata}]->(v2)
+                      create (v1)-[e:RELTYPE {text_segment_id:$text_segment_id,weight:$weight,description:$description,metadata:$metadata}]->(v2)
                       return v1,e,v2
                     $$, ?) as (v1 agtype,e agtype,v2 agtype);
                     """.formatted(graph, whereClause1 + " and " + whereClause2);
@@ -342,7 +342,7 @@ public class ApacheAgeGraphStore implements GraphStore {
                     select * from cypher('%s', $$
                        match (v1)-[e]->(v2)
                        where %s
-                       set e.weight=$new_weight,e.textSegmentId=$new_textSegmentId,e.description=$new_description %s
+                       set e.weight=$new_weight,e.text_segment_id=$new_text_segment_id,e.description=$new_description %s
                        return v1,e,v2
                     $$, ?) as (v1 agtype,e agtype,v2 agtype);
                     """.formatted(graph, whereClause1 + " and " + whereClause2, setClause);
@@ -355,7 +355,7 @@ public class ApacheAgeGraphStore implements GraphStore {
                 whereArgs1.putAll(setArgs);
                 whereArgs1.putAll(
                         Map.of(
-                                "new_textSegmentId", newData.getTextSegmentId(),
+                                "new_text_segment_id", newData.getTextSegmentId(),
                                 "new_weight", newData.getWeight(),
                                 "new_description", newData.getDescription()
                         )
@@ -495,7 +495,7 @@ public class ApacheAgeGraphStore implements GraphStore {
                 .label(label)
                 .name(nodeProps.getString("name"))
                 .description(nodeProps.getString("description"))
-                .textSegmentId(nodeProps.getString("textSegmentId"))
+                .textSegmentId(nodeProps.getString("text_segment_id"))
                 .metadata(map)
                 .build();
     }
@@ -518,7 +518,7 @@ public class ApacheAgeGraphStore implements GraphStore {
                 .label(nodeLabel)
                 .weight(null == nodeProps.getObject("weight") ? 0 : nodeProps.getDouble("weight"))
                 .description(nodeProps.getString("description"))
-                .textSegmentId(nodeProps.getString("textSegmentId"))
+                .textSegmentId(nodeProps.getString("text_segment_id"))
                 .metadata(map)
                 .build();
     }

@@ -22,7 +22,7 @@ public class AdiApacheAgeJSONFilterMapper extends AdiApacheAgeFilterMapper {
         if (StringUtils.isNotBlank(alias)) {
             metadataName = alias + "." + metadataName;
         }
-        return metadataName + "." + key + "";
+        return metadataName + "." + key;
     }
 
 

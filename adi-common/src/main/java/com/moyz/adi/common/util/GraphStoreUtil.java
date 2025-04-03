@@ -6,34 +6,10 @@ import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class GraphStoreUtil {
 
     private GraphStoreUtil() {
-    }
-
-    public static String buildMatchClause(String name, String textSegmentId) {
-        List<String> criteriaList = new ArrayList<>();
-        if (StringUtils.isNotBlank(name)) {
-            criteriaList.add("name:$name");
-        }
-        if (StringUtils.isNotBlank(textSegmentId)) {
-            criteriaList.add("textSegmentId:$textSegmentId");
-        }
-        String matchSql = "{%s}";
-        return String.format(matchSql, criteriaList.stream().collect(Collectors.joining(",")));
-    }
-
-    public static Map<String, Object> buildMatchArgs(String name, String textSegmentId) {
-        Map<String, Object> result = new HashMap<>();
-        if (StringUtils.isNotBlank(name)) {
-            result.put("name", name);
-        }
-        if (StringUtils.isNotBlank(textSegmentId)) {
-            result.put("textSegmentId", textSegmentId);
-        }
-        return result;
     }
 
     public static String buildWhereClause(GraphSearchCondition search, String alias) {
@@ -44,11 +20,11 @@ public class GraphStoreUtil {
         if (CollectionUtils.isNotEmpty(search.getNames())) {
             List<String> nameArgs = new ArrayList<>();
             for (int i = 0; i < search.getNames().size(); i++) {
-                nameArgs.add("$" + alias + i + "_name");
+                nameArgs.add("$" + alias + "_name_" + i);
             }
             whereClause.append(String.format("(%s.name in [%s])", alias, String.join(",", nameArgs)));
         }
-        //Metadata直接拼接字符串，要防SQL注入
+        //Metadata直接拼接字符串
         if (null != search.getMetadataFilter()) {
             if (!whereClause.isEmpty()) {
                 whereClause.append(" and ");

@@ -44,9 +44,9 @@ adi:
     host: 127.0.0.1
     http-port: 1087
   # vector-database: pgvector、neo4j
-  vector-database: neo4j
+  vector-database: pgvector
   # graph-database: apache-age、neo4j
-  graph-database: neo4j
+  graph-database: apache-age
   datasource:
     neo4j:
       host: localhost

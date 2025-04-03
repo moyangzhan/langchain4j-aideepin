@@ -31,7 +31,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
 
 @Builder
 @AllArgsConstructor
@@ -268,6 +267,9 @@ public class GraphStoreIngestor {
 
                         appendExistsToNewOne(existGraphEdge.getMetadata(), metadata);
                     } else {
+                        //检查sourceName的节点是否存在，不存在则创建
+                        checkOrCreateVertex("", sourceName, chunkId, filter, metadata);
+                        checkOrCreateVertex("", targetName, chunkId, filter, metadata);
                         GraphEdgeAddInfo addInfo = new GraphEdgeAddInfo();
                         addInfo.setEdge(GraphEdge.builder()
                                 .sourceName(sourceName)
@@ -300,6 +302,27 @@ public class GraphStoreIngestor {
             if (StringUtils.isNotBlank(val) && !val.contains(newMetadata.get(columnName).toString())) {
                 newMetadata.put(columnName, val + "," + newMetadata.get(columnName));
             }
+        }
+    }
+
+    private void checkOrCreateVertex(String label, String name, String textSegmentId, Filter metadataFilter, Map<String, Object> metadata) {
+        List<GraphVertex> existVertices = graphStore.searchVertices(
+                GraphVertexSearch.builder()
+                        .label(label)
+                        .limit(1)
+                        .names(List.of(name))
+                        .metadataFilter(metadataFilter)
+                        .build()
+        );
+        if (CollectionUtils.isEmpty(existVertices)) {
+            graphStore.addVertex(
+                    GraphVertex.builder()
+                            .label(label)
+                            .name(name)
+                            .textSegmentId(textSegmentId)
+                            .metadata(metadata)
+                            .build()
+            );
         }
     }
 }

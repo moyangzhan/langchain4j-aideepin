@@ -72,7 +72,6 @@ public class GraphStoreContentRetriever implements ContentRetriever {
         } catch (Exception e) {
             log.error("Graph retrieve. extract graph error", e);
         }
-        log.info("Graph extract from user query:{}", response);
         if (StringUtils.isBlank(response)) {
             return Collections.emptyList();
         }

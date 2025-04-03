@@ -281,8 +281,7 @@ public class AdiNeo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
                     CYPHER runtime = parallel parallelRuntimeSupport=all
                     MATCH (n:%1$s)
                     WHERE n.%2$s IS NOT NULL AND %3$s
-                    WITH n, 1 AS score
-                    WITH n AS node,score
+                    WITH n AS node,1 as score
                     ORDER BY elementId(n)
                     LIMIT $maxResults
                     """

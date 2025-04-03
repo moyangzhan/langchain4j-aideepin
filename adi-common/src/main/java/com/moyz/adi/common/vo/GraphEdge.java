@@ -1,5 +1,6 @@
 package com.moyz.adi.common.vo;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,6 +17,7 @@ public class GraphEdge {
     private String label;
     private Double weight;
     private String description;
+    @JsonProperty("text_segment_id")
     private String textSegmentId;
     private Map<String, Object> metadata;
 

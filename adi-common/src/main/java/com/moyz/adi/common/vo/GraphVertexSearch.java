@@ -1,17 +1,17 @@
 package com.moyz.adi.common.vo;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+@EqualsAndHashCode(callSuper = true)
 @SuperBuilder
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class GraphVertexSearch extends GraphSearchCondition {
     private String label;
+    @JsonProperty("text_segment_id")
     private String textSegmentId;
 
     @Builder.Default
