@@ -43,14 +43,10 @@ public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetti
 
     @Override
     protected ChatLanguageModel doBuildChatLLM(LLMBuilderProperties properties) {
-        double temperature = 0.7;
-        if (null != properties && properties.getTemperature() > 0 && properties.getTemperature() <= 1) {
-            temperature = properties.getTemperature();
-        }
         QianfanChatModel.QianfanChatModelBuilder builder = QianfanChatModel.builder()
                 .baseUrl(modelPlatformSetting.getBaseUrl())
                 .modelName(aiModel.getName())
-                .temperature(temperature)
+                .temperature(properties.getTemperature())
                 .topP(1.0)
                 .maxRetries(1)
                 .apiKey(modelPlatformSetting.getApiKey())

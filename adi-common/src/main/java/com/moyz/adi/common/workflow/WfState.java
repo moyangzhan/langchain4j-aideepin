@@ -3,7 +3,6 @@ package com.moyz.adi.common.workflow;
 import com.moyz.adi.common.dto.workflow.WfRuntimeNodeDto;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.entity.WorkflowNode;
-import com.moyz.adi.common.entity.WorkflowRuntimeNode;
 import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
 import lombok.Getter;
@@ -28,6 +27,7 @@ public class WfState {
 
     //Source node uuid => target node uuid list
     private Map<String, List<String>> edges = new HashMap<>();
+    private Map<String, List<String>> conditionalEdges = new HashMap<>();
 
     //Source node uuid => streaming chat generator
     private Map<String, StreamingChatGenerator<AgentState>> nodeToStreamingGenerator = new HashMap<>();
@@ -78,7 +78,8 @@ public class WfState {
      * @param targetNodeUuid 目标节点
      */
     public void addEdge(String sourceNodeUuid, String targetNodeUuid) {
-        edges.put(sourceNodeUuid, List.of(targetNodeUuid));
+        List<String> targetNodeUuids = edges.computeIfAbsent(sourceNodeUuid, k -> new ArrayList<>());
+        targetNodeUuids.add(targetNodeUuid);
     }
 
     /**
@@ -89,7 +90,7 @@ public class WfState {
      * @param targetNodeUuid 目标节点
      */
     public void addConditionalEdge(String sourceNodeUuid, String targetNodeUuid) {
-        List<String> targetNodeUuids = edges.computeIfAbsent(sourceNodeUuid, k -> new ArrayList<>());
+        List<String> targetNodeUuids = conditionalEdges.computeIfAbsent(sourceNodeUuid, k -> new ArrayList<>());
         targetNodeUuids.add(targetNodeUuid);
     }
 

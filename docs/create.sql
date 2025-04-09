@@ -443,6 +443,7 @@ create table adi_knowledge_base
     retrieve_max_results  int           default 3                 not null,
     retrieve_min_score    numeric(2, 1) default 0.6               not null,
     query_llm_temperature numeric(2, 1) default 0.7               not null,
+    query_system_message  varchar(1000) default ''                not null,
     owner_id              bigint        default 0                 not null,
     owner_uuid            varchar(32)   default ''                not null,
     owner_name            varchar(45)   default ''                not null,
@@ -465,6 +466,7 @@ comment on column adi_knowledge_base.ingest_model_id is '索引(图谱化)文档
 comment on column adi_knowledge_base.retrieve_max_results is '设置召回向量最大数量,默认为0,表示由系统根据模型的contentWindow自动调整 | Set the maximum number of recall vectors, default is 0, meaning the system automatically adjusts based on the model''s content window';
 comment on column adi_knowledge_base.retrieve_min_score is '设置向量搜索时命中所需的最低分数,为0表示使用默认 | Set the minimum score required for a hit in vector search, 0 means using the default';
 comment on column adi_knowledge_base.query_llm_temperature is '用户查询时指定LLM响应时的创造性/随机性 | LLM response creativity/randomness specified during user query';
+COMMENT ON COLUMN adi_knowledge_base.query_system_message IS '提供给LLM的系统信息 | System message for LLM';
 comment on column adi_knowledge_base.star_count is '点赞数 | Number of Likes';
 comment on column adi_knowledge_base.item_count is '知识点数量 | Number of Knowledge Items';
 comment on column adi_knowledge_base.embedding_count is '向量数 | Number of Embeddings';
@@ -793,7 +795,7 @@ create table adi_workflow_runtime
     is_deleted    boolean      default false             not null
 );
 COMMENT ON COLUMN adi_workflow_runtime.input IS '{"userInput01":"text01","userInput02":true,"userInput03":10,"userInput04":["selectedA","selectedB"],"userInput05":["https://a.com/a.xlxs","https://a.com/b.png"]}';
-COMMENT ON COLUMN adi_workflow_runtime.status IS '执行状态，1：进行中，2：失败，3：成功 | Execution status, 1: In progress, 2: Failed, 3: Success';
+COMMENT ON COLUMN adi_workflow_runtime.status IS '执行状态，1：就绪，2：执行中，3：成功，4：失败 | Execution status, 1: Ready, 2: In progress, 3: Success, 4: Failed';
 COMMENT ON COLUMN adi_workflow_runtime.status_remark IS '状态备注 | Status remark';
 create trigger trigger_workflow_runtime
     before update

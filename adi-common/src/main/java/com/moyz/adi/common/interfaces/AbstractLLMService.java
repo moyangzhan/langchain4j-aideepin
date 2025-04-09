@@ -74,7 +74,17 @@ public abstract class AbstractLLMService<T> {
     }
 
     public ChatLanguageModel buildChatLLM(LLMBuilderProperties properties, String uuid) {
-        return new AdiChatLanguageModelImpl(doBuildChatLLM(properties), response -> {
+        LLMBuilderProperties tmpProperties = properties;
+        if (null == properties) {
+            tmpProperties = new LLMBuilderProperties();
+            tmpProperties.setTemperature(0.7);
+            log.info("llmBuilderProperties is null, set default temperature:{}", tmpProperties.getTemperature());
+        }
+        if (null == tmpProperties.getTemperature() || tmpProperties.getTemperature() <= 0 || tmpProperties.getTemperature() > 1) {
+            tmpProperties.setTemperature(0.7);
+            log.info("llmBuilderProperties temperature is invalid, set default temperature:{}", tmpProperties.getTemperature());
+        }
+        return new AdiChatLanguageModelImpl(doBuildChatLLM(tmpProperties), response -> {
             int inputTokenCount = response.metadata().tokenUsage().inputTokenCount();
             int outputTokenCount = response.metadata().tokenUsage().outputTokenCount();
             log.info("ChatLanguageModel token cost,uuid:{},inputTokenCount:{},outputTokenCount:{}", uuid, inputTokenCount, outputTokenCount);

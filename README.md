@@ -71,13 +71,13 @@ Bing (TODO)
 技术栈：
 
 * jdk17
-* springboot3.0.5
+* springboot 3.0.5
 * [langchain4j(Java version of LangChain)](https://github.com/langchain4j/langchain4j)
 * [langgraph4j](https://github.com/bsorrentino/langgraph4j)
 * Postgresql
   * pgvector扩展：https://github.com/pgvector/pgvector
   * Apache AGE扩展：https://github.com/apache/age
-* [neo4j](https://neo4j.com/deployment-center/)
+* [neo4j 5.26.4+](https://neo4j.com/deployment-center/)
 
 ps: neo4j可代替pgvector与apache age
 

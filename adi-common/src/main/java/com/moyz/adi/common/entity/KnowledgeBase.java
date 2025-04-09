@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
 @TableName("adi_knowledge_base")
 @Schema(title = "知识库实体", description = "知识库表")
@@ -77,4 +79,8 @@ public class KnowledgeBase extends BaseEntity {
     @Schema(title = "请求LLM时的temperature")
     @TableField("query_llm_temperature")
     private Double queryLlmTemperature;
+
+    @Schema(title = "请求LLM时的系统提示词")
+    @TableField("query_system_message")
+    private String querySystemMessage;
 }

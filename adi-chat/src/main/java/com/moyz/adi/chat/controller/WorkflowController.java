@@ -6,13 +6,12 @@ import com.moyz.adi.common.dto.workflow.*;
 import com.moyz.adi.common.entity.WorkflowComponent;
 import com.moyz.adi.common.service.WorkflowComponentService;
 import com.moyz.adi.common.service.WorkflowService;
-import com.moyz.adi.common.workflow.WorkflowEngine;
+import com.moyz.adi.common.workflow.WorkflowStarter;
 import com.moyz.adi.common.workflow.node.switcher.OperatorEnum;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.Resource;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -26,7 +25,7 @@ import java.util.*;
 public class WorkflowController {
 
     @Resource
-    private WorkflowEngine workflowEngine;
+    private WorkflowStarter workflowStarter;
 
     @Resource
     private WorkflowService workflowService;
@@ -67,7 +66,7 @@ public class WorkflowController {
     @Operation(summary = "流式响应")
     @PostMapping(value = "/run/{wfUuid}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter sseAsk(@PathVariable String wfUuid, @RequestBody WorkflowRunReq runReq) {
-        return workflowEngine.streaming(ThreadContext.getCurrentUser(), wfUuid, runReq.getInputs());
+        return workflowStarter.streaming(ThreadContext.getCurrentUser(), wfUuid, runReq.getInputs());
     }
 
     @GetMapping("/mine/search")

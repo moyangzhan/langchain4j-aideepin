@@ -88,6 +88,19 @@ public class WorkflowRuntimeService extends ServiceImpl<WorkflowRunMapper, Workf
         return updateOne;
     }
 
+    public void updateStatus(long id, int processStatus, String statusRemark) {
+        WorkflowRuntime node = baseMapper.selectById(id);
+        if (null == node) {
+            log.error("工作流实例不存在,id:{}", id);
+            return;
+        }
+        WorkflowRuntime updateOne = new WorkflowRuntime();
+        updateOne.setId(id);
+        updateOne.setStatus(processStatus);
+        updateOne.setStatusRemark(statusRemark);
+        baseMapper.updateById(updateOne);
+    }
+
     public WorkflowRuntime getByUuid(String uuid) {
         return ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(!ThreadContext.getCurrentUser().getIsAdmin(), WorkflowRuntime::getUserId, ThreadContext.getCurrentUserId())

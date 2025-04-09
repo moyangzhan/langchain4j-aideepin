@@ -47,13 +47,9 @@ public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
         if (StringUtils.isBlank(modelPlatformSetting.getApiKey())) {
             throw new BaseException(B_LLM_SECRET_KEY_NOT_SET);
         }
-        float temperature = 0.7f;
-        if (null != properties && properties.getTemperature() > 0 && properties.getTemperature() <= 1) {
-            temperature = properties.getTemperature().floatValue();
-        }
         return QwenChatModel.builder()
                 .apiKey(modelPlatformSetting.getApiKey())
-                .temperature(temperature)
+                .temperature(properties.getTemperature().floatValue())
                 .modelName(aiModel.getName())
                 .baseUrl(modelPlatformSetting.getBaseUrl())
                 .build();

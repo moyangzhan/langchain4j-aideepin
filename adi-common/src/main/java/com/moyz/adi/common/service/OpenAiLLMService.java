@@ -5,13 +5,10 @@ import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
-import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.OpenAiUtil;
 import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.OpenAiSetting;
-import com.theokanning.openai.OpenAiError;
-import dev.ai4j.openai4j.OpenAiHttpException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -19,8 +16,6 @@ import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
-import org.apache.logging.log4j.util.Strings;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
@@ -56,14 +51,10 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
         if (StringUtils.isBlank(modelPlatformSetting.getSecretKey())) {
             throw new BaseException(ErrorEnum.B_LLM_SECRET_KEY_NOT_SET);
         }
-        double temperature = 0.7;
-        if (null != properties && properties.getTemperature() > 0 && properties.getTemperature() <= 1) {
-            temperature = properties.getTemperature();
-        }
         OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
                 .baseUrl(modelPlatformSetting.getBaseUrl())
                 .modelName(aiModel.getName())
-                .temperature(temperature)
+                .temperature(properties.getTemperature())
                 .apiKey(modelPlatformSetting.getSecretKey());
         if (StringUtils.isNotBlank(modelPlatformSetting.getBaseUrl())) {
             builder.baseUrl(modelPlatformSetting.getBaseUrl());

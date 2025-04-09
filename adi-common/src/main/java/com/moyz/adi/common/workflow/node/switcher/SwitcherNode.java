@@ -62,9 +62,9 @@ public class SwitcherNode extends AbstractWfNode {
                     log.warn("Switcher找不到引用的节点参数,nodeUuid:{},paramName:{}", condition.getNodeUuid(), condition.getNodeParamName());
                     continue;
                 }
-                String inputValue = ioData.getContent().toString().toLowerCase();
+                String inputValue = ioData.valueToString().toLowerCase();
                 String value = condition.getValue().toLowerCase();
-                boolean conditionPass = processCondition(inputValue, value, condition.getOperator());
+                boolean conditionPass = processCondition(value, inputValue, condition.getOperator());
                 if (conditionPass) {
                     conditionPassCount++;
                 }
@@ -85,36 +85,36 @@ public class SwitcherNode extends AbstractWfNode {
         return NodeProcessResult.builder().nextNodeUuid(nextNode).content(changeInputsToOutputs(state.getInputs())).build();
     }
 
-    private boolean processCondition(String inputValue, String value, String operator) {
+    private boolean processCondition(String defValue, String value, String operator) {
         boolean conditionPass = false;
         switch (OperatorEnum.getByName(operator)) {
             case CONTAINS:
-                conditionPass = inputValue.contains(value);
+                conditionPass = defValue.contains(value);
                 break;
             case NOT_CONTAINS:
-                conditionPass = !inputValue.contains(value);
+                conditionPass = !defValue.contains(value);
                 break;
             case START_WITH:
-                conditionPass = inputValue.startsWith(value);
+                conditionPass = defValue.startsWith(value);
                 break;
             case END_WITH:
-                conditionPass = inputValue.endsWith(value);
+                conditionPass = defValue.endsWith(value);
                 break;
             case EMPTY:
-                conditionPass = StringUtils.isBlank(inputValue);
+                conditionPass = StringUtils.isBlank(defValue);
                 break;
             case NOT_EMPTY:
-                conditionPass = StringUtils.isNotBlank(inputValue);
+                conditionPass = StringUtils.isNotBlank(defValue);
                 break;
             case EQUAL:
-                conditionPass = inputValue.equals(value);
+                conditionPass = defValue.equals(value);
                 break;
             case NOT_EQUAL:
-                conditionPass = !inputValue.equals(value);
+                conditionPass = !defValue.equals(value);
                 break;
             case GREATER:
                 try {
-                    double in = Double.parseDouble(inputValue);
+                    double in = Double.parseDouble(defValue);
                     double vl = Double.parseDouble(value);
                     conditionPass = in > vl;
                 } catch (Exception e) {
@@ -123,7 +123,7 @@ public class SwitcherNode extends AbstractWfNode {
                 break;
             case GREATER_OR_EQUAL:
                 try {
-                    double in = Double.parseDouble(inputValue);
+                    double in = Double.parseDouble(defValue);
                     double vl = Double.parseDouble(value);
                     conditionPass = in >= vl;
                 } catch (Exception e) {
@@ -132,7 +132,7 @@ public class SwitcherNode extends AbstractWfNode {
                 break;
             case LESS:
                 try {
-                    double in = Double.parseDouble(inputValue);
+                    double in = Double.parseDouble(defValue);
                     double vl = Double.parseDouble(value);
                     conditionPass = in < vl;
                 } catch (Exception e) {
@@ -141,7 +141,7 @@ public class SwitcherNode extends AbstractWfNode {
                 break;
             case LESS_OR_EQUAL:
                 try {
-                    double in = Double.parseDouble(inputValue);
+                    double in = Double.parseDouble(defValue);
                     double vl = Double.parseDouble(value);
                     conditionPass = in <= vl;
                 } catch (Exception e) {
