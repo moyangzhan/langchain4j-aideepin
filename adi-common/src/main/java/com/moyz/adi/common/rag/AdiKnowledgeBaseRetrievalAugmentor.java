@@ -112,7 +112,7 @@ public class AdiKnowledgeBaseRetrievalAugmentor implements RetrievalAugmentor {
         }));
         //=======aideepin --end
 
-        Query originalQuery = Query.from(chatMessage.text(), metadata);
+        Query originalQuery = Query.from(chatMessage.text(), validMetadata);
 
         Collection<Query> queries = queryTransformer.transform(originalQuery);
         logQueries(originalQuery, queries);

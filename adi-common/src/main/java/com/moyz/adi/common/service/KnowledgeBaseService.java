@@ -379,7 +379,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         sseAskParams.setAssistantChatParams(
                 AssistantChatParams.builder()
                         .messageId(qaRecord.getKbUuid() + "_" + user.getUuid())
-                        .systemMessage(StringUtils.EMPTY)
+                        .systemMessage(knowledgeBase.getQuerySystemMessage())
                         .userMessage(qaRecord.getQuestion())
                         .build()
         );
@@ -392,7 +392,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         sseAskParams.setModelName(aiModel.getName());
         sseAskParams.setUser(user);
         if (maxResults == 0) {
-            log.info("用户问题过长，无需再召回文档，严格模式下直接返回异常提示,非严格模式请求LLM");
+            log.info("用户问题过长，无需再召回文档，严格模式下直接返回异常提示,宽松模式下接着请求LLM");
             if (Boolean.TRUE.equals(knowledgeBase.getIsStrict())) {
                 sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "提问内容过长，最多不超过 " + maxInputTokens + " tokens");
             } else {

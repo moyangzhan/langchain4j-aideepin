@@ -41,12 +41,21 @@ public class MapDBChatMemoryStore implements ChatMemoryStore {
     @Override
     public void updateMessages(Object memoryId, List<ChatMessage> messages) {
         //AiMessage in first position is not allow
-        if (messages.size() > 0 && messages.get(0) instanceof AiMessage) {
+        if (!messages.isEmpty() && messages.get(0) instanceof AiMessage) {
             messages.remove(0);
+        }
+        if (messages.isEmpty()) {
+            return;
         }
         //Filter out the available messages.(UserMessage,AiMessage)
         List<ChatMessage> availableMessage = new ArrayList<>();
-        for (ChatMessage chatMessage : messages) {
+        int index = 0;
+        if (messages.get(0) instanceof SystemMessage) {
+            availableMessage.add(messages.get(0));
+            index = 1;
+        }
+        for (int i = index; i < messages.size(); i++) {
+            ChatMessage chatMessage = messages.get(i);
             if (!(chatMessage instanceof SystemMessage)) {
                 availableMessage.add(chatMessage);
             }

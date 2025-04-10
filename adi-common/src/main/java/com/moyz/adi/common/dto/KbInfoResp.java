@@ -19,6 +19,7 @@ public class KbInfoResp {
     private Integer retrieveMaxResults;
     private Double retrieveMinScore;
     private Double queryLlmTemperature;
+    private String querySystemMessage;
     private String ownerUuid;
     private String ownerName;
     private Integer itemCount;

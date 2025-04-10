@@ -30,4 +30,6 @@ public class KbEditReq {
     private Long ingestModelId;
 
     private Double queryLlmTemperature;
+
+    private String querySystemMessage;
 }
