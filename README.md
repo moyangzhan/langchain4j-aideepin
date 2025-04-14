@@ -267,4 +267,4 @@ ps: neo4j可代替pgvector与apache age
 * 有问题尽量在issue提，容易描述及跟踪处理
 * 业余时间维护本项目，时间有限，所以群里提问不保证即时回复，请见谅
 
-<img src="image/README/qq.jpg" alt="图片描述" style="width: 300px;">
+![qq](image/README/qq.png)
