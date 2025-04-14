@@ -41,7 +41,7 @@ public enum ErrorEnum {
     A_OPT_TOO_FREQUENTLY("A0032", "操作太频繁"),
     A_DRAW_NOT_FOUND("A00033", "绘图记录找不到"),
     A_WF_NOT_FOUND("A00034", "工作流找不到"),
-    A_WF_DISABLED("A0035", "工作流已禁用"),
+    A_WF_DISABLED("A0035", "工作流已停用"),
     A_WF_NODE_NOT_FOUND("A0036", "工作流节点找不到"),
     A_WF_NODE_CONFIG_NOT_FOUND("A0037", "工作流节点配置找不到"),
     A_WF_NODE_CONFIG_ERROR("A0038", "工作流节点配置异常"),
@@ -53,6 +53,7 @@ public enum ErrorEnum {
     A_WF_EDGE_NOT_FOUND("A0044", "工作流的边找不到"),
     A_WF_RUNTIME_NOT_FOUND("A00045", "工作流运行时数据找不到"),
     A_SEARCH_QUERY_IS_EMPTY("A00046", "搜索内容不能为空"),
+    A_WF_COMPONENT_NOT_FOUND("A00047", "工作流基础组件找不到"),
     B_UNCAUGHT_ERROR("B0001", "未捕捉异常"),
     B_COMMON_ERROR("B0002", "业务出错"),
     B_GLOBAL_ERROR("B0003", "全局异常"),
@@ -81,7 +82,8 @@ public enum ErrorEnum {
     B_DIR_CREATE_FAIL("B0024", "创建目录失败"),
     C_DRAW_FAIL("C0001", "大模型生成图片失败,原因:{0}"),
     C_ALI_OSS_CONFIG_ERROR("C0002", "阿里云OSS初始化失败,原因:{0}"),
-    C_LLM_RESPONSE_INVALID("C0003", "大模型生成结果内容无效");
+    C_LLM_RESPONSE_INVALID("C0003", "大模型生成结果内容无效"),
+    C_WF_COMPONENT_DELETED_FAIL_BY_USED("C0004", "工作流组件已经被使用，无法被删除，可先停用");
 
     private final String code;
     private final String info;

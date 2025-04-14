@@ -1,17 +1,15 @@
 package com.moyz.adi.common.util;
 
 import com.baomidou.mybatisplus.extension.conditions.query.QueryChainWrapper;
-import com.baomidou.mybatisplus.extension.conditions.update.LambdaUpdateChainWrapper;
 import com.baomidou.mybatisplus.extension.conditions.update.UpdateChainWrapper;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.entity.BaseEntity;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
-import org.apache.poi.ss.formula.functions.T;
+
+import static com.moyz.adi.common.cosntant.AdiConstant.*;
 
 public class PrivilegeUtil {
-
-    private static final String DELETE_COLUMN_NAME = "is_deleted";
 
     private PrivilegeUtil() {
     }
@@ -28,16 +26,16 @@ public class PrivilegeUtil {
         T target;
         if (Boolean.TRUE.equals(ThreadContext.getCurrentUser().getIsAdmin())) {
             target = lambdaQueryChainWrapper
-                    .eq(null != id, "id", id)
-                    .eq(null != uuid, "uuid", uuid)
-                    .eq(DELETE_COLUMN_NAME, false).oneOpt()
+                    .eq(null != id, COLUMN_NAME_ID, id)
+                    .eq(null != uuid, COLUMN_NAME_UUID, uuid)
+                    .eq(COLUMN_NAME_IS_DELETE, false).oneOpt()
                     .orElse(null);
         } else {
             target = lambdaQueryChainWrapper
-                    .eq(null != id, "id", id)
-                    .eq(null != uuid, "uuid", uuid)
-                    .eq("user_id", ThreadContext.getCurrentUserId())
-                    .eq(DELETE_COLUMN_NAME, false)
+                    .eq(null != id, COLUMN_NAME_ID, id)
+                    .eq(null != uuid, COLUMN_NAME_UUID, uuid)
+                    .eq(COLUMN_NAME_USER_ID, ThreadContext.getCurrentUserId())
+                    .eq(COLUMN_NAME_IS_DELETE, false)
                     .oneOpt()
                     .orElse(null);
         }
@@ -53,7 +51,7 @@ public class PrivilegeUtil {
 
     public static <T extends BaseEntity> T checkAndDelete(Long id, String uuid, QueryChainWrapper<T> lambdaQueryChainWrapper, UpdateChainWrapper<T> updateChainWrapper, ErrorEnum exceptionMessage) {
         T target = checkAndGet(id, uuid, lambdaQueryChainWrapper, exceptionMessage);
-        updateChainWrapper.eq("id", target.getId()).set(DELETE_COLUMN_NAME, true).update();
+        updateChainWrapper.eq(COLUMN_NAME_ID, target.getId()).set(COLUMN_NAME_IS_DELETE, true).update();
         return target;
     }
 }

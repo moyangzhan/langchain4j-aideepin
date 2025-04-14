@@ -13,6 +13,9 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
+import static com.moyz.adi.common.enums.ErrorEnum.A_WF_DISABLED;
+import static com.moyz.adi.common.enums.ErrorEnum.A_WF_NOT_FOUND;
+
 @Slf4j
 @Component
 public class WorkflowStarter {
@@ -48,14 +51,21 @@ public class WorkflowStarter {
         if (!sseEmitterHelper.checkOrComplete(user, sseEmitter)) {
             return sseEmitter;
         }
-        self.asyncRun(user, workflowUuid, userInputs, sseEmitter);
+        Workflow workflow = workflowService.getByUuid(workflowUuid);
+        if (null == workflow) {
+            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, A_WF_NOT_FOUND.getInfo());
+            return sseEmitter;
+        } else if (Boolean.FALSE.equals(workflow.getIsEnable())) {
+            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, A_WF_DISABLED.getInfo());
+            return sseEmitter;
+        }
+        self.asyncRun(user, workflow, userInputs, sseEmitter);
         return sseEmitter;
     }
 
     @Async
-    public void asyncRun(User user, String workflowUuid, List<ObjectNode> userInputs, SseEmitter sseEmitter) {
-        log.info("WorkflowEngine run,userId:{},workflowUuid:{},userInputs:{}", user.getId(), workflowUuid, userInputs);
-        Workflow workflow = workflowService.getByUuid(workflowUuid);
+    public void asyncRun(User user, Workflow workflow, List<ObjectNode> userInputs, SseEmitter sseEmitter) {
+        log.info("WorkflowEngine run,userId:{},workflowUuid:{},userInputs:{}", user.getId(), workflow.getUuid(), userInputs);
         List<WorkflowComponent> components = workflowComponentService.getAllEnable();
         List<WorkflowNode> nodes = workflowNodeService.lambdaQuery()
                 .eq(WorkflowNode::getWorkflowId, workflow.getId())

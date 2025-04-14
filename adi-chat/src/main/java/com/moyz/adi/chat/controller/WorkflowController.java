@@ -17,7 +17,9 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/workflow")
@@ -44,8 +46,8 @@ public class WorkflowController {
     }
 
     @PostMapping("/set-public/{wfUuid}")
-    public void setPublic(@PathVariable String wfUuid) {
-        workflowService.setPublic(wfUuid);
+    public void setPublic(@PathVariable String wfUuid, @RequestParam(defaultValue = "true") Boolean isPublic) {
+        workflowService.setPublic(wfUuid, isPublic);
     }
 
     @PostMapping("/update")
@@ -56,6 +58,11 @@ public class WorkflowController {
     @PostMapping("/del/{uuid}")
     public void delete(@PathVariable String uuid) {
         workflowService.softDelete(uuid);
+    }
+
+    @PostMapping("/enable/{uuid}")
+    public void enable(@PathVariable String uuid, @RequestParam Boolean enable) {
+        workflowService.enable(uuid, enable);
     }
 
     @PostMapping("/base-info/update")
@@ -71,9 +78,10 @@ public class WorkflowController {
 
     @GetMapping("/mine/search")
     public Page<WorkflowResp> searchMine(@RequestParam(defaultValue = "") String keyword,
+                                         @RequestParam(required = false) Boolean isPublic,
                                          @NotNull @Min(1) Integer currentPage,
                                          @NotNull @Min(10) Integer pageSize) {
-        return workflowService.searchMine(keyword, currentPage, pageSize);
+        return workflowService.search(keyword, isPublic, null, currentPage, pageSize);
     }
 
     /**

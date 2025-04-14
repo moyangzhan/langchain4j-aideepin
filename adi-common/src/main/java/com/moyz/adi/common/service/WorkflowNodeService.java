@@ -43,7 +43,7 @@ public class WorkflowNodeService extends ServiceImpl<WorkflowNodeMapper, Workflo
         return baseMapper.getStartNode(workflowId);
     }
 
-    public List<WfNodeDto> listByWfId(long workflowId) {
+    public List<WfNodeDto> listDtoByWfId(long workflowId) {
         List<WorkflowNode> workflowNodeList = ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(WorkflowNode::getWorkflowId, workflowId)
                 .eq(WorkflowNode::getIsDeleted, false)

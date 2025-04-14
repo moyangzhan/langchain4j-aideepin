@@ -261,6 +261,10 @@ ps: neo4j可代替pgvector与apache age
 
 ![workflow_01](image/README/workflow.png)
 
-**额度统计：**
+## 技术交流
 
-![1691583329105.png](image%2FREADME%2F1691583329105.png)
+* 先点赞🌟再加群，谢谢
+* 有问题尽量在issue提，容易描述及跟踪处理
+* 业余时间维护本项目，时间有限，所以群里提问不保证即时回复，请见谅
+
+<img src="image/README/qq.jpg" alt="图片描述" style="width: 300px;">

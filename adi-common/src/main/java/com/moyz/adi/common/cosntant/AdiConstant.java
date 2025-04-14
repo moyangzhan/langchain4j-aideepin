@@ -2,7 +2,6 @@ package com.moyz.adi.common.cosntant;
 
 import dev.langchain4j.model.input.PromptTemplate;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class AdiConstant {
@@ -259,6 +258,11 @@ public class AdiConstant {
     public static final List<String> IMAGE_EXTENSIONS = List.of("jpg", "jpeg", "png", "gif", "bmp", "webp");
 
     public static final String W_FAILED = "FAILED";
+
+    public static final String COLUMN_NAME_IS_DELETE = "is_deleted";
+    public static final String COLUMN_NAME_USER_ID = "user_id";
+    public static final String COLUMN_NAME_ID = "id";
+    public static final String COLUMN_NAME_UUID = "uuid";
 
     public static class WorkflowConstant {
         public static final String DEFAULT_INPUT_PARAM_NAME = "input";

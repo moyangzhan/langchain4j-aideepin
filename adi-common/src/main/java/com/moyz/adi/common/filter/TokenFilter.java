@@ -58,6 +58,18 @@ public class TokenFilter extends OncePerRequestFilter {
             token = request.getParameter("token");
         }
         if (excludePath(requestUri)) {
+
+            if (StringUtils.isNotBlank(token)) {
+                String tokenKey = MessageFormat.format(RedisKeyConstant.USER_TOKEN, token);
+                String userJson = stringRedisTemplate.opsForValue().get(tokenKey);
+                if (StringUtils.isNotBlank(userJson)) {
+                    User user = JsonUtil.fromJson(userJson, User.class);
+                    if (null != user) {
+                        ThreadContext.setCurrentUser(user);
+                        ThreadContext.setToken(token);
+                    }
+                }
+            }
             filterChain.doFilter(request, response);
         } else if (StringUtils.isNotBlank(token)) {
             String tokenKey = MessageFormat.format(RedisKeyConstant.USER_TOKEN, token);

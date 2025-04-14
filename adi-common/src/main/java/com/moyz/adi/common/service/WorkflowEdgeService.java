@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.moyz.adi.common.dto.workflow.WfEdgeReq;
 import com.moyz.adi.common.entity.WorkflowEdge;
-import com.moyz.adi.common.entity.WorkflowNode;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.WorkflowEdgeMapper;
@@ -29,7 +28,7 @@ public class WorkflowEdgeService extends ServiceImpl<WorkflowEdgeMapper, Workflo
     @Resource
     private WorkflowEdgeService self;
 
-    public List<WfEdgeReq> listByWfId(long workflowId) {
+    public List<WfEdgeReq> listDtoByWfId(long workflowId) {
         List<WorkflowEdge> edges = ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(WorkflowEdge::getWorkflowId, workflowId)
                 .eq(WorkflowEdge::getIsDeleted, false)

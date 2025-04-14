@@ -2,6 +2,7 @@ package com.moyz.adi.common.dto.workflow;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -16,5 +17,6 @@ public class WorkflowResp {
     private String userName;
     private List<WfNodeDto> nodes;
     private List<WfEdgeReq> edges;
-
+    private LocalDateTime createTime;
+    private LocalDateTime updateTime;
 }

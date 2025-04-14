@@ -4,12 +4,15 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import org.springframework.validation.annotation.Validated;
 
-@Validated
 @Data
-public class WfBaseInfoUpdateReq {
-    @NotBlank
+@Validated
+public class WfComponentReq {
     private String uuid;
+    @NotBlank(message = "标题不能为空")
+    private String name;
+    @NotBlank(message = "标题不能为空")
     private String title;
     private String remark;
-    private Boolean isPublic;
+    private Boolean isEnable;
+    private Integer displayOrder;
 }

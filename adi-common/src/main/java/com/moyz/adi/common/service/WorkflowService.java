@@ -17,7 +17,6 @@ import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.WorkflowMapper;
 import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.workflow.WfComponentNameEnum;
-import com.moyz.adi.common.workflow.WorkflowUtil;
 import com.moyz.adi.common.workflow.def.WfNodeParamRef;
 import com.moyz.adi.common.workflow.node.classifier.ClassifierNodeConfig;
 import com.moyz.adi.common.workflow.node.switcher.SwitcherCase;
@@ -72,6 +71,7 @@ public class WorkflowService extends ServiceImpl<WorkflowMapper, Workflow> {
         one.setUserId(ThreadContext.getCurrentUserId());
         one.setRemark(remark);
         one.setIsEnable(true);
+        one.setIsPublic(isPublic);
         baseMapper.insert(one);
 
         workflowNodeService.createStartNode(one);
@@ -153,11 +153,11 @@ public class WorkflowService extends ServiceImpl<WorkflowMapper, Workflow> {
         return changeWorkflowToDTO(newWorkflow);
     }
 
-    public void setPublic(String wfUuid) {
+    public void setPublic(String wfUuid, Boolean isPublic) {
         Workflow workflow = PrivilegeUtil.checkAndGetByUuid(wfUuid, this.query(), ErrorEnum.A_WF_NOT_FOUND);
         ChainWrappers.lambdaUpdateChain(baseMapper)
                 .eq(Workflow::getId, workflow.getId())
-                .set(Workflow::getIsPublic, true)
+                .set(Workflow::getIsPublic, isPublic)
                 .update();
     }
 
@@ -167,6 +167,7 @@ public class WorkflowService extends ServiceImpl<WorkflowMapper, Workflow> {
         }
         ChainWrappers.lambdaUpdateChain(baseMapper)
                 .eq(Workflow::getUuid, wfUuid)
+                .eq(!ThreadContext.getCurrentUser().getIsAdmin(), Workflow::getUserId, ThreadContext.getCurrentUserId())
                 .set(Workflow::getTitle, title)
                 .set(Workflow::getRemark, remark)
                 .set(null != isPublic, Workflow::getIsPublic, isPublic)
@@ -217,10 +218,12 @@ public class WorkflowService extends ServiceImpl<WorkflowMapper, Workflow> {
         return workflow;
     }
 
-    public Page<WorkflowResp> searchMine(String keyword, Integer currentPage, Integer pageSize) {
+    public Page<WorkflowResp> search(String keyword, Boolean isPublic, Boolean isEnable, Integer currentPage, Integer pageSize) {
         User user = ThreadContext.getCurrentUser();
         Page<Workflow> page = ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(Workflow::getIsDeleted, false)
+                .eq(null != isPublic, Workflow::getIsPublic, isPublic)
+                .eq(null != isEnable, Workflow::getIsEnable, isEnable)
                 .like(StringUtils.isNotBlank(keyword), Workflow::getTitle, keyword)
                 .eq(!user.getIsAdmin(), Workflow::getUserId, user.getId())
                 .orderByDesc(Workflow::getUpdateTime)
@@ -240,6 +243,7 @@ public class WorkflowService extends ServiceImpl<WorkflowMapper, Workflow> {
         Page<Workflow> page = ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(Workflow::getIsDeleted, false)
                 .eq(Workflow::getIsPublic, true)
+                .eq(Workflow::getIsEnable, true)
                 .like(StringUtils.isNotBlank(keyword), Workflow::getTitle, keyword)
                 .orderByDesc(Workflow::getUpdateTime)
                 .page(new Page<>(currentPage, pageSize));
@@ -258,6 +262,18 @@ public class WorkflowService extends ServiceImpl<WorkflowMapper, Workflow> {
         PrivilegeUtil.checkAndDelete(uuid, this.query(), ChainWrappers.updateChain(baseMapper), ErrorEnum.A_WF_NOT_FOUND);
     }
 
+    public void enable(String uuid, Boolean enable) {
+        if (null == enable) {
+            throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
+        }
+        Workflow workflow = PrivilegeUtil.checkAndGetByUuid(uuid, this.query(), ErrorEnum.A_WF_NOT_FOUND);
+        ChainWrappers.lambdaUpdateChain(baseMapper)
+                .eq(Workflow::getId, workflow.getId())
+                .eq(!ThreadContext.getCurrentUser().getIsAdmin(), Workflow::getUserId, ThreadContext.getCurrentUserId())
+                .set(Workflow::getIsEnable, enable)
+                .update();
+    }
+
     private WorkflowResp changeWorkflowToDTO(Workflow workflow) {
         WorkflowResp workflowResp = new WorkflowResp();
         BeanUtils.copyProperties(workflow, workflowResp);
@@ -272,13 +288,16 @@ public class WorkflowService extends ServiceImpl<WorkflowMapper, Workflow> {
     }
 
     private void fillNodesAndEdges(WorkflowResp workflowResp) {
-        List<WfNodeDto> nodes = workflowNodeService.listByWfId(workflowResp.getId());
+        List<WfNodeDto> nodes = workflowNodeService.listDtoByWfId(workflowResp.getId());
         workflowResp.setNodes(nodes);
-        List<WfEdgeReq> edges = workflowEdgeService.listByWfId(workflowResp.getId());
+        List<WfEdgeReq> edges = workflowEdgeService.listDtoByWfId(workflowResp.getId());
         workflowResp.setEdges(edges);
     }
 
     private void fillUserInfos(List<Long> userIds, List<WorkflowResp> resps) {
+        if (CollectionUtils.isEmpty(userIds)) {
+            return;
+        }
         Map<Long, User> users = userService.listByIds(userIds).stream()
                 .collect(Collectors.toMap(User::getId, Function.identity(), (s, a) -> s));
         for (WorkflowResp workflowResp : resps) {
