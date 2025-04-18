@@ -917,7 +917,8 @@ VALUES ('ERNIE-Speed-128K', 'ernie_speed', 'text', 'qianfan', 131072, 126976, 40
         '{"endpoint":"ernie-speed-128k"}');
 INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
 VALUES ('tinydolphin', 'ollama-tinydolphin', 'text', 'ollama', false);
-
+INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
+VALUES ('THUDM/GLM-Z1-9B-0414', '硅基流动-GLM-Z1-9B', 'text', 'siliconflow', false);
 -- 预设角色
 INSERT INTO adi_conversation_preset (uuid, title, remark, ai_system_message)
 VALUES ('26a8f54c560948d6b2d4969f08f3f2fb', '开发工程师', '技术好', '你是一个经验丰富的开发工程师,开发技能极其熟练');
