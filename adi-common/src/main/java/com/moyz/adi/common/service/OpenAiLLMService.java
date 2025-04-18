@@ -70,10 +70,7 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
         if (StringUtils.isBlank(modelPlatformSetting.getSecretKey())) {
             throw new BaseException(ErrorEnum.B_LLM_SECRET_KEY_NOT_SET);
         }
-        double temperature = 0.7;
-        if (null != properties && properties.getTemperature() > 0 && properties.getTemperature() <= 1) {
-            temperature = properties.getTemperature();
-        }
+        double temperature = properties.getTemperatureWithDefault(0.7);
         OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder = OpenAiStreamingChatModel
                 .builder()
                 .baseUrl(modelPlatformSetting.getBaseUrl())
