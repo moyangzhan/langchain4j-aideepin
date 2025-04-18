@@ -80,6 +80,7 @@ public enum ErrorEnum {
     B_WF_RUN_ERROR("B0022", "工作流运行异常"),
     B_WF_NODE_DEFINITION_NOT_FOUND("B0023", "工作流节点定义找不到"),
     B_DIR_CREATE_FAIL("B0024", "创建目录失败"),
+    B_LLM_TEMPERATURE_ERROR("B0025", "采样温度应该在 0.1-1之间"),
     C_DRAW_FAIL("C0001", "大模型生成图片失败,原因:{0}"),
     C_ALI_OSS_CONFIG_ERROR("C0002", "阿里云OSS初始化失败,原因:{0}"),
     C_LLM_RESPONSE_INVALID("C0003", "大模型生成结果内容无效"),

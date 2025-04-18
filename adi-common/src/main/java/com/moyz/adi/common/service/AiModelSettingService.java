@@ -82,6 +82,8 @@ public class AiModelSettingService {
 
         //ollama
         initLLMService(AdiConstant.ModelPlatform.OLLAMA, OllamaLLMService::new);
+        // 硅基流动
+        initLLMService(AdiConstant.ModelPlatform.SILICONFLOW, SiliconflowLLMService::new);
     }
 
     /**
