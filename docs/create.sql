@@ -849,6 +849,8 @@ VALUES ('qianfan_setting', '{"api_key":"","secret_key":""}');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('ollama_setting', '{"base_url":""}');
 INSERT INTO adi_sys_config (name, value)
+VALUES ('siliconflow_setting', '{"base_url":"https://api.siliconflow.cn","secret_key":""}');
+INSERT INTO adi_sys_config (name, value)
 VALUES ('google_setting',
         '{"url":"https://www.googleapis.com/customsearch/v1","key":"","cx":""}');
 INSERT INTO adi_sys_config (name, value)

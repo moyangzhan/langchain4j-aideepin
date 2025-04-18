@@ -2,6 +2,8 @@ package com.moyz.adi.common.cosntant;
 
 import dev.langchain4j.model.input.PromptTemplate;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.List;
 
 public class AdiConstant {
@@ -108,6 +110,7 @@ public class AdiConstant {
         public static final String DASHSCOPE_SETTING = "dashscope_setting";
         public static final String QIANFAN_SETTING = "qianfan_setting";
         public static final String OLLAMA_SETTING = "ollama_setting";
+        public static final String SILICONFLOW_SETTING = "siliconflow_setting";
         public static final String GOOGLE_SETTING = "google_setting";
         public static final String BING_SETTING = "bing_setting";
         public static final String BAIDU_SETTING = "baidu_setting";
@@ -137,6 +140,22 @@ public class AdiConstant {
         public static final String DASHSCOPE = "dashscope";
         public static final String QIANFAN = "qianfan";
         public static final String OLLAMA = "ollama";
+        public static final String SILICONFLOW = "siliconflow";
+
+        // 获取所有公共静态常量（String类型的值）的列表
+        public static List<String> getModelConstants() {
+            List<String> list = new ArrayList<>();
+            Class<ModelPlatform> clazz = ModelPlatform.class;
+            for (Field field : clazz.getDeclaredFields()) {
+                try {
+                    String value = (String) field.get(null);
+                    list.add(value);
+                } catch (ReflectiveOperationException e) {
+                }
+
+            }
+            return list;
+        }
     }
 
     public static class ModelType {
