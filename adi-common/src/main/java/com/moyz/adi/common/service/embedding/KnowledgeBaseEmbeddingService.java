@@ -19,6 +19,7 @@ import java.util.UUID;
 @ConditionalOnProperty(value = "adi.vector-database", havingValue = "pgvector")
 public class KnowledgeBaseEmbeddingService extends ServiceImpl<KnowledgeBaseEmbeddingMapper, KnowledgeBaseEmbedding> implements IEmbeddingService {
 
+    @Override
     public List<KbItemEmbeddingDto> listByEmbeddingIds(List<String> embeddingIds) {
         LambdaQueryWrapper<KnowledgeBaseEmbedding> lambdaQueryWrapper = new LambdaQueryWrapper<>();
         lambdaQueryWrapper.in(KnowledgeBaseEmbedding::getEmbeddingId, embeddingIds.stream().map(UUID::fromString).toList());
@@ -29,6 +30,7 @@ public class KnowledgeBaseEmbeddingService extends ServiceImpl<KnowledgeBaseEmbe
         });
     }
 
+    @Override
     public Page<KbItemEmbeddingDto> listByItemUuid(String kbItemUuid, int currentPage, int pageSize) {
         Page<KnowledgeBaseEmbedding> sourcePage = baseMapper.selectByItemUuid(new Page<>(currentPage, pageSize), kbItemUuid);
         Page<KbItemEmbeddingDto> result = new Page<>();
@@ -45,6 +47,7 @@ public class KnowledgeBaseEmbeddingService extends ServiceImpl<KnowledgeBaseEmbe
      * @param kbItemUuid 知识库条目uuid
      * @return
      */
+    @Override
     public boolean deleteByItemUuid(String kbItemUuid) {
         return baseMapper.deleteByItemUuid(kbItemUuid);
     }
