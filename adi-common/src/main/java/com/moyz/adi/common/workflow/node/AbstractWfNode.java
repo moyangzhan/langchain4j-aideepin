@@ -16,6 +16,7 @@ import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -119,6 +120,14 @@ public abstract class AbstractWfNode {
         log.info("↓↓↓↓↓ node process start,name:{},uuid:{}", node.getTitle(), node.getUuid());
         state.setProcessStatus(NODE_PROCESS_STATUS_DOING);
         initInput();
+        //HumanFeedback的情况
+        Object humanFeedbackState = state.data().get(HUMAN_FEEDBACK_KEY);
+        if (null != humanFeedbackState) {
+            String userInput = humanFeedbackState.toString();
+            if (StringUtils.isNotBlank(userInput)) {
+                state.getInputs().add(NodeIOData.createByText(HUMAN_FEEDBACK_KEY, "default", userInput));
+            }
+        }
         if (null != inputConsumer) {
             inputConsumer.accept(state);
         }

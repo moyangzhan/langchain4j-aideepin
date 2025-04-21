@@ -30,7 +30,9 @@ public enum WfComponentNameEnum {
 
     TEMPLATE("Template"),
 
-    GOOGLE_SEARCH("Google");
+    GOOGLE_SEARCH("Google"),
+
+    HUMAN_FEEDBACK("HumanFeedback");
 
     private final String name;
 

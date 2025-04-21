@@ -17,20 +17,20 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.bsc.async.AsyncGenerator;
-import org.bsc.langgraph4j.CompiledGraph;
-import org.bsc.langgraph4j.GraphStateException;
-import org.bsc.langgraph4j.NodeOutput;
-import org.bsc.langgraph4j.StateGraph;
+import org.bsc.langgraph4j.*;
+import org.bsc.langgraph4j.checkpoint.MemorySaver;
 import org.bsc.langgraph4j.langchain4j.generators.StreamingChatGenerator;
 import org.bsc.langgraph4j.serializer.std.ObjectStreamStateSerializer;
 import org.bsc.langgraph4j.state.AgentState;
+import org.bsc.langgraph4j.state.StateSnapshot;
 import org.bsc.langgraph4j.streaming.StreamingOutput;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.*;
 
-import static com.moyz.adi.common.cosntant.AdiConstant.WorkflowConstant.WORKFLOW_PROCESS_STATUS_FAIL;
+import static com.moyz.adi.common.cosntant.AdiConstant.WorkflowConstant.*;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
+import static com.moyz.adi.common.workflow.WfComponentNameEnum.HUMAN_FEEDBACK;
 import static org.bsc.langgraph4j.StateGraph.END;
 import static org.bsc.langgraph4j.StateGraph.START;
 import static org.bsc.langgraph4j.action.AsyncEdgeAction.edge_async;
@@ -38,7 +38,7 @@ import static org.bsc.langgraph4j.action.AsyncNodeAction.node_async;
 
 @Slf4j
 public class WorkflowEngine {
-
+    private CompiledGraph<WfNodeState> app;
     private final Workflow workflow;
     private final List<WorkflowComponent> components;
     private final List<WorkflowNode> wfNodes;
@@ -108,21 +108,71 @@ public class WorkflowEngine {
             //构建包括所有节点的状态图
             buildStateGraph(null, mainStateGraph, rootCompileNode);
 
-            CompiledGraph<WfNodeState> app = mainStateGraph.compile();
-            //不使用langgraph4j state的update相关方法，无需传入input
-            AsyncGenerator<NodeOutput<WfNodeState>> outputs = app.stream(Map.of());
-            streamingResult(wfState, outputs, sseEmitter);
+            MemorySaver saver = new MemorySaver();
+            CompileConfig compileConfig = CompileConfig.builder()
+                    .checkpointSaver(saver)
+                    .interruptBefore(wfState.getInterruptNodes().toArray(String[]::new))
+                    .build();
+            app = mainStateGraph.compile(compileConfig);
+            RunnableConfig invokeConfig = RunnableConfig.builder()
+                    .build();
+            exe(invokeConfig, false);
+        } catch (Exception e) {
+            errorWhenExe(e);
+        }
+    }
+
+    private void exe(RunnableConfig invokeConfig, boolean resume) {
+        //不使用langgraph4j state的update相关方法，无需传入input
+        AsyncGenerator<NodeOutput<WfNodeState>> outputs = app.stream(resume ? null : Map.of(), invokeConfig);
+        streamingResult(wfState, outputs, sseEmitter);
+
+        StateSnapshot<WfNodeState> stateSnapshot = app.getState(invokeConfig);
+        String nextNode = stateSnapshot.config().nextNode().orElse("");
+        //还有下个节点，表示进入中断状态，等待用户输入后继续执行
+        if (StringUtils.isNotBlank(nextNode) && !nextNode.equalsIgnoreCase(END)) {
+            String intTip = WorkflowUtil.getHumanFeedbackTip(nextNode, wfNodes);
+            //将等待输入信息[事件与提示词]发送到到客户端
+            SSEEmitterHelper.parseAndSendPartialMsg(sseEmitter, "[NODE_WAIT_FEEDBACK_BY_" + nextNode + "]", intTip);
+            InterruptedFlow.RUNTIME_TO_GRAPH.put(wfState.getUuid(), this);
+            //更新状态
+            wfState.setProcessStatus(WORKFLOW_PROCESS_STATUS_WAITING_INPUT);
+            workflowRuntimeService.updateOutput(wfRuntimeResp.getId(), wfState);
+        } else {
             WorkflowRuntime updatedRuntime = workflowRuntimeService.updateOutput(wfRuntimeResp.getId(), wfState);
             sseEmitterHelper.sendComplete(user.getId(), sseEmitter, JsonUtil.toJson(updatedRuntime.getOutput()));
-        } catch (Exception e) {
-            log.error("error", e);
-            String errorMsg = e.getMessage();
-            if (errorMsg.contains("parallel node doesn't support conditional branch")) {
-                errorMsg = "并行节点中不能包含条件分支";
-            }
-            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, errorMsg);
-            workflowRuntimeService.updateStatus(wfRuntimeResp.getId(), WORKFLOW_PROCESS_STATUS_FAIL, errorMsg);
+            InterruptedFlow.RUNTIME_TO_GRAPH.remove(wfState.getUuid());
         }
+    }
+
+    /**
+     * 中断流程等待用户输入时，会进行暂停状态，用户输入后调用本方法执行流程剩余部分
+     *
+     * @param userInput 用户输入
+     */
+    public void resume(String userInput) {
+        RunnableConfig invokeConfig = RunnableConfig.builder().build();
+        try {
+            app.updateState(invokeConfig, Map.of(HUMAN_FEEDBACK_KEY, userInput), null);
+            exe(invokeConfig, true);
+        } catch (Exception e) {
+            errorWhenExe(e);
+        } finally {
+            //有可能多次接收人机交互，待整个流程完全执行后才能删除
+            if (wfState.getProcessStatus() != WORKFLOW_PROCESS_STATUS_WAITING_INPUT) {
+                InterruptedFlow.RUNTIME_TO_GRAPH.remove(wfState.getUuid());
+            }
+        }
+    }
+
+    private void errorWhenExe(Exception e) {
+        log.error("error", e);
+        String errorMsg = e.getMessage();
+        if (errorMsg.contains("parallel node doesn't support conditional branch")) {
+            errorMsg = "并行节点中不能包含条件分支";
+        }
+        sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, errorMsg);
+        workflowRuntimeService.updateStatus(wfRuntimeResp.getId(), WORKFLOW_PROCESS_STATUS_FAIL, errorMsg);
     }
 
     private Map<String, Object> runNode(WorkflowNode wfNode, WfNodeState nodeState) {
@@ -457,6 +507,12 @@ public class WorkflowEngine {
         WorkflowNode wfNode = getNodeByUuid(stateGraphNodeUuid);
         stateGraph.addNode(stateGraphNodeUuid, node_async((state) -> runNode(wfNode, state)));
         stateGraphList.add(stateGraph);
+
+        //记录人机交互节点
+        WorkflowComponent wfComponent = components.stream().filter(item -> item.getId().equals(wfNode.getWorkflowComponentId())).findFirst().orElseThrow();
+        if (HUMAN_FEEDBACK.getName().equals(wfComponent.getName())) {
+            this.wfState.addInterruptNode(stateGraphNodeUuid);
+        }
     }
 
     private void addEdgeToStateGraph(StateGraph<WfNodeState> stateGraph, String source, String target) throws GraphStateException {
@@ -485,5 +541,9 @@ public class WorkflowEngine {
             compileNode.getNextNodes().add(newNode);
         }
 
+    }
+
+    public CompiledGraph<WfNodeState> getApp() {
+        return app;
     }
 }

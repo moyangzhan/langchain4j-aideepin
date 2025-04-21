@@ -10,8 +10,8 @@ import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.SseAskParams;
 import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.data.NodeIODataContent;
+import com.moyz.adi.common.workflow.node.humanfeedback.HumanFeedbackNode;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -93,5 +93,13 @@ public class WorkflowUtil {
         String response = llmService.chat(sseAskParams);
         log.info("llm response:{}", response);
         return NodeIOData.createByText(DEFAULT_OUTPUT_PARAM_NAME, "", response);
+    }
+
+    public static String getHumanFeedbackTip(String nodeUuid, List<WorkflowNode> wfNodes) {
+        WorkflowNode wfNode = wfNodes.stream().filter(item -> item.getUuid().equals(nodeUuid)).findFirst().orElse(null);
+        if (null == wfNode) {
+            return "";
+        }
+        return HumanFeedbackNode.getTip(wfNode);
     }
 }

@@ -45,16 +45,19 @@ AIDEEPIN
 * 基于大模型的网络搜索（RAG）
 * 工作流
 
-## 接入的模型：
+## 接入的平台/模型：
 
 * DeepSeek
-* ChatGPT 3.5
-* 通义千问
-* 通义万相
+* OpenAI
+  * ChatGPT 3.5
+  * DALL-E 2
+  * DALL-E 3
+* 灵积
+  * 通义千问
+  * 通义万相
+* 硅基流动
 * 文心一言
 * ollama
-* DALL-E 2
-* DALL-E 3
 
 ## 接入的搜索引擎
 

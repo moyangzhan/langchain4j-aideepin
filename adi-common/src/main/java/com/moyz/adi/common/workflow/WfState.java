@@ -50,6 +50,11 @@ public class WfState {
     private List<NodeIOData> output = new ArrayList<>();
     private Integer processStatus = WORKFLOW_PROCESS_STATUS_READY;
 
+    /**
+     * 人机交互节点
+     */
+    private Set<String> interruptNodes = new HashSet<>();
+
     public WfState(User user, List<NodeIOData> input, String uuid) {
         this.input = input;
         this.user = user;
@@ -118,5 +123,9 @@ public class WfState {
                 .filter(item -> item.getNodeId().equals(wfNode.getId()))
                 .findFirst()
                 .orElse(null);
+    }
+
+    public void addInterruptNode(String nodeUuid) {
+        this.interruptNodes.add(nodeUuid);
     }
 }

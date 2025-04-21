@@ -54,6 +54,7 @@ public enum ErrorEnum {
     A_WF_RUNTIME_NOT_FOUND("A00045", "工作流运行时数据找不到"),
     A_SEARCH_QUERY_IS_EMPTY("A00046", "搜索内容不能为空"),
     A_WF_COMPONENT_NOT_FOUND("A00047", "工作流基础组件找不到"),
+    A_WF_RESUME_FAIL("A00048", "工作流恢复执行时失败"),
     B_UNCAUGHT_ERROR("B0001", "未捕捉异常"),
     B_COMMON_ERROR("B0002", "业务出错"),
     B_GLOBAL_ERROR("B0003", "全局异常"),

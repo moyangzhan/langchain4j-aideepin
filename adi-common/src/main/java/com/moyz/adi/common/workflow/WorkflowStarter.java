@@ -2,6 +2,7 @@ package com.moyz.adi.common.workflow;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.entity.*;
+import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.service.*;
 import jakarta.annotation.Resource;
@@ -13,8 +14,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
-import static com.moyz.adi.common.enums.ErrorEnum.A_WF_DISABLED;
-import static com.moyz.adi.common.enums.ErrorEnum.A_WF_NOT_FOUND;
+import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 @Slf4j
 @Component
@@ -83,6 +83,16 @@ public class WorkflowStarter {
                 workflowRuntimeService,
                 workflowRuntimeNodeService);
         workflowEngine.run(user, userInputs, sseEmitter);
+    }
+
+    @Async
+    public void resumeFlow(String runtimeUuid, String userInput) {
+        WorkflowEngine workflowEngine = InterruptedFlow.RUNTIME_TO_GRAPH.get(runtimeUuid);
+        if (null == workflowEngine) {
+            log.error("工作流恢复执行时失败,runtime:{}", runtimeUuid);
+            throw new BaseException(A_WF_RESUME_FAIL);
+        }
+        workflowEngine.resume(userInput);
     }
 
 }
