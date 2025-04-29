@@ -286,6 +286,7 @@ public class AdiConstant {
     public static class WorkflowConstant {
         public static final String DEFAULT_INPUT_PARAM_NAME = "input";
         public static final String DEFAULT_OUTPUT_PARAM_NAME = "output";
+        public static final String DEFAULT_ERROR_OUTPUT_PARAM_NAME = "error_msg";
         public static final String HUMAN_FEEDBACK_KEY = "human_feedback";
         public static final int NODE_PROCESS_STATUS_READY = 1;
         public static final int NODE_PROCESS_STATUS_DOING = 2;
@@ -301,5 +302,8 @@ public class AdiConstant {
         public static final int WORKFLOW_NODE_PROCESS_TYPE_NORMAL = 1;
         public static final int WORKFLOW_NODE_PROCESS_TYPE_CONDITIONAL = 2;
         public static final int WORKFLOW_NODE_PROCESS_TYPE_PARALLEL = 3;
+
+        public static final int MAIL_SENDER_TYPE_SYS = 1;
+        public static final int MAIL_SENDER_TYPE_CUSTOM = 2;
     }
 }

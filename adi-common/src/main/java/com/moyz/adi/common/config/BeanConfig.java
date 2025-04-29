@@ -13,7 +13,6 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.moyz.adi.common.base.SearchEngineRespTypeHandler;
 import com.moyz.adi.common.base.UUIDTypeHandler;
 import com.moyz.adi.common.dto.SearchEngineResp;
-import com.moyz.adi.common.rag.ApacheAgeGraphStore;
 import com.moyz.adi.common.rag.EmbeddingRAG;
 import com.moyz.adi.common.rag.GraphRAG;
 import com.moyz.adi.common.rag.GraphStore;
@@ -21,10 +20,8 @@ import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.pgvector.PGvector;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.session.SqlSessionFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -34,25 +31,15 @@ import org.springframework.http.client.BufferingClientHttpRequestFactory;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.springframework.web.client.RestTemplate;
 
 import javax.sql.DataSource;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Slf4j
 @Configuration
 public class BeanConfig {
-
-    @Value("${spring.datasource.url}")
-    private String dataBaseUrl;
-
-    @Value("${spring.datasource.username}")
-    private String dataBaseUserName;
-
-    @Value("${spring.datasource.password}")
-    private String dataBasePassword;
 
     @Bean
     public RestTemplate restTemplate() {
@@ -154,4 +141,9 @@ public class BeanConfig {
 //        ragService.init();
 //        return ragService;
 //    }
+
+    @Bean(name = "beanValidator")
+    public LocalValidatorFactoryBean validator() {
+        return new LocalValidatorFactoryBean();
+    }
 }

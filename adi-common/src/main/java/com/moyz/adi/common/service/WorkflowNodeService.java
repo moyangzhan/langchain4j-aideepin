@@ -12,11 +12,14 @@ import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.enums.WfIODataTypeEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.WorkflowNodeMapper;
+import com.moyz.adi.common.util.AesUtil;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.MPPageUtil;
 import com.moyz.adi.common.util.UuidUtil;
+import com.moyz.adi.common.workflow.WfComponentNameEnum;
 import com.moyz.adi.common.workflow.WfNodeInputConfig;
 import com.moyz.adi.common.workflow.def.WfNodeIOText;
+import com.moyz.adi.common.workflow.node.mailsender.MailSendNodeConfig;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -48,6 +51,7 @@ public class WorkflowNodeService extends ServiceImpl<WorkflowNodeMapper, Workflo
                 .eq(WorkflowNode::getWorkflowId, workflowId)
                 .eq(WorkflowNode::getIsDeleted, false)
                 .list();
+        workflowNodeList.forEach(this::checkAndDecrypt);
         return MPPageUtil.convertToList(workflowNodeList, WfNodeDto.class, (source, target) -> {
             target.setInputConfig((ObjectNode) JsonUtil.classToJsonNode(source.getInputConfig()));
             return target;
@@ -55,19 +59,23 @@ public class WorkflowNodeService extends ServiceImpl<WorkflowNodeMapper, Workflo
     }
 
     public WorkflowNode getByUuid(long workflowId, String uuid) {
-        return ChainWrappers.lambdaQueryChain(baseMapper)
+        WorkflowNode node = ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(WorkflowNode::getWorkflowId, workflowId)
                 .eq(WorkflowNode::getUuid, uuid)
                 .eq(WorkflowNode::getIsDeleted, false)
                 .last("limit 1")
                 .one();
+        checkAndDecrypt(node);
+        return node;
     }
 
     public List<WorkflowNode> listByWorkflowId(Long workflowId) {
-        return ChainWrappers.lambdaQueryChain(baseMapper)
+        List<WorkflowNode> list = ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(WorkflowNode::getWorkflowId, workflowId)
                 .eq(WorkflowNode::getIsDeleted, false)
                 .list();
+        list.forEach(this::checkAndDecrypt);
+        return list;
     }
 
     public List<WorkflowNode> copyByWorkflowId(long workflowId, long targetWorkflowId) {
@@ -99,7 +107,7 @@ public class WorkflowNodeService extends ServiceImpl<WorkflowNodeMapper, Workflo
             BeanUtils.copyProperties(node, newOrUpdate, "inputConfig");
             newOrUpdate.setInputConfig(NodeInputConfigTypeHandler.createNodeInputConfig(node.getInputConfig()));
             newOrUpdate.setWorkflowId(workflowId);
-
+            checkAndEncrypt(newOrUpdate);
             WorkflowNode old = self.getByUuid(workflowId, node.getUuid());
             if (null != old) {
                 if (!old.getWorkflowId().equals(node.getWorkflowId())) {
@@ -113,6 +121,52 @@ public class WorkflowNodeService extends ServiceImpl<WorkflowNodeMapper, Workflo
                 newOrUpdate.setId(null);
             }
             self.saveOrUpdate(newOrUpdate);
+        }
+    }
+
+    private void checkAndEncrypt(WorkflowNode workflowNode) {
+        WorkflowComponent component = workflowComponentService.getAllEnable()
+                .stream()
+                .filter(item -> item.getId().equals(workflowNode.getWorkflowComponentId()))
+                .findFirst()
+                .orElse(null);
+        if (null == component) {
+            log.error("节点不存在,uuid:{},title:{}", workflowNode.getUuid(), workflowNode.getTitle());
+            throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
+        }
+        if (component.getName().equals(WfComponentNameEnum.MAIL_SEND.getName())) {
+            MailSendNodeConfig mailSendNodeConfig = JsonUtil.fromJson(workflowNode.getNodeConfig(), MailSendNodeConfig.class);
+            if (null != mailSendNodeConfig && null != mailSendNodeConfig.getSender() && null != mailSendNodeConfig.getSender().getPassword()) {
+                String password = mailSendNodeConfig.getSender().getPassword();
+                String encrypt = AesUtil.encrypt(password);
+                mailSendNodeConfig.getSender().setPassword(encrypt);
+                workflowNode.setNodeConfig((ObjectNode) JsonUtil.classToJsonNode(mailSendNodeConfig));
+            }
+        }
+    }
+
+    private void checkAndDecrypt(WorkflowNode workflowNode) {
+        if(null == workflowNode){
+            log.warn("节点不存在");
+            return;
+        }
+        WorkflowComponent component = workflowComponentService.getAllEnable()
+                .stream()
+                .filter(item -> item.getId().equals(workflowNode.getWorkflowComponentId()))
+                .findFirst()
+                .orElse(null);
+        if (null == component) {
+            log.error("节点不存在,uuid:{},title:{}", workflowNode.getUuid(), workflowNode.getTitle());
+            throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
+        }
+        if (component.getName().equals(WfComponentNameEnum.MAIL_SEND.getName())) {
+            MailSendNodeConfig mailSendNodeConfig = JsonUtil.fromJson(workflowNode.getNodeConfig(), MailSendNodeConfig.class);
+            if (null != mailSendNodeConfig && null != mailSendNodeConfig.getSender() && null != mailSendNodeConfig.getSender().getPassword()) {
+                String password = mailSendNodeConfig.getSender().getPassword();
+                String decrypt = AesUtil.decrypt(password);
+                mailSendNodeConfig.getSender().setPassword(decrypt);
+                workflowNode.setNodeConfig((ObjectNode) JsonUtil.classToJsonNode(mailSendNodeConfig));
+            }
         }
     }
 

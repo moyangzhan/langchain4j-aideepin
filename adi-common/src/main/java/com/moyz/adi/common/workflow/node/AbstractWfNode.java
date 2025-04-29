@@ -1,10 +1,13 @@
 package com.moyz.adi.common.workflow.node;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.entity.WorkflowComponent;
 import com.moyz.adi.common.entity.WorkflowNode;
 import com.moyz.adi.common.enums.WfIODataTypeEnum;
+import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.CollectionUtil;
 import com.moyz.adi.common.util.JsonUtil;
+import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.workflow.NodeProcessResult;
 import com.moyz.adi.common.workflow.WfNodeInputConfig;
 import com.moyz.adi.common.workflow.WfNodeState;
@@ -12,19 +15,27 @@ import com.moyz.adi.common.workflow.WfState;
 import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.def.WfNodeIO;
 import com.moyz.adi.common.workflow.def.WfNodeParamRef;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.WorkflowConstant.*;
+import static com.moyz.adi.common.enums.ErrorEnum.A_WF_NODE_CONFIG_ERROR;
+import static com.moyz.adi.common.enums.ErrorEnum.A_WF_NODE_CONFIG_NOT_FOUND;
 
 /**
  * 节点实例-运行时
@@ -182,6 +193,36 @@ public abstract class AbstractWfNode {
             firstInputText = state.getInputs().get(0).valueToString();
         }
         return firstInputText;
+    }
+
+    protected <T> T checkAndGetConfig(Class<T> clazz) {
+        ObjectNode configObj = node.getNodeConfig();
+        if (configObj.isEmpty()) {
+            log.error("node config is empty,node uuid:{}", state.getUuid());
+            throw new BaseException(A_WF_NODE_CONFIG_NOT_FOUND);
+        }
+        log.info("node config:{}", configObj);
+        T nodeConfig = JsonUtil.fromJson(configObj, clazz);
+        if (null == nodeConfig) {
+            log.warn("找不到节点的配置,node uuid:{}", state.getUuid());
+            throw new BaseException(A_WF_NODE_CONFIG_ERROR);
+        }
+        boolean configValid = true;
+        try {
+            Set<ConstraintViolation<T>> violations = SpringUtil.getBean("beanValidator", LocalValidatorFactoryBean.class).validate(nodeConfig);
+            for (ConstraintViolation<T> violation : violations) {
+                log.error(violation.getMessage());
+                configValid = false;
+            }
+        } catch (Exception e) {
+            log.error("节点配置校验失败,node uuid:{},error:{}", state.getUuid(), e.getMessage());
+            configValid = false;
+        }
+        if (!configValid) {
+            log.warn("节点配置错误,node uuid:{}", state.getUuid());
+            throw new BaseException(A_WF_NODE_CONFIG_ERROR);
+        }
+        return nodeConfig;
     }
 
 }

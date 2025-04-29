@@ -10,9 +10,11 @@ import com.moyz.adi.common.workflow.node.dalle3.Dalle3Node;
 import com.moyz.adi.common.workflow.node.documentextractor.DocumentExtractorNode;
 import com.moyz.adi.common.workflow.node.faqextractor.FaqExtractorNode;
 import com.moyz.adi.common.workflow.node.google.GoogleNode;
+import com.moyz.adi.common.workflow.node.httprequest.HttpRequestNode;
 import com.moyz.adi.common.workflow.node.humanfeedback.HumanFeedbackNode;
 import com.moyz.adi.common.workflow.node.keywordextractor.KeywordExtractorNode;
 import com.moyz.adi.common.workflow.node.knowledgeretrieval.KnowledgeRetrievalNode;
+import com.moyz.adi.common.workflow.node.mailsender.MailSendNode;
 import com.moyz.adi.common.workflow.node.start.StartNode;
 import com.moyz.adi.common.workflow.node.switcher.SwitcherNode;
 import com.moyz.adi.common.workflow.node.template.TemplateNode;
@@ -60,6 +62,12 @@ public class WfNodeFactory {
                 break;
             case HUMAN_FEEDBACK:
                 wfNode = new HumanFeedbackNode(wfComponent, nodeDefinition, wfState, nodeState);
+                break;
+            case MAIL_SEND:
+                wfNode = new MailSendNode(wfComponent, nodeDefinition, wfState, nodeState);
+                break;
+            case HTTP_REQUEST:
+                wfNode = new HttpRequestNode(wfComponent, nodeDefinition, wfState, nodeState);
                 break;
             case END:
                 wfNode = new EndNode(wfComponent, nodeDefinition, wfState, nodeState);

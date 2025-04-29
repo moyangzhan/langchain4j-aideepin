@@ -963,6 +963,10 @@ insert into adi_workflow_component(uuid, name, title, remark, display_order, is_
 values (replace(gen_random_uuid()::text, '-', ''), 'Tongyiwanx', '通义万相-画图', '调用文生图模型生成图片', 12, true);
 insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'HumanFeedback', '人机交互', '中断执行中的流程并等待用户的输入，用户输入后继续执行后续流程', 10, true);
+insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'MailSend', '邮件发送', '发送邮件到指定邮箱', 10, true);
+insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'HttpRequest', 'Http请求', '通过Http协议发送请求，可将其他组件的输出作为参数，也可设置常量作为参数。', 10, true);
 -- 工作流示例
 insert into adi_workflow(uuid, title, user_id, is_public, is_enable)
 values ('c40cfc1792264130b1c1f82d1448648f', '中文转英文', 1, true, true);

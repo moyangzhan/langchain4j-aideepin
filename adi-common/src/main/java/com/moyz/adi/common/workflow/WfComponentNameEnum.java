@@ -32,7 +32,11 @@ public enum WfComponentNameEnum {
 
     GOOGLE_SEARCH("Google"),
 
-    HUMAN_FEEDBACK("HumanFeedback");
+    HUMAN_FEEDBACK("HumanFeedback"),
+
+    MAIL_SEND("MailSend"),
+
+    HTTP_REQUEST("HttpRequest");
 
     private final String name;
 

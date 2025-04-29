@@ -3,6 +3,7 @@ package com.moyz.adi.common.service;
 import com.moyz.adi.common.file.AliyunOssFileHelper;
 import com.moyz.adi.common.file.AliyunOssFileOperator;
 import com.moyz.adi.common.file.LocalFileOperator;
+import com.moyz.adi.common.util.AesUtil;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -47,14 +48,22 @@ public class Initializer {
     @Resource
     private AliyunOssFileHelper aliyunOssFileHelper;
 
+    @Value("${adi.encrypt.aes-key}")
+    private String aesKey;
+
     /**
      * 应用初始化
      */
     @PostConstruct
     public void init() {
+        if (aesKey.equals("Ap9da0CopbjiKGc1")) {
+            throw new RuntimeException("不能使用默认的AES key，请设置属于你自己的Key，AES相关的加解密都会用到该key，设置路径: application.yml => adi.encrypt.aes-key");
+        }
         sysConfigService.loadAndCache();
         aiModelService.init();
         checkAndInitFileOperator();
+
+        AesUtil.AES_KEY = aesKey;
     }
 
     /**

@@ -63,6 +63,10 @@ adi:
     enable: false
     host: 127.0.0.1
     http-port: 1087
+  encrypt:
+    # 数据库敏感字段加密的密钥，不要泄露
+    # 项目首次编译时改成自己的密钥(长度为16的字符串如: Ap9da0CopbjiKGc1)
+    aes-key: Ap9da0CopbjiKGc1
 
 local:
   files: /data/aideepin/files/

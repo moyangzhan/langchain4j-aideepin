@@ -1,6 +1,5 @@
 package com.moyz.adi.common.workflow.node.classifier;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.entity.WorkflowComponent;
 import com.moyz.adi.common.entity.WorkflowNode;
 import com.moyz.adi.common.exception.BaseException;
@@ -13,7 +12,6 @@ import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.data.NodeIODataTextContent;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
@@ -35,15 +33,7 @@ public class ClassifierNode extends AbstractWfNode {
 
     @Override
     protected NodeProcessResult onProcess() {
-        ObjectNode nodeConfigObj = node.getNodeConfig();
-        if (nodeConfigObj.isEmpty()) {
-            throw new BaseException(A_WF_NODE_CONFIG_NOT_FOUND);
-        }
-        ClassifierNodeConfig nodeConfig = JsonUtil.fromJson(nodeConfigObj, ClassifierNodeConfig.class);
-        if (null == nodeConfig || CollectionUtils.isEmpty(nodeConfig.getCategories())) {
-            log.warn("找不到问题分类器的配置,uuid:{},title:{}", node.getUuid(), node.getTitle());
-            throw new BaseException(A_WF_NODE_CONFIG_ERROR);
-        }
+        ClassifierNodeConfig nodeConfig = checkAndGetConfig(ClassifierNodeConfig.class);
         if (nodeConfig.getCategories().size() < 2) {
             log.warn("问题分类器设置的分类过少,uuid:{},title:{}", node.getUuid(), node.getTitle());
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
