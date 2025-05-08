@@ -16,10 +16,7 @@ import com.moyz.adi.common.file.FileOperatorContext;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
-import com.moyz.adi.common.rag.AdiEmbeddingStoreContentRetriever;
-import com.moyz.adi.common.rag.CompositeRAG;
-import com.moyz.adi.common.rag.EmbeddingRAG;
-import com.moyz.adi.common.rag.GraphStoreContentRetriever;
+import com.moyz.adi.common.rag.*;
 import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.vo.AssistantChatParams;
 import com.moyz.adi.common.vo.LLMBuilderProperties;
@@ -91,7 +88,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
     public KnowledgeBase saveOrUpdate(KbEditReq kbEditReq) {
         KnowledgeBase knowledgeBase = new KnowledgeBase();
-        BeanUtils.copyProperties(kbEditReq, knowledgeBase, "id", "uuid");
+        BeanUtils.copyProperties(kbEditReq, knowledgeBase, "id", "uuid", "ingestTokenizer", "ingestEmbeddingModel");
         if (null != kbEditReq.getIngestModelId() && kbEditReq.getIngestModelId() > 0) {
             knowledgeBase.setIngestModelName(aiModelService.getByIdOrThrow(kbEditReq.getIngestModelId()).getName());
         } else {
@@ -100,6 +97,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 knowledgeBase.setIngestModelName(llmService.getAiModel().getName());
                 knowledgeBase.setIngestModelId(llmService.getAiModel().getId());
             });
+        }
+        if (StringUtils.isNotBlank(kbEditReq.getIngestTokenEstimator()) && AdiConstant.TokenEstimator.ALL.contains(kbEditReq.getIngestTokenEstimator())) {
+            knowledgeBase.setIngestTokenEstimator(kbEditReq.getIngestTokenEstimator());
         }
         if (null == kbEditReq.getId() || kbEditReq.getId() < 1) {
             User user = ThreadContext.getCurrentUser();
@@ -366,6 +366,8 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         KnowledgeBase knowledgeBase = getOrThrow(qaRecord.getKbUuid());
         AiModel aiModel = aiModelService.getByIdOrThrow(qaRecord.getAiModelId());
 
+        RAGThreadLocal.setTokenEstimator(knowledgeBase.getIngestTokenEstimator());
+
         Map<String, String> metadataCond = Map.of(AdiConstant.MetadataKey.KB_UUID, qaRecord.getKbUuid());
         int maxInputTokens = aiModel.getMaxInputTokens();
         int maxResults = knowledgeBase.getRetrieveMaxResults();
@@ -395,16 +397,20 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             log.info("用户问题过长，无需再召回文档，严格模式下直接返回异常提示,宽松模式下接着请求LLM");
             if (Boolean.TRUE.equals(knowledgeBase.getIsStrict())) {
                 sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "提问内容过长，最多不超过 " + maxInputTokens + " tokens");
+                RAGThreadLocal.clearTokenEstimator();
             } else {
-                sseEmitterHelper.call(sseAskParams, true, (response, questionMeta, answerMeta) -> updateQaRecord(
-                        UpdateQaParams.builder()
-                                .user(user)
-                                .qaRecord(qaRecord)
-                                .retrievers(null)
-                                .sseAskParams(sseAskParams)
-                                .response(response)
-                                .isTokenFree(aiModel.getIsFree())
-                                .build())
+                sseEmitterHelper.call(sseAskParams, true, (response, questionMeta, answerMeta) -> {
+                            updateQaRecord(
+                                    UpdateQaParams.builder()
+                                            .user(user)
+                                            .qaRecord(qaRecord)
+                                            .retrievers(null)
+                                            .sseAskParams(sseAskParams)
+                                            .response(response)
+                                            .isTokenFree(aiModel.getIsFree())
+                                            .build());
+                            RAGThreadLocal.clearTokenEstimator();
+                        }
                 );
             }
         } else {
@@ -415,15 +421,18 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                             .build()
                     , qaRecordUuid);
             List<ContentRetriever> retrievers = compositeRAG.createRetriever(chatLanguageModel, metadataCond, maxResults, knowledgeBase.getRetrieveMinScore(), knowledgeBase.getIsStrict());
-            compositeRAG.ragChat(retrievers, sseAskParams, (response, promptMeta, answerMeta) -> updateQaRecord(
-                    UpdateQaParams.builder()
-                            .user(user)
-                            .qaRecord(qaRecord)
-                            .retrievers(retrievers)
-                            .sseAskParams(sseAskParams)
-                            .response(response)
-                            .isTokenFree(aiModel.getIsFree())
-                            .build())
+            compositeRAG.ragChat(retrievers, sseAskParams, (response, promptMeta, answerMeta) -> {
+                        updateQaRecord(
+                                UpdateQaParams.builder()
+                                        .user(user)
+                                        .qaRecord(qaRecord)
+                                        .retrievers(retrievers)
+                                        .sseAskParams(sseAskParams)
+                                        .response(response)
+                                        .isTokenFree(aiModel.getIsFree())
+                                        .build());
+                        RAGThreadLocal.clearTokenEstimator();
+                    }
             );
         }
     }

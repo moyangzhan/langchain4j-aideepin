@@ -165,7 +165,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                     .set(KnowledgeBaseItem::getEmbeddingStatusChangeTime, LocalDateTime.now())
                     .set(KnowledgeBaseItem::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
                     .update();
-            compositeRAG.getEmbeddingRAGService().ingest(document, knowledgeBase.getIngestMaxOverlap(), null);
+            compositeRAG.getEmbeddingRAGService().ingest(document, knowledgeBase.getIngestMaxOverlap(), knowledgeBase.getIngestTokenEstimator(), null);
             ChainWrappers.lambdaUpdateChain(baseMapper)
                     .eq(KnowledgeBaseItem::getId, kbItem.getId())
                     .set(KnowledgeBaseItem::getEmbeddingStatus, EmbeddingStatusEnum.DONE)
@@ -201,6 +201,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                             .user(user)
                             .document(document)
                             .overlap(knowledgeBase.getIngestMaxOverlap())
+                            .tokenEstimator(knowledgeBase.getIngestTokenEstimator())
                             .chatLanguageModel(chatLanguageModel)
                             .identifyColumns(List.of(AdiConstant.MetadataKey.KB_UUID))
                             .appendColumns(List.of(AdiConstant.MetadataKey.KB_ITEM_UUID))

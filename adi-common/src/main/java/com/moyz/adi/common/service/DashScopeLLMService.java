@@ -11,6 +11,8 @@ import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.SseAskParams;
 import dev.langchain4j.community.model.dashscope.QwenChatModel;
 import dev.langchain4j.community.model.dashscope.QwenStreamingChatModel;
+import dev.langchain4j.community.model.dashscope.QwenTokenizer;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import lombok.extern.slf4j.Slf4j;
@@ -66,6 +68,11 @@ public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
                 .modelName(aiModel.getName())
                 .temperature(temperature.floatValue())
                 .build();
+    }
+
+    @Override
+    public Tokenizer getTokenEstimator() {
+        return new QwenTokenizer(modelPlatformSetting.getApiKey(), aiModel.getName());
     }
 
     @Override

@@ -14,6 +14,7 @@ public class GraphIngestParams {
     private User user;
     private Document document;
     private int overlap;
+    private String tokenEstimator;
     private ChatLanguageModel chatLanguageModel;
     private List<String> identifyColumns;
     private List<String> appendColumns;

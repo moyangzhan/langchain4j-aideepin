@@ -5,6 +5,7 @@ import cn.hutool.core.io.FileUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.moyz.adi.common.base.ThreadContext;
+import com.moyz.adi.common.config.AdiProperties;
 import com.moyz.adi.common.cosntant.RedisKeyConstant;
 import com.moyz.adi.common.dto.*;
 import com.moyz.adi.common.entity.*;
@@ -26,7 +27,6 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
@@ -53,20 +53,8 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
     @Lazy
     private DrawService self;
 
-    @Value("${local.images}")
-    private String imagePath;
-
-    @Value("${local.watermark-images}")
-    private String watermarkImagesPath;
-
-    @Value("${local.thumbnails}")
-    private String thumbnailsPath;
-
-    @Value("${local.watermark-thumbnails}")
-    private String watermarkThumbnailsPath;
-
-    @Value("${adi.host}")
-    private String adiHost;
+    @Resource
+    private AdiProperties adiProperties;
 
     @Resource
     private QuotaHelper quotaHelper;
@@ -649,7 +637,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
             String markImagePath = fileService.getWatermarkImagesPath(adiFile);
             if (!FileUtil.exist(markImagePath)) {
                 Img.from(FileUtil.file(adiFile.getPath())).setPositionBaseCentre(false).pressText(
-                        ThreadContext.getCurrentUser().getName() + "|" + adiHost, Color.WHITE,
+                        ThreadContext.getCurrentUser().getName() + "|" + adiProperties.getHost(), Color.WHITE,
                         null,
                         0,
                         0,

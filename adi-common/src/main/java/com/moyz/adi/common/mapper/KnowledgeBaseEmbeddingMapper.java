@@ -11,9 +11,9 @@ import java.util.List;
 @Mapper
 public interface KnowledgeBaseEmbeddingMapper extends BaseMapper<KnowledgeBaseEmbedding> {
 
-    Page<KnowledgeBaseEmbedding> selectByItemUuid(Page<KnowledgeBaseEmbedding> page, @Param("kbItemUuid") String uuid);
+    Page<KnowledgeBaseEmbedding> selectByItemUuid(Page<KnowledgeBaseEmbedding> page, @Param("kbItemUuid") String uuid, @Param("tableSuffix") String tableSuffix);
 
-    boolean deleteByItemUuid(@Param("kbItemUuid") String uuid);
+    boolean deleteByItemUuid(@Param("kbItemUuid") String uuid, @Param("tableSuffix") String tableSuffix);
 
-    Integer countByKbUuid(@Param("kbUuid") String kbUuid);
+    Integer countByKbUuid(@Param("kbUuid") String kbUuid, @Param("tableSuffix") String tableSuffix);
 }

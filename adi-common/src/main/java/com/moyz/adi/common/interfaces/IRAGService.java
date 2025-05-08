@@ -7,7 +7,7 @@ import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import java.util.Map;
 
 public interface IRAGService {
-    void ingest(Document document, int overlap, ChatLanguageModel chatLanguageModel);
+    void ingest(Document document, int overlap, String tokenizer, ChatLanguageModel chatLanguageModel);
 
     ContentRetriever createRetriever(Map<String, String> metadataCond, int maxResults, double minScore, boolean breakIfSearchMissed);
 }

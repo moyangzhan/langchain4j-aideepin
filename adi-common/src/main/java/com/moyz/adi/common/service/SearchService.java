@@ -213,7 +213,7 @@ public class SearchService {
                         metadata.put(AdiConstant.MetadataKey.ENGINE_NAME, engineName);
                         metadata.put(AdiConstant.MetadataKey.SEARCH_UUID, searchUuid);
                         Document document = new DefaultDocument(content, metadata);
-                        searchRagService.ingest(document, 0, null);
+                        searchRagService.ingest(document, 0, "", null);
                     }
                 } catch (Exception e) {
                     log.error("Detail search error,uuid:{}", searchUuid, e);

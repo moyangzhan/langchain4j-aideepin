@@ -68,6 +68,10 @@ public class KnowledgeBase extends BaseEntity {
     @TableField("ingest_model_id")
     private Long ingestModelId;
 
+    @Schema(title = "token数量估计器,默认使用OpenAiTokenizer")
+    @TableField("ingest_token_estimator")
+    private String ingestTokenEstimator;
+
     @Schema(title = "文档召回最大数量")
     @TableField("retrieve_max_results")
     private Integer retrieveMaxResults;

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.moyz.adi.common.dto.KbItemEmbeddingDto;
 import com.moyz.adi.common.entity.KnowledgeBaseEmbedding;
 import com.moyz.adi.common.mapper.KnowledgeBaseEmbeddingMapper;
+import com.moyz.adi.common.util.AdiPropertiesUtil;
 import com.moyz.adi.common.util.MPPageUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -32,7 +33,7 @@ public class KnowledgeBaseEmbeddingService extends ServiceImpl<KnowledgeBaseEmbe
 
     @Override
     public Page<KbItemEmbeddingDto> listByItemUuid(String kbItemUuid, int currentPage, int pageSize) {
-        Page<KnowledgeBaseEmbedding> sourcePage = baseMapper.selectByItemUuid(new Page<>(currentPage, pageSize), kbItemUuid);
+        Page<KnowledgeBaseEmbedding> sourcePage = baseMapper.selectByItemUuid(new Page<>(currentPage, pageSize), kbItemUuid, AdiPropertiesUtil.EMBEDDING_TABLE_SUFFIX);
         Page<KbItemEmbeddingDto> result = new Page<>();
         MPPageUtil.convertToPage(sourcePage, result, KbItemEmbeddingDto.class, (source, target) -> {
             target.setEmbedding(source.getEmbedding().toArray());
@@ -49,10 +50,10 @@ public class KnowledgeBaseEmbeddingService extends ServiceImpl<KnowledgeBaseEmbe
      */
     @Override
     public boolean deleteByItemUuid(String kbItemUuid) {
-        return baseMapper.deleteByItemUuid(kbItemUuid);
+        return baseMapper.deleteByItemUuid(kbItemUuid, AdiPropertiesUtil.EMBEDDING_TABLE_SUFFIX);
     }
 
     public Integer countByKbUuid(String kbUuid) {
-        return baseMapper.countByKbUuid(kbUuid);
+        return baseMapper.countByKbUuid(kbUuid, AdiPropertiesUtil.EMBEDDING_TABLE_SUFFIX);
     }
 }

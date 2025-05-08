@@ -124,6 +124,8 @@ CREATE TABLE adi_ai_model
     max_input_tokens  int           default 0                 not null,
     max_output_tokens int           default 0                 not null,
     input_types       varchar(100)  default 'text'            not null,
+    properties        jsonb         default '{}'              not null,
+    is_reasoner       boolean       default false             not null,
     is_free           boolean       default false             not null,
     is_enable         boolean       default false             not null,
     create_time       timestamp     default CURRENT_TIMESTAMP not null,
@@ -133,11 +135,13 @@ CREATE TABLE adi_ai_model
 
 COMMENT ON TABLE adi_ai_model IS 'AI模型 | AI model';
 COMMENT ON COLUMN adi_ai_model.type IS '模型类型(以输出类型或使用目的做判断，如dalle2可文本和图像输入，但使用方关注的是输出的图片，所以属于image类型),eg: text,image,embedding,rerank | Model type (judged by output type or usage purpose, e.g., dalle2 can input text and image, but users focus on the output image, so it belongs to the image type), e.g., text, image, embedding, rerank';
-COMMENT ON COLUMN adi_ai_model.name IS '模型名称 | Model name';
+COMMENT ON COLUMN adi_ai_model.name IS '模型名称，传到接口中请求响应的参数名，需跟模型提供方指定的模型名称一模一样 | Model name, the parameter name passed to the interface for requesting a response, must be exactly the same as the model name specified by the model provider';
+COMMENT ON COLUMN adi_ai_model.title IS '模型标题，可读性更高的名称，如: openai-gpt3 | Model title, a more readable name, e.g., openai-gpt3';
 COMMENT ON COLUMN adi_ai_model.remark IS '备注 | Additional remarks about the AI model';
 COMMENT ON COLUMN adi_ai_model.platform IS '平台 | Platform, e.g., openai, dashscope, qianfan, ollama';
 COMMENT ON COLUMN adi_ai_model.context_window IS '上下文窗口 | LLM context window';
 COMMENT ON COLUMN adi_ai_model.input_types IS '输入类型 | Input types, e.g., text, image, audio, video';
+COMMENT ON COLUMN adi_ai_model.is_reasoner IS 'true: 推理模型如deepseek-r1, false: 非推理模型如deepseek-v3 | true: Reasoning model, false: Non-reasoning model';
 COMMENT ON COLUMN adi_ai_model.is_enable IS '是否启用 | True: Normal usage, false: Not available';
 COMMENT ON COLUMN adi_ai_model.is_free IS '是否免费 | Is free, true: free, false: paid';
 COMMENT ON COLUMN adi_ai_model.create_time IS '创建时间 | Timestamp of record creation';
@@ -431,28 +435,30 @@ EXECUTE PROCEDURE update_modified_column();
 
 create table adi_knowledge_base
 (
-    id                    bigserial primary key,
-    uuid                  varchar(32)   default ''                not null,
-    title                 varchar(250)  default ''                not null,
-    remark                text          default ''                not null,
-    is_public             boolean       default false             not null,
-    is_strict             boolean       default true              not null,
-    ingest_max_overlap    int           default 0                 not null,
-    ingest_model_name     varchar(45)   default ''                not null,
-    ingest_model_id       bigint        default 0                 not null,
-    retrieve_max_results  int           default 3                 not null,
-    retrieve_min_score    numeric(2, 1) default 0.6               not null,
-    query_llm_temperature numeric(2, 1) default 0.7               not null,
-    query_system_message  varchar(1000) default ''                not null,
-    owner_id              bigint        default 0                 not null,
-    owner_uuid            varchar(32)   default ''                not null,
-    owner_name            varchar(45)   default ''                not null,
-    star_count            int           default 0                 not null,
-    item_count            int           default 0                 not null,
-    embedding_count       int           default 0                 not null,
-    create_time           timestamp     default CURRENT_TIMESTAMP not null,
-    update_time           timestamp     default CURRENT_TIMESTAMP not null,
-    is_deleted            boolean       default false             not null
+    id                     bigserial primary key,
+    uuid                   varchar(32)   default ''                not null,
+    title                  varchar(250)  default ''                not null,
+    remark                 text          default ''                not null,
+    is_public              boolean       default false             not null,
+    is_strict              boolean       default true              not null,
+    ingest_max_overlap     int           default 0                 not null,
+    ingest_model_name      varchar(45)   default ''                not null,
+    ingest_model_id        bigint        default 0                 not null,
+    ingest_token_estimator varchar(45)   default ''                not null,
+    ingest_embedding_model varchar(45)   default ''                not null,
+    retrieve_max_results   int           default 3                 not null,
+    retrieve_min_score     numeric(2, 1) default 0.6               not null,
+    query_llm_temperature  numeric(2, 1) default 0.7               not null,
+    query_system_message   varchar(1000) default ''                not null,
+    owner_id               bigint        default 0                 not null,
+    owner_uuid             varchar(32)   default ''                not null,
+    owner_name             varchar(45)   default ''                not null,
+    star_count             int           default 0                 not null,
+    item_count             int           default 0                 not null,
+    embedding_count        int           default 0                 not null,
+    create_time            timestamp     default CURRENT_TIMESTAMP not null,
+    update_time            timestamp     default CURRENT_TIMESTAMP not null,
+    is_deleted             boolean       default false             not null
 );
 
 comment on table adi_knowledge_base is '知识库 | Knowledge Base';
@@ -463,6 +469,8 @@ comment on column adi_knowledge_base.is_strict is '是否严格模式,严格模�
 comment on column adi_knowledge_base.ingest_max_overlap is '设置文档切块时重叠的最大数量（按token来计），对完整句子切割时才考虑重叠 | Maximum overlap when chunking documents (measured in tokens), only considered when cutting complete sentences';
 comment on column adi_knowledge_base.ingest_model_name is '索引(图谱化)文档时使用的LLM,不指定时使用第1个可用的LLM | LLM used when indexing (graphing) documents, if not specified, the first available LLM is used';
 comment on column adi_knowledge_base.ingest_model_id is '索引(图谱化)文档时使用的LLM,不指定时使用第1个可用的LLM | LLM ID used when indexing (graphing) documents, if not specified, the first available LLM is used';
+comment on column adi_knowledge_base.ingest_token_estimator is '文档切片时需要用到的token数量估计器,默认使用OpenAiTokenizer | Token count estimator, default is OpenAiTokenizer';
+comment on column adi_knowledge_base.ingest_embedding_model is '对文档向量化时使用的模型,默认使用all-minilm-l6-v2 | Embedding model for document embedding, default is all-minilm-l6-v2';
 comment on column adi_knowledge_base.retrieve_max_results is '设置召回向量最大数量,默认为0,表示由系统根据模型的contentWindow自动调整 | Set the maximum number of recall vectors, default is 0, meaning the system automatically adjusts based on the model''s content window';
 comment on column adi_knowledge_base.retrieve_min_score is '设置向量搜索时命中所需的最低分数,为0表示使用默认 | Set the minimum score required for a hit in vector search, 0 means using the default';
 comment on column adi_knowledge_base.query_llm_temperature is '用户查询时指定LLM响应时的创造性/随机性 | LLM response creativity/randomness specified during user query';
@@ -895,6 +903,14 @@ INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
 VALUES ('dall-e-2', 'DALL-E-2', 'image', 'openai', false);
 INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
 VALUES ('dall-e-3', 'DALL-E-3', 'image', 'openai', false);
+INSERT INTO adi_ai_model (name, title, type, platform, max_input_tokens, properties, is_enable)
+VALUES ('text-embedding-3-small', 'openai-embedding-small', 'embedding', 'openai', 8191, '{
+  "dimension": 1536
+}', false);
+INSERT INTO adi_ai_model (name, title, type, platform, max_input_tokens, properties, is_enable)
+VALUES ('text-embedding-3-large', 'openai-embedding-large', 'embedding', 'openai', 8191, '{
+  "dimension": 3072
+}', false);
 -- https://help.aliyun.com/zh/dashscope/developer-reference/model-introduction?spm=a2c4g.11186623.0.i39
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
 VALUES ('qwen-turbo', '通义千问turbo', 'text', 'dashscope', 8192, 6144, 1536, false);
@@ -909,6 +925,15 @@ VALUES ('wanx2.1-t2i-turbo', '通义万相-文生图', 'image', 'dashscope', fal
 -- 通义万相-切换背景
 INSERT INTO adi_ai_model (name, title, type, platform, input_types, is_enable)
 VALUES ('wanx-background-generation-v2', '通义万相-背景生成', 'image', 'dashscope', 'text,image', false);
+-- 通义千问-向量（可选模型名：text-embedding-v1,text-embedding-v2,text-embedding-v3）
+INSERT INTO adi_ai_model (name, title, type, platform, max_input_tokens, properties, is_enable)
+VALUES ('text-embedding-v1', '通义千问-embedding-v1', 'embedding', 'dashscope', 2048, '{
+  "dimension": 1536
+}', false);
+INSERT INTO adi_ai_model (name, title, type, platform, max_input_tokens, properties, is_enable)
+VALUES ('text-embedding-v3', '通义千问-embedding-v3', 'embedding', 'dashscope', 8192, '{
+  "dimension": 1024
+}', false);
 -- https://console.bce.baidu.com/qianfan/modelcenter/model/buildIn/detail/am-bg7n2rn2gsbb
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_free,
                           is_enable,
@@ -962,11 +987,13 @@ values (replace(gen_random_uuid()::text, '-', ''), 'FaqExtractor', '常见问题
 insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'Tongyiwanx', '通义万相-画图', '调用文生图模型生成图片', 12, true);
 insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
-values (replace(gen_random_uuid()::text, '-', ''), 'HumanFeedback', '人机交互', '中断执行中的流程并等待用户的输入，用户输入后继续执行后续流程', 10, true);
+values (replace(gen_random_uuid()::text, '-', ''), 'HumanFeedback', '人机交互',
+        '中断执行中的流程并等待用户的输入，用户输入后继续执行后续流程', 10, true);
 insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'MailSend', '邮件发送', '发送邮件到指定邮箱', 10, true);
 insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
-values (replace(gen_random_uuid()::text, '-', ''), 'HttpRequest', 'Http请求', '通过Http协议发送请求，可将其他组件的输出作为参数，也可设置常量作为参数。', 10, true);
+values (replace(gen_random_uuid()::text, '-', ''), 'HttpRequest', 'Http请求',
+        '通过Http协议发送请求，可将其他组件的输出作为参数，也可设置常量作为参数。', 10, true);
 -- 工作流示例
 insert into adi_workflow(uuid, title, user_id, is_public, is_enable)
 values ('c40cfc1792264130b1c1f82d1448648f', '中文转英文', 1, true, true);

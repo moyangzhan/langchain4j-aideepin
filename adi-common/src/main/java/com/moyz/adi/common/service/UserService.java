@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.moyz.adi.common.base.ThreadContext;
+import com.moyz.adi.common.config.AdiProperties;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.cosntant.RedisKeyConstant;
 import com.moyz.adi.common.dto.*;
@@ -59,8 +60,8 @@ public class UserService extends ServiceImpl<UserMapper, User> {
     @Resource
     private ConversationService conversationService;
 
-    @Value("${adi.backend-url}")
-    private String backendUrl;
+    @Resource
+    private AdiProperties adiProperties;
 
     @Value("${spring.application.name}")
     private String appName;
@@ -88,7 +89,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         String code = UuidUtil.createShort();
         String key = MessageFormat.format(FIND_MY_PASSWORD, code);
         stringRedisTemplate.opsForValue().set(key, user.getId().toString(), 8, TimeUnit.HOURS);
-        adiMailSender.send(appName + "重置密码", "点击链接将密码重置为" + AdiConstant.DEFAULT_PASSWORD + "，链接(" + AdiConstant.AUTH_ACTIVE_CODE_EXPIRE + "小时内有效):" + backendUrl + "/auth/password/reset?code=" + code, email);
+        adiMailSender.send(appName + "重置密码", "点击链接将密码重置为" + AdiConstant.DEFAULT_PASSWORD + "，链接(" + AdiConstant.AUTH_ACTIVE_CODE_EXPIRE + "小时内有效):" + adiProperties.getBackendUrl() + "/auth/password/reset?code=" + code, email);
     }
 
     /**
@@ -445,7 +446,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         String activeCode = UuidUtil.createShort();
         String activeCodeKey = MessageFormat.format(AUTH_ACTIVE_CODE, activeCode);
         stringRedisTemplate.opsForValue().set(activeCodeKey, email, AdiConstant.AUTH_ACTIVE_CODE_EXPIRE, TimeUnit.HOURS);
-        adiMailSender.send("欢迎注册AIDeepIn", "激活链接(" + AdiConstant.AUTH_ACTIVE_CODE_EXPIRE + "小时内有效):" + backendUrl + "/auth/active?code=" + activeCode, email);
+        adiMailSender.send("欢迎注册AIDeepIn", "激活链接(" + AdiConstant.AUTH_ACTIVE_CODE_EXPIRE + "小时内有效):" + adiProperties.getBackendUrl() + "/auth/active?code=" + activeCode, email);
     }
 
     /**

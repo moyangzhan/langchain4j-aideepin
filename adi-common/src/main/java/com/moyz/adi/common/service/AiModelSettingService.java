@@ -1,5 +1,6 @@
 package com.moyz.adi.common.service;
 
+import com.moyz.adi.common.config.AdiProperties;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.helper.ImageModelContext;
@@ -8,10 +9,10 @@ import com.moyz.adi.common.interfaces.AbstractImageModelService;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
 import com.moyz.adi.common.searchengine.GoogleSearchEngineService;
 import com.moyz.adi.common.searchengine.SearchEngineServiceContext;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.net.InetSocketAddress;
@@ -26,14 +27,8 @@ import static com.moyz.adi.common.util.LocalCache.MODEL_ID_TO_OBJ;
 @Service
 public class AiModelSettingService {
 
-    @Value("${adi.proxy.enable:false}")
-    protected boolean proxyEnable;
-
-    @Value("${adi.proxy.host:0}")
-    protected String proxyHost;
-
-    @Value("${adi.proxy.http-port:0}")
-    protected int proxyHttpPort;
+    @Resource
+    private AdiProperties adiProperties;
 
     private Proxy proxy;
 
@@ -53,8 +48,8 @@ public class AiModelSettingService {
                 MODEL_ID_TO_OBJ.remove(model.getId());
             }
         }
-        if (proxyEnable) {
-            proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyHttpPort));
+        if (adiProperties.getProxy().isEnable()) {
+            proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(adiProperties.getProxy().getHost(), adiProperties.getProxy().getHttpPort()));
         } else {
             proxy = null;
         }

@@ -1,5 +1,6 @@
 package com.moyz.adi.chat.controller;
 
+import com.moyz.adi.common.config.AdiProperties;
 import com.moyz.adi.common.dto.LoginReq;
 import com.moyz.adi.common.dto.LoginResp;
 import com.moyz.adi.common.dto.RegisterReq;
@@ -42,8 +43,8 @@ import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 @RequestMapping("auth")
 public class AuthController {
 
-    @Value("${adi.frontend-url}")
-    private String frontendUrl;
+    @Resource
+    private AdiProperties adiProperties;
 
     @Resource
     private UserService userService;
@@ -72,18 +73,18 @@ public class AuthController {
 
         try {
             userService.active(activeCode);
-            response.sendRedirect(frontendUrl + "/#/active?active=success&msg=" + URLEncoder.encode("激活成功，请登录", Charset.defaultCharset()));
+            response.sendRedirect(adiProperties.getFrontendUrl() + "/#/active?active=success&msg=" + URLEncoder.encode("激活成功，请登录", Charset.defaultCharset()));
         } catch (IOException e) {
             log.error("auth.active1:", e);
             try {
-                response.sendRedirect(frontendUrl + "/#/active?active=fail&msg=" + URLEncoder.encode("激活失败：系统错误，请重新注册或者登录", Charset.defaultCharset()));
+                response.sendRedirect(adiProperties.getFrontendUrl() + "/#/active?active=fail&msg=" + URLEncoder.encode("激活失败：系统错误，请重新注册或者登录", Charset.defaultCharset()));
             } catch (IOException ex) {
                 log.error("auth.active2:", ex);
                 throw new BaseException(B_ACTIVE_USER_ERROR);
             }
         } catch (Exception e) {
             try {
-                response.sendRedirect(frontendUrl + "/#/active?active=fail&msg=" + URLEncoder.encode(e.getMessage(), Charset.defaultCharset()));
+                response.sendRedirect(adiProperties.getFrontendUrl() + "/#/active?active=fail&msg=" + URLEncoder.encode(e.getMessage(), Charset.defaultCharset()));
             } catch (IOException ex) {
                 log.error("auth.active3:", ex);
                 throw new BaseException(B_ACTIVE_USER_ERROR);
@@ -105,7 +106,7 @@ public class AuthController {
     public void resetPassword(@RequestParam @NotBlank String code, HttpServletResponse response) {
         userService.resetPassword(code);
         try {
-            response.sendRedirect(frontendUrl + "/#/active?active=success&msg=" + URLEncoder.encode("密码已经重置", Charset.defaultCharset()));
+            response.sendRedirect(adiProperties.getFrontendUrl() + "/#/active?active=success&msg=" + URLEncoder.encode("密码已经重置", Charset.defaultCharset()));
         } catch (IOException e) {
             log.error("resetPassword:", e);
             throw new BaseException(B_RESET_PASSWORD_ERROR);

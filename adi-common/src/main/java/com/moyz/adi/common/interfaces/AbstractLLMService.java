@@ -10,6 +10,7 @@ import com.moyz.adi.common.vo.*;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.service.TokenStream;
@@ -97,6 +98,8 @@ public abstract class AbstractLLMService<T> {
     public abstract StreamingChatLanguageModel buildStreamingChatLLM(LLMBuilderProperties properties);
 
     protected abstract LLMException parseError(Object error);
+
+    public abstract Tokenizer getTokenEstimator();
 
     /**
      * 普通聊天，将原始的用户问题及历史消息发送给AI

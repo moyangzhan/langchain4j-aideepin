@@ -12,8 +12,6 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel;
-import dev.langchain4j.model.openai.OpenAiChatModelName;
-import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.filter.Filter;
@@ -37,9 +35,9 @@ public class EmbeddingRAG implements IRAGService {
         this.embeddingStore = embeddingStore;
     }
 
-    public void init() {
+    public void init(EmbeddingModel embeddingModel) {
         log.info("initEmbeddingModel");
-        embeddingModel = new AllMiniLmL6V2EmbeddingModel();
+        this.embeddingModel = embeddingModel;
     }
 
     /**
@@ -49,9 +47,9 @@ public class EmbeddingRAG implements IRAGService {
      * @param overlap  重叠token数
      */
     @Override
-    public void ingest(Document document, int overlap, ChatLanguageModel chatLanguageModel) {
-        log.info("EmbeddingRAG ingest");
-        DocumentSplitter documentSplitter = DocumentSplitters.recursive(RAG_MAX_SEGMENT_SIZE_IN_TOKENS, overlap, new OpenAiTokenizer(OpenAiChatModelName.GPT_3_5_TURBO));
+    public void ingest(Document document, int overlap, String tokenEstimator, ChatLanguageModel chatLanguageModel) {
+        log.info("EmbeddingRAG ingest,TokenCountEstimator:{}", tokenEstimator);
+        DocumentSplitter documentSplitter = DocumentSplitters.recursive(RAG_MAX_SEGMENT_SIZE_IN_TOKENS, overlap, TokenEstimatorFactory.create(tokenEstimator));
         EmbeddingStoreIngestor embeddingStoreIngestor = EmbeddingStoreIngestor.builder()
                 .documentSplitter(documentSplitter)
                 .embeddingModel(embeddingModel)

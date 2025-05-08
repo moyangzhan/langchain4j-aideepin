@@ -27,6 +27,7 @@ public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
     private AiModelSettingService aiModelSettingService;
 
     public void init() {
+        log.info("Initializing AI model...");
         List<AiModel> aiModels = ChainWrappers.lambdaQueryChain(baseMapper).eq(AiModel::getIsDeleted, false).list();
         aiModelSettingService.init(aiModels);
     }

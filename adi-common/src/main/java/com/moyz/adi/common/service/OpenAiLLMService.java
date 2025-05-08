@@ -9,10 +9,12 @@ import com.moyz.adi.common.util.OpenAiUtil;
 import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.OpenAiSetting;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.model.openai.OpenAiTokenizer;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -82,6 +84,11 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
             builder.proxy(proxy);
         }
         return builder.build();
+    }
+
+    @Override
+    public Tokenizer getTokenEstimator() {
+        return new OpenAiTokenizer(aiModel.getName());
     }
 
     @Override

@@ -1,19 +1,11 @@
 package com.moyz.adi.common.rag.neo4j;
 
-import static java.lang.String.format;
-import static org.neo4j.cypherdsl.support.schema_name.SchemaNames.sanitize;
-
 import com.aliyun.core.utils.StringUtils;
 import com.moyz.adi.common.vo.GraphContains;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
-import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
-import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
-import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThanOrEqualTo;
-import dev.langchain4j.store.embedding.filter.comparison.IsIn;
-import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
-import dev.langchain4j.store.embedding.filter.comparison.IsLessThanOrEqualTo;
-import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
-import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
+import dev.langchain4j.store.embedding.filter.comparison.*;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
@@ -22,9 +14,13 @@ import java.util.AbstractMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.neo4j.cypherdsl.support.schema_name.SchemaNames.sanitize;
+
 public class Neo4jFilterMapper {
 
     private String alias;
+
+    private AdiNeo4jEmbeddingStore embeddingStore;
 
     public static final String UNSUPPORTED_FILTER_TYPE_ERROR = "Unsupported filter type: ";
 
@@ -49,10 +45,19 @@ public class Neo4jFilterMapper {
         }
     }
 
-    public Neo4jFilterMapper() {
+    /**
+     * For embedding store
+     */
+    public Neo4jFilterMapper(AdiNeo4jEmbeddingStore embeddingStore) {
         this.alias = "n";
+        this.embeddingStore = embeddingStore;
     }
 
+    /**
+     * For graph store
+     *
+     * @param alias alias for the node
+     */
     public Neo4jFilterMapper(String alias) {
         this.alias = StringUtils.isBlank(alias) ? "n" : alias;
     }
@@ -96,20 +101,21 @@ public class Neo4jFilterMapper {
     }
 
     private String getOperation(String key, String operator, Object value) {
+        String completeKey = embeddingStore.getMetadataPrefix() + key;
         // put ($param_N, <value>) entry map
-        final String param = map.put(alias + "_" + key, value);
+        final String param = map.put(alias + "_" + completeKey, value);
 
-        String sanitizedKey = sanitize(key).orElseThrow(() -> {
+        String sanitizedKey = sanitize(completeKey).orElseThrow(() -> {
             String invalidSanitizeValue = String.format(
                     "The key %s, to assign to the operator %s and value %s, cannot be safely quoted",
-                    key, operator, value);
+                    completeKey, operator, value);
             return new RuntimeException(invalidSanitizeValue);
         });
 
         return alias + ".%s %s $%s".formatted(sanitizedKey, operator, param);
     }
 
-    public IncrementalKeyMap getIncrementalKeyMap(){
+    public IncrementalKeyMap getIncrementalKeyMap() {
         return map;
     }
 

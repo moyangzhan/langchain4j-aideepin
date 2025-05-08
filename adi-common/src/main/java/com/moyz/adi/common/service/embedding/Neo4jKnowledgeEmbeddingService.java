@@ -1,6 +1,7 @@
 package com.moyz.adi.common.service.embedding;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.KbItemEmbeddingDto;
 import com.moyz.adi.common.rag.neo4j.AdiNeo4jEmbeddingStore;
 import dev.langchain4j.data.segment.TextSegment;
@@ -10,12 +11,12 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.ListUtils;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+
 
 @Slf4j
 @Service
@@ -42,7 +43,7 @@ public class Neo4jKnowledgeEmbeddingService implements IEmbeddingService {
     }
 
     public Page<KbItemEmbeddingDto> listByItemUuid(String kbItemUuid, int currentPage, int pageSize) {
-        EmbeddingSearchResult<TextSegment> searchResult = ((AdiNeo4jEmbeddingStore) embeddingStore).searchByMetadata(new IsEqualTo("kb_item_uuid", kbItemUuid), 1000);
+        EmbeddingSearchResult<TextSegment> searchResult = ((AdiNeo4jEmbeddingStore) embeddingStore).searchByMetadata(new IsEqualTo(AdiConstant.MetadataKey.KB_ITEM_UUID, kbItemUuid), 1000);
 
         List<EmbeddingMatch<TextSegment>> ss = searchResult.matches();
 
@@ -85,7 +86,7 @@ public class Neo4jKnowledgeEmbeddingService implements IEmbeddingService {
     }
 
     public boolean deleteByItemUuid(String kbItemUuid) {
-        embeddingStore.removeAll(new IsEqualTo("kb_item_uuid", kbItemUuid));
+        embeddingStore.removeAll(new IsEqualTo(AdiConstant.MetadataKey.KB_ITEM_UUID, kbItemUuid));
         return true;
     }
 }

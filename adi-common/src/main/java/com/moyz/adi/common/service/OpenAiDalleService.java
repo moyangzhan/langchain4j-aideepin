@@ -195,8 +195,7 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
 
     public OpenAiService getOpenAiService() {
         String secretKey = setting.getSecretKey();
-        if (proxyEnable) {
-            Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyHttpPort));
+        if (null != proxy) {
             OkHttpClient client = defaultClient(secretKey, Duration.of(60, ChronoUnit.SECONDS))
                     .newBuilder()
                     .proxy(proxy)

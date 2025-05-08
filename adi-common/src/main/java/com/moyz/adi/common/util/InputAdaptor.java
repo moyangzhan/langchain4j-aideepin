@@ -1,8 +1,10 @@
 package com.moyz.adi.common.util;
 
+import com.moyz.adi.common.rag.RAGThreadLocal;
+import com.moyz.adi.common.rag.TokenEstimatorFactory;
 import com.moyz.adi.common.vo.InputAdaptorMsg;
 import dev.langchain4j.data.message.*;
-import dev.langchain4j.model.openai.OpenAiTokenizer;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Metadata;
@@ -13,17 +15,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
-
 /**
  * 根据模型设置的maxInputTokens自动调整携带的召回文档及历史记录数量
  */
 @Slf4j
 public class InputAdaptor {
 
-    private static OpenAiTokenizer tokenizer = new OpenAiTokenizer(GPT_3_5_TURBO);
-
     public static InputAdaptorMsg isQuestionValid(String userQuestion, int maxInputTokens) {
+        return isQuestionValid(userQuestion, maxInputTokens, TokenEstimatorFactory.create(RAGThreadLocal.getTokenEstimator()));
+    }
+
+    public static InputAdaptorMsg isQuestionValid(String userQuestion, int maxInputTokens, Tokenizer tokenizer) {
         InputAdaptorMsg result = new InputAdaptorMsg();
         result.setTokenTooMuch(InputAdaptorMsg.TOKEN_TOO_MUCH_NOT);
 
@@ -46,11 +48,12 @@ public class InputAdaptor {
      * @return
      */
     public static Metadata adjustMemory(AugmentationRequest augmentationRequest, int maxInputTokens, Consumer<InputAdaptorMsg> tokenCostConsumer) {
-        log.info("adjustMemory");
         ChatMessage chatMessage = augmentationRequest.chatMessage();
         Metadata metadata = augmentationRequest.metadata();
 
-        InputAdaptorMsg inputAdaptorMsg = isQuestionValid(chatMessage.text(), maxInputTokens);
+        String tokenizerName = RAGThreadLocal.getTokenEstimator();
+        Tokenizer tokenizer = TokenEstimatorFactory.create(tokenizerName);
+        InputAdaptorMsg inputAdaptorMsg = isQuestionValid(chatMessage.text(), maxInputTokens, tokenizer);
         if (inputAdaptorMsg.getTokenTooMuch() == InputAdaptorMsg.TOKEN_TOO_MUCH_QUESTION) {
             tokenCostConsumer.accept(inputAdaptorMsg);
         }
@@ -94,6 +97,8 @@ public class InputAdaptor {
             log.info("文档数量为0");
             return Collections.emptyList();
         }
+        String tokenizerName = RAGThreadLocal.getTokenEstimator();
+        Tokenizer tokenizer = TokenEstimatorFactory.create(tokenizerName);
         //计算原始用户问题及召回文档的长度,如果太长，丢弃部分或全部文档
         int allRetrievedDocsTokenCount = 0;
         List<Content> validContents = new ArrayList<>();
@@ -115,9 +120,12 @@ public class InputAdaptor {
      * 请求token超长场景之三（召回成功后，结合用户问题、历史记录提交给LLM前）：原始用户问题+召回文档
      *
      * @param messages
+     * @param maxInputTokens
      * @return
      */
     public static List<ChatMessage> adjustMessages(List<ChatMessage> messages, int maxInputTokens) {
+        String tokenizerName = RAGThreadLocal.getTokenEstimator();
+        Tokenizer tokenizer = TokenEstimatorFactory.create(tokenizerName);
         int messageSize = messages.size();
         ChatMessage latestMessage = messages.get(messageSize - 1);
         List<ChatMessage> result = new ArrayList<>();

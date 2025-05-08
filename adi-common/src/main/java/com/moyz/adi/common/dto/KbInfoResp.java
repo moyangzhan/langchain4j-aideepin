@@ -16,6 +16,8 @@ public class KbInfoResp {
     private Integer ingestMaxOverlap;
     private String ingestModelName;
     private Long ingestModelId;
+    private String ingestTokenEstimator;
+    private String ingestEmbeddingModel;
     private Integer retrieveMaxResults;
     private Double retrieveMinScore;
     private Double queryLlmTemperature;

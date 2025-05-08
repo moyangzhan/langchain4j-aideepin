@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.BlockAttackInnerInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.DynamicTableNameInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -12,18 +13,27 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.moyz.adi.common.base.SearchEngineRespTypeHandler;
 import com.moyz.adi.common.base.UUIDTypeHandler;
+import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.SearchEngineResp;
+import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.rag.EmbeddingRAG;
 import com.moyz.adi.common.rag.GraphRAG;
 import com.moyz.adi.common.rag.GraphStore;
+import com.moyz.adi.common.service.embedding.model.DashScopeEmbeddingModelService;
+import com.moyz.adi.common.service.embedding.model.OpenAiEmbeddingModelService;
+import com.moyz.adi.common.util.AdiPropertiesUtil;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.pgvector.PGvector;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.task.AsyncTaskExecutor;
@@ -40,6 +50,9 @@ import java.util.UUID;
 @Slf4j
 @Configuration
 public class BeanConfig {
+
+    @Resource
+    private AdiProperties adiProperties;
 
     @Bean
     public RestTemplate restTemplate() {
@@ -100,6 +113,13 @@ public class BeanConfig {
         interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.POSTGRE_SQL));
         // 防止全表更新
         interceptor.addInnerInterceptor(new BlockAttackInnerInterceptor());
+        // 动态表名
+        DynamicTableNameInnerInterceptor dynamicTableNameInnerInterceptor = new DynamicTableNameInnerInterceptor();
+        dynamicTableNameInnerInterceptor.setTableNameHandler(
+                new EmbeddingTableNameHandler("adi_knowledge_base_embedding", "adi_ai_search_embedding")
+        );
+        interceptor.addInnerInterceptor(dynamicTableNameInnerInterceptor);
+
         bean.setPlugins(interceptor);
         bean.setMapperLocations(
                 new PathMatchingResourcePatternResolver().getResources("classpath*:/mapper/*.xml"));
@@ -115,17 +135,33 @@ public class BeanConfig {
     }
 
     @Bean
+    @DependsOn("initializer")
+    public EmbeddingModel initEmbeddingModel() {
+        if (adiProperties.getEmbeddingModel().equals(AdiConstant.EmbeddingModel.ALL_MINILM_L6)) {
+            return new AllMiniLmL6V2EmbeddingModel();
+        }
+        AiModel aiModel = AdiPropertiesUtil.getEmbeddingModelByProperty(adiProperties);
+        if (aiModel.getPlatform().equals(AdiConstant.ModelPlatform.DASHSCOPE)) {
+            return new DashScopeEmbeddingModelService(aiModel).buildModel();
+        } else if (aiModel.getPlatform().equals(AdiConstant.ModelPlatform.OPENAI)) {
+            return new OpenAiEmbeddingModelService(aiModel).buildModel();
+        } else {
+            throw new RuntimeException("Unsupported embedding model: " + adiProperties.getEmbeddingModel());
+        }
+    }
+
+    @Bean
     @Primary
-    public EmbeddingRAG initKnowledgeBaseRAGService(EmbeddingStore<TextSegment> kbEmbeddingStore) {
+    public EmbeddingRAG initKnowledgeBaseRAGService(EmbeddingStore<TextSegment> kbEmbeddingStore, EmbeddingModel embeddingModel) {
         EmbeddingRAG ragService = new EmbeddingRAG(kbEmbeddingStore);
-        ragService.init();
+        ragService.init(embeddingModel);
         return ragService;
     }
 
     @Bean(name = "searchRagService")
-    public EmbeddingRAG initSearchRAG(EmbeddingStore<TextSegment> searchEmbeddingStore) {
+    public EmbeddingRAG initSearchRAG(EmbeddingStore<TextSegment> searchEmbeddingStore, EmbeddingModel embeddingModel) {
         EmbeddingRAG ragService = new EmbeddingRAG(searchEmbeddingStore);
-        ragService.init();
+        ragService.init(embeddingModel);
         return ragService;
     }
 

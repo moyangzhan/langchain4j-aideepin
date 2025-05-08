@@ -43,6 +43,12 @@ adi:
     enable: false
     host: 127.0.0.1
     http-port: 1087
+  # embedding model可选值如下（见adi_ai_model中的embedding类型的数据）：
+  # local:all-minilm-l6-v2 (default)
+  # openai:text-embedding-3-small、openai:text-embedding-3-large
+  # dashscope:text-embedding-v1、dashscope:text-embedding-v3
+  # 注意：由于不同向量模型不同维度参数生成的向量特征空间不一致，无法兼容存储于一张表并进行混合搜索，建议项目初期确定好向量模型及其维度，后期如有修改，需重新生成向量数据
+  embedding-model: local:all-minilm-l6-v2
   # vector-database: pgvector、neo4j
   vector-database: pgvector
   # graph-database: apache-age、neo4j

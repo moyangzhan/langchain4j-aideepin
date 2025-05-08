@@ -1,6 +1,5 @@
 package com.moyz.adi.common.rag.neo4j;
 
-import com.moyz.adi.common.rag.AdiEmbeddingSearchRequest;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
@@ -9,7 +8,6 @@ import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingStore;
-import org.apache.commons.collections4.CollectionUtils;
 import org.neo4j.driver.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -237,7 +235,7 @@ public class AdiNeo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
 
-        final AbstractMap.SimpleEntry<String, Map<?, ?>> filterEntry = new Neo4jFilterMapper().map(filter);
+        final AbstractMap.SimpleEntry<String, Map<?, ?>> filterEntry = new Neo4jFilterMapper(this).map(filter);
 
         try (var session = session()) {
             String statement = String.format(
@@ -276,7 +274,7 @@ public class AdiNeo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     public EmbeddingSearchResult<TextSegment> searchByMetadata(Filter filter, int maxResult) {
         try (var session = session()) {
-            final AbstractMap.SimpleEntry<String, Map<?, ?>> entry = new Neo4jFilterMapper().map(filter);
+            final AbstractMap.SimpleEntry<String, Map<?, ?>> entry = new Neo4jFilterMapper(this).map(filter);
             String query = """
                     CYPHER runtime = parallel parallelRuntimeSupport=all
                     MATCH (n:%1$s)
@@ -300,7 +298,7 @@ public class AdiNeo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
     */
     private EmbeddingSearchResult getSearchResUsingVectorSimilarity(
             EmbeddingSearchRequest request, Filter filter, Value embeddingValue, Session session) {
-        final AbstractMap.SimpleEntry<String, Map<?, ?>> entry = new Neo4jFilterMapper().map(filter);
+        final AbstractMap.SimpleEntry<String, Map<?, ?>> entry = new Neo4jFilterMapper(this).map(filter);
         String query =
                 """
                         CYPHER runtime = parallel parallelRuntimeSupport=all

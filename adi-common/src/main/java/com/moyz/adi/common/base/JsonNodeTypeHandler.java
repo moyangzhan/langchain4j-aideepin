@@ -35,32 +35,22 @@ public class JsonNodeTypeHandler extends BaseTypeHandler<JsonNode> {
     @Override
     public JsonNode getNullableResult(ResultSet rs, String columnName) throws SQLException {
         String jsonSource = rs.getString(columnName);
-        if (jsonSource != null) {
-            try {
-                return objectMapper.readTree(jsonSource);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return null;
+        return getJonsNode(jsonSource);
     }
 
     @Override
     public JsonNode getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
         String jsonSource = rs.getString(columnIndex);
-        if (jsonSource != null) {
-            try {
-                return objectMapper.readTree(jsonSource);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return null;
+        return getJonsNode(jsonSource);
     }
 
     @Override
     public JsonNode getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
         String jsonSource = cs.getString(columnIndex);
+        return getJonsNode(jsonSource);
+    }
+
+    private JsonNode getJonsNode(String jsonSource) {
         if (jsonSource != null) {
             try {
                 return objectMapper.readTree(jsonSource);

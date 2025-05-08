@@ -102,7 +102,6 @@ public class AdiKnowledgeBaseRetrievalAugmentor implements RetrievalAugmentor {
     public AugmentationResult augment(AugmentationRequest augmentationRequest) {
 
         ChatMessage chatMessage = augmentationRequest.chatMessage();
-        Metadata metadata = augmentationRequest.metadata();
 
         //=======aideepin --begin
         AtomicInteger questionTokenCount = new AtomicInteger();

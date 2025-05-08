@@ -14,7 +14,6 @@ import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.net.Proxy;
 import java.util.List;
@@ -32,15 +31,6 @@ public abstract class AbstractImageModelService<T> {
     protected T setting;
 
     private FileService fileService;
-
-    @Value("${adi.proxy.enable:false}")
-    protected boolean proxyEnable;
-
-    @Value("${adi.proxy.host:0}")
-    protected String proxyHost;
-
-    @Value("${adi.proxy.http-port:0}")
-    protected int proxyHttpPort;
 
     protected AbstractImageModelService(AiModel aiModel, String settingName, Class<T> clazz) {
         this.aiModel = aiModel;

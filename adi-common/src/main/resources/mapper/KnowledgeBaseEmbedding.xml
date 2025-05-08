@@ -4,12 +4,12 @@
 
     <select id="selectByItemUuid" resultType="com.moyz.adi.common.entity.KnowledgeBaseEmbedding">
         select *
-        from adi_knowledge_base_embedding
+        from <include refid="getTableName"/>
         where metadata ->> 'kb_item_uuid' = #{kbItemUuid}
     </select>
 
     <delete id="deleteByIds">
-        delete from adi_knowledge_base_embedding where embedding_id in
+        delete from <include refid="getTableName"/> where embedding_id in
         <foreach collection="ids" open="(" separator="," close=")" item="id">
             <if test="id != null and id != ''">
                 #{id}
@@ -19,7 +19,17 @@
 
     <delete id="deleteByItemUuid">
         delete
-        from adi_knowledge_base_embedding
+        from
+        <include refid="getTableName"/>
         where metadata ->> 'kb_item_uuid' = #{kbItemUuid}
     </delete>
+
+    <sql id="getTableName">
+        <if test="tableSuffix != null and tableSuffix != ''">
+            adi_knowledge_base_embedding_${tableSuffix}
+        </if>
+        <if test="tableSuffix == null or tableSuffix == ''">
+            adi_knowledge_base_embedding
+        </if>
+    </sql>
 </mapper>

@@ -1,5 +1,6 @@
 package com.moyz.adi.common.service;
 
+import com.moyz.adi.common.config.AdiProperties;
 import com.moyz.adi.common.file.AliyunOssFileHelper;
 import com.moyz.adi.common.file.AliyunOssFileOperator;
 import com.moyz.adi.common.file.LocalFileOperator;
@@ -30,14 +31,8 @@ public class Initializer {
     @Value("${local.chat-memory}")
     private String chatMemoryPath;
 
-    @Value("${adi.proxy.enable:false}")
-    protected boolean proxyEnable;
-
-    @Value("${adi.proxy.host:0}")
-    protected String proxyHost;
-
-    @Value("${adi.proxy.http-port:0}")
-    protected int proxyHttpPort;
+    @Resource
+    private AdiProperties adiProperties;
 
     @Resource
     private AiModelService aiModelService;
@@ -48,22 +43,19 @@ public class Initializer {
     @Resource
     private AliyunOssFileHelper aliyunOssFileHelper;
 
-    @Value("${adi.encrypt.aes-key}")
-    private String aesKey;
-
     /**
      * 应用初始化
      */
     @PostConstruct
     public void init() {
-        if (aesKey.equals("Ap9da0CopbjiKGc1")) {
+        if (adiProperties.getEncrypt().getAesKey().equals("Ap9da0CopbjiKGc1")) {
             throw new RuntimeException("不能使用默认的AES key，请设置属于你自己的Key，AES相关的加解密都会用到该key，设置路径: application.yml => adi.encrypt.aes-key");
         }
         sysConfigService.loadAndCache();
         aiModelService.init();
         checkAndInitFileOperator();
 
-        AesUtil.AES_KEY = aesKey;
+        AesUtil.AES_KEY = adiProperties.getEncrypt().getAesKey();
     }
 
     /**
@@ -75,6 +67,7 @@ public class Initializer {
     }
 
     public void checkAndInitFileOperator() {
+        log.info("Initializing file operator...");
         LocalFileOperator.checkAndCreateDir(imagePath);
         LocalFileOperator.checkAndCreateDir(tmpImagePath);
         LocalFileOperator.checkAndCreateDir(thumbnailsPath);

@@ -2,13 +2,16 @@ package com.moyz.adi.common.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.moyz.adi.common.base.ObjectNodeTypeHandler;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.apache.ibatis.type.JdbcType;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("adi_ai_model")
+@TableName(value = "adi_ai_model", autoResultMap = true)
 @Schema(title = "AiModel对象", description = "AI模型表")
 public class AiModel extends BaseEntity {
 
@@ -59,4 +62,8 @@ public class AiModel extends BaseEntity {
     @Schema(title = "输入类型")
     @TableField("input_types")
     private String inputTypes;
+
+    @Schema(title = "属性")
+    @TableField(value = "properties", jdbcType = JdbcType.JAVA_OBJECT, typeHandler = ObjectNodeTypeHandler.class)
+    private ObjectNode properties;
 }

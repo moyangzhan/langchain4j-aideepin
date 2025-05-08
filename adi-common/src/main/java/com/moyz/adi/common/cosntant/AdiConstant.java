@@ -306,4 +306,16 @@ public class AdiConstant {
         public static final int MAIL_SENDER_TYPE_SYS = 1;
         public static final int MAIL_SENDER_TYPE_CUSTOM = 2;
     }
+
+    public static class TokenEstimator {
+        public static String OPENAI = "openai";
+        public static String HUGGING_FACE = "huggingface";
+        public static String QWEN = "qwen";
+
+        public static List<String> ALL = List.of(OPENAI, HUGGING_FACE, QWEN);
+    }
+
+    public static class EmbeddingModel {
+        public static String ALL_MINILM_L6 = "local:all-minilm-l6-v2";
+    }
 }

@@ -16,8 +16,6 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.openai.OpenAiChatModelName;
-import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
@@ -52,7 +50,7 @@ public class GraphRAG {
     public void ingest(GraphIngestParams graphIngestParams) {
         log.info("GraphRAG ingest");
         User user = graphIngestParams.getUser();
-        DocumentSplitter documentSplitter = DocumentSplitters.recursive(RAG_MAX_SEGMENT_SIZE_IN_TOKENS, graphIngestParams.getOverlap(), new OpenAiTokenizer(OpenAiChatModelName.GPT_3_5_TURBO));
+        DocumentSplitter documentSplitter = DocumentSplitters.recursive(RAG_MAX_SEGMENT_SIZE_IN_TOKENS, graphIngestParams.getOverlap(), TokenEstimatorFactory.create(graphIngestParams.getTokenEstimator()));
         GraphStoreIngestor ingestor = GraphStoreIngestor.builder()
                 .documentSplitter(documentSplitter)
                 .segmentsFunction(segments -> {

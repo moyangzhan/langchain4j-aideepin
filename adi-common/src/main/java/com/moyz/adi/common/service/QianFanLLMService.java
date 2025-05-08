@@ -10,6 +10,7 @@ import com.moyz.adi.common.vo.QianFanAiModelSetting;
 import com.moyz.adi.common.vo.QianFanAiPlatformSetting;
 import dev.langchain4j.community.model.qianfan.QianfanChatModel;
 import dev.langchain4j.community.model.qianfan.QianfanStreamingChatModel;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import lombok.experimental.Accessors;
@@ -75,6 +76,11 @@ public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetti
             builder.endpoint(endpoint);
         }
         return builder.build();
+    }
+
+    @Override
+    public Tokenizer getTokenEstimator() {
+        return null;
     }
 
     @Override

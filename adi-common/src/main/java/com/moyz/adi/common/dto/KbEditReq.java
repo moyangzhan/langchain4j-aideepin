@@ -29,6 +29,8 @@ public class KbEditReq {
 
     private Long ingestModelId;
 
+    private String ingestTokenEstimator;
+
     private Double queryLlmTemperature;
 
     private String querySystemMessage;
