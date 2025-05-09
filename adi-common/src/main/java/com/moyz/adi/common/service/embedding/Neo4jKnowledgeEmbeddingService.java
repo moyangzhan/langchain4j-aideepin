@@ -26,6 +26,7 @@ public class Neo4jKnowledgeEmbeddingService implements IEmbeddingService {
     @Resource
     private EmbeddingStore<TextSegment> embeddingStore;
 
+    @Override
     public List<KbItemEmbeddingDto> listByEmbeddingIds(List<String> embeddingIds) {
         EmbeddingSearchResult<TextSegment> searchResult = ((AdiNeo4jEmbeddingStore) embeddingStore).searchByIds(embeddingIds);
         List<KbItemEmbeddingDto> result = new ArrayList<>();
@@ -42,6 +43,7 @@ public class Neo4jKnowledgeEmbeddingService implements IEmbeddingService {
         return result;
     }
 
+    @Override
     public Page<KbItemEmbeddingDto> listByItemUuid(String kbItemUuid, int currentPage, int pageSize) {
         EmbeddingSearchResult<TextSegment> searchResult = ((AdiNeo4jEmbeddingStore) embeddingStore).searchByMetadata(new IsEqualTo(AdiConstant.MetadataKey.KB_ITEM_UUID, kbItemUuid), 1000);
 
@@ -85,8 +87,14 @@ public class Neo4jKnowledgeEmbeddingService implements IEmbeddingService {
         return result;
     }
 
+    @Override
     public boolean deleteByItemUuid(String kbItemUuid) {
         embeddingStore.removeAll(new IsEqualTo(AdiConstant.MetadataKey.KB_ITEM_UUID, kbItemUuid));
         return true;
+    }
+
+    @Override
+    public Integer countByKbUuid(String kbUuid) {
+        return ((AdiNeo4jEmbeddingStore) embeddingStore).countByMetadata(new IsEqualTo(AdiConstant.MetadataKey.KB_UUID, kbUuid));
     }
 }

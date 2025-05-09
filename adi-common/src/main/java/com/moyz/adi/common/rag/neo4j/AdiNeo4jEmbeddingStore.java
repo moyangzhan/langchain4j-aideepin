@@ -293,6 +293,25 @@ public class AdiNeo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
     }
 
+    public int countByMetadata(Filter filter) {
+        try (var session = session()) {
+            final AbstractMap.SimpleEntry<String, Map<?, ?>> entry = new Neo4jFilterMapper(this).map(filter);
+            String query = """
+                    CYPHER runtime = parallel parallelRuntimeSupport=all
+                    MATCH (n:%1$s)
+                    WHERE n.%2$s IS NOT NULL AND %3$s
+                    WITH n
+                    return count(n) as count
+                    """
+                    .formatted(
+                            this.sanitizedLabel,
+                            this.embeddingProperty,
+                            entry.getKey());
+            final Map params = entry.getValue();
+            return session.run(query, params).single().get("count").asInt();
+        }
+    }
+
     /*
     Private methods
     */

@@ -53,6 +53,7 @@ public class KnowledgeBaseEmbeddingService extends ServiceImpl<KnowledgeBaseEmbe
         return baseMapper.deleteByItemUuid(kbItemUuid, AdiPropertiesUtil.EMBEDDING_TABLE_SUFFIX);
     }
 
+    @Override
     public Integer countByKbUuid(String kbUuid) {
         return baseMapper.countByKbUuid(kbUuid, AdiPropertiesUtil.EMBEDDING_TABLE_SUFFIX);
     }

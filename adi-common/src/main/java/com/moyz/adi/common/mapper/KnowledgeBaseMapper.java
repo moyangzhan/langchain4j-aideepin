@@ -41,7 +41,7 @@ public interface KnowledgeBaseMapper extends BaseMapper<KnowledgeBase> {
      *
      * @param uuid
      */
-    void updateStatByUuid(@Param("uuid") String uuid);
+    void updateStatByUuid(@Param("uuid") String uuid, @Param("embeddingCount") int embeddingCount);
 
     Integer countCreatedByTimePeriod(@Param("beginTime") LocalDateTime beginTime, @Param("endTime") LocalDateTime endTime);
 

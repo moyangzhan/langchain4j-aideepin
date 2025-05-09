@@ -71,7 +71,6 @@ public class Neo4jEmbeddingStoreConfig {
                 .withBasicAuth("neo4j://" + neo4j.getHost() + ":" + neo4j.getPort(), neo4j.getUsername(), neo4j.getPassword())
                 .dimension(dimension)
                 .label(tableName)
-                //TODO.. fix sql like: updateStatByUuid
 //                .metadataPrefix("meta_")
                 .build();
     }

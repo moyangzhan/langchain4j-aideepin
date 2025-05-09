@@ -17,14 +17,19 @@ import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.rag.*;
+import com.moyz.adi.common.rag.neo4j.AdiNeo4jEmbeddingStore;
+import com.moyz.adi.common.service.embedding.IEmbeddingService;
 import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.vo.AssistantChatParams;
 import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.SseAskParams;
 import com.moyz.adi.common.vo.UpdateQaParams;
 import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -85,6 +90,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
     @Resource
     private AiModelService aiModelService;
+
+    @Resource
+    private IEmbeddingService embeddingService;
 
     public KnowledgeBase saveOrUpdate(KbEditReq kbEditReq) {
         KnowledgeBase knowledgeBase = new KnowledgeBase();
@@ -518,7 +526,8 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             return;
         }
         for (String kbUuid : kbUuidList) {
-            baseMapper.updateStatByUuid(kbUuid);
+            int embeddingCount = embeddingService.countByKbUuid(kbUuid);
+            baseMapper.updateStatByUuid(kbUuid, embeddingCount);
             stringRedisTemplate.opsForSet().remove(KB_STATISTIC_RECALCULATE_SIGNAL, kbUuid);
         }
     }
