@@ -1,9 +1,9 @@
 spring:
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://117.62.236.180:5432/aideepin?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&tinyInt1isBit=false&allowMultiQueries=true
+    url: jdbc:postgresql://117.62.236:5432/aideepin?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&tinyInt1isBit=false&allowMultiQueries=true
     username: postgres
-    password: dbwen2025.
+    password: 
     hikari:
       connection-timeout: 10000
       validation-timeout: 3000
@@ -15,9 +15,9 @@ spring:
       read-only: false
   data:
     redis:
-      host: 101.89.148.237
+      host: 101.89.148
       port: 6379
-      password: dbwen2024.
+      password: 
       database: 11
       lettuce:
         pool:
@@ -55,10 +55,10 @@ adi:
   graph-database: neo4j
   datasource:
     neo4j:
-      host: 117.62.236.180
+      host: 117.62.236
       port: 7687
       username: neo4j
-      password: dbwen2025.
+      password: 
       database: neo4j
 
 local:
