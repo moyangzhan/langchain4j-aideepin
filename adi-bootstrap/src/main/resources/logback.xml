@@ -28,7 +28,7 @@
     </appender>
     <!-- 按照每天生成常规日志文件 -->
     <appender name="FileAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>/data/logs/adi.log</file>
+        <file>logs/adi.log</file>
         <encoder>
             <pattern>${CONSOLE_LOG_PATTERN_NO_COLOR}</pattern>
             <charset>UTF-8</charset>

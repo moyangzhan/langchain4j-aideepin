@@ -26,9 +26,9 @@ spring:
   mail:
     default-encoding: UTF-8
     protocol: smtps
-    host: your-email-host  # smtp.exmail.qq.com
-    username: your-email-username # xxx@qq.com
-    password: your-email-password
+    host: smtp.163.com  # smtp.exmail.qq.com
+    username: lijunnew@163.com # xxx@qq.com
+    password: LZceJtBCLVedt9cf
     port: 465
     properties:
       mail:
@@ -66,7 +66,7 @@ adi:
   encrypt:
     # 数据库敏感字段加密的密钥，不要泄露
     # 项目首次编译时改成自己的密钥(长度为16的字符串如: Ap9da0CopbjiKGc1)
-    aes-key: Ap9da0CopbjiKGc1
+    aes-key: 7b4BMZfspM1Bmdw7
 
 local:
   files: /data/aideepin/files/

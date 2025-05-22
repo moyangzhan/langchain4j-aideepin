@@ -1,9 +1,9 @@
 spring:
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://127.0.0.1:5432/aideepin?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&tinyInt1isBit=false&allowMultiQueries=true
+    url: jdbc:postgresql://117.62.236.180:5432/aideepin?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&tinyInt1isBit=false&allowMultiQueries=true
     username: postgres
-    password: 123456
+    password: dbwen2025.
     hikari:
       connection-timeout: 10000
       validation-timeout: 3000
@@ -15,10 +15,10 @@ spring:
       read-only: false
   data:
     redis:
-      host: localhost
+      host: 101.89.148.237
       port: 6379
-      password:
-      database: 0
+      password: dbwen2024.
+      database: 11
       lettuce:
         pool:
           #连接池最大连接数
@@ -50,22 +50,22 @@ adi:
   # 注意：由于不同向量模型不同维度参数生成的向量特征空间不一致，无法兼容存储于一张表并进行混合搜索，建议项目初期确定好向量模型及其维度，后期如有修改，需重新生成向量数据
   embedding-model: local:all-minilm-l6-v2
   # vector-database: pgvector、neo4j
-  vector-database: pgvector
+  vector-database: neo4j
   # graph-database: apache-age、neo4j
-  graph-database: apache-age
+  graph-database: neo4j
   datasource:
     neo4j:
-      host: localhost
+      host: 117.62.236.180
       port: 7687
       username: neo4j
-      password: your-db-password
+      password: dbwen2025.
       database: neo4j
 
 local:
-  files: D:/data/aideepin/files/
-  images: D:/data/aideepin/images/
-  watermark-images: D:/data/aideepin/mark-images/
-  thumbnails: D:/data/aideepin/thumbnails/
-  watermark-thumbnails: D:/data/aideepin/watermark-thumbnails/
-  tmp-images: D:/data/aideepin/tmp-images/
-  chat-memory: D:/data/aideepin/chat-memory/
+  files: /Users/lijun/Downloads/ruoyi/aideepin/files/
+  images: /Users/lijun/Downloads/ruoyi/aideepin/images/
+  watermark-images: /Users/lijun/Downloads/ruoyi/aideepin/mark-images/
+  thumbnails: /Users/lijun/Downloads/ruoyi/aideepin/thumbnails/
+  watermark-thumbnails: /Users/lijun/Downloads/ruoyi/aideepin/watermark-thumbnails/
+  tmp-images: /Users/lijun/Downloads/ruoyi/aideepin/tmp_images/
+  chat-memory: /Users/lijun/Downloads/ruoyi/aideepin/chat_memory/

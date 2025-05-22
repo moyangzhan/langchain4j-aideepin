@@ -203,6 +203,11 @@
             <version>${langchain4j.version}</version>
         </dependency>
         <dependency>
+            <groupId>ai.djl.huggingface</groupId>
+            <artifactId>tokenizers</artifactId>
+            <version>0.28.0</version>
+        </dependency>
+        <dependency>
             <groupId>org.antlr</groupId>
             <artifactId>antlr4-runtime</artifactId>
             <version>4.12.0</version>
@@ -243,5 +248,29 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+    <repositories>
+    <repository>
+        <id>public</id>
+        <name>aliyun nexus</name>
+        <url>https://maven.aliyun.com/repository/public</url>
+        <releases>
+            <enabled>true</enabled>
+        </releases>
+    </repository>
+    </repositories>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>public</id>
+            <name>aliyun nexus</name>
+            <url>https://maven.aliyun.com/repository/public</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </pluginRepository>
+    </pluginRepositories>
 
 </project>
