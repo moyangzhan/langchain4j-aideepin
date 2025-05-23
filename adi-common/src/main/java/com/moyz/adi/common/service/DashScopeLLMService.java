@@ -11,10 +11,12 @@ import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.SseAskParams;
 import dev.langchain4j.community.model.dashscope.QwenChatModel;
 import dev.langchain4j.community.model.dashscope.QwenStreamingChatModel;
-import dev.langchain4j.community.model.dashscope.QwenTokenizer;
-import dev.langchain4j.model.Tokenizer;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.community.model.dashscope.QwenTokenCountEstimator;
+import dev.langchain4j.model.TokenCountEstimator;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.openai.OpenAiChatModelName;
+import dev.langchain4j.model.openai.OpenAiTokenCountEstimator;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -45,7 +47,7 @@ public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
     }
 
     @Override
-    protected ChatLanguageModel doBuildChatLLM(LLMBuilderProperties properties) {
+    protected ChatModel doBuildChatLLM(LLMBuilderProperties properties) {
         if (StringUtils.isBlank(modelPlatformSetting.getApiKey())) {
             throw new BaseException(B_LLM_SECRET_KEY_NOT_SET);
         }
@@ -58,7 +60,7 @@ public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
     }
 
     @Override
-    public StreamingChatLanguageModel buildStreamingChatLLM(LLMBuilderProperties properties) {
+    public StreamingChatModel buildStreamingChatLLM(LLMBuilderProperties properties) {
         if (StringUtils.isBlank(modelPlatformSetting.getApiKey())) {
             throw new BaseException(B_LLM_SECRET_KEY_NOT_SET);
         }
@@ -71,8 +73,12 @@ public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
     }
 
     @Override
-    public Tokenizer getTokenEstimator() {
-        return new QwenTokenizer(modelPlatformSetting.getApiKey(), aiModel.getName());
+    public TokenCountEstimator getTokenEstimator() {
+        if (aiModel.getName().contains("qwen-turbo") || aiModel.getName().contains("qwen-plus")) {
+            return new QwenTokenCountEstimator(modelPlatformSetting.getApiKey(), aiModel.getName());
+        } else {
+            return new OpenAiTokenCountEstimator(OpenAiChatModelName.GPT_3_5_TURBO);
+        }
     }
 
     @Override

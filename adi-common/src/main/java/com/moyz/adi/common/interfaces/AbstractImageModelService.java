@@ -15,7 +15,7 @@ import dev.langchain4j.model.output.Response;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
-import java.net.Proxy;
+import java.net.InetSocketAddress;
 import java.util.List;
 
 import static com.moyz.adi.common.enums.ErrorEnum.C_DRAW_FAIL;
@@ -23,7 +23,7 @@ import static com.moyz.adi.common.enums.ErrorEnum.C_DRAW_FAIL;
 @Slf4j
 public abstract class AbstractImageModelService<T> {
 
-    protected Proxy proxy;
+    protected InetSocketAddress proxyAddress;
 
     @Getter
     protected AiModel aiModel;
@@ -38,8 +38,8 @@ public abstract class AbstractImageModelService<T> {
         setting = JsonUtil.fromJson(st, clazz);
     }
 
-    public AbstractImageModelService<T> setProxy(Proxy proxy) {
-        this.proxy = proxy;
+    public AbstractImageModelService<T> setProxyAddress(InetSocketAddress proxyAddress) {
+        this.proxyAddress = proxyAddress;
         return this;
     }
 

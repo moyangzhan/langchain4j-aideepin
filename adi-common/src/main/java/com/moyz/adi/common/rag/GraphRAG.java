@@ -15,7 +15,8 @@ import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
@@ -77,8 +78,8 @@ public class GraphRAG {
                                 }
                             }
                             log.info("请求LLM从文本中抽取实体及关系,segmentId:{}", segmentId);
-                            Response<AiMessage> aiMessageResponse = graphIngestParams.getChatLanguageModel().generate(UserMessage.from(GraphExtractPrompt.GRAPH_EXTRACTION_PROMPT_CN.replace("{input_text}", segment.text())));
-                            response = aiMessageResponse.content().text();
+                            ChatResponse aiMessageResponse = graphIngestParams.getChatModel().chat(UserMessage.from(GraphExtractPrompt.GRAPH_EXTRACTION_PROMPT_CN.replace("{input_text}", segment.text())));
+                            response = aiMessageResponse.aiMessage().text();
 
                             SpringUtil.getBean(UserDayCostService.class).appendCostToUser(user, aiMessageResponse.tokenUsage().totalTokenCount(), graphIngestParams.isFreeToken());
                         }
@@ -93,7 +94,7 @@ public class GraphRAG {
         ingestor.ingest(graphIngestParams.getDocument());
     }
 
-    public GraphStoreContentRetriever createRetriever(ChatLanguageModel chatLanguageModel, Map<String, String> metadataCond, int maxResults, boolean breakIfSearchMissed) {
+    public GraphStoreContentRetriever createRetriever(ChatModel ChatModel, Map<String, String> metadataCond, int maxResults, boolean breakIfSearchMissed) {
         Filter filter = null;
         for (Map.Entry<String, String> entry : metadataCond.entrySet()) {
             String key = entry.getKey();
@@ -106,7 +107,7 @@ public class GraphRAG {
         }
         return GraphStoreContentRetriever.builder()
                 .graphStore(graphStore)
-                .chatLanguageModel(chatLanguageModel)
+                .ChatModel(ChatModel)
                 .maxResults(maxResults)
                 .filter(filter)
                 .breakIfSearchMissed(breakIfSearchMissed)

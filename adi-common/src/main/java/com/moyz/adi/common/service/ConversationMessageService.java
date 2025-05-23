@@ -140,7 +140,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         }
         //history message
         if (Boolean.TRUE.equals(conversation.getUnderstandContextEnable())) {
-            assistantBuilder.messageId(askReq.getConversationUuid());
+            assistantBuilder.memoryId(askReq.getConversationUuid());
         }
         String prompt = askReq.getPrompt();
         if (StringUtils.isNotBlank(askReq.getRegenerateQuestionUuid())) {

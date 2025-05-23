@@ -72,6 +72,7 @@ public class LocalFileOperator implements IFileOperator {
                 log.warn("Delete file fail,uuid:{}", adiFile.getUuid());
             }
         } catch (IOException e) {
+            log.error("delete file error", e);
             throw new BaseException(B_DELETE_FILE_ERROR);
         }
     }

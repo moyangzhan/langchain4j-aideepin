@@ -18,6 +18,7 @@ import com.theokanning.openai.image.CreateImageVariationRequest;
 import com.theokanning.openai.image.Image;
 import com.theokanning.openai.image.ImageResult;
 import com.theokanning.openai.service.OpenAiService;
+import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openai.OpenAiImageModel;
 import lombok.extern.slf4j.Slf4j;
@@ -26,8 +27,9 @@ import org.apache.commons.lang3.StringUtils;
 import retrofit2.Retrofit;
 
 import java.io.File;
-import java.net.InetSocketAddress;
 import java.net.Proxy;
+import java.net.ProxySelector;
+import java.net.http.HttpClient;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
@@ -36,7 +38,6 @@ import java.util.List;
 import static com.moyz.adi.common.cosntant.AdiConstant.*;
 import static com.theokanning.openai.service.OpenAiService.defaultClient;
 import static com.theokanning.openai.service.OpenAiService.defaultRetrofit;
-import static dev.ai4j.openai4j.image.ImageModel.DALL_E_SIZE_512_x_512;
 import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_2;
 import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_3;
 
@@ -110,13 +111,13 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
                 .apiKey(setting.getSecretKey())
                 .user(user.getUuid())
                 .responseFormat(OPENAI_CREATE_IMAGE_RESP_FORMATS_URL)
-                .size(StringUtils.defaultString(draw.getGenerateSize(), DALL_E_SIZE_512_x_512))
+                .size(StringUtils.defaultString(draw.getGenerateSize(), DALLE2_CREATE_IMAGE_SIZES.get(1)))
                 .logRequests(true)
                 .logResponses(true)
-                .withPersisting(false)
                 .maxRetries(1);
-        if (null != proxy) {
-            builder.proxy(proxy);
+        if (null != proxyAddress) {
+            HttpClient.Builder httpClientBuilder = HttpClient.newBuilder().proxy(ProxySelector.of(proxyAddress));
+            builder.httpClientBuilder(JdkHttpClient.builder().httpClientBuilder(httpClientBuilder));
         }
         return builder.build();
     }
@@ -140,10 +141,10 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
                 .quality(draw.getGenerateQuality())
                 .logRequests(true)
                 .logResponses(true)
-                .withPersisting(false)
                 .maxRetries(1);
-        if (null != proxy) {
-            builder.proxy(proxy);
+        if (null != proxyAddress) {
+            HttpClient.Builder httpClientBuilder = HttpClient.newBuilder().proxy(ProxySelector.of(proxyAddress));
+            builder.httpClientBuilder(JdkHttpClient.builder().httpClientBuilder(httpClientBuilder));
         }
         return builder.build();
     }
@@ -195,10 +196,10 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
 
     public OpenAiService getOpenAiService() {
         String secretKey = setting.getSecretKey();
-        if (null != proxy) {
+        if (null != proxyAddress) {
             OkHttpClient client = defaultClient(secretKey, Duration.of(60, ChronoUnit.SECONDS))
                     .newBuilder()
-                    .proxy(proxy)
+                    .proxy(new Proxy(Proxy.Type.HTTP, proxyAddress))
                     .build();
             Retrofit retrofit = defaultRetrofit(client, JsonUtil.getObjectMapper());
             OpenAiApi api = retrofit.create(OpenAiApi.class);

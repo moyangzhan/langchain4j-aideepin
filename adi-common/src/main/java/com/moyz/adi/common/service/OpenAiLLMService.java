@@ -1,5 +1,6 @@
 package com.moyz.adi.common.service;
 
+import com.knuddels.jtokkit.api.ModelType;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.enums.ErrorEnum;
@@ -9,16 +10,19 @@ import com.moyz.adi.common.util.OpenAiUtil;
 import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.OpenAiSetting;
-import dev.langchain4j.model.Tokenizer;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.http.client.jdk.JdkHttpClient;
+import dev.langchain4j.model.TokenCountEstimator;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import dev.langchain4j.model.openai.OpenAiTokenizer;
+import dev.langchain4j.model.openai.OpenAiTokenCountEstimator;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
+import java.net.ProxySelector;
+import java.net.http.HttpClient;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 
@@ -49,7 +53,7 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
     }
 
     @Override
-    protected ChatLanguageModel doBuildChatLLM(LLMBuilderProperties properties) {
+    protected ChatModel doBuildChatLLM(LLMBuilderProperties properties) {
         if (StringUtils.isBlank(modelPlatformSetting.getSecretKey())) {
             throw new BaseException(ErrorEnum.B_LLM_SECRET_KEY_NOT_SET);
         }
@@ -61,14 +65,15 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
         if (StringUtils.isNotBlank(modelPlatformSetting.getBaseUrl())) {
             builder.baseUrl(modelPlatformSetting.getBaseUrl());
         }
-        if (null != proxy) {
-            builder.proxy(proxy);
+        if (null != proxyAddress) {
+            HttpClient.Builder httpClientBuilder = HttpClient.newBuilder().proxy(ProxySelector.of(proxyAddress));
+            builder.httpClientBuilder(JdkHttpClient.builder().httpClientBuilder(httpClientBuilder));
         }
         return builder.build();
     }
 
     @Override
-    public StreamingChatLanguageModel buildStreamingChatLLM(LLMBuilderProperties properties) {
+    public StreamingChatModel buildStreamingChatLLM(LLMBuilderProperties properties) {
         if (StringUtils.isBlank(modelPlatformSetting.getSecretKey())) {
             throw new BaseException(ErrorEnum.B_LLM_SECRET_KEY_NOT_SET);
         }
@@ -80,15 +85,19 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
                 .temperature(temperature)
                 .apiKey(modelPlatformSetting.getSecretKey())
                 .timeout(Duration.of(60, ChronoUnit.SECONDS));
-        if (null != proxy) {
-            builder.proxy(proxy);
+        if (null != proxyAddress) {
+            HttpClient.Builder httpClientBuilder = HttpClient.newBuilder().proxy(ProxySelector.of(proxyAddress));
+            builder.httpClientBuilder(JdkHttpClient.builder().httpClientBuilder(httpClientBuilder));
         }
         return builder.build();
     }
 
     @Override
-    public Tokenizer getTokenEstimator() {
-        return new OpenAiTokenizer(aiModel.getName());
+    public TokenCountEstimator getTokenEstimator() {
+        if (aiModel.getPlatform().equals(AdiConstant.ModelPlatform.OPENAI)) {
+            return new OpenAiTokenCountEstimator(aiModel.getName());
+        }
+        return new OpenAiTokenCountEstimator(ModelType.GPT_3_5_TURBO.getName());
     }
 
     @Override

@@ -2,7 +2,7 @@ package com.moyz.adi.common.rag;
 
 import com.aliyun.core.utils.StringUtils;
 
-public class RAGThreadLocal {
+public class TokenEstimatorThreadLocal {
     private static final ThreadLocal<String> tokenEstimator = new ThreadLocal<>();
 
     public static void setTokenEstimator(String value) {

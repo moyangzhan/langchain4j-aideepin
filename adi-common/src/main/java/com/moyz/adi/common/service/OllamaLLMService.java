@@ -5,9 +5,9 @@ import com.moyz.adi.common.interfaces.AbstractLLMService;
 import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.OllamaSetting;
-import dev.langchain4j.model.Tokenizer;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.TokenCountEstimator;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import org.apache.commons.lang3.StringUtils;
@@ -26,7 +26,7 @@ public class OllamaLLMService extends AbstractLLMService<OllamaSetting> {
     }
 
     @Override
-    protected ChatLanguageModel doBuildChatLLM(LLMBuilderProperties properties) {
+    protected ChatModel doBuildChatLLM(LLMBuilderProperties properties) {
         return OllamaChatModel.builder()
                 .baseUrl(modelPlatformSetting.getBaseUrl())
                 .modelName(aiModel.getName())
@@ -35,7 +35,7 @@ public class OllamaLLMService extends AbstractLLMService<OllamaSetting> {
     }
 
     @Override
-    public StreamingChatLanguageModel buildStreamingChatLLM(LLMBuilderProperties properties) {
+    public StreamingChatModel buildStreamingChatLLM(LLMBuilderProperties properties) {
         double temperature = properties.getTemperatureWithDefault(0.7);
         return OllamaStreamingChatModel.builder()
                 .baseUrl(modelPlatformSetting.getBaseUrl())
@@ -45,7 +45,7 @@ public class OllamaLLMService extends AbstractLLMService<OllamaSetting> {
     }
 
     @Override
-    public Tokenizer getTokenEstimator() {
+    public TokenCountEstimator getTokenEstimator() {
         return null;
     }
 

@@ -18,8 +18,6 @@ public class SseAskParams {
 
     private String regenerateQuestionUuid;
 
-    private ChatMemory chatMemory;
-
     private SseEmitter sseEmitter;
 
     /**

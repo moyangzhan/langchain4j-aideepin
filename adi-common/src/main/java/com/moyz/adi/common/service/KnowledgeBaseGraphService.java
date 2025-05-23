@@ -5,6 +5,7 @@ import com.moyz.adi.common.rag.GraphStore;
 import com.moyz.adi.common.vo.*;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
+import dev.langchain4j.store.embedding.filter.comparison.IsIn;
 import jakarta.annotation.Resource;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
@@ -29,7 +30,7 @@ public class KnowledgeBaseGraphService {
     }
 
     public List<GraphVertex> listVerticesByKbItemUuid(String kbItemUuid, long maxId, int limit) {
-        Filter filter = new GraphContains(AdiConstant.MetadataKey.KB_ITEM_UUID, kbItemUuid);
+        Filter filter = new IsEqualTo(AdiConstant.MetadataKey.KB_ITEM_UUID, kbItemUuid);
         return kbGraphStore.searchVertices(
                 GraphVertexSearch.builder()
                         .limit(limit)
@@ -49,7 +50,7 @@ public class KnowledgeBaseGraphService {
     }
 
     public List<Triple<GraphVertex, GraphEdge, GraphVertex>> listEdgesByKbItemUuid(String kbItemUuid, long maxId, int limit) {
-        Filter filter = new GraphContains(AdiConstant.MetadataKey.KB_ITEM_UUID, kbItemUuid);
+        Filter filter = new IsEqualTo(AdiConstant.MetadataKey.KB_ITEM_UUID, kbItemUuid);
         return kbGraphStore.searchEdges(GraphEdgeSearch.builder()
                 .edge(GraphSearchCondition.builder().metadataFilter(filter).build())
                 .maxId(maxId)

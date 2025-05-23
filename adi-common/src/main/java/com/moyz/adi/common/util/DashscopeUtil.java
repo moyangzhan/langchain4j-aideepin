@@ -6,13 +6,14 @@ import dev.langchain4j.community.model.dashscope.QwenModelName;
 import java.util.stream.Stream;
 
 public class DashscopeUtil {
-    private DashscopeUtil(){}
+    private DashscopeUtil() {
+    }
+
     public static Stream<String> languageModelNameProvider() {
         return Stream.of(
                 QwenModelName.QWEN_TURBO,
                 QwenModelName.QWEN_PLUS,
                 QwenModelName.QWEN_MAX,
-                QwenModelName.QWEN_MAX_LONGCONTEXT,
                 QwenModelName.QWEN_7B_CHAT,
                 QwenModelName.QWEN_14B_CHAT,
                 QwenModelName.QWEN_72B_CHAT,
@@ -40,7 +41,6 @@ public class DashscopeUtil {
                 QwenModelName.QWEN_TURBO,
                 QwenModelName.QWEN_PLUS,
                 QwenModelName.QWEN_MAX,
-                QwenModelName.QWEN_MAX_LONGCONTEXT,
                 QwenModelName.QWEN_7B_CHAT,
                 QwenModelName.QWEN_14B_CHAT,
                 QwenModelName.QWEN_72B_CHAT,
@@ -71,12 +71,6 @@ public class DashscopeUtil {
         return Stream.of(
                 QwenModelName.QWEN_VL_PLUS,
                 QwenModelName.QWEN_VL_MAX);
-    }
-
-    public static Stream<String> audioChatModelNameProvider() {
-        return Stream.of(
-                QwenModelName.QWEN_AUDIO_CHAT,
-                QwenModelName.QWEN2_AUDIO_INSTRUCT);
     }
 
     public static Stream<String> embeddingModelNameProvider() {

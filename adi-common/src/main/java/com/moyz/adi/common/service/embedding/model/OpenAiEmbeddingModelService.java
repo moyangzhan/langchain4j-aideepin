@@ -6,11 +6,15 @@ import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.interfaces.AbstractEmbeddingModelService;
 import com.moyz.adi.common.vo.OpenAiSetting;
+import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+
+import java.net.ProxySelector;
+import java.net.http.HttpClient;
 
 @Slf4j
 @Accessors(chain = true)
@@ -33,8 +37,9 @@ public class OpenAiEmbeddingModelService extends AbstractEmbeddingModelService<O
         if (StringUtils.isNotBlank(setting.getBaseUrl())) {
             builder.baseUrl(setting.getBaseUrl());
         }
-        if (null != proxy) {
-            builder.proxy(proxy);
+        if (null != proxyAddress) {
+            HttpClient.Builder httpClientBuilder = HttpClient.newBuilder().proxy(ProxySelector.of(proxyAddress));
+            builder.httpClientBuilder(JdkHttpClient.builder().httpClientBuilder(httpClientBuilder));
         }
         return builder.build();
     }

@@ -10,9 +10,9 @@ import com.moyz.adi.common.vo.QianFanAiModelSetting;
 import com.moyz.adi.common.vo.QianFanAiPlatformSetting;
 import dev.langchain4j.community.model.qianfan.QianfanChatModel;
 import dev.langchain4j.community.model.qianfan.QianfanStreamingChatModel;
-import dev.langchain4j.model.Tokenizer;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.TokenCountEstimator;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -43,7 +43,7 @@ public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetti
     }
 
     @Override
-    protected ChatLanguageModel doBuildChatLLM(LLMBuilderProperties properties) {
+    protected ChatModel doBuildChatLLM(LLMBuilderProperties properties) {
         QianfanChatModel.QianfanChatModelBuilder builder = QianfanChatModel.builder()
                 .baseUrl(modelPlatformSetting.getBaseUrl())
                 .modelName(aiModel.getName())
@@ -61,7 +61,7 @@ public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetti
     }
 
     @Override
-    public StreamingChatLanguageModel buildStreamingChatLLM(LLMBuilderProperties properties) {
+    public StreamingChatModel buildStreamingChatLLM(LLMBuilderProperties properties) {
         double temperature = properties.getTemperatureWithDefault(0.7);
         QianfanStreamingChatModel.QianfanStreamingChatModelBuilder builder = QianfanStreamingChatModel.builder()
                 .baseUrl(modelPlatformSetting.getBaseUrl())
@@ -79,7 +79,7 @@ public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetti
     }
 
     @Override
-    public Tokenizer getTokenEstimator() {
+    public TokenCountEstimator getTokenEstimator() {
         return null;
     }
 

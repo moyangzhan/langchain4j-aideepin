@@ -9,9 +9,8 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.filter.Filter;
@@ -47,7 +46,7 @@ public class EmbeddingRAG implements IRAGService {
      * @param overlap  重叠token数
      */
     @Override
-    public void ingest(Document document, int overlap, String tokenEstimator, ChatLanguageModel chatLanguageModel) {
+    public void ingest(Document document, int overlap, String tokenEstimator, ChatModel ChatModel) {
         log.info("EmbeddingRAG ingest,TokenCountEstimator:{}", tokenEstimator);
         DocumentSplitter documentSplitter = DocumentSplitters.recursive(RAG_MAX_SEGMENT_SIZE_IN_TOKENS, overlap, TokenEstimatorFactory.create(tokenEstimator));
         EmbeddingStoreIngestor embeddingStoreIngestor = EmbeddingStoreIngestor.builder()
@@ -101,7 +100,7 @@ public class EmbeddingRAG implements IRAGService {
      */
     public static int getRetrieveMaxResults(String userQuestion, int maxInputTokens) {
         if (maxInputTokens == 0) {
-            throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
+            return RAG_RETRIEVE_NUMBER_MAX;
         }
         InputAdaptorMsg inputAdaptorMsg = InputAdaptor.isQuestionValid(userQuestion, maxInputTokens);
         if (inputAdaptorMsg.getTokenTooMuch() == TOKEN_TOO_MUCH_QUESTION) {

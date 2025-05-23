@@ -3,6 +3,8 @@ package com.moyz.adi.common.util.wanx;
 import com.alibaba.dashscope.aigc.imagesynthesis.ImageSynthesisOutput;
 import com.alibaba.dashscope.aigc.imagesynthesis.ImageSynthesisParam;
 import com.alibaba.dashscope.aigc.imagesynthesis.ImageSynthesisResult;
+import com.alibaba.dashscope.common.Status;
+import com.alibaba.dashscope.exception.ApiException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
 import dev.langchain4j.community.model.dashscope.WanxModelName;
 import dev.langchain4j.data.image.Image;
@@ -86,7 +88,7 @@ public class AdiWanxImageModel implements ImageModel {
             ImageSynthesisResult result = imageSynthesis.call(builder.build());
             if (result.getOutput().getTaskStatus().equalsIgnoreCase(W_FAILED)) {
                 log.error("Wanx failed to generate images: {}", result.getOutput().getMessage());
-                throw new InternalError(result.getOutput().getCode());
+                throw new ApiException(Status.builder().code(result.getOutput().getCode()).message(result.getOutput().getMessage()).build());
             }
             return Response.from(imagesFrom(result));
         } catch (NoApiKeyException e) {

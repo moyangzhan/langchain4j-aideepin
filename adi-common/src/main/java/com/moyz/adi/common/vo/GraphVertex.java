@@ -27,7 +27,7 @@ public class GraphVertex {
     private String description;
 
     /**
-     * 如 kb_uuid=>123,kb_item_uuids=>['123456',['22222']
+     * 如 kb_uuid=>123,kb_item_uuid=>'22222,3333'
      */
     private Map<String, Object> metadata;
 }

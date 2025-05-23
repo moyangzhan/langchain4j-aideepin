@@ -24,7 +24,7 @@ import com.moyz.adi.common.vo.LLMBuilderProperties;
 import dev.langchain4j.data.document.DefaultDocument;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -188,7 +188,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                     .set(KnowledgeBaseItem::getGraphicalStatus, GraphicalStatusEnum.DOING)
                     .update();
             AbstractLLMService<?> llmService = LLMContext.getLLMServiceById(knowledgeBase.getIngestModelId());
-            ChatLanguageModel chatLanguageModel = llmService.buildChatLLM(
+            ChatModel ChatModel = llmService.buildChatLLM(
                     LLMBuilderProperties.builder()
                             .temperature(knowledgeBase.getQueryLlmTemperature())
                             .build()
@@ -202,7 +202,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                             .document(document)
                             .overlap(knowledgeBase.getIngestMaxOverlap())
                             .tokenEstimator(knowledgeBase.getIngestTokenEstimator())
-                            .chatLanguageModel(chatLanguageModel)
+                            .ChatModel(ChatModel)
                             .identifyColumns(List.of(AdiConstant.MetadataKey.KB_UUID))
                             .appendColumns(List.of(AdiConstant.MetadataKey.KB_ITEM_UUID))
                             .isFreeToken(llmService.getAiModel().getIsFree())

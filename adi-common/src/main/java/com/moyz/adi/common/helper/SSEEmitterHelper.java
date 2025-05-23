@@ -10,7 +10,7 @@ import com.moyz.adi.common.vo.ChatMeta;
 import com.moyz.adi.common.vo.PromptMeta;
 import com.moyz.adi.common.vo.SseAskParams;
 import com.theokanning.openai.OpenAiError;
-import dev.ai4j.openai4j.OpenAiHttpException;
+import com.theokanning.openai.OpenAiHttpException;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -205,7 +205,7 @@ public class SSEEmitterHelper {
         //缓存以便后续统计此次提问的消耗总token
         int inputTokenCount = response.metadata().tokenUsage().totalTokenCount();
         int outputTokenCount = response.metadata().tokenUsage().outputTokenCount();
-        log.info("StreamingChatLanguageModel token cost,uuid:{},inputTokenCount:{},outputTokenCount:{}", uuid, inputTokenCount, outputTokenCount);
+        log.info("StreamingChatModel token cost,uuid:{},inputTokenCount:{},outputTokenCount:{}", uuid, inputTokenCount, outputTokenCount);
         LLMTokenUtil.cacheTokenUsage(SpringUtil.getBean(StringRedisTemplate.class), uuid, response.metadata().tokenUsage());
 
         PromptMeta questionMeta = new PromptMeta(inputTokenCount, uuid);

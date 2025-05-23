@@ -239,7 +239,7 @@ public class SearchService {
         sseAskParams.setUser(user);
         sseAskParams.setAssistantChatParams(
                 AssistantChatParams.builder()
-                        .messageId(user.getUuid() + "-search")
+                        .memoryId(user.getUuid() + "-search")
                         .systemMessage(StringUtils.EMPTY)
                         .userMessage(searchText)
                         .build()

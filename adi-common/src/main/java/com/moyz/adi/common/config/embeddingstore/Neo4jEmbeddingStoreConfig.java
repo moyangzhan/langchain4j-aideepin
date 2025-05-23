@@ -3,6 +3,7 @@ package com.moyz.adi.common.config.embeddingstore;
 import com.moyz.adi.common.config.AdiProperties;
 import com.moyz.adi.common.rag.neo4j.AdiNeo4jEmbeddingStore;
 import com.moyz.adi.common.util.AdiPropertiesUtil;
+import dev.langchain4j.community.store.embedding.neo4j.Neo4jEmbeddingStore;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import jakarta.annotation.Resource;
@@ -65,7 +66,7 @@ public class Neo4jEmbeddingStoreConfig {
     private EmbeddingStore<TextSegment> createEmbeddingStore(String indexName, String tableName, int dimension) {
         log.info("Creating Neo4jEmbeddingStore with table name:{},dimension:{}", tableName, dimension);
         AdiProperties.Neo4j neo4j = adiProperties.getDatasource().getNeo4j();
-        return AdiNeo4jEmbeddingStore.builder()
+        Neo4jEmbeddingStore neo4jEmbeddingStore = Neo4jEmbeddingStore.builder()
                 .databaseName(neo4j.getDatabase())
                 .indexName(indexName)
                 .withBasicAuth("neo4j://" + neo4j.getHost() + ":" + neo4j.getPort(), neo4j.getUsername(), neo4j.getPassword())
@@ -73,5 +74,6 @@ public class Neo4jEmbeddingStoreConfig {
                 .label(tableName)
 //                .metadataPrefix("meta_")
                 .build();
+        return new AdiNeo4jEmbeddingStore(neo4jEmbeddingStore);
     }
 }

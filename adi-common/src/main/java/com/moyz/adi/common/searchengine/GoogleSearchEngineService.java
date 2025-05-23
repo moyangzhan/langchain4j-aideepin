@@ -11,6 +11,7 @@ import dev.langchain4j.web.search.WebSearchResults;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
+import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,21 +21,23 @@ import static com.moyz.adi.common.cosntant.AdiConstant.SysConfigKey.GOOGLE_SETTI
 @Slf4j
 public class GoogleSearchEngineService extends AbstractSearchEngineService<GoogleSetting> {
 
-    public GoogleSearchEngineService(Proxy proxy) {
+    public GoogleSearchEngineService(InetSocketAddress proxy) {
         super(AdiConstant.SearchEngineName.GOOGLE, GOOGLE_SETTING, GoogleSetting.class, proxy);
     }
 
     @Override
     protected void initSearchEngine() {
-        searchEngine = AdiGoogleCustomWebSearchEngine.builder()
+        AdiGoogleCustomWebSearchEngine.AdiGoogleCustomWebSearchEngineBuilder builder = AdiGoogleCustomWebSearchEngine.builder()
                 .apiKey(setting.getKey())
                 .csi(setting.getCx())
                 .siteRestrict(false)
                 .includeImages(false)
                 .logRequests(true)
-                .logResponses(true)
-                .proxy(proxy)
-                .build();
+                .logResponses(true);
+        if (null != proxyAddress) {
+            builder.proxy(new Proxy(Proxy.Type.HTTP, proxyAddress));
+        }
+        searchEngine = builder.build();
     }
 
     @Override
