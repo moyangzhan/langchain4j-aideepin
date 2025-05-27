@@ -6,10 +6,10 @@ import com.moyz.adi.common.util.LocalCache;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import lombok.Getter;
 
-import java.net.Proxy;
+import java.net.InetSocketAddress;
 
 public abstract class AbstractEmbeddingModelService<T> {
-    protected Proxy proxy;
+    protected InetSocketAddress proxyAddress;
 
     @Getter
     protected AiModel aiModel;

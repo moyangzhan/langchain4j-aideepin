@@ -20,6 +20,7 @@ import com.moyz.adi.common.workflow.WfState;
 import com.moyz.adi.common.workflow.data.NodeIOData;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -97,7 +98,7 @@ public class WorkflowRuntimeService extends ServiceImpl<WorkflowRunMapper, Workf
         WorkflowRuntime updateOne = new WorkflowRuntime();
         updateOne.setId(id);
         updateOne.setStatus(processStatus);
-        updateOne.setStatusRemark(statusRemark);
+        updateOne.setStatusRemark(StringUtils.substring(statusRemark, 0, 250));
         baseMapper.updateById(updateOne);
     }
 

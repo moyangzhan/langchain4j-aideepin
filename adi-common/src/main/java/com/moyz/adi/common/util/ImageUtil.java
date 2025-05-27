@@ -5,6 +5,7 @@ import com.alibaba.dashscope.aigc.imagesynthesis.ImageSynthesisResult;
 import com.alibaba.dashscope.exception.NoApiKeyException;
 import com.alibaba.dashscope.utils.OSSUtils;
 import com.moyz.adi.common.service.FileService;
+import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.internal.Utils;
 import jakarta.activation.MimetypesFileTypeMap;
@@ -62,7 +63,7 @@ public class ImageUtil {
 
             System.out.println("转换完成！");
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("error", e);
         }
     }
 
@@ -98,15 +99,15 @@ public class ImageUtil {
      * @param imageUrls
      * @return
      */
-    public static List<ImageContent> urlsToImageContent(List<String> imageUrls) {
+    public static List<Content> urlsToImageContent(List<String> imageUrls) {
         if (CollectionUtils.isEmpty(imageUrls)) {
-            return Collections.emptyList();
+            return new ArrayList<>();
         }
-        List<ImageContent> result = new ArrayList<>();
+        List<Content> result = new ArrayList<>();
         try {
             for (String imageUrl : imageUrls) {
                 log.info("urlsToImageContent,imageUrl:{}", imageUrl);
-                if (imageUrl.indexOf("http") == -1 && imageUrl.length() == 32) {
+                if (!imageUrl.contains("http") && imageUrl.length() == 32) {
                     String absolutePath = SpringUtil.getBean(FileService.class).getImagePath(imageUrl);
                     File file = new File(absolutePath);
                     MimetypesFileTypeMap mimetypesFileTypeMap = new MimetypesFileTypeMap();

@@ -12,8 +12,9 @@ import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.data.NodeIODataContent;
 import com.moyz.adi.common.workflow.node.humanfeedback.HumanFeedbackNode;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.bsc.langgraph4j.langchain4j.generators.StreamingChatGenerator;
@@ -60,7 +61,7 @@ public class WorkflowUtil {
                 .startingNode(node.getUuid())
                 .startingState(state)
                 .build();
-        StreamingChatLanguageModel streamingLLM = llmService.buildStreamingChatLLM(
+        StreamingChatModel streamingLLM = llmService.buildStreamingChatLLM(
                 LLMBuilderProperties
                         .builder()
                         .build()
@@ -90,9 +91,9 @@ public class WorkflowUtil {
         sseAskParams.setAssistantChatParams(AssistantChatParams.builder().systemMessage(StringUtils.EMPTY).userMessage(prompt).build());
         sseAskParams.setModelName(llmService.getAiModel().getName());
         sseAskParams.setUser(wfState.getUser());
-        String response = llmService.chat(sseAskParams);
+        ChatResponse response = llmService.chat(sseAskParams);
         log.info("llm response:{}", response);
-        return NodeIOData.createByText(DEFAULT_OUTPUT_PARAM_NAME, "", response);
+        return NodeIOData.createByText(DEFAULT_OUTPUT_PARAM_NAME, "", response.aiMessage().text());
     }
 
     public static String getHumanFeedbackTip(String nodeUuid, List<WorkflowNode> wfNodes) {

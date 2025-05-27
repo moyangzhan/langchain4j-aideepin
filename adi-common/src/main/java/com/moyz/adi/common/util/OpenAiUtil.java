@@ -2,7 +2,7 @@ package com.moyz.adi.common.util;
 
 import com.moyz.adi.common.vo.LLMException;
 import com.theokanning.openai.OpenAiError;
-import dev.ai4j.openai4j.OpenAiHttpException;
+import com.theokanning.openai.OpenAiHttpException;
 
 public class OpenAiUtil {
 
@@ -10,7 +10,7 @@ public class OpenAiUtil {
     
     /**
      * openai错误格式：
-     * dev.ai4j.openai4j.OpenAiHttpException: {
+     * OpenAiHttpException: {
      *   "error": {
      *     "code": "content_policy_violation",
      *     "message": "Your request was rejected as a result of our safety system. Your prompt may contain text that is not allowed by our safety system.",

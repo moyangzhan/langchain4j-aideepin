@@ -13,7 +13,8 @@ import com.moyz.adi.common.util.MapDBChatMemoryStore;
 import com.moyz.adi.common.vo.*;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.router.DefaultQueryRouter;
@@ -52,9 +53,9 @@ public class CompositeRAG {
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
-    public List<ContentRetriever> createRetriever(ChatLanguageModel chatLanguageModel, Map<String, String> metadataCond, int maxResults, double minScore, boolean breakIfSearchMissed) {
+    public List<ContentRetriever> createRetriever(ChatModel ChatModel, Map<String, String> metadataCond, int maxResults, double minScore, boolean breakIfSearchMissed) {
         ContentRetriever contentRetriever1 = embeddingRAGService.createRetriever(metadataCond, maxResults, minScore, breakIfSearchMissed);
-        ContentRetriever contentRetriever2 = graphRAGService.createRetriever(chatLanguageModel, metadataCond, maxResults, breakIfSearchMissed);
+        ContentRetriever contentRetriever2 = graphRAGService.createRetriever(ChatModel, metadataCond, maxResults, breakIfSearchMissed);
         return List.of(contentRetriever1, contentRetriever2);
     }
 
@@ -92,54 +93,48 @@ public class CompositeRAG {
     /**
      * RAG请求，对prompt进行各种增强后发给AI
      * ps: 挂载了知识库的请求才进行RAG增强
+     * <p>
+     * TODO...计算并截断超长的请求参数内容（历史记录+向量知识+图谱知识+用户问题+工具）
      *
-     * @param retrievers
-     * @param params
-     * @param consumer
+     * @param retrievers 文档召回器（向量、图谱）
+     * @param params     前端传过来的请求参数
+     * @param consumer   LLM响应内容的消费者
      */
     private void query(List<ContentRetriever> retrievers, SseAskParams params, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
-        AbstractLLMService llmService = LLMContext.getLLMServiceByName(params.getModelName());
+        AbstractLLMService<?> llmService = LLMContext.getLLMServiceByName(params.getModelName());
         if (!llmService.isEnabled()) {
             log.error("llm service is disabled");
             throw new BaseException(B_LLM_SERVICE_DISABLED);
         }
 
         QueryRouter queryRouter = new DefaultQueryRouter(retrievers);
-        AiModel aiModel = llmService.getAiModel();
         TokenStream tokenStream;
         AssistantChatParams assistantChatParams = params.getAssistantChatParams();
-        if (StringUtils.isNotBlank(assistantChatParams.getMessageId())) {
+        if (StringUtils.isNotBlank(assistantChatParams.getMemoryId())) {
             ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.builder()
                     .id(memoryId)
                     .maxMessages(2)
                     .chatMemoryStore(MapDBChatMemoryStore.getSingleton())
                     .build();
             QueryTransformer queryTransformer = new CompressingQueryTransformer(llmService.buildChatLLM(params.getLlmBuilderProperties(), params.getUuid()));
-            RetrievalAugmentor retrievalAugmentor = AdiKnowledgeBaseRetrievalAugmentor.builder()
+            RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
                     .queryTransformer(queryTransformer)
                     .queryRouter(queryRouter)
-                    .maxInputTokens(aiModel.getMaxInputTokens())
-                    .inputAdaptorMsgConsumer(inputAdaptorMsg -> {
-                        log.info(inputAdaptorMsg.toString());
-                        if (inputAdaptorMsg.getTokenTooMuch() == InputAdaptorMsg.TOKEN_TOO_MUCH_QUESTION) {
-                            //TODO 提示用户问题过长
-                        }
-                    })
                     .build();
-            IStreamingChatAssistant assistant = AdiAiServices.builder(IStreamingChatAssistant.class, aiModel.getMaxInputTokens())
-                    .streamingChatLanguageModel(llmService.buildStreamingChatLLM(params.getLlmBuilderProperties()))
+            IStreamingChatAssistant assistant = AiServices.builder(IStreamingChatAssistant.class)
+                    .streamingChatModel(llmService.buildStreamingChatLLM(params.getLlmBuilderProperties()))
                     .retrievalAugmentor(retrievalAugmentor)
                     .chatMemoryProvider(chatMemoryProvider)
                     .build();
             if (StringUtils.isNotBlank(assistantChatParams.getSystemMessage())) {
-                tokenStream = assistant.chatWithSystem(assistantChatParams.getMessageId(), assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage(), new ArrayList<>());
+                tokenStream = assistant.chatWithSystem(assistantChatParams.getMemoryId(), assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage(), new ArrayList<>());
             } else {
-                tokenStream = assistant.chat(assistantChatParams.getMessageId(), assistantChatParams.getUserMessage(), new ArrayList<>());
+                tokenStream = assistant.chat(assistantChatParams.getMemoryId(), assistantChatParams.getUserMessage(), new ArrayList<>());
             }
         } else {
             ITempStreamingChatAssistant assistant = AiServices.builder(ITempStreamingChatAssistant.class)
-                    .streamingChatLanguageModel(llmService.buildStreamingChatLLM(params.getLlmBuilderProperties()))
-                    .retrievalAugmentor(AdiKnowledgeBaseRetrievalAugmentor.builder().queryRouter(queryRouter).build())
+                    .streamingChatModel(llmService.buildStreamingChatLLM(params.getLlmBuilderProperties()))
+                    .retrievalAugmentor(DefaultRetrievalAugmentor.builder().queryRouter(queryRouter).build())
                     .build();
             if (StringUtils.isNotBlank(assistantChatParams.getSystemMessage())) {
                 tokenStream = assistant.chatWithSystem(assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage(), new ArrayList<>());

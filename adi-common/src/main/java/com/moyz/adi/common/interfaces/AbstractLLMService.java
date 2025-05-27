@@ -3,24 +3,26 @@ package com.moyz.adi.common.interfaces;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
-import com.moyz.adi.common.rag.AdiAiServices;
-import com.moyz.adi.common.rag.AdiChatLanguageModelImpl;
+import com.moyz.adi.common.rag.TokenEstimatorFactory;
+import com.moyz.adi.common.rag.TokenEstimatorThreadLocal;
 import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.vo.*;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.memory.chat.ChatMemoryProvider;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.Tokenizer;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.data.message.*;
+import dev.langchain4j.memory.chat.TokenWindowChatMemory;
+import dev.langchain4j.model.TokenCountEstimator;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
-import java.net.Proxy;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.LLM_MAX_INPUT_TOKENS_DEFAULT;
@@ -30,7 +32,7 @@ import static com.moyz.adi.common.enums.ErrorEnum.B_LLM_SERVICE_DISABLED;
 @Slf4j
 public abstract class AbstractLLMService<T> {
 
-    protected Proxy proxy;
+    protected InetSocketAddress proxyAddress;
     @Getter
     protected AiModel aiModel;
     protected T modelPlatformSetting;
@@ -58,8 +60,8 @@ public abstract class AbstractLLMService<T> {
         return this.stringRedisTemplate;
     }
 
-    public AbstractLLMService<T> setProxy(Proxy proxy) {
-        this.proxy = proxy;
+    public AbstractLLMService<T> setProxyAddress(InetSocketAddress proxyAddress) {
+        this.proxyAddress = proxyAddress;
         return this;
     }
 
@@ -74,7 +76,7 @@ public abstract class AbstractLLMService<T> {
         return true;
     }
 
-    public ChatLanguageModel buildChatLLM(LLMBuilderProperties properties, String uuid) {
+    public ChatModel buildChatLLM(LLMBuilderProperties properties, String uuid) {
         LLMBuilderProperties tmpProperties = properties;
         if (null == properties) {
             tmpProperties = new LLMBuilderProperties();
@@ -85,21 +87,16 @@ public abstract class AbstractLLMService<T> {
             tmpProperties.setTemperature(0.7);
             log.info("llmBuilderProperties temperature is invalid, set default temperature:{}", tmpProperties.getTemperature());
         }
-        return new AdiChatLanguageModelImpl(doBuildChatLLM(tmpProperties), response -> {
-            int inputTokenCount = response.metadata().tokenUsage().inputTokenCount();
-            int outputTokenCount = response.metadata().tokenUsage().outputTokenCount();
-            log.info("ChatLanguageModel token cost,uuid:{},inputTokenCount:{},outputTokenCount:{}", uuid, inputTokenCount, outputTokenCount);
-            LLMTokenUtil.cacheTokenUsage(getStringRedisTemplate(), uuid, response.metadata().tokenUsage());
-        });
+        return doBuildChatLLM(tmpProperties);
     }
 
-    protected abstract ChatLanguageModel doBuildChatLLM(LLMBuilderProperties properties);
+    protected abstract ChatModel doBuildChatLLM(LLMBuilderProperties properties);
 
-    public abstract StreamingChatLanguageModel buildStreamingChatLLM(LLMBuilderProperties properties);
+    public abstract StreamingChatModel buildStreamingChatLLM(LLMBuilderProperties properties);
 
     protected abstract LLMException parseError(Object error);
 
-    public abstract Tokenizer getTokenEstimator();
+    public abstract TokenCountEstimator getTokenEstimator();
 
     /**
      * 普通聊天，将原始的用户问题及历史消息发送给AI
@@ -108,18 +105,26 @@ public abstract class AbstractLLMService<T> {
      * @param consumer 响应结果回调
      */
     public void streamingChat(SseAskParams params, boolean shutdownSse, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
-        TokenStream tokenStream = createTokenStream(params);
-        tokenStream
-                .onPartialResponse(content -> SSEEmitterHelper.parseAndSendPartialMsg(params.getSseEmitter(), content))
-                .onCompleteResponse(response -> {
-                    Pair<PromptMeta, AnswerMeta> pair = SSEEmitterHelper.calculateTokenAndShutdown(response, params.getSseEmitter(), params.getUuid(), shutdownSse);
-                    consumer.accept(response.aiMessage().text(), pair.getLeft(), pair.getRight());
-                })
-                .onError(error -> SSEEmitterHelper.errorAndShutdown(error, params.getSseEmitter()))
-                .start();
+        createTokenStream(params, new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                SSEEmitterHelper.parseAndSendPartialMsg(params.getSseEmitter(), partialResponse);
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse response) {
+                Pair<PromptMeta, AnswerMeta> pair = SSEEmitterHelper.calculateTokenAndShutdown(response, params.getSseEmitter(), params.getUuid(), shutdownSse);
+                consumer.accept(response.aiMessage().text(), pair.getLeft(), pair.getRight());
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                SSEEmitterHelper.errorAndShutdown(error, params.getSseEmitter());
+            }
+        });
     }
 
-    public String chat(SseAskParams params) {
+    public ChatResponse chat(SseAskParams params) {
         if (!isEnabled()) {
             log.error("llm service is disabled");
             throw new BaseException(B_LLM_SERVICE_DISABLED);
@@ -128,43 +133,20 @@ public abstract class AbstractLLMService<T> {
             log.error("对话参数校验不通过");
             throw new BaseException(A_PARAMS_ERROR);
         }
-        List<ImageContent> imageContents = ImageUtil.urlsToImageContent(params.getAssistantChatParams().getImageUrls());
-        AssistantChatParams assistantChatParams = params.getAssistantChatParams();
-        log.info("sseChat,messageId:{}", assistantChatParams.getMessageId());
+        ChatModel chatModel = buildChatLLM(params.getLlmBuilderProperties(), params.getUuid());
+        List<ChatMessage> chatMessages = createChatMessages(params.getAssistantChatParams());
+        ChatResponse chatResponse = chatModel.chat(chatMessages);
 
-        String response;
-        //chat with memory
-        if (StringUtils.isNotBlank(assistantChatParams.getMessageId())) {
-            ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.builder()
-                    .id(memoryId)
-                    .maxMessages(6)
-                    .chatMemoryStore(MapDBChatMemoryStore.getSingleton())
-                    .build();
-            IChatAssistant assistant = AdiAiServices.builder(IChatAssistant.class, aiModel.getMaxInputTokens())
-                    .chatLanguageModel(buildChatLLM(params.getLlmBuilderProperties(), params.getUuid()))
-                    .chatMemoryProvider(chatMemoryProvider)
-                    .build();
-            if (StringUtils.isNotBlank(assistantChatParams.getSystemMessage())) {
-                response = assistant.chatWithSystem(assistantChatParams.getMessageId(), assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage(), imageContents);
-            } else {
-                response = assistant.chat(assistantChatParams.getMessageId(), assistantChatParams.getUserMessage(), imageContents);
-            }
-        }
-        //chat without memory
-        else {
-            ITempChatAssistant assistant = AdiAiServices.builder(ITempChatAssistant.class, aiModel.getMaxInputTokens())
-                    .chatLanguageModel(buildChatLLM(params.getLlmBuilderProperties(), params.getUuid()))
-                    .build();
-            if (StringUtils.isNotBlank(assistantChatParams.getSystemMessage())) {
-                response = assistant.chatWithSystem(assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage(), imageContents);
-            } else {
-                response = assistant.chatSimple(assistantChatParams.getUserMessage(), imageContents);
-            }
-        }
-        return response;
+        // 计算token使用量
+        int inputTokenCount = chatResponse.metadata().tokenUsage().inputTokenCount();
+        int outputTokenCount = chatResponse.metadata().tokenUsage().outputTokenCount();
+        log.info("ChatModel token cost,uuid:{},inputTokenCount:{},outputTokenCount:{}", params.getUuid(), inputTokenCount, outputTokenCount);
+        LLMTokenUtil.cacheTokenUsage(getStringRedisTemplate(), params.getUuid(), chatResponse.metadata().tokenUsage());
+
+        return chatResponse;
     }
 
-    private TokenStream createTokenStream(SseAskParams params) {
+    private void createTokenStream(SseAskParams params, StreamingChatResponseHandler handler) {
         if (!isEnabled()) {
             log.error("llm service is disabled");
             throw new BaseException(B_LLM_SERVICE_DISABLED);
@@ -173,39 +155,58 @@ public abstract class AbstractLLMService<T> {
             log.error("对话参数校验不通过");
             throw new BaseException(A_PARAMS_ERROR);
         }
-        List<ImageContent> imageContents = ImageUtil.urlsToImageContent(params.getAssistantChatParams().getImageUrls());
         AssistantChatParams assistantChatParams = params.getAssistantChatParams();
-        log.info("sseChat,messageId:{}", assistantChatParams.getMessageId());
+        log.info("sseChat,messageId:{}", assistantChatParams.getMemoryId());
+        List<ChatMessage> chatMessages = createChatMessages(assistantChatParams);
+        buildStreamingChatLLM(params.getLlmBuilderProperties()).chat(chatMessages, handler);
+    }
 
-        TokenStream tokenStream;
-        //chat with memory
-        if (StringUtils.isNotBlank(assistantChatParams.getMessageId())) {
-            ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.builder()
-                    .id(memoryId)
-                    .maxMessages(6)
+    private List<ChatMessage> createChatMessages(AssistantChatParams assistantChatParams) {
+        String memoryId = assistantChatParams.getMemoryId();
+        List<Content> userContents = new ArrayList<>();
+        userContents.add(TextContent.from(assistantChatParams.getUserMessage()));
+        List<ChatMessage> chatMessages = new ArrayList<>();
+        if (StringUtils.isNotBlank(memoryId)) {
+
+            TokenCountEstimator tokenCountEstimator;
+            String tokenEstimatorName = TokenEstimatorThreadLocal.getTokenEstimator();
+            if (StringUtils.isBlank(tokenEstimatorName) && null != getTokenEstimator()) {
+                tokenCountEstimator = getTokenEstimator();
+            } else {
+                tokenCountEstimator = TokenEstimatorFactory.create(tokenEstimatorName);
+            }
+
+            TokenWindowChatMemory memory = TokenWindowChatMemory.builder()
                     .chatMemoryStore(MapDBChatMemoryStore.getSingleton())
-                    .build();
-            IStreamingChatAssistant assistant = AdiAiServices.builder(IStreamingChatAssistant.class, aiModel.getMaxInputTokens())
-                    .streamingChatLanguageModel(buildStreamingChatLLM(params.getLlmBuilderProperties()))
-                    .chatMemoryProvider(chatMemoryProvider)
+                    .id(memoryId)
+                    .maxTokens(aiModel.getMaxInputTokens(), tokenCountEstimator)
                     .build();
             if (StringUtils.isNotBlank(assistantChatParams.getSystemMessage())) {
-                tokenStream = assistant.chatWithSystem(assistantChatParams.getMessageId(), assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage(), imageContents);
-            } else {
-                tokenStream = assistant.chat(assistantChatParams.getMessageId(), assistantChatParams.getUserMessage(), imageContents);
+                memory.add(SystemMessage.from(assistantChatParams.getSystemMessage()));
             }
-        }
-        //chat without memory
-        else {
-            ITempStreamingChatAssistant assistant = AdiAiServices.builder(ITempStreamingChatAssistant.class, aiModel.getMaxInputTokens())
-                    .streamingChatLanguageModel(buildStreamingChatLLM(params.getLlmBuilderProperties()))
-                    .build();
+            memory.add(UserMessage.from(userContents));
+
+            //截断文本消息后再追加图片消息
+            chatMessages.addAll(memory.messages());
+
+            //重新组装用户消息及图片消息到chatMessage
+            List<Content> imageContents = ImageUtil.urlsToImageContent(assistantChatParams.getImageUrls());
+            if (CollectionUtils.isNotEmpty(imageContents)) {
+                int lastIndex = chatMessages.size() - 1;
+                UserMessage lastMessage = (UserMessage) chatMessages.get(lastIndex);
+                chatMessages.remove(lastIndex);
+                List<Content> userMessage = new ArrayList<>();
+                userMessage.addAll(lastMessage.contents());
+                userMessage.addAll(ImageUtil.urlsToImageContent(assistantChatParams.getImageUrls()));
+                chatMessages.add(UserMessage.from(userMessage));
+            }
+            return chatMessages;
+        } else {
             if (StringUtils.isNotBlank(assistantChatParams.getSystemMessage())) {
-                tokenStream = assistant.chatWithSystem(assistantChatParams.getSystemMessage(), assistantChatParams.getUserMessage(), imageContents);
-            } else {
-                tokenStream = assistant.chatSimple(assistantChatParams.getUserMessage(), imageContents);
+                chatMessages.add(SystemMessage.from(assistantChatParams.getSystemMessage()));
             }
+            chatMessages.add(UserMessage.from(userContents));
         }
-        return tokenStream;
+        return chatMessages;
     }
 }

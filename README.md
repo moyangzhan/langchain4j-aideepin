@@ -82,7 +82,7 @@ Bing (TODO)
   * Apache AGE扩展：https://github.com/apache/age
 * [neo4j 5.26.4+](https://neo4j.com/deployment-center/)
 
-ps: neo4j可代替pgvector与apache age
+ps: neo4j 与 pgvector + apache age 二选一即可
 
 前端技术栈：
 
@@ -99,55 +99,63 @@ ps: neo4j可代替pgvector与apache age
 
 **a. 初始化数据库**
 
-* 创建主数据库aideepin(postgres)
-* 执行docs/create.sql
-* 配置模型(至少设置一个) 或者 使用[管理端](https://github.com/moyangzhan/langchain4j-aideepin-admin)在界面上配置
++ 创建数据库aideepin
++ 执行docs/create.sql
++ 配置模型(至少设置一个) 或者 使用[管理端](https://github.com/moyangzhan/langchain4j-aideepin-admin)在界面上配置
+      
+    使用SQL直接更新表数据
+    +  配置AI平台
+        ```plain
+        -- DeepSeek的secretKey
+        update adi_sys_config set value = '{"base_url":"https://api.deepseek.com","secret_key":"my_deepseek_secret_key"}' where name = 'deepseek_setting';
 
-  * 配置AI平台
-    ```plaintext
-    -- DeepSeek的secretKey
-    update adi_sys_config set value = '{"base_url":"https://api.deepseek.com","secret_key":"my_deepseek_secret_key"}' where name = 'deepseek_setting';
-    
-    -- openai的secretKey
-    update adi_sys_config set value = '{"secret_key":"my_openai_secret_key"}' where name = 'openai_setting';
+        -- openai的secretKey
+        update adi_sys_config set value = '{"secret_key":"my_openai_secret_key"}' where name = 'openai_setting';
 
-    -- 灵积大模型平台的apiKey
-    update adi_sys_config set value = '{"api_key":"my_dashcope_api_key"}' where name = 'dashscope_setting';
+        -- 灵积大模型平台的apiKey
+        update adi_sys_config set value = '{"api_key":"my_dashcope_api_key"}' where name = 'dashscope_setting';
 
-    -- 千帆大模型平台的配置
-    update adi_sys_config set value = '{"api_key":"my_qianfan_api_key","secret_key":"my_qianfan_secret_key"}' where name = 'qianfan_setting';
+        -- 硅基流动的配置
+        update adi_sys_config set value = '{"base_url":"https://api.siliconflow.cn","secret_key":"my_siliconflow_api_key"}' where name = 'siliconflow_setting';
 
-    -- ollama的配置
-    update adi_sys_config set value = '{"base_url":"my_ollama_base_url"}' where name = 'ollama_setting';
-    ```
-  * 启用AI平台下的模型或新增模型
-    ```
-    -- Enable model
-    update adi_ai_model set is_enable = true where name = 'deepseek-chat';
-    update adi_ai_model set is_enable = true where name = 'gpt-3.5-turbo';
-    update adi_ai_model set is_enable = true where name = 'dall-e-2';
-    update adi_ai_model set is_enable = true where name = 'qwen-turbo';
-    update adi_ai_model set is_enable = true where name = 'ERNIE-Speed-128K';
-    update adi_ai_model set is_enable = true where name = 'tinydolphin';
+        -- 千帆大模型平台的配置
+        update adi_sys_config set value = '{"api_key":"my_qianfan_api_key","secret_key":"my_qianfan_secret_key"}' where name = 'qianfan_setting';
 
-    -- Add new model
-    INSERT INTO adi_ai_model (name, type, platform, is_enable) VALUES ('vicuna', 'text', 'ollama', true);
-    ```
-* 填充搜索引擎的配置
+        -- ollama的配置
+        update adi_sys_config set value = '{"base_url":"my_ollama_base_url"}' where name = 'ollama_setting';
+        ```
 
-  * Google的配置
-    ```
-    update adi_sys_config set value = '{"url":"https://www.googleapis.com/customsearch/v1","key":"my key from cloud.google.com","cx":"my cx from programmablesearchengine.google.com"}' where name = 'google_setting';
-    ```
+  + 启用AI平台下的模型或新增模型
+
+      ```plain
+      -- Enable model
+      update adi_ai_model set is_enable = true where name = 'deepseek-chat';
+      update adi_ai_model set is_enable = true where name = 'gpt-3.5-turbo';
+      update adi_ai_model set is_enable = true where name = 'dall-e-2';
+      update adi_ai_model set is_enable = true where name = 'qwen-turbo';
+      update adi_ai_model set is_enable = true where name = 'THUDM/GLM-Z1-9B-0414';
+      update adi_ai_model set is_enable = true where name = 'ernie_speed';
+      update adi_ai_model set is_enable = true where name = 'tinydolphin';
+
+      -- Add new model
+      INSERT INTO adi_ai_model (name, type, platform, is_enable) VALUES ('vicuna', 'text', 'ollama', true);
+      ```
+
++ 填充搜索引擎的配置
+    - Google的配置
+
+      ```plain
+      update adi_sys_config set value = '{"url":"https://www.googleapis.com/customsearch/v1","key":"my key from cloud.google.com","cx":"my cx from programmablesearchengine.google.com"}' where name = 'google_setting';
+      ```
 
 **b. 修改配置文件**
 
-* postgresql: application-[dev|prod].xml 中的 spring.datasource
-* redis: application-[dev|prod].xml 中的 spring.data.redis
-* mail: application.xml 中的 spring.mail
-* 向量数据库，默认为 pgvector
++ postgresql: application-[dev|prod].xml中的spring.datasource
++ redis: application-[dev|prod].xml中的spring.data.redis
++ 邮箱: application.xml中的spring.mail
++ 向量数据库，默认为 pgvector
   * application-[dev|prod].xml 中的 adi.vector-database=[pgvector|neo4j]
-* 图数据库，默认为 Apache age
++ 图数据库，默认为 Apache age
   * application-[dev|prod].xml 中的 adi.graph-database=[apache-age|neo4j]
 
 ### 编译及运行

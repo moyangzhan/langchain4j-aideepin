@@ -5,7 +5,7 @@ import com.moyz.adi.common.dto.KbQaRefGraphDto;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.AdiStringUtil;
 import com.moyz.adi.common.vo.*;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
@@ -33,7 +33,7 @@ public class GraphStoreContentRetriever implements ContentRetriever {
     public static final String DEFAULT_DISPLAY_NAME = "Default";
 
     private final GraphStore graphStore;
-    private final ChatLanguageModel chatLanguageModel;
+    private final ChatModel ChatModel;
 
     private final Function<Query, Integer> maxResultsProvider;
     private final Function<Query, Filter> filterProvider;
@@ -47,13 +47,13 @@ public class GraphStoreContentRetriever implements ContentRetriever {
     @Builder
     private GraphStoreContentRetriever(String displayName,
                                        GraphStore graphStore,
-                                       ChatLanguageModel chatLanguageModel,
+                                       ChatModel ChatModel,
                                        Function<Query, Integer> dynamicMaxResults,
                                        Function<Query, Filter> dynamicFilter,
                                        Boolean breakIfSearchMissed) {
         this.displayName = getOrDefault(displayName, DEFAULT_DISPLAY_NAME);
         this.graphStore = ensureNotNull(graphStore, "graphStore");
-        this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
+        this.ChatModel = ensureNotNull(ChatModel, "ChatModel");
         this.maxResultsProvider = getOrDefault(dynamicMaxResults, DEFAULT_MAX_RESULTS);
         this.filterProvider = getOrDefault(dynamicFilter, DEFAULT_FILTER);
         this.breakIfSearchMissed = breakIfSearchMissed;
@@ -68,7 +68,7 @@ public class GraphStoreContentRetriever implements ContentRetriever {
         log.info("Graph retrieve,query:{}", query);
         String response = "";
         try {
-            response = chatLanguageModel.chat(GraphExtractPrompt.GRAPH_EXTRACTION_PROMPT_CN.replace("{input_text}", query.text()));
+            response = ChatModel.chat(GraphExtractPrompt.GRAPH_EXTRACTION_PROMPT_CN.replace("{input_text}", query.text()));
         } catch (Exception e) {
             log.error("Graph retrieve. extract graph error", e);
         }

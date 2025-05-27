@@ -16,7 +16,6 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.net.InetSocketAddress;
-import java.net.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -30,7 +29,7 @@ public class AiModelSettingService {
     @Resource
     private AdiProperties adiProperties;
 
-    private Proxy proxy;
+    private InetSocketAddress proxyAddress;
 
     private List<AiModel> all = new ArrayList<>();
 
@@ -49,9 +48,9 @@ public class AiModelSettingService {
             }
         }
         if (adiProperties.getProxy().isEnable()) {
-            proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(adiProperties.getProxy().getHost(), adiProperties.getProxy().getHttpPort()));
+            proxyAddress = new InetSocketAddress(adiProperties.getProxy().getHost(), adiProperties.getProxy().getHttpPort());
         } else {
-            proxy = null;
+            proxyAddress = null;
         }
 
         initLLMServiceList();
@@ -67,7 +66,7 @@ public class AiModelSettingService {
         initLLMService(AdiConstant.ModelPlatform.DEEPSEEK, DeepSeekLLMService::new);
 
         //openai
-        initLLMService(AdiConstant.ModelPlatform.OPENAI, model -> new OpenAiLLMService(model).setProxy(proxy));
+        initLLMService(AdiConstant.ModelPlatform.OPENAI, model -> new OpenAiLLMService(model).setProxyAddress(proxyAddress));
 
         //dashscope
         initLLMService(AdiConstant.ModelPlatform.DASHSCOPE, DashScopeLLMService::new);
@@ -86,13 +85,13 @@ public class AiModelSettingService {
      */
     private synchronized void initImageModelServiceList() {
         //openai image model
-        initImageModelService(AdiConstant.ModelPlatform.OPENAI, model -> new OpenAiDalleService(model).setProxy(proxy));
+        initImageModelService(AdiConstant.ModelPlatform.OPENAI, model -> new OpenAiDalleService(model).setProxyAddress(proxyAddress));
 
 
         initImageModelService(AdiConstant.ModelPlatform.DASHSCOPE, DashScopeWanxService::new);
 
         //search engine
-        SearchEngineServiceContext.addWebSearcher(AdiConstant.SearchEngineName.GOOGLE, new GoogleSearchEngineService(proxy));
+        SearchEngineServiceContext.addWebSearcher(AdiConstant.SearchEngineName.GOOGLE, new GoogleSearchEngineService(proxyAddress));
     }
 
     private void initLLMService(String platform, Function<AiModel, AbstractLLMService<?>> function) {

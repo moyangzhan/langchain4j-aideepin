@@ -32,7 +32,7 @@ public class WorkflowRuntime extends BaseEntity {
     @TableField(value = "input", jdbcType = JdbcType.JAVA_OBJECT, typeHandler = JsonNodeTypeHandler.class)
     private ObjectNode input;
 
-    @TableField(value = "output", jdbcType = JdbcType.JAVA_OBJECT, typeHandler = JsonNodeTypeHandler.class)
+    @TableField(value = "\"output\"", jdbcType = JdbcType.JAVA_OBJECT, typeHandler = JsonNodeTypeHandler.class)
     private ObjectNode output;
 
     @TableField("status")

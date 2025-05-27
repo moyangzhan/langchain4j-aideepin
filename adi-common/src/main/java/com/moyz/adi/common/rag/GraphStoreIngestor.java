@@ -115,8 +115,7 @@ public class GraphStoreIngestor {
         // TODO handle failures, parallelize
         log.info("Starting to extract {} text segments", segments.size());
         List<Triple<TextSegment, String, String>> segmentIdToAiResponse = segmentsFunction.apply(segments);
-        for (int i = 0; i < segmentIdToAiResponse.size(); i++) {
-            Triple<TextSegment, String, String> triple = segmentIdToAiResponse.get(i);
+        for (Triple<TextSegment, String, String> triple : segmentIdToAiResponse) {
             TextSegment segment = triple.getLeft();
             String textSegmentId = triple.getMiddle();
             String response = triple.getRight();

@@ -8,21 +8,22 @@ import dev.langchain4j.web.search.WebSearchEngine;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.InetSocketAddress;
 import java.net.Proxy;
 
 public abstract class AbstractSearchEngineService<T> {
 
     protected String engineName;
 
-    protected Proxy proxy;
+    protected InetSocketAddress proxyAddress;
 
     protected WebSearchEngine searchEngine;
 
-    protected AbstractSearchEngineService(String engineName, String settingName, Class<T> clazz, Proxy proxy) {
+    protected AbstractSearchEngineService(String engineName, String settingName, Class<T> clazz, InetSocketAddress proxyAddress) {
         this.engineName = engineName;
         String st = LocalCache.CONFIGS.get(settingName);
         setting = JsonUtil.fromJson(st, clazz);
-        this.proxy = proxy;
+        this.proxyAddress = proxyAddress;
         initSearchEngine();
     }
 
@@ -40,9 +41,9 @@ public abstract class AbstractSearchEngineService<T> {
 
     protected RestTemplate getRestTemplate() {
         RestTemplate restTemplate = SpringUtil.getBean(RestTemplate.class);
-        if (null != proxy) {
+        if (null != proxyAddress) {
             SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-            requestFactory.setProxy(proxy);
+            requestFactory.setProxy(new Proxy(Proxy.Type.HTTP, proxyAddress));
             restTemplate.setRequestFactory(requestFactory);
         }
         return restTemplate;

@@ -35,25 +35,25 @@ class Neo4jEmbeddingUtils {
     public static EmbeddingMatch<TextSegment> toEmbeddingMatch(AdiNeo4jEmbeddingStore store, Record neo4jRecord) {
         Map<String, String> metaData = new HashMap<>();
         neo4jRecord.get("metadata").asMap().forEach((key, value) -> {
-            if (!store.getNotMetaKeys().contains(key)) {
+            if (!store.getNeo4jEmbeddingStore().getNotMetaKeys().contains(key)) {
                 String stringValue = value == null ? null : value.toString();
-                metaData.put(key.replace(store.getMetadataPrefix(), ""), stringValue);
+                metaData.put(key.replace(store.getNeo4jEmbeddingStore().getMetadataPrefix(), ""), stringValue);
             }
         });
 
         Metadata metadata = new Metadata(metaData);
 
-        Value text = neo4jRecord.get(store.getTextProperty());
+        Value text = neo4jRecord.get(store.getNeo4jEmbeddingStore().getTextProperty());
         TextSegment textSegment = text.isNull() ? null : TextSegment.from(text.asString(), metadata);
 
         List<Float> embeddingList =
-                neo4jRecord.get(store.getEmbeddingProperty()).asList(Value::asFloat);
+                neo4jRecord.get(store.getNeo4jEmbeddingStore().getEmbeddingProperty()).asList(Value::asFloat);
 
         Embedding embedding = Embedding.from(embeddingList);
 
         return new EmbeddingMatch<>(
                 neo4jRecord.get("score").asDouble(),
-                neo4jRecord.get(store.getIdProperty()).asString(),
+                neo4jRecord.get("id").asString(),
                 embedding,
                 textSegment);
     }
@@ -68,15 +68,15 @@ class Neo4jEmbeddingUtils {
         Embedding embedding = embeddings.get(idx);
 
         Map<String, Object> row = new HashMap<>();
-        row.put(store.getIdProperty(), id);
+        row.put(store.getNeo4jEmbeddingStore().getIdProperty(), id);
 
         Map<String, Object> properties = new HashMap<>();
         if (embedded != null) {
             TextSegment segment = embedded.get(idx);
-            properties.put(store.getTextProperty(), segment.text());
+            properties.put(store.getNeo4jEmbeddingStore().getTextProperty(), segment.text());
             Map<String, Object> metadata = segment.metadata().toMap();
             metadata.forEach((k, v) -> {
-                final String propKey = store.getMetadataPrefix() + k;
+                final String propKey = store.getNeo4jEmbeddingStore().getMetadataPrefix() + k;
                 final Value propValue = Values.value(String.valueOf(v));
                 properties.put(propKey, propValue);
             });

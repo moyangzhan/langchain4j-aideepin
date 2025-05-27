@@ -17,7 +17,6 @@ import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.rag.*;
-import com.moyz.adi.common.rag.neo4j.AdiNeo4jEmbeddingStore;
 import com.moyz.adi.common.service.embedding.IEmbeddingService;
 import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.vo.AssistantChatParams;
@@ -25,11 +24,8 @@ import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.SseAskParams;
 import com.moyz.adi.common.vo.UpdateQaParams;
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -374,7 +370,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         KnowledgeBase knowledgeBase = getOrThrow(qaRecord.getKbUuid());
         AiModel aiModel = aiModelService.getByIdOrThrow(qaRecord.getAiModelId());
 
-        RAGThreadLocal.setTokenEstimator(knowledgeBase.getIngestTokenEstimator());
+        TokenEstimatorThreadLocal.setTokenEstimator(knowledgeBase.getIngestTokenEstimator());
 
         Map<String, String> metadataCond = Map.of(AdiConstant.MetadataKey.KB_UUID, qaRecord.getKbUuid());
         int maxInputTokens = aiModel.getMaxInputTokens();
@@ -388,7 +384,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         sseAskParams.setUuid(qaRecord.getUuid());
         sseAskParams.setAssistantChatParams(
                 AssistantChatParams.builder()
-                        .messageId(qaRecord.getKbUuid() + "_" + user.getUuid())
+                        .memoryId(qaRecord.getKbUuid() + "_" + user.getUuid())
                         .systemMessage(knowledgeBase.getQuerySystemMessage())
                         .userMessage(qaRecord.getQuestion())
                         .build()
@@ -405,7 +401,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             log.info("用户问题过长，无需再召回文档，严格模式下直接返回异常提示,宽松模式下接着请求LLM");
             if (Boolean.TRUE.equals(knowledgeBase.getIsStrict())) {
                 sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "提问内容过长，最多不超过 " + maxInputTokens + " tokens");
-                RAGThreadLocal.clearTokenEstimator();
+                TokenEstimatorThreadLocal.clearTokenEstimator();
             } else {
                 sseEmitterHelper.call(sseAskParams, true, (response, questionMeta, answerMeta) -> {
                             updateQaRecord(
@@ -417,18 +413,18 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                                             .response(response)
                                             .isTokenFree(aiModel.getIsFree())
                                             .build());
-                            RAGThreadLocal.clearTokenEstimator();
+                            TokenEstimatorThreadLocal.clearTokenEstimator();
                         }
                 );
             }
         } else {
             log.info("进行RAG请求,maxResults:{}", maxResults);
-            ChatLanguageModel chatLanguageModel = LLMContext.getLLMServiceById(knowledgeBase.getIngestModelId()).buildChatLLM(
+            ChatModel ChatModel = LLMContext.getLLMServiceById(knowledgeBase.getIngestModelId()).buildChatLLM(
                     LLMBuilderProperties.builder()
                             .temperature(knowledgeBase.getQueryLlmTemperature())
                             .build()
                     , qaRecordUuid);
-            List<ContentRetriever> retrievers = compositeRAG.createRetriever(chatLanguageModel, metadataCond, maxResults, knowledgeBase.getRetrieveMinScore(), knowledgeBase.getIsStrict());
+            List<ContentRetriever> retrievers = compositeRAG.createRetriever(ChatModel, metadataCond, maxResults, knowledgeBase.getRetrieveMinScore(), knowledgeBase.getIsStrict());
             compositeRAG.ragChat(retrievers, sseAskParams, (response, promptMeta, answerMeta) -> {
                         updateQaRecord(
                                 UpdateQaParams.builder()
@@ -439,7 +435,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                                         .response(response)
                                         .isTokenFree(aiModel.getIsFree())
                                         .build());
-                        RAGThreadLocal.clearTokenEstimator();
+                        TokenEstimatorThreadLocal.clearTokenEstimator();
                     }
             );
         }

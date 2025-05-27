@@ -28,6 +28,10 @@ public class Neo4jKnowledgeEmbeddingService implements IEmbeddingService {
 
     @Override
     public List<KbItemEmbeddingDto> listByEmbeddingIds(List<String> embeddingIds) {
+        if (embeddingIds.isEmpty()) {
+            log.warn("listByEmbeddingIds embeddingIds is empty");
+            return new ArrayList<>();
+        }
         EmbeddingSearchResult<TextSegment> searchResult = ((AdiNeo4jEmbeddingStore) embeddingStore).searchByIds(embeddingIds);
         List<KbItemEmbeddingDto> result = new ArrayList<>();
         for (EmbeddingMatch<TextSegment> embeddingMatch : searchResult.matches()) {

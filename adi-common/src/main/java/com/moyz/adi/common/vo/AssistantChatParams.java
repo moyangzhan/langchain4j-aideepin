@@ -12,7 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AssistantChatParams {
-    private String messageId;
+    private String memoryId;
     private String systemMessage;
     private String userMessage;
     //图片地址，多模态LLM才生效
