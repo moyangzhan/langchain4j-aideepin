@@ -23,6 +23,7 @@ import com.moyz.adi.common.workflow.node.mailsender.MailSendNodeConfig;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -146,7 +147,7 @@ public class WorkflowNodeService extends ServiceImpl<WorkflowNodeMapper, Workflo
     }
 
     private void checkAndDecrypt(WorkflowNode workflowNode) {
-        if(null == workflowNode){
+        if (null == workflowNode) {
             log.warn("节点不存在");
             return;
         }
@@ -163,8 +164,10 @@ public class WorkflowNodeService extends ServiceImpl<WorkflowNodeMapper, Workflo
             MailSendNodeConfig mailSendNodeConfig = JsonUtil.fromJson(workflowNode.getNodeConfig(), MailSendNodeConfig.class);
             if (null != mailSendNodeConfig && null != mailSendNodeConfig.getSender() && null != mailSendNodeConfig.getSender().getPassword()) {
                 String password = mailSendNodeConfig.getSender().getPassword();
-                String decrypt = AesUtil.decrypt(password);
-                mailSendNodeConfig.getSender().setPassword(decrypt);
+                if (StringUtils.isNotBlank(password)) {
+                    String decrypt = AesUtil.decrypt(password);
+                    mailSendNodeConfig.getSender().setPassword(decrypt);
+                }
                 workflowNode.setNodeConfig((ObjectNode) JsonUtil.classToJsonNode(mailSendNodeConfig));
             }
         }
