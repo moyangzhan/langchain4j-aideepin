@@ -22,10 +22,7 @@ import org.neo4j.driver.Session;
 import org.neo4j.driver.SessionConfig;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.moyz.adi.common.rag.neo4j.Neo4jEmbeddingUtils.toEmbeddingMatch;
 import static org.neo4j.cypherdsl.core.Cypher.*;
@@ -172,7 +169,37 @@ public class AdiNeo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
+    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
+        return neo4jEmbeddingStore.addAll(embeddings, embedded);
+    }
+
+    @Override
+    public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+        neo4jEmbeddingStore.addAll(ids, embeddings, embedded);
+    }
+
+    @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest embeddingSearchRequest) {
         return neo4jEmbeddingStore.search(embeddingSearchRequest);
+    }
+
+    @Override
+    public void removeAll(Filter filter) {
+        neo4jEmbeddingStore.removeAll(filter);
+    }
+
+    @Override
+    public void remove(String id) {
+        neo4jEmbeddingStore.remove(id);
+    }
+
+    @Override
+    public void removeAll() {
+        neo4jEmbeddingStore.removeAll();
+    }
+
+    @Override
+    public void removeAll(Collection<String> ids) {
+        neo4jEmbeddingStore.removeAll(ids);
     }
 }
