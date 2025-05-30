@@ -104,7 +104,7 @@ public class DashScopeWanxService extends AbstractImageModelService<DashScopeSet
             LLMException llmException = new LLMException();
             llmException.setType(apiException.getStatus().getCode());
             llmException.setCode(apiException.getStatus().getCode());
-            llmException.setMessage(apiException.getMessage());
+            llmException.setMessage(apiException.getStatus().getMessage());
             return llmException;
         }
         return null;

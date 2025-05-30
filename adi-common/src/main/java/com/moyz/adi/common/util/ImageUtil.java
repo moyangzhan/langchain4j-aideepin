@@ -30,13 +30,13 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ImageUtil {
 
-    public static boolean isRGB(String imagePath) {
+    public static boolean isNotArgb(String imagePath) {
         try {
             // 读取图片
             BufferedImage image = ImageIO.read(new File(imagePath));
             // 获取图片的颜色模型
             int colorModel = image.getColorModel().getColorSpace().getType();
-            if (colorModel == BufferedImage.TYPE_INT_RGB) {
+            if (colorModel != BufferedImage.TYPE_INT_ARGB) {
                 return true;
             }
         } catch (IOException e) {
@@ -46,6 +46,7 @@ public class ImageUtil {
     }
 
     public static void rgbConvertToRgba(String rbgPath, String argbPath) {
+        log.info("RGB convert to RGBA, rbgPath:{}, argbPath:{}", rbgPath, argbPath);
         try {
             // 读取RGB图片
             BufferedImage rgbImage = ImageIO.read(new File(rbgPath));
@@ -61,7 +62,6 @@ public class ImageUtil {
             // 保存RGBA图片
             ImageIO.write(rgbaImage, "png", new File(argbPath));
 
-            System.out.println("转换完成！");
         } catch (IOException e) {
             log.error("error", e);
         }
@@ -134,12 +134,12 @@ public class ImageUtil {
         int imageHeight = image.getHeight();
 
         // 计算缩放比例
-        double thumbRatio = (double)thumbWidth / (double)thumbHeight;
-        double imageRatio = (double)imageWidth / (double)imageHeight;
+        double thumbRatio = (double) thumbWidth / (double) thumbHeight;
+        double imageRatio = (double) imageWidth / (double) imageHeight;
         if (thumbRatio < imageRatio) {
-            thumbHeight = (int)(thumbWidth / imageRatio);
+            thumbHeight = (int) (thumbWidth / imageRatio);
         } else {
-            thumbWidth = (int)(thumbHeight * imageRatio);
+            thumbWidth = (int) (thumbHeight * imageRatio);
         }
 
         // 创建缩略图
@@ -202,5 +202,10 @@ public class ImageUtil {
             throw new RuntimeException(e);
         }
         return tmpFilePath.toAbsolutePath().toString();
+    }
+
+    public static boolean isImage(String fileExt) {
+        List<String> imageExtensions = Arrays.asList("jpg", "jpeg", "png", "gif", "bmp", "webp");
+        return imageExtensions.contains(fileExt.toLowerCase());
     }
 }
