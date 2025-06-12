@@ -186,6 +186,7 @@ CREATE TABLE adi_conversation
     ai_system_message         varchar(1000) default ''                not null,
     understand_context_enable boolean       default false             not null,
     llm_temperature           numeric(2, 1) default 0.7               not null,
+    mcp_ids                   varchar(1000) default ''                not null,
     create_time               timestamp     default CURRENT_TIMESTAMP not null,
     update_time               timestamp     default CURRENT_TIMESTAMP not null,
     is_deleted                boolean       default false             not null
@@ -197,6 +198,7 @@ COMMENT ON COLUMN adi_conversation.title IS '标题，如：狄仁杰 | Title, e
 COMMENT ON COLUMN adi_conversation.remark IS '备注，如：断案如神，手下能人众多 | Remark, e.g., Brilliant detective with keen observation skills';
 COMMENT ON COLUMN adi_conversation.ai_system_message IS '角色设定内容，如：你是唐朝的狄仁杰，破了很多大案、疑案 | Role setting content, e.g., You are Sherlock Holmes, a brilliant detective known for your keen observation skills';
 COMMENT ON COLUMN adi_conversation.llm_temperature IS 'LLM响应的创造性/随机性 | LLM response creativity/randomness';
+COMMENT ON COLUMN adi_conversation.mcp_ids IS '启用的MCP服务id,以逗号隔开 | Enabled MCP service IDs, comma-separated';
 
 CREATE TRIGGER trigger_conv_update_time
     BEFORE UPDATE
@@ -835,7 +837,60 @@ create trigger trigger_workflow_runtime_node
     for each row
 execute procedure update_modified_column();
 
+create table adi_mcp
+(
+    id                           bigserial primary key,
+    uuid                         varchar(32)   default ''                not null,
+    title                        varchar(100)  default ''                not null,
+    transport_type               varchar(25)   default ''                not null,
+    sse_url                      varchar(250)  default ''                not null,
+    sse_timeout                  int           default 0                 not null,
+    stdio_command                varchar(200)  default ''                not null,
+    stdio_arg                    varchar(1024) default ''                not null,
+    preset_params                jsonb         default '[]'              not null,
+    customized_param_definitions jsonb         default '[]'              not null,
+    install_type                 varchar(25)   default ''                not null,
+    website                      varchar(250)  default ''                not null,
+    remark                       text          default ''                not null,
+    is_enable                    boolean       default false             not null,
+    create_time                  timestamp     default CURRENT_TIMESTAMP not null,
+    update_time                  timestamp     default CURRENT_TIMESTAMP not null,
+    is_deleted                   boolean       default false             not null
+);
+COMMENT ON TABLE adi_mcp is 'MCP server模板定义 | MCP server template';
+COMMENT ON COLUMN adi_mcp.transport_type IS '传输类型：1:sse、2:stdio | Transport type: 1:sse、2:stdio';
+COMMENT ON COLUMN adi_mcp.preset_params IS '由系统管理员预设的参数,如:[{"name":"BAIDU_MAP_API_KEY","title":"百度地图服务","value":"111111","require_encrypt":true,"encrypted":true}] | Parameters preset by the system administrator, e.g., [{"name":"BAIDU_MAP_API_KEY","title":"Baidu Map Service","value":"111111","require_encrypt":true,"encrypted":true}]';
+COMMENT ON COLUMN adi_mcp.customized_param_definitions IS '待用户设置的参数定义,用户设置后与preset_params合并做为mcp的启动参数,格式:[{"name":"GITHUB_PERSONAL_ACCESS_TOKEN","title":"github access token","require_encrypt":true}] | Parameters to be set by the user, after user settings, merged with preset_params as MCP startup parameters, format: [{"name":"GITHUB_PERSONAL_ACCESS_TOKEN","title":"github access token","require_encrypt":true}]';
+COMMENT ON COLUMN adi_mcp.install_type IS 'mcp server的安装方式, 1:docker、2:local、3:remote、4:wasm | Installation type of mcp server: 1:docker, 2:local, 3:remote, 4:wasm';
+COMMENT ON COLUMN adi_mcp.remark IS '描述，支持markdown格式 | Supports markdown format';
+COMMENT ON COLUMN adi_mcp.website IS '官网地址 | Official website';
 
+create trigger trigger_mcp
+    before update
+    on adi_mcp
+    for each row
+execute procedure update_modified_column();
+
+create table adi_user_mcp
+(
+    id                    bigserial primary key,
+    uuid                  varchar(32) default ''                not null,
+    user_id               bigint      default 0                 not null,
+    mcp_id                bigint      default 0                 not null,
+    mcp_customized_params jsonb       default '[]'              not null,
+    is_enable             boolean     default false             not null,
+    create_time           timestamp   default CURRENT_TIMESTAMP not null,
+    update_time           timestamp   default CURRENT_TIMESTAMP not null,
+    is_deleted            boolean     default false             not null
+);
+comment on table adi_user_mcp is '用户启用的mcp server及配置 | User-enabled MCP server and configuration';
+COMMENT ON COLUMN adi_user_mcp.mcp_customized_params IS '用户设置的mcp参数(个性化配置)，对应了adi_mcp.customized_param_definitions中定义的参数，格式：[{"name","BAIDU_MAP_API_KEY","value":"111111",encrypted:true}] | User-defined MCP variables, corresponding to the variables defined in adi_mcp.customized_param_definitions, format: [{"name","BAIDU_MAP_API_KEY","value":"111111",encrypted:true}]';
+
+create trigger trigger_user_mcp
+    before update
+    on adi_user_mcp
+    for each row
+execute procedure update_modified_column();
 
 -- 初始化数据 --
 
@@ -1219,3 +1274,105 @@ VALUES ('9555c30dcc35410582029b1310321c63', 1, '4892a70af36b498e89ae461e9d9a9525
 INSERT INTO adi_workflow_edge (uuid, workflow_id, source_node_uuid, source_handle, target_node_uuid)
 VALUES ('768794ce3d9d4484b2f3d1fcf7cf29ad', 1, '4892a70af36b498e89ae461e9d9a9525', 'ccb59926da754b7a8938eb3f400920ac',
         'f2b59926da754b7a8938eb3f400920ac');
+
+-- mcp server
+-- 高德地图, 无需安装，直接使用
+-- 此处preset_params中填充了高德的API密钥，preset_params表示的是系统预设的通用配置，用户无需到高德地图的网站获取key即可使用本mcp
+insert into adi_mcp (uuid, title, transport_type, sse_url, sse_timeout, install_type, preset_params, website, remark,
+                     is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), '高德地图', 'sse', 'https://mcp.amap.com/sse', 30, 'remote',
+        '[
+          {
+            "name": "key",
+            "title": "高德地图服务API密钥",
+            "value": "此处填充您的高德地图API密钥（系统共用）",
+            "require_encrypt": true,
+            "encrypted": false
+          }
+        ]', 'https://lbs.amap.com/api/mcp-server/summary',
+        '## 产品特点
+
+* 使用简单：适用普通用户基于MCP（SSE）方式，不必部署本地服务，简单通过 URL 地址配置即可使用。
+* 自动升级：我们会持续进行迭代更新，无须用户自己任何额外操作使用。
+* 更易于大模型理解：我们对原始的JSON结果进行了语义化的转换，更易于大模型理解内容。
+* 零运维成本：采用全托管云服务架构，用户无需关心服务器维护、资源扩容等底层运维问题。
+* 协议兼容：支持SSE长连接，适配不同业务场景的技术需求。
+
+## 能力介绍
+
+* 生成专属地图
+* 导航到目的地
+* 打车
+* 地理编码
+* 逆地理编码
+* IP 定位
+* 天气查询
+* 骑行路径规划
+* 步行路径规划
+* 驾车路径规划
+* 公交路径规划
+* 距离测量
+* 关键词搜索
+* 周边搜索
+* 详情搜索',
+        true);
+-- brave search, 本地使用npx的方式安装
+-- 此处customized_param_definitions中指定了用户需要填充的参数（即从Brave search获取的key），表示每个用户在使用本mcp服务前都必须填充该key以便后续MCP进行初始化及调用
+insert into adi_mcp (uuid, title, transport_type, stdio_command, stdio_arg, install_type, customized_param_definitions,
+                     website,
+                     remark,
+                     is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'Brave Search', 'stdio', 'npx',
+        '-y @modelcontextprotocol/server-brave-search', 'local',
+        '[
+          {
+            "name": "BRAVE_API_KEY",
+            "title": "Brave Search API key",
+            "require_encrypt": true
+          }
+        ]', 'https://github.com/modelcontextprotocol/servers-archived/tree/main/src/brave-search',
+        '# Brave Search MCP Server
+
+An MCP server implementation that integrates the Brave Search API, providing both web and local search capabilities.
+
+## Features
+
+- **Web Search**: General queries, news, articles, with pagination and freshness controls
+- **Local Search**: Find businesses, restaurants, and services with detailed information
+- **Flexible Filtering**: Control result types, safety levels, and content freshness
+- **Smart Fallbacks**: Local search automatically falls back to web when no results are found
+
+## Tools
+
+- **brave_web_search**
+
+  - Execute web searches with pagination and filtering
+  - Inputs:
+    - `query` (string): Search terms
+    - `count` (number, optional): Results per page (max 20)
+    - `offset` (number, optional): Pagination offset (max 9)
+
+- **brave_local_search**
+  - Search for local businesses and services
+  - Inputs:
+    - `query` (string): Local search terms
+    - `count` (number, optional): Number of results (max 20)
+  - Automatically falls back to web search if no local results found
+
+## Configuration
+
+### Getting an API Key
+
+1. Sign up for a [Brave Search API account](https://brave.com/search/api/)
+2. Choose a plan (Free tier available with 2,000 queries/month)
+3. Generate your API key [from the developer dashboard](https://api-dashboard.search.brave.com/app/keys)',
+        true);
+
+insert into adi_user_mcp (uuid, user_id, mcp_id, mcp_customized_params, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 1, 2, '[
+  {
+    "name": "BRAVE_API_KEY",
+    "value": "此处直接填充您的Brave Search API密钥",
+    "encrypt": false
+  }
+]', true);

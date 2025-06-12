@@ -34,7 +34,8 @@ public class TokenFilter extends OncePerRequestFilter {
             "/draw/detail/",
             "/draw/comment/",
             "/knowledge-base/public/",
-            "/workflow/public"
+            "/workflow/public",
+            "/mcp/public"
     };
 
     protected static final String[] TOKEN_IN_PARAMS = {

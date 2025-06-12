@@ -1,7 +1,6 @@
 package com.moyz.adi.common.vo;
 
 import com.moyz.adi.common.entity.User;
-import dev.langchain4j.memory.ChatMemory;
 import lombok.Data;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -28,5 +27,5 @@ public class SseAskParams {
     /**
      * 最终提交给llm的信息，必填
      */
-    private AssistantChatParams assistantChatParams;
+    private ChatModelParams chatModelParams;
 }

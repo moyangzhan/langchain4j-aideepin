@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class ConvDto {
@@ -23,6 +24,8 @@ public class ConvDto {
     private String aiSystemMessage;
 
     private Boolean understandContextEnable;
+
+    private List<Long> mcpIds;
 
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
