@@ -169,11 +169,15 @@ public abstract class AbstractLLMService<T> {
 
             @Override
             public void onCompleteResponse(ChatResponse response) {
-                AiMessage aiMessage = response.aiMessage();
-                if (aiMessage.hasToolExecutionRequests()) {
+                AiMessage responseAiMessage = response.aiMessage();
+                if (responseAiMessage.hasToolExecutionRequests()) {
                     // 如果有工具执行请求
-                    List<ToolExecutionResultMessage> toolExecutionMessages = createToolExecutionMessages(aiMessage, toolSpecificationMcpClientMap);
+                    List<ToolExecutionResultMessage> toolExecutionMessages = createToolExecutionMessages(responseAiMessage, toolSpecificationMcpClientMap);
+
+                    //mcp调用消息格式参考：https://docs.langchain4j.dev/tutorials/tools/
+                    AiMessage aiMessage = AiMessage.aiMessage(responseAiMessage.toolExecutionRequests());
                     List<ChatMessage> messages = new ArrayList<>(params.getChatRequest().messages());
+                    messages.add(aiMessage);
                     messages.addAll(toolExecutionMessages);
                     params.setChatRequest(ChatRequest.builder()
                             .messages(messages)
@@ -244,10 +248,14 @@ public abstract class AbstractLLMService<T> {
     private ChatResponse innerChat(String uuid, ChatModel chatModel, ChatModelParams chatModelParams, ChatRequest chatRequest) {
         try {
             ChatResponse chatResponse = chatModel.chat(chatRequest);
-            if (chatResponse.aiMessage().hasToolExecutionRequests()) {
+            AiMessage responseAiMessage = chatResponse.aiMessage();
+            if (responseAiMessage.hasToolExecutionRequests()) {
                 Map<ToolSpecification, McpClient> toolSpecificationMcpClientMap = getRequestTools(chatModelParams.getMcpClients());
-                List<ToolExecutionResultMessage> toolExecutionMessages = createToolExecutionMessages(chatResponse.aiMessage(), toolSpecificationMcpClientMap);
+                List<ToolExecutionResultMessage> toolExecutionMessages = createToolExecutionMessages(responseAiMessage, toolSpecificationMcpClientMap);
+
+                AiMessage aiMessage = AiMessage.aiMessage(responseAiMessage.toolExecutionRequests());
                 List<ChatMessage> messages = new ArrayList<>(chatRequest.messages());
+                messages.add(aiMessage);
                 messages.addAll(toolExecutionMessages);
 
                 cacheTokenUsage(uuid, chatResponse);
@@ -260,7 +268,7 @@ public abstract class AbstractLLMService<T> {
             }
             cacheTokenUsage(uuid, chatResponse);
             return chatResponse;
-        } catch (Exception e) {
+        } finally {
             chatModelParams.getMcpClients().forEach(item -> {
                 try {
                     item.close();
@@ -268,7 +276,6 @@ public abstract class AbstractLLMService<T> {
                     throw new RuntimeException(e1);
                 }
             });
-            throw e;
         }
     }
 
