@@ -195,7 +195,15 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
         baseMapper.insert(one);
 
         Conversation conv = this.lambdaQuery().eq(Conversation::getUuid, uuid).one();
-        return MPPageUtil.convertTo(conv, ConvDto.class);
+        ConvDto dto = MPPageUtil.convertTo(conv, ConvDto.class);
+        if (StringUtils.isNotBlank(one.getMcpIds())) {
+            dto.setMcpIds(Arrays.stream(one.getMcpIds().split(","))
+                    .map(Long::parseLong)
+                    .toList());
+        } else {
+            dto.setMcpIds(new ArrayList<>());
+        }
+        return dto;
     }
 
     /**
