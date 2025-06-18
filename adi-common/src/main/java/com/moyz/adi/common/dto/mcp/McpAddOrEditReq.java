@@ -13,7 +13,6 @@ import static com.moyz.adi.common.cosntant.AdiConstant.McpConstant.*;
 @Validated
 public class McpAddOrEditReq {
 
-
     private String uuid;
 
     @NotBlank
@@ -23,7 +22,7 @@ public class McpAddOrEditReq {
             TRANSPORT_TYPE_SSE,
             TRANSPORT_TYPE_STDIO
     }, required = true)
-    private Integer transportType;
+    private String transportType;
 
     private String sseUrl;
 
@@ -33,9 +32,9 @@ public class McpAddOrEditReq {
 
     private String stdioArg;
 
-    private List<McpCommonParam> stdioEnv;
+    private List<McpCommonParam> presetParams;
 
-    private List<McpCustomizedParamDefinition> customizedVar;
+    private List<McpCustomizedParamDefinition> customizedParamDefinitions;
 
     @ElementInArray(acceptedValues = {
             INSTALL_TYPE_DOCKER,

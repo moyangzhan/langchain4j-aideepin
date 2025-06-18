@@ -2,6 +2,7 @@ package com.moyz.adi.chat.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.dto.mcp.McpListReq;
+import com.moyz.adi.common.dto.mcp.McpSearchReq;
 import com.moyz.adi.common.entity.Mcp;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
@@ -27,7 +28,7 @@ public class McpController {
     @Operation(summary = "搜索列表")
     @GetMapping(value = "/public/search")
     public Page<Mcp> search(@RequestParam String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
-        return mcpService.search(keyword, currentPage, pageSize, false);
+        return mcpService.search(McpSearchReq.builder().title(keyword).build(), currentPage, pageSize, false);
     }
 
     @Operation(summary = "MCP列表")

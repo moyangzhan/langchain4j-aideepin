@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.moyz.adi.common.dto.mcp.McpAddOrEditReq;
 import com.moyz.adi.common.dto.mcp.McpCommonParam;
+import com.moyz.adi.common.dto.mcp.McpSearchReq;
 import com.moyz.adi.common.entity.Mcp;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.McpMapper;
@@ -46,9 +47,12 @@ public class McpService extends ServiceImpl<McpMapper, Mcp> {
         return decryptEnv(result, decryptEnv);
     }
 
-    public Page<Mcp> search(String title, Integer currentPage, Integer pageSize, boolean decryptEnv) {
+    public Page<Mcp> search(McpSearchReq req, Integer currentPage, Integer pageSize, boolean decryptEnv) {
         Page<Mcp> page = this.lambdaQuery()
-                .like(StringUtils.isNotBlank(title), Mcp::getTitle, title)
+                .like(StringUtils.isNotBlank(req.getTitle()), Mcp::getTitle, req.getTitle())
+                .eq(StringUtils.isNotBlank(req.getInstallType()), Mcp::getInstallType, req.getInstallType())
+                .eq(StringUtils.isNotBlank(req.getTransportType()), Mcp::getTransportType, req.getTransportType())
+                .eq(null != req.getIsEnable(), Mcp::getIsEnable, req.getIsEnable())
                 .orderByDesc(Mcp::getUpdateTime)
                 .page(new Page<>(currentPage, pageSize));
         for (Mcp mcp : page.getRecords()) {
@@ -68,12 +72,12 @@ public class McpService extends ServiceImpl<McpMapper, Mcp> {
         return list;
     }
 
-    public void enable(String uuid) {
+    public int enable(String uuid, Boolean isEnable) {
         Mcp existObj = PrivilegeUtil.checkAndGetByUuid(uuid, this.query(), A_MCP_SERVER_NOT_FOUND);
         Mcp updateObj = new Mcp();
         updateObj.setId(existObj.getId());
-        updateObj.setIsEnable(true);
-        baseMapper.updateById(updateObj);
+        updateObj.setIsEnable(isEnable);
+        return baseMapper.updateById(updateObj);
     }
 
     public void softDelete(String uuid) {
