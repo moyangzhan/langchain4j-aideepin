@@ -17,8 +17,11 @@ import com.moyz.adi.common.helper.QuotaHelper;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.ConversationMessageMapper;
 import com.moyz.adi.common.util.LocalCache;
+import com.moyz.adi.common.util.MapDBChatMemoryStore;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.mcp.client.McpClient;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -210,6 +213,14 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
 
         calcTodayCost(user, conversation, questionMeta, answerMeta, aiModel.getIsFree());
 
+        //Save response to memory
+        if (Boolean.TRUE.equals(conversation.getUnderstandContextEnable())) {
+            MapDBChatMemoryStore mapDBChatMemoryStore = MapDBChatMemoryStore.getSingleton();
+            List<ChatMessage> messages = mapDBChatMemoryStore.getMessages(askReq.getConversationUuid());
+            List<ChatMessage> newMessages = new ArrayList<>(messages);
+            newMessages.add(AiMessage.aiMessage(response));
+            mapDBChatMemoryStore.updateMessages(askReq.getConversationUuid(), newMessages);
+        }
     }
 
     private void calcTodayCost(User user, Conversation conversation, PromptMeta questionMeta, AnswerMeta answerMeta, boolean isFreeToken) {
