@@ -60,7 +60,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
                 .oneOpt();
         if (existFile.isPresent()) {
             AdiFile adiFile = existFile.get();
-            boolean exist = new FileOperatorContext(adiFile.getStorageLocation()).checkIfExist(adiFile);
+            boolean exist = FileOperatorContext.checkIfExist(adiFile);
             if (exist) {
                 return adiFile;
             } else {

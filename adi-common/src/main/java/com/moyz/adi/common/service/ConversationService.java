@@ -12,6 +12,7 @@ import com.moyz.adi.common.util.MPPageUtil;
 import com.moyz.adi.common.util.UuidUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.context.annotation.Lazy;
@@ -46,6 +47,9 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
     private ConversationPresetRelService conversationPresetRelService;
 
     @Resource
+    private UserMcpService userMcpService;
+
+    @Resource
     private FileService fileService;
 
     public Page<ConvDto> search(ConvSearchReq convSearchReq, int currentPage, int pageSize) {
@@ -64,7 +68,16 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
                 .orderByDesc(Conversation::getId)
                 .last("limit " + sysConfigService.getConversationMaxNum())
                 .list();
-        return MPPageUtil.convertToList(list, ConvDto.class);
+        return MPPageUtil.convertToList(list, ConvDto.class, (source, target) -> {
+            if (StringUtils.isNotBlank(source.getMcpIds())) {
+                target.setMcpIds(Arrays.stream(source.getMcpIds().split(","))
+                        .map(Long::parseLong)
+                        .toList());
+            } else {
+                target.setMcpIds(Collections.emptyList());
+            }
+            return target;
+        });
     }
 
     /**
@@ -159,26 +172,38 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
         return this.lambdaQuery().eq(Conversation::getUuid, uuid).oneOpt().orElse(null);
     }
 
-    public ConvDto add(String title, String remark, String systemMessage) {
+    public ConvDto add(ConvAddReq convAddReq) {
         Conversation conversation = this.lambdaQuery()
                 .eq(Conversation::getUserId, ThreadContext.getCurrentUserId())
-                .eq(Conversation::getTitle, title)
+                .eq(Conversation::getTitle, convAddReq.getTitle())
                 .eq(Conversation::getIsDeleted, false)
                 .one();
         if (null != conversation) {
             throw new BaseException(A_CONVERSATION_TITLE_EXIST);
         }
+
+        List<Long> filteredMcpIds = findEnableMcpIds(convAddReq.getMcpIds());
+
         String uuid = UuidUtil.createShort();
         Conversation one = new Conversation();
         one.setUuid(uuid);
-        one.setTitle(title);
-        one.setAiSystemMessage(systemMessage);
+        one.setTitle(convAddReq.getTitle());
+        one.setAiSystemMessage(convAddReq.getAiSystemMessage());
         one.setUserId(ThreadContext.getCurrentUserId());
-        one.setRemark(remark);
+        one.setRemark(convAddReq.getRemark());
+        one.setMcpIds(StringUtils.join(filteredMcpIds, ","));
         baseMapper.insert(one);
 
         Conversation conv = this.lambdaQuery().eq(Conversation::getUuid, uuid).one();
-        return MPPageUtil.convertTo(conv, ConvDto.class);
+        ConvDto dto = MPPageUtil.convertTo(conv, ConvDto.class);
+        if (StringUtils.isNotBlank(one.getMcpIds())) {
+            dto.setMcpIds(Arrays.stream(one.getMcpIds().split(","))
+                    .map(Long::parseLong)
+                    .toList());
+        } else {
+            dto.setMcpIds(new ArrayList<>());
+        }
+        return dto;
     }
 
     /**
@@ -202,7 +227,12 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
             Conversation conv = this.getById(presetRel.getUserConvId());
             return MPPageUtil.convertTo(conv, ConvDto.class);
         }
-        ConvDto convDto = self.add(presetConv.getTitle(), presetConv.getRemark(), presetConv.getAiSystemMessage());
+        ConvAddReq convAddReq = ConvAddReq.builder()
+                .title(presetConv.getTitle())
+                .remark(presetConv.getRemark())
+                .aiSystemMessage(presetConv.getAiSystemMessage())
+                .build();
+        ConvDto convDto = self.add(convAddReq);
         conversationPresetRelService.save(
                 ConversationPresetRel.builder()
                         .presetConvId(presetConv.getId())
@@ -220,6 +250,10 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
         one.setId(conversation.getId());
         if (null != convEditReq.getUnderstandContextEnable()) {
             one.setUnderstandContextEnable(convEditReq.getUnderstandContextEnable());
+        }
+        if (null != convEditReq.getMcpIds()) {
+            List<Long> filteredMcpIds = findEnableMcpIds(convEditReq.getMcpIds());
+            one.setMcpIds(StringUtils.join(filteredMcpIds, ","));
         }
         return baseMapper.updateById(one) > 0;
     }
@@ -257,5 +291,28 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
             throw new BaseException(A_USER_NOT_AUTH);
         }
         return conversation;
+    }
+
+    /**
+     * 过滤出有效的MCP服务id列表 | Filter the list of valid MCP service IDs
+     *
+     * @param mcpIdsInReq 请求中传入的MCP服务id列表 | List of MCP service IDs passed in the request
+     * @return 有效的MCP服务id列表 | List of valid MCP service IDs
+     */
+    private List<Long> findEnableMcpIds(List<Long> mcpIdsInReq) {
+        List<Long> result = new ArrayList<>();
+        if (CollectionUtils.isEmpty(mcpIdsInReq)) {
+            return result;
+        }
+        List<UserMcp> userMcpList = userMcpService.searchEnableByUserId(ThreadContext.getCurrentUserId());
+
+        for (Long mcpIdInReq : mcpIdsInReq) {
+            if (userMcpList.stream().anyMatch(item -> item.getMcpId().equals(mcpIdInReq))) {
+                result.add(mcpIdInReq);
+            } else {
+                log.warn("User mcp id {} not found or disabled in user mcp list, userId: {}, mcpId:{}", mcpIdInReq, ThreadContext.getCurrentUserId(), mcpIdInReq);
+            }
+        }
+        return result;
     }
 }

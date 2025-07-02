@@ -5,7 +5,7 @@ import com.moyz.adi.common.enums.WfIODataTypeEnum;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.interfaces.AbstractLLMService;
 import com.moyz.adi.common.util.LLMTokenUtil;
-import com.moyz.adi.common.vo.AssistantChatParams;
+import com.moyz.adi.common.vo.ChatModelParams;
 import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.SseAskParams;
 import com.moyz.adi.common.workflow.data.NodeIOData;
@@ -61,7 +61,7 @@ public class WorkflowUtil {
                 .startingNode(node.getUuid())
                 .startingState(state)
                 .build();
-        StreamingChatModel streamingLLM = llmService.buildStreamingChatLLM(
+        StreamingChatModel streamingLLM = llmService.buildStreamingChatModel(
                 LLMBuilderProperties
                         .builder()
                         .build()
@@ -88,7 +88,7 @@ public class WorkflowUtil {
         AbstractLLMService<?> llmService = LLMContext.getLLMServiceByName(modelName);
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setUuid(wfState.getUuid());
-        sseAskParams.setAssistantChatParams(AssistantChatParams.builder().systemMessage(StringUtils.EMPTY).userMessage(prompt).build());
+        sseAskParams.setChatModelParams(ChatModelParams.builder().systemMessage(StringUtils.EMPTY).userMessage(prompt).build());
         sseAskParams.setModelName(llmService.getAiModel().getName());
         sseAskParams.setUser(wfState.getUser());
         ChatResponse response = llmService.chat(sseAskParams);

@@ -318,4 +318,13 @@ public class AdiConstant {
     public static class EmbeddingModel {
         public static String ALL_MINILM_L6 = "local:all-minilm-l6-v2";
     }
+
+    public static class McpConstant {
+        public static final String TRANSPORT_TYPE_SSE = "sse";
+        public static final String TRANSPORT_TYPE_STDIO = "stdio";
+        public static final String INSTALL_TYPE_REMOTE = "remote";
+        public static final String INSTALL_TYPE_WASM = "wasm";
+        public static final String INSTALL_TYPE_LOCAL = "local";
+        public static final String INSTALL_TYPE_DOCKER = "docker";
+    }
 }

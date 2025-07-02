@@ -136,6 +136,8 @@ public class WorkflowNodeService extends ServiceImpl<WorkflowNodeMapper, Workflo
             throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
         }
         if (component.getName().equals(WfComponentNameEnum.MAIL_SEND.getName())) {
+
+            //加密（目前暂时只在数据库层做加密，前后端交互时数据加解密待定）
             MailSendNodeConfig mailSendNodeConfig = JsonUtil.fromJson(workflowNode.getNodeConfig(), MailSendNodeConfig.class);
             if (null != mailSendNodeConfig && null != mailSendNodeConfig.getSender() && null != mailSendNodeConfig.getSender().getPassword()) {
                 String password = mailSendNodeConfig.getSender().getPassword();

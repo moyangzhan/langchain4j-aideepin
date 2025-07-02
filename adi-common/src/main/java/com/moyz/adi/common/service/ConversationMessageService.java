@@ -17,8 +17,12 @@ import com.moyz.adi.common.helper.QuotaHelper;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.ConversationMessageMapper;
 import com.moyz.adi.common.util.LocalCache;
+import com.moyz.adi.common.util.MapDBChatMemoryStore;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.mcp.client.McpClient;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -28,10 +32,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_CONVERSATION_NOT_FOUND;
 import static com.moyz.adi.common.enums.ErrorEnum.B_MESSAGE_NOT_FOUND;
+import static com.moyz.adi.common.util.AdiStringUtil.stringToList;
 
 @Slf4j
 @Service
@@ -52,6 +58,9 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
     private ConversationService conversationService;
 
     @Resource
+    private UserMcpService userMcpService;
+
+    @Resource
     private SSEEmitterHelper sseEmitterHelper;
 
 
@@ -62,7 +71,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             return sseEmitter;
         }
         sseEmitterHelper.startSse(user, sseEmitter);
-        self.asyncCheckAndPushToClient(sseEmitter, ThreadContext.getCurrentUser(), askReq);
+        self.asyncCheckAndPushToClient(sseEmitter, user, askReq);
         return sseEmitter;
     }
 
@@ -133,22 +142,8 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         sseAskParams.setSseEmitter(sseEmitter);
         sseAskParams.setRegenerateQuestionUuid(askReq.getRegenerateQuestionUuid());
 
-        //Assistant parameters
-        AssistantChatParams.AssistantChatParamsBuilder assistantBuilder = AssistantChatParams.builder();
-        if (StringUtils.isNotBlank(conversation.getAiSystemMessage())) {
-            assistantBuilder.systemMessage(conversation.getAiSystemMessage());
-        }
-        //history message
-        if (Boolean.TRUE.equals(conversation.getUnderstandContextEnable())) {
-            assistantBuilder.memoryId(askReq.getConversationUuid());
-        }
-        String prompt = askReq.getPrompt();
-        if (StringUtils.isNotBlank(askReq.getRegenerateQuestionUuid())) {
-            prompt = getPromptMsgByQuestionUuid(askReq.getRegenerateQuestionUuid()).getRemark();
-        }
-        assistantBuilder.userMessage(prompt);
-        assistantBuilder.imageUrls(askReq.getImageUrls());
-        sseAskParams.setAssistantChatParams(assistantBuilder.build());
+        ChatModelParams chatModelParams = buildChatModelParams(conversation, askReq);
+        sseAskParams.setChatModelParams(chatModelParams);
 
         sseAskParams.setLlmBuilderProperties(
                 LLMBuilderProperties.builder()
@@ -218,6 +213,14 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
 
         calcTodayCost(user, conversation, questionMeta, answerMeta, aiModel.getIsFree());
 
+        //Save response to memory
+        if (Boolean.TRUE.equals(conversation.getUnderstandContextEnable())) {
+            MapDBChatMemoryStore mapDBChatMemoryStore = MapDBChatMemoryStore.getSingleton();
+            List<ChatMessage> messages = mapDBChatMemoryStore.getMessages(askReq.getConversationUuid());
+            List<ChatMessage> newMessages = new ArrayList<>(messages);
+            newMessages.add(AiMessage.aiMessage(response));
+            mapDBChatMemoryStore.updateMessages(askReq.getConversationUuid(), newMessages);
+        }
     }
 
     private void calcTodayCost(User user, Conversation conversation, PromptMeta questionMeta, AnswerMeta answerMeta, boolean isFreeToken) {
@@ -247,6 +250,31 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                 .eq(ConversationMessage::getIsDeleted, false)
                 .set(ConversationMessage::getIsDeleted, true)
                 .update();
+    }
+
+    private ChatModelParams buildChatModelParams(Conversation conversation, AskReq askReq) {
+        ChatModelParams.ChatModelParamsBuilder builder = ChatModelParams.builder();
+        if (StringUtils.isNotBlank(conversation.getAiSystemMessage())) {
+            builder.systemMessage(conversation.getAiSystemMessage());
+        }
+        //history message
+        if (Boolean.TRUE.equals(conversation.getUnderstandContextEnable())) {
+            builder.memoryId(askReq.getConversationUuid());
+        }
+        String prompt = askReq.getPrompt();
+        if (StringUtils.isNotBlank(askReq.getRegenerateQuestionUuid())) {
+            prompt = getPromptMsgByQuestionUuid(askReq.getRegenerateQuestionUuid()).getRemark();
+        }
+        builder.userMessage(prompt);
+        builder.imageUrls(askReq.getImageUrls());
+
+        List<McpClient> mcpClients = new ArrayList<>();
+        if (StringUtils.isNotBlank(conversation.getMcpIds())) {
+            List<Long> mcpIds = stringToList(conversation.getMcpIds(), ",", Long::parseLong);
+            mcpClients = userMcpService.createMcpClients(conversation.getUserId(), mcpIds);
+        }
+        builder.mcpClients(mcpClients);
+        return builder.build();
     }
 
 }

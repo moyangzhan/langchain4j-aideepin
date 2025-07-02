@@ -19,7 +19,7 @@ import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.rag.*;
 import com.moyz.adi.common.service.embedding.IEmbeddingService;
 import com.moyz.adi.common.util.*;
-import com.moyz.adi.common.vo.AssistantChatParams;
+import com.moyz.adi.common.vo.ChatModelParams;
 import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.SseAskParams;
 import com.moyz.adi.common.vo.UpdateQaParams;
@@ -382,8 +382,8 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setUuid(qaRecord.getUuid());
-        sseAskParams.setAssistantChatParams(
-                AssistantChatParams.builder()
+        sseAskParams.setChatModelParams(
+                ChatModelParams.builder()
                         .memoryId(qaRecord.getKbUuid() + "_" + user.getUuid())
                         .systemMessage(knowledgeBase.getQuerySystemMessage())
                         .userMessage(qaRecord.getQuestion())
@@ -450,7 +450,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
         KnowledgeBaseQa updateRecord = new KnowledgeBaseQa();
         updateRecord.setId(qaRecord.getId());
-        updateRecord.setPrompt(updateQaParams.getSseAskParams().getAssistantChatParams().getUserMessage());
+        updateRecord.setPrompt(updateQaParams.getSseAskParams().getChatModelParams().getUserMessage());
         updateRecord.setPromptTokens(inputOutputTokenCost.getLeft());
         updateRecord.setAnswer(updateQaParams.getResponse());
         updateRecord.setAnswerTokens(inputOutputTokenCost.getRight());

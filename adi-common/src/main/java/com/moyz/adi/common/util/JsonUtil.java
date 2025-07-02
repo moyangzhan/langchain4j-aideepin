@@ -138,6 +138,15 @@ public class JsonUtil {
         return result;
     }
 
+    public static <T> List<T> toList(String json, Class<T> clazz) {
+        try {
+            return objectMapper.readValue(json, objectMapper.getTypeFactory().constructCollectionType(List.class, clazz));
+        } catch (JsonProcessingException e) {
+            log.error("反序列化失败", e);
+        }
+        return null;
+    }
+
     public static Map<String, Object> toMap(Object obj) {
         try {
             return objectMapper.convertValue(obj, new TypeReference<HashMap<String, Object>>() {

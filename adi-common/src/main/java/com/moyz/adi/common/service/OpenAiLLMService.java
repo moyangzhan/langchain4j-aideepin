@@ -53,7 +53,7 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
     }
 
     @Override
-    protected ChatModel doBuildChatLLM(LLMBuilderProperties properties) {
+    protected ChatModel doBuildChatModel(LLMBuilderProperties properties) {
         if (StringUtils.isBlank(modelPlatformSetting.getSecretKey())) {
             throw new BaseException(ErrorEnum.B_LLM_SECRET_KEY_NOT_SET);
         }
@@ -73,7 +73,7 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
     }
 
     @Override
-    public StreamingChatModel buildStreamingChatLLM(LLMBuilderProperties properties) {
+    public StreamingChatModel buildStreamingChatModel(LLMBuilderProperties properties) {
         if (StringUtils.isBlank(modelPlatformSetting.getSecretKey())) {
             throw new BaseException(ErrorEnum.B_LLM_SECRET_KEY_NOT_SET);
         }

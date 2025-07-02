@@ -40,14 +40,14 @@ public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
 
     @Override
     protected boolean checkBeforeChat(SseAskParams params) {
-        if (CollectionUtils.isEmpty(params.getAssistantChatParams().getImageUrls()) && DashscopeUtil.vlChatModelNameProvider().anyMatch(item -> item.equalsIgnoreCase(params.getModelName()))) {
+        if (CollectionUtils.isEmpty(params.getChatModelParams().getImageUrls()) && DashscopeUtil.vlChatModelNameProvider().anyMatch(item -> item.equalsIgnoreCase(params.getModelName()))) {
             log.warn("多模态LLM没有接收到图片,modelName:{}", params.getModelName());
         }
         return true;
     }
 
     @Override
-    protected ChatModel doBuildChatLLM(LLMBuilderProperties properties) {
+    protected ChatModel doBuildChatModel(LLMBuilderProperties properties) {
         if (StringUtils.isBlank(modelPlatformSetting.getApiKey())) {
             throw new BaseException(B_LLM_SECRET_KEY_NOT_SET);
         }
@@ -60,7 +60,7 @@ public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
     }
 
     @Override
-    public StreamingChatModel buildStreamingChatLLM(LLMBuilderProperties properties) {
+    public StreamingChatModel buildStreamingChatModel(LLMBuilderProperties properties) {
         if (StringUtils.isBlank(modelPlatformSetting.getApiKey())) {
             throw new BaseException(B_LLM_SECRET_KEY_NOT_SET);
         }

@@ -42,11 +42,15 @@ public class Conversation extends BaseEntity {
     @TableField("understand_context_enable")
     private Boolean understandContextEnable;
 
-    @Schema(title = "set the system message to ai, ig: you are a lawyer")
+    @Schema(title = "设置系统信息(角色设定内容) | Set the system message to ai, ig: you are a lawyer")
     @TableField("ai_system_message")
     private String aiSystemMessage;
 
     @Schema(title = "请求LLM时的temperature")
     @TableField("llm_temperature")
     private Double llmTemperature;
+
+    @Schema(title = "启用的mcp服务id列表")
+    @TableField("mcp_ids")
+    private String mcpIds;
 }

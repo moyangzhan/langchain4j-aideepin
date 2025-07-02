@@ -43,7 +43,7 @@ public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetti
     }
 
     @Override
-    protected ChatModel doBuildChatLLM(LLMBuilderProperties properties) {
+    protected ChatModel doBuildChatModel(LLMBuilderProperties properties) {
         QianfanChatModel.QianfanChatModelBuilder builder = QianfanChatModel.builder()
                 .baseUrl(modelPlatformSetting.getBaseUrl())
                 .modelName(aiModel.getName())
@@ -61,7 +61,7 @@ public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetti
     }
 
     @Override
-    public StreamingChatModel buildStreamingChatLLM(LLMBuilderProperties properties) {
+    public StreamingChatModel buildStreamingChatModel(LLMBuilderProperties properties) {
         double temperature = properties.getTemperatureWithDefault(0.7);
         QianfanStreamingChatModel.QianfanStreamingChatModelBuilder builder = QianfanStreamingChatModel.builder()
                 .baseUrl(modelPlatformSetting.getBaseUrl())

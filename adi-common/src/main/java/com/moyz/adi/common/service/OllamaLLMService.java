@@ -26,7 +26,7 @@ public class OllamaLLMService extends AbstractLLMService<OllamaSetting> {
     }
 
     @Override
-    protected ChatModel doBuildChatLLM(LLMBuilderProperties properties) {
+    protected ChatModel doBuildChatModel(LLMBuilderProperties properties) {
         return OllamaChatModel.builder()
                 .baseUrl(modelPlatformSetting.getBaseUrl())
                 .modelName(aiModel.getName())
@@ -35,7 +35,7 @@ public class OllamaLLMService extends AbstractLLMService<OllamaSetting> {
     }
 
     @Override
-    public StreamingChatModel buildStreamingChatLLM(LLMBuilderProperties properties) {
+    public StreamingChatModel buildStreamingChatModel(LLMBuilderProperties properties) {
         double temperature = properties.getTemperatureWithDefault(0.7);
         return OllamaStreamingChatModel.builder()
                 .baseUrl(modelPlatformSetting.getBaseUrl())

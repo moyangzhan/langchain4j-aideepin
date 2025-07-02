@@ -37,23 +37,22 @@ Frontend projects:
 
 ## Features
 
-* Registration & Login
 * Multi-session (multi-role)
 * Image generation (text-to-image, image editing, image-to-image)
-* Prompts
-* Quota control
 * Knowledge base based on large models (RAG)
-    * Vector search
-    * Graph search
-* Search based on large models (RAG)
-* Free switching between multiple models
-* Free switching between multiple search engines
+  * Vector search
+  * Graph search
+* Network search based on large models (RAG)
+* AI workflow
+* MCP service marketplace
 
 ## Integrated Models:
 
+* DeepSeek
 * ChatGPT 3.5
 * 通义千问
 * 文心一言
+* siliconflow
 * Ollama
 * DALL-E 2
 * DALL-E 3
@@ -102,11 +101,18 @@ Frontend tech stack:
 
     * Configure AI platforms
       ```plaintext
+
+      -- DeepSeeksecretKey
+        update adi_sys_config set value = '{"base_url":"https://api.deepseek.com","secret_key":"my_deepseek_secret_key"}' where name = 'deepseek_setting';
+
       -- OpenAI secretKey
       update adi_sys_config set value = '{"secret_key":"my_openai_secret_key"}' where name = 'openai_setting';
   
       -- Dashscope API key
       update adi_sys_config set value = '{"api_key":"my_dashcope_api_key"}' where name = 'dashscope_setting';
+
+      --siliconflow secret key
+      update adi_sys_config set value = '{"base_url":"https://api.siliconflow.cn","secret_key":"my_siliconflow_api_key"}' where name = 'siliconflow_setting';
   
       -- Qianfan API key and secret key
       update adi_sys_config set value = '{"api_key":"my_qianfan_api_key","secret_key":"my_qianfan_secret_key"}' where name = 'qianfan_setting';
@@ -117,9 +123,11 @@ Frontend tech stack:
     * Enable AI platform models or add new models
       ```
       -- Enable model
+      update adi_ai_model set is_enable = true where name = 'deepseek-chat';
       update adi_ai_model set is_enable = true where name = 'gpt-3.5-turbo';
       update adi_ai_model set is_enable = true where name = 'dall-e-2';
       update adi_ai_model set is_enable = true where name = 'qwen-turbo';
+      update adi_ai_model set is_enable = true where name = 'THUDM/GLM-Z1-9B-0414';
       update adi_ai_model set is_enable = true where name = 'ernie_speed';
       update adi_ai_model set is_enable = true where name = 'tinydolphin';
   
@@ -135,9 +143,13 @@ Frontend tech stack:
 
 **b. Modify the configuration file**
 
-* postgresql: `application-[dev|prod].xml` in `spring.datasource`
-* redis: `application-[dev|prod].xml` in `spring.data.redis`
-* mail: `application.xml` in `spring.mail`
++ PostgreSQL: `spring.datasource` in `application-[dev|prod].xml`
++ Redis: `spring.data.redis` in `application-[dev|prod].xml`
++ Email: `spring.mail` in `application.xml`
++ Vector database, default is pgvector:
+  * `adi.vector-database=[pgvector|neo4j]` in `application-[dev|prod].xml`
++ Graph database, default is Apache AGE:
+  * `adi.graph-database=[apache-age|neo4j]` in `application-[dev|prod].xml`
 
 ### Build and Run
 

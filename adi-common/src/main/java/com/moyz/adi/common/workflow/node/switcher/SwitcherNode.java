@@ -85,38 +85,38 @@ public class SwitcherNode extends AbstractWfNode {
         return NodeProcessResult.builder().nextNodeUuid(nextNode).content(changeInputsToOutputs(state.getInputs())).build();
     }
 
-    private boolean processCondition(String defValue, String value, String operator) {
+    private boolean processCondition(String defValue, String inputValue, String operator) {
         boolean conditionPass = false;
         switch (OperatorEnum.getByName(operator)) {
             case CONTAINS:
-                conditionPass = defValue.contains(value);
+                conditionPass = StringUtils.isNotBlank(inputValue) && inputValue.contains(defValue);
                 break;
             case NOT_CONTAINS:
-                conditionPass = !defValue.contains(value);
+                conditionPass = StringUtils.isNotBlank(inputValue) && !inputValue.contains(defValue);
                 break;
             case START_WITH:
-                conditionPass = defValue.startsWith(value);
+                conditionPass = StringUtils.isNotBlank(inputValue) && inputValue.startsWith(defValue);
                 break;
             case END_WITH:
-                conditionPass = defValue.endsWith(value);
+                conditionPass = StringUtils.isNotBlank(inputValue) && inputValue.endsWith(defValue);
                 break;
             case EMPTY:
-                conditionPass = StringUtils.isBlank(defValue);
+                conditionPass = StringUtils.isBlank(inputValue);
                 break;
             case NOT_EMPTY:
-                conditionPass = StringUtils.isNotBlank(defValue);
+                conditionPass = StringUtils.isNotBlank(inputValue);
                 break;
             case EQUAL:
-                conditionPass = defValue.equals(value);
+                conditionPass = StringUtils.isNotBlank(inputValue) && defValue.equals(inputValue);
                 break;
             case NOT_EQUAL:
-                conditionPass = !defValue.equals(value);
+                conditionPass = StringUtils.isNotBlank(inputValue) && !defValue.equals(inputValue);
                 break;
             case GREATER:
                 try {
                     double in = Double.parseDouble(defValue);
-                    double vl = Double.parseDouble(value);
-                    conditionPass = in > vl;
+                    double vl = Double.parseDouble(inputValue);
+                    conditionPass = vl > in;
                 } catch (Exception e) {
                     log.error("parse double error", e);
                 }
@@ -124,8 +124,8 @@ public class SwitcherNode extends AbstractWfNode {
             case GREATER_OR_EQUAL:
                 try {
                     double in = Double.parseDouble(defValue);
-                    double vl = Double.parseDouble(value);
-                    conditionPass = in >= vl;
+                    double vl = Double.parseDouble(inputValue);
+                    conditionPass = vl >= in;
                 } catch (Exception e) {
                     log.error("parse double error", e);
                 }
@@ -133,8 +133,8 @@ public class SwitcherNode extends AbstractWfNode {
             case LESS:
                 try {
                     double in = Double.parseDouble(defValue);
-                    double vl = Double.parseDouble(value);
-                    conditionPass = in < vl;
+                    double vl = Double.parseDouble(inputValue);
+                    conditionPass = vl < in;
                 } catch (Exception e) {
                     log.error("parse double error", e);
                 }
@@ -142,8 +142,8 @@ public class SwitcherNode extends AbstractWfNode {
             case LESS_OR_EQUAL:
                 try {
                     double in = Double.parseDouble(defValue);
-                    double vl = Double.parseDouble(value);
-                    conditionPass = in <= vl;
+                    double vl = Double.parseDouble(inputValue);
+                    conditionPass = vl <= in;
                 } catch (Exception e) {
                     log.error("parse double error", e);
                 }
