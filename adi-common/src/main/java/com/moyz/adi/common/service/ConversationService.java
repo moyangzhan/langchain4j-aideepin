@@ -125,6 +125,11 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
             } else {
                 target.setAttachmentUrls(Collections.emptyList());
             }
+            if (StringUtils.isNotBlank(source.getAudioUuid())) {
+                target.setAudioUrl(fileService.getUrl(source.getAudioUuid()));
+            } else {
+                target.setAudioUrl("");
+            }
             return target;
         });
         ConvMsgListResp result = new ConvMsgListResp(minUuid, userMessages);

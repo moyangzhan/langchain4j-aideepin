@@ -1,7 +1,7 @@
 package com.moyz.adi.common.vo;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.moyz.adi.common.interfaces.AbstractImageModelService;
+import com.moyz.adi.common.service.languagemodel.AbstractImageModelService;
 import lombok.Data;
 
 @Data

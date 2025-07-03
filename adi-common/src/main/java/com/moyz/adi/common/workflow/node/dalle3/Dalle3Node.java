@@ -1,33 +1,23 @@
 package com.moyz.adi.common.workflow.node.dalle3;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.entity.Draw;
 import com.moyz.adi.common.entity.WorkflowComponent;
 import com.moyz.adi.common.entity.WorkflowNode;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.file.FileOperatorContext;
 import com.moyz.adi.common.helper.ImageModelContext;
-import com.moyz.adi.common.interfaces.AbstractImageModelService;
-import com.moyz.adi.common.service.FileService;
+import com.moyz.adi.common.service.languagemodel.AbstractImageModelService;
 import com.moyz.adi.common.util.JsonUtil;
-import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.workflow.NodeProcessResult;
 import com.moyz.adi.common.workflow.WfNodeState;
 import com.moyz.adi.common.workflow.WfState;
 import com.moyz.adi.common.workflow.WorkflowUtil;
-import com.moyz.adi.common.workflow.data.NodeIOData;
-import com.moyz.adi.common.workflow.data.NodeIODataFilesContent;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
 import com.moyz.adi.common.workflow.node.DrawNodeUtil;
 import dev.langchain4j.model.openai.OpenAiImageModelName;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.List;
-
-import static com.moyz.adi.common.cosntant.AdiConstant.WorkflowConstant.DEFAULT_OUTPUT_PARAM_NAME;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 /**

@@ -14,7 +14,7 @@ import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.ImageModelContext;
 import com.moyz.adi.common.helper.QuotaHelper;
 import com.moyz.adi.common.helper.RateLimitHelper;
-import com.moyz.adi.common.interfaces.AbstractImageModelService;
+import com.moyz.adi.common.service.languagemodel.AbstractImageModelService;
 import com.moyz.adi.common.mapper.DrawMapper;
 import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.util.LocalDateTimeUtil;

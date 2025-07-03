@@ -33,8 +33,10 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import static com.moyz.adi.common.cosntant.AdiConstant.FORM_DATA_BOUNDARY_PRE;
 import static com.moyz.adi.common.cosntant.AdiConstant.WorkflowConstant.DEFAULT_ERROR_OUTPUT_PARAM_NAME;
 import static com.moyz.adi.common.cosntant.AdiConstant.WorkflowConstant.DEFAULT_OUTPUT_PARAM_NAME;
+import static org.springframework.http.HttpHeaders.CONTENT_TYPE;
 
 @Slf4j
 public class HttpRequestNode extends AbstractWfNode {
@@ -60,10 +62,12 @@ public class HttpRequestNode extends AbstractWfNode {
             HttpUriRequest httpRequest;
             if (HttpGet.METHOD_NAME.equalsIgnoreCase(nodeConfig.getMethod())) {
                 httpRequest = new HttpGet(url);
+                httpRequest.setHeader(CONTENT_TYPE, contentType);
                 setHeaders(httpRequest, nodeConfig.getHeaders());
             } else if (HttpPost.METHOD_NAME.equalsIgnoreCase(nodeConfig.getMethod())) {
                 HttpPost httpPost = new HttpPost(url);
                 httpRequest = httpPost;
+                httpRequest.setHeader(CONTENT_TYPE, contentType);
                 setHeaders(httpRequest, nodeConfig.getHeaders());
                 if (contentType.equalsIgnoreCase("text/plain")) {
                     StringEntity jsonEntity = new StringEntity(nodeConfig.getTextBody(), ContentType.TEXT_PLAIN.withCharset(Consts.UTF_8));
@@ -82,7 +86,10 @@ public class HttpRequestNode extends AbstractWfNode {
                             }
                         }
                     }
+                    String boundary = FORM_DATA_BOUNDARY_PRE + System.currentTimeMillis();
+                    entityBuilder.setBoundary(boundary);
                     httpPost.setEntity(entityBuilder.build());
+                    httpRequest.setHeader(CONTENT_TYPE, "multipart/form-data; boundary=" + boundary);
                 } else if (contentType.equalsIgnoreCase("application/x-www-from-urlencoded")) {
                     StringEntity jsonEntity = new StringEntity(JsonUtil.toJson(nodeConfig.getFormUrlencodedBody()), ContentType.APPLICATION_FORM_URLENCODED.withCharset(Consts.UTF_8));
                     httpPost.setEntity(jsonEntity);

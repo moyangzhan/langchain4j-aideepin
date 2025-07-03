@@ -14,7 +14,7 @@ import com.moyz.adi.common.enums.EmbeddingStatusEnum;
 import com.moyz.adi.common.enums.GraphicalStatusEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.LLMContext;
-import com.moyz.adi.common.interfaces.AbstractLLMService;
+import com.moyz.adi.common.service.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.mapper.KnowledgeBaseItemMapper;
 import com.moyz.adi.common.rag.CompositeRAG;
 import com.moyz.adi.common.service.embedding.IEmbeddingService;

@@ -23,6 +23,12 @@ public class ConversationMessageController {
         return conversationMessageService.sseAsk(askReq);
     }
 
+    @Operation(summary = "根据音频uuid获取对应的文本")
+    @GetMapping("/text/{audioUuid}")
+    public String getTextByAudioUuid(@PathVariable String audioUuid) {
+        return conversationMessageService.getTextByAudioUuid(audioUuid);
+    }
+
     @PostMapping("/del/{uuid}")
     public boolean softDelete(@PathVariable String uuid) {
         return conversationMessageService.softDelete(uuid);

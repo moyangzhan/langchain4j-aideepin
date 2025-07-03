@@ -3,7 +3,7 @@ package com.moyz.adi.common.workflow;
 import com.moyz.adi.common.entity.WorkflowNode;
 import com.moyz.adi.common.enums.WfIODataTypeEnum;
 import com.moyz.adi.common.helper.LLMContext;
-import com.moyz.adi.common.interfaces.AbstractLLMService;
+import com.moyz.adi.common.service.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.util.LLMTokenUtil;
 import com.moyz.adi.common.vo.ChatModelParams;
 import com.moyz.adi.common.vo.LLMBuilderProperties;

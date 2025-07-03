@@ -235,9 +235,11 @@ CREATE TABLE adi_conversation_message
     id                              bigserial primary key,
     parent_message_id               bigint        default 0                 not null,
     conversation_id                 bigint        default 0                 not null,
-    conversation_uuid               varchar(32)   default '',
-    remark                          text                                    not null,
-    uuid                            varchar(32)   default '',
+    conversation_uuid               varchar(32)   default ''                not null,
+    remark                          text,
+    audio_uuid                      varchar(32)   default ''                not null,
+    audio_duration                  integer       default 0                 not null,
+    uuid                            varchar(32)   default ''                not null,
     message_role                    integer       default 1                 not null,
     tokens                          integer       default 0                 not null,
     user_id                         bigint        default 0                 not null,
@@ -253,8 +255,10 @@ COMMENT ON TABLE adi_conversation_message IS '对话消息表 | Conversation mes
 COMMENT ON COLUMN adi_conversation_message.parent_message_id IS '父级消息id | Parent message ID';
 COMMENT ON COLUMN adi_conversation_message.conversation_id IS '对话id | Conversation ID';
 COMMENT ON COLUMN adi_conversation_message.conversation_uuid IS '对话的UUID | Conversation UUID';
-COMMENT ON COLUMN adi_conversation_message.remark IS 'AI回复的消息 | AI response message';
+COMMENT ON COLUMN adi_conversation_message.remark IS '消息内容 | message';
 COMMENT ON COLUMN adi_conversation_message.uuid IS '唯一标识消息的UUID | Unique identifier for the message';
+COMMENT ON COLUMN adi_conversation_message.audio_uuid IS '语音聊天时产生的音频文件uuid(对应adi_file.uuid) | UUID of the audio file generated during voice chat (corresponds to adi_file.uuid)';
+COMMENT ON COLUMN adi_conversation_message.audio_duration IS '语音聊天时产生的音频文件时长(单位:秒) | Duration of the audio file generated during voice chat (in seconds)';
 COMMENT ON COLUMN adi_conversation_message.message_role IS '产生该消息的角色：1: 用户, 2: 系统, 3: 助手 | Role that generated the message: 1: User, 2: System, 3: Assistant';
 COMMENT ON COLUMN adi_conversation_message.tokens IS '消耗的token数量 | Number of tokens consumed';
 COMMENT ON COLUMN adi_conversation_message.user_id IS '用户ID | User ID';
@@ -912,7 +916,7 @@ VALUES ('qianfan_setting', '{"api_key":"","secret_key":""}');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('ollama_setting', '{"base_url":""}');
 INSERT INTO adi_sys_config (name, value)
-VALUES ('siliconflow_setting', '{"base_url":"https://api.siliconflow.cn","secret_key":""}');
+VALUES ('siliconflow_setting', '{"base_url":"https://api.siliconflow.cn/v1","secret_key":""}');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('google_setting',
         '{"url":"https://www.googleapis.com/customsearch/v1","key":"","cx":""}');
@@ -946,6 +950,11 @@ VALUES ('storage_location', '1');
 -- endpoint: 如：oss-cn-hangzhou.aliyuncs.com
 INSERT INTO adi_sys_config (name, value)
 VALUES ('storage_location_ali_oss', '{"access_key_id":"","access_key_secret":"","endpoint":"","bucket_name":""}');
+
+-- ASR设置
+-- 音频文件最大10MB，最大录音时长60秒
+INSERT INTO adi_sys_config (name, value)
+VALUES ('asr_setting', '{"model_name":"FunAudioLLM/SenseVoiceSmall","platform":"siliconflow","max_record_duration":60,"max_file_size":10485760}');
 
 -- 大语言模型
 -- https://api-docs.deepseek.com/zh-cn/quick_start/pricing
@@ -989,6 +998,11 @@ INSERT INTO adi_ai_model (name, title, type, platform, max_input_tokens, propert
 VALUES ('text-embedding-v3', '通义千问-embedding-v3', 'embedding', 'dashscope', 8192, '{
   "dimension": 1024
 }', false);
+-- 语音识别
+-- paraformer-v2 只支持公网可访问的音频文件，如需要传输本地音频文件，请激活使用下面硅基流动的SenseVoiceSmall
+INSERT INTO adi_ai_model (name, title, type, platform, input_types, is_enable)
+VALUES ('paraformer-v2', '通义-语音识别', 'asr', 'dashscope', 'audio', false);
+
 -- https://console.bce.baidu.com/qianfan/modelcenter/model/buildIn/detail/am-bg7n2rn2gsbb
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_free,
                           is_enable,
@@ -999,6 +1013,9 @@ INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
 VALUES ('tinydolphin', 'ollama-tinydolphin', 'text', 'ollama', false);
 INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
 VALUES ('THUDM/GLM-Z1-9B-0414', '硅基流动-GLM-Z1-9B', 'text', 'siliconflow', false);
+-- 语音识别
+INSERT INTO adi_ai_model (name, title, type, platform, input_types, is_enable)
+VALUES ('FunAudioLLM/SenseVoiceSmall', '硅基流动-语音识别', 'asr', 'siliconflow', 'audio', false);
 -- 预设角色
 INSERT INTO adi_conversation_preset (uuid, title, remark, ai_system_message)
 VALUES ('26a8f54c560948d6b2d4969f08f3f2fb', '开发工程师', '技术好', '你是一个经验丰富的开发工程师,开发技能极其熟练');
@@ -1373,6 +1390,6 @@ values (replace(gen_random_uuid()::text, '-', ''), 1, 2, '[
   {
     "name": "BRAVE_API_KEY",
     "value": "此处直接填充您的Brave Search API密钥",
-    "encrypt": false
+    "encrypted": false
   }
 ]', true);

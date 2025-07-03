@@ -225,7 +225,7 @@ public class UserMcpService extends ServiceImpl<UserMcpMapper, UserMcp> {
     private void decryptParams(List<UserMcpCustomizedParam> mcpParams, Mcp mcp) {
         for (UserMcpCustomizedParam userMcpCustomizedParam : mcpParams) {
             mcp.getCustomizedParamDefinitions().stream()
-                    .filter(item -> item.getName().equals(userMcpCustomizedParam.getName()) && Boolean.TRUE.equals(item.getRequireEncrypt()))
+                    .filter(item -> Boolean.TRUE.equals(userMcpCustomizedParam.getEncrypted()) && item.getName().equals(userMcpCustomizedParam.getName()) && Boolean.TRUE.equals(item.getRequireEncrypt()))
                     .findFirst()
                     .ifPresent(item -> {
                         userMcpCustomizedParam.setValue(AesUtil.decrypt(String.valueOf(userMcpCustomizedParam.getValue())));

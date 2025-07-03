@@ -15,6 +15,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -101,5 +102,22 @@ public class LocalFileUtil {
     public static boolean checkIfExist(String filePath) {
         Path path = Paths.get(filePath);
         return Files.exists(path);
+    }
+
+    public static String saveFromUrl(String fileUrl, String newFileName, String defaultExt) {
+        String ext = LocalFileUtil.getFileExtension(fileUrl);
+        if (org.apache.commons.lang3.StringUtils.isBlank(ext) && !org.apache.commons.lang3.StringUtils.isNotBlank(defaultExt)) {
+            ext = defaultExt;
+        }
+        String filePath = LocalFileOperator.imagePath + newFileName + "." + ext;
+        File target = new File(filePath);
+        try {
+            FileUtils.createParentDirectories(target);
+            FileUtils.copyURLToFile(new URL(fileUrl), target);
+        } catch (IOException e) {
+            log.error("saveToLocal", e);
+            throw new BaseException(B_SAVE_IMAGE_ERROR);
+        }
+        return filePath;
     }
 }

@@ -18,7 +18,7 @@ public class AskReqValidator implements
 
     @Override
     public boolean isValid(AskReq value, ConstraintValidatorContext context) {
-        if (StringUtils.isAllBlank(value.getPrompt(), value.getRegenerateQuestionUuid())) {
+        if (StringUtils.isAllBlank(value.getPrompt(), value.getRegenerateQuestionUuid(), value.getAudioUuid())) {
             throw new IllegalArgumentException("prompt and regenerateMsgUuid are empty");
         }
 

@@ -1,7 +1,5 @@
 package com.moyz.adi.common.rag;
 
-import com.moyz.adi.common.enums.ErrorEnum;
-import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.interfaces.IRAGService;
 import com.moyz.adi.common.util.InputAdaptor;
 import com.moyz.adi.common.vo.InputAdaptorMsg;

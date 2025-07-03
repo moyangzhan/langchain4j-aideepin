@@ -4,7 +4,7 @@ import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
-import com.moyz.adi.common.interfaces.AbstractLLMService;
+import com.moyz.adi.common.service.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.interfaces.IStreamingChatAssistant;
 import com.moyz.adi.common.interfaces.ITempStreamingChatAssistant;
 import com.moyz.adi.common.interfaces.TriConsumer;

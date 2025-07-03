@@ -6,7 +6,7 @@ import com.moyz.adi.common.entity.WorkflowComponent;
 import com.moyz.adi.common.entity.WorkflowNode;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.ImageModelContext;
-import com.moyz.adi.common.interfaces.AbstractImageModelService;
+import com.moyz.adi.common.service.languagemodel.AbstractImageModelService;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.workflow.NodeProcessResult;
 import com.moyz.adi.common.workflow.WfNodeState;

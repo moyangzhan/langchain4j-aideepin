@@ -12,13 +12,17 @@ import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ChatMessageRoleEnum;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.helper.AsrModelContext;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.QuotaHelper;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.ConversationMessageMapper;
 import com.moyz.adi.common.util.LocalCache;
+import com.moyz.adi.common.util.MapDBChatMemoryStore;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.mcp.client.McpClient;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -59,6 +63,9 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
 
     @Resource
     private SSEEmitterHelper sseEmitterHelper;
+
+    @Resource
+    private FileService fileService;
 
 
     public SseEmitter sseAsk(AskReq askReq) {
@@ -131,6 +138,17 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             return;
         }
 
+        //如果是语音输入，将音频转成文本
+        if (StringUtils.isNotBlank(askReq.getAudioUuid())) {
+            String path = fileService.getImagePath(askReq.getAudioUuid());
+            String audioText = new AsrModelContext().audioToText(path);
+            if (StringUtils.isBlank(audioText)) {
+                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "音频解析失败，请检查音频文件是否正确");
+                return;
+            }
+            askReq.setPrompt(audioText);
+        }
+
         String questionUuid = StringUtils.isNotBlank(askReq.getRegenerateQuestionUuid()) ? askReq.getRegenerateQuestionUuid() : UuidUtil.createShort();
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setUser(user);
@@ -163,7 +181,6 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
 
     @Transactional
     public void saveAfterAiResponse(User user, AskReq askReq, String response, PromptMeta questionMeta, AnswerMeta answerMeta) {
-
         Conversation conversation;
         String prompt = askReq.getPrompt();
         String convUuid = askReq.getConversationUuid();
@@ -187,6 +204,8 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             question.setMessageRole(ChatMessageRoleEnum.USER.getValue());
             question.setRemark(prompt);
             question.setAiModelId(aiModel.getId());
+            question.setAudioUuid(askReq.getAudioUuid());
+            question.setAudioDuration(askReq.getAudioDuration());
             question.setTokens(questionMeta.getTokens());
             question.setUnderstandContextMsgPairNum(user.getUnderstandContextMsgPairNum());
             question.setAttachments(String.join(",", askReq.getImageUrls()));
@@ -210,6 +229,14 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
 
         calcTodayCost(user, conversation, questionMeta, answerMeta, aiModel.getIsFree());
 
+        //Save response to memory
+        if (Boolean.TRUE.equals(conversation.getUnderstandContextEnable())) {
+            MapDBChatMemoryStore mapDBChatMemoryStore = MapDBChatMemoryStore.getSingleton();
+            List<ChatMessage> messages = mapDBChatMemoryStore.getMessages(askReq.getConversationUuid());
+            List<ChatMessage> newMessages = new ArrayList<>(messages);
+            newMessages.add(AiMessage.aiMessage(response));
+            mapDBChatMemoryStore.updateMessages(askReq.getConversationUuid(), newMessages);
+        }
     }
 
     private void calcTodayCost(User user, Conversation conversation, PromptMeta questionMeta, AnswerMeta answerMeta, boolean isFreeToken) {
@@ -239,6 +266,23 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                 .eq(ConversationMessage::getIsDeleted, false)
                 .set(ConversationMessage::getIsDeleted, true)
                 .update();
+    }
+
+    public String getTextByAudioUuid(String audioUuid) {
+        if (StringUtils.isBlank(audioUuid)) {
+            return null;
+        }
+        ConversationMessage conversationMessage = this.lambdaQuery()
+                .eq(ConversationMessage::getAudioUuid, audioUuid)
+                .eq(!ThreadContext.getCurrentUser().getIsAdmin(), ConversationMessage::getUserId, ThreadContext.getCurrentUserId())
+                .eq(ConversationMessage::getIsDeleted, false)
+                .last("limit 1")
+                .oneOpt()
+                .orElse(null);
+        if (null == conversationMessage) {
+            return null;
+        }
+        return conversationMessage.getRemark();
     }
 
     private ChatModelParams buildChatModelParams(Conversation conversation, AskReq askReq) {

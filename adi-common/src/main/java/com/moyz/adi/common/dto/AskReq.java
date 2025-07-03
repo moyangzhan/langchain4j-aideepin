@@ -19,6 +19,11 @@ public class AskReq {
 
     private String prompt;
 
+    //语音聊天时产生的音频文件uuid
+    private String audioUuid;
+    //语音聊天时产生的音频时长，单位秒
+    private Integer audioDuration;
+
     /**
      * 图片地址，多模态LLM使用，目前只支持本地图片uuid
      */
