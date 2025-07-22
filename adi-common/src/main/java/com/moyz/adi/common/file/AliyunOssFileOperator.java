@@ -54,20 +54,9 @@ public class AliyunOssFileOperator implements IFileOperator {
 
     @Override
     public SaveRemoteImageResult saveImageFromUrl(String imageUrl, String uuid) {
-        String ext = LocalFileUtil.getFileExtension(imageUrl);
-        if (StringUtils.isBlank(ext)) {
-            ext = "png";
-        }
-        String filePath = LocalFileOperator.imagePath + uuid + "." + ext;
-        File target = new File(filePath);
-        try {
-            FileUtils.createParentDirectories(target);
-            FileUtils.copyURLToFile(new URL(imageUrl), target);
-        } catch (IOException e) {
-            log.error("saveToLocal", e);
-            throw new BaseException(B_SAVE_IMAGE_ERROR);
-        }
+        String filePath = LocalFileUtil.saveFromUrl(imageUrl, uuid, "png");
         byte[] bytes = LocalFileUtil.readBytes(filePath);
+        String ext = LocalFileUtil.getFileExtension(filePath);
         String objName = uuid + "." + ext;
         aliyunOssFileHelper.saveObj(bytes, objName);
         try {
@@ -78,7 +67,7 @@ public class AliyunOssFileOperator implements IFileOperator {
         }
         //对于OSS，存储的是对象名称，而不是完整URL
         filePath = objName;
-        return SaveRemoteImageResult.builder().ext(ext).originalName(target.getName()).pathOrUrl(filePath).build();
+        return SaveRemoteImageResult.builder().ext(ext).originalName(uuid).pathOrUrl(filePath).build();
     }
 
     @Override

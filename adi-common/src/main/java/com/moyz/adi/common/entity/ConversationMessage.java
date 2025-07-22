@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * <p>
@@ -13,6 +14,7 @@ import lombok.Data;
  * @author moyz
  * @since 2023-04-11
  */
+@EqualsAndHashCode(callSuper = true)
 @Data
 @TableName("adi_conversation_message")
 @Schema(title = "ConversationMessage对象")
@@ -41,6 +43,14 @@ public class ConversationMessage extends BaseEntity {
     @Schema(title = "对话的消息")
     @TableField("remark")
     private String remark;
+
+    @Schema(title = "语音聊天时产生的音频文件uuid(对应adi_file.uuid)")
+    @TableField("audio_uuid")
+    private String audioUuid;
+
+    @Schema(title = "语音聊天时产生的音频时长，单位秒")
+    @TableField("audio_duration")
+    private Integer audioDuration;
 
     @Schema(title = "产生该消息的角色：1: 用户,2:系统,3:助手")
     @TableField("message_role")

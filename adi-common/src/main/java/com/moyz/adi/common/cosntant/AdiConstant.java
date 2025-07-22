@@ -126,6 +126,7 @@ public class AdiConstant {
         public static final String QUOTA_BY_QA_ASK_DAILY = "quota_by_qa_ask_daily";
         public static final String STORAGE_LOCATION = "storage_location";
         public static final String STORAGE_LOCATION_ALI_OSS = "storage_location_ali_oss";
+        public static final String ASR_SETTING = "asr_setting";
     }
 
     public static final String[] POI_DOC_TYPES = {"doc", "docx", "ppt", "pptx", "xls", "xlsx"};
@@ -166,6 +167,8 @@ public class AdiConstant {
         public static final String IMAGE = "image";
         public static final String EMBEDDING = "embedding";
         public static final String RERANK = "rerank";
+        public static final String ASR = "asr";
+        public static final String TTS = "tts";
     }
 
     public static class SearchEngineName {
@@ -282,6 +285,8 @@ public class AdiConstant {
     public static final String COLUMN_NAME_USER_ID = "user_id";
     public static final String COLUMN_NAME_ID = "id";
     public static final String COLUMN_NAME_UUID = "uuid";
+
+    public static final String FORM_DATA_BOUNDARY_PRE = "----WebKitFormBoundary";
 
     public static class WorkflowConstant {
         public static final String DEFAULT_INPUT_PARAM_NAME = "input";

@@ -3,7 +3,7 @@ package com.moyz.adi.common.helper;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.interfaces.AbstractLLMService;
+import com.moyz.adi.common.service.languagemodel.AbstractLLMService;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.LinkedHashMap;
