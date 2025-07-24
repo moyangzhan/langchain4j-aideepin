@@ -80,7 +80,7 @@ public class CompositeRAG {
             });
         } catch (Exception baseException) {
             if (baseException.getCause() instanceof BaseException && B_BREAK_SEARCH.getCode().equals(((BaseException) baseException.getCause()).getCode())) {
-                sseEmitterHelper.sendAndComplete(user.getId(), sseAskParams.getSseEmitter(), "");
+                sseEmitterHelper.sendStartAndComplete(user.getId(), sseAskParams.getSseEmitter(), "");
                 consumer.accept("", PromptMeta.builder().tokens(0).build(), AnswerMeta.builder().tokens(0).build());
             } else {
                 log.error("ragProcess error", baseException);
@@ -144,7 +144,7 @@ public class CompositeRAG {
         tokenStream
                 .onPartialResponse(content -> SSEEmitterHelper.parseAndSendPartialMsg(params.getSseEmitter(), content))
                 .onCompleteResponse(response -> {
-                    Pair<PromptMeta, AnswerMeta> pair = SSEEmitterHelper.calculateTokenAndShutdown(response, params.getSseEmitter(), params.getUuid(), true);
+                    Pair<PromptMeta, AnswerMeta> pair = SSEEmitterHelper.calculateToken(response, params.getUuid());
                     consumer.accept(response.aiMessage().text(), pair.getLeft(), pair.getRight());
                 })
                 .onError(error -> SSEEmitterHelper.errorAndShutdown(error, params.getSseEmitter()))

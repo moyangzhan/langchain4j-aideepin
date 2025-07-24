@@ -44,6 +44,11 @@ public class LocalFileOperator implements IFileOperator {
     }
 
     @Override
+    public Pair<String, String> save(byte[] file, boolean image, String name) {
+        return LocalFileUtil.saveToLocal(file, image ? imagePath : filePath, name);
+    }
+
+    @Override
     public SaveRemoteImageResult saveImageFromUrl(String imageUrl, String uuid) {
         String ext = LocalFileUtil.getFileExtension(imageUrl);
         if (StringUtils.isBlank(ext)) {

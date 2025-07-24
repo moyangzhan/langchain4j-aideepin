@@ -18,6 +18,6 @@ public class InnerStreamChatParams {
     private List<McpClient> mcpClients;
     private StreamingChatModel streamingChatModel;
     private ChatRequest chatRequest;
-    private boolean shutdownSse;
-    private TriConsumer<String, PromptMeta, AnswerMeta> consumer;
+    private Integer answerContentType;
+    private TriConsumer<LLMResponseContent, PromptMeta, AnswerMeta> consumer;
 }

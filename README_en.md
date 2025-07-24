@@ -37,7 +37,7 @@ Frontend projects:
 
 ## Features
 
-* Multi-session (multi-role)
+* Multi-conversation (multi-role)
 * Image generation (text-to-image, image editing, image-to-image)
 * Knowledge base based on large models (RAG)
   * Vector search
@@ -45,6 +45,11 @@ Frontend projects:
 * Network search based on large models (RAG)
 * AI workflow
 * MCP service marketplace
+* ASR & TTS
+  * Text question - Text response
+  * Text question - Voice response
+  * Voice question - Text response
+  * Voice question - Voice response
 
 ## Integrated Models:
 
@@ -143,13 +148,9 @@ Frontend tech stack:
 
 **b. Modify the configuration file**
 
-+ PostgreSQL: `spring.datasource` in `application-[dev|prod].xml`
-+ Redis: `spring.data.redis` in `application-[dev|prod].xml`
-+ Email: `spring.mail` in `application.xml`
-+ Vector database, default is pgvector:
-  * `adi.vector-database=[pgvector|neo4j]` in `application-[dev|prod].xml`
-+ Graph database, default is Apache AGE:
-  * `adi.graph-database=[apache-age|neo4j]` in `application-[dev|prod].xml`
+* postgresql: `application-[dev|prod].xml` in `spring.datasource`
+* redis: `application-[dev|prod].xml` in `spring.data.redis`
+* mail: `application.xml` in `spring.mail`
 
 ### Build and Run
 

@@ -1,25 +1,15 @@
 package com.moyz.adi.common.service;
 
-import com.moyz.adi.common.helper.AsrModelContext;
 import com.moyz.adi.common.config.AdiProperties;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
+import com.moyz.adi.common.helper.AsrModelContext;
 import com.moyz.adi.common.helper.ImageModelContext;
 import com.moyz.adi.common.helper.LLMContext;
-import com.moyz.adi.common.service.languagemodel.AbstractAsrModelService;
-import com.moyz.adi.common.service.languagemodel.AbstractImageModelService;
-import com.moyz.adi.common.service.languagemodel.AbstractLLMService;
+import com.moyz.adi.common.helper.TtsModelContext;
 import com.moyz.adi.common.searchengine.GoogleSearchEngineService;
 import com.moyz.adi.common.searchengine.SearchEngineServiceContext;
 import com.moyz.adi.common.service.languagemodel.*;
-import com.moyz.adi.common.service.languagemodel.DashScopeLLMService;
-import com.moyz.adi.common.service.languagemodel.DashScopeWanxService;
-import com.moyz.adi.common.service.languagemodel.DeepSeekLLMService;
-import com.moyz.adi.common.service.languagemodel.OllamaLLMService;
-import com.moyz.adi.common.service.languagemodel.OpenAiDalleService;
-import com.moyz.adi.common.service.languagemodel.OpenAiLLMService;
-import com.moyz.adi.common.service.languagemodel.QianFanLLMService;
-import com.moyz.adi.common.service.languagemodel.SiliconflowLLMService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -67,6 +57,7 @@ public class AiModelSettingService {
         initLLMServiceList();
         initImageModelServiceList();
         initAsrModelServiceList();
+        initTtsModelServiceList();
     }
 
     /**
@@ -111,6 +102,10 @@ public class AiModelSettingService {
         initAsrModelService(AdiConstant.ModelPlatform.SILICONFLOW, SiliconflowAsrService::new);
     }
 
+    private synchronized void initTtsModelServiceList() {
+        initTtsModelService(AdiConstant.ModelPlatform.DASHSCOPE, DashScopeTtsService::new);
+    }
+
     private void initLLMService(String platform, Function<AiModel, AbstractLLMService<?>> function) {
         List<AiModel> models = all.stream().filter(item -> item.getType().equals(AdiConstant.ModelType.TEXT) && item.getPlatform().equals(platform)).toList();
         if (CollectionUtils.isEmpty(models)) {
@@ -145,6 +140,18 @@ public class AiModelSettingService {
         for (AiModel model : models) {
             log.info("add asr model,model:{}", model);
             AsrModelContext.addService(function.apply(model));
+        }
+    }
+
+    private void initTtsModelService(String platform, Function<AiModel, AbstractTtsModelService<?>> function) {
+        List<AiModel> models = all.stream().filter(item -> item.getType().equals(AdiConstant.ModelType.TTS) && item.getPlatform().equals(platform)).toList();
+        if (CollectionUtils.isEmpty(models)) {
+            log.warn("{} service is disabled", platform);
+        }
+        TtsModelContext.clearByPlatform(platform);
+        for (AiModel model : models) {
+            log.info("add tts model,model:{}", model);
+            TtsModelContext.addService(function.apply(model));
         }
     }
 

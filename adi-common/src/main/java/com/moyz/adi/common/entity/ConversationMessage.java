@@ -71,4 +71,8 @@ public class ConversationMessage extends BaseEntity {
     @Schema(name = "附件列表")
     @TableField("attachments")
     private String attachments;
+
+    @Schema(title = "响应内容类型：2：文本，3：音频")
+    @TableField("content_type")
+    private Integer contentType;
 }

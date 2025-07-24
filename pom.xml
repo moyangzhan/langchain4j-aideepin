@@ -13,7 +13,7 @@
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>aideepin</name>
-    <description>chatgpt</description>
+    <description>Chat,Draw,RAG,Workflow,MCP marketplace</description>
     <modules>
         <module>adi-common</module>
         <module>adi-chat</module>
@@ -261,6 +261,11 @@
             <groupId>org.bsc.langgraph4j</groupId>
             <artifactId>langgraph4j-langchain4j</artifactId>
             <version>${langgraph4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ws.schild</groupId>
+            <artifactId>jave-all-deps</artifactId>
+            <version>3.5.0</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

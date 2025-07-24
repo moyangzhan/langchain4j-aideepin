@@ -5,10 +5,7 @@ import com.moyz.adi.common.cosntant.RedisKeyConstant;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.interfaces.TriConsumer;
 import com.moyz.adi.common.util.*;
-import com.moyz.adi.common.vo.AnswerMeta;
-import com.moyz.adi.common.vo.ChatMeta;
-import com.moyz.adi.common.vo.PromptMeta;
-import com.moyz.adi.common.vo.SseAskParams;
+import com.moyz.adi.common.vo.*;
 import com.theokanning.openai.OpenAiError;
 import com.theokanning.openai.OpenAiHttpException;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -22,6 +19,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.text.MessageFormat;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -79,17 +77,17 @@ public class SSEEmitterHelper {
     /**
      * event_stream请求，完成后关闭sse并执行回调
      *
-     * @param sseAskParams 请求参数
-     * @param shutdownSse  请求结束后是否关闭sse emitter
-     * @param consumer     请求结束后的回调
+     * @param sseAskParams     请求参数
+     * @param completeCallback 请求结束后的回调
      */
-    public void call(SseAskParams sseAskParams, boolean shutdownSse, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
+    public void call(SseAskParams sseAskParams, TriConsumer<LLMResponseContent, PromptMeta, AnswerMeta> completeCallback) {
         String askingKey = registerEventStreamListener(sseAskParams);
-        LLMContext.getLLMServiceByName(sseAskParams.getModelName()).streamingChat(sseAskParams, shutdownSse, (response, promptMeta, answerMeta) -> {
+        LLMContext.getLLMServiceByName(sseAskParams.getModelName()).streamingChat(sseAskParams, (response, promptMeta, answerMeta) -> {
             try {
-                consumer.accept(response, promptMeta, answerMeta);
+                completeCallback.accept(response, promptMeta, answerMeta);
             } catch (Exception e) {
                 log.error("commonProcess error", e);
+                errorAndShutdown(e, sseAskParams.getSseEmitter());
             } finally {
                 stringRedisTemplate.delete(askingKey);
             }
@@ -133,7 +131,29 @@ public class SSEEmitterHelper {
         delSseRequesting(userId);
     }
 
-    public void sendAndComplete(long userId, SseEmitter sseEmitter, String msg) {
+    public void sendComplete(long userId, SseEmitter sseEmitter, PromptMeta questionMeta, AnswerMeta answerMeta, AudioInfo audioInfo) {
+        ChatMeta chatMeta = new ChatMeta(questionMeta, answerMeta, audioInfo);
+        String meta = JsonUtil.toJson(chatMeta).replace("\r\n", "");
+        this.sendComplete(userId, sseEmitter, " " + AdiConstant.SSEEventName.META + meta);
+    }
+
+    /**
+     * 关闭sse <br/>
+     *
+     * @param userId     用户id
+     * @param sseEmitter sse
+     */
+    public void sendComplete(long userId, SseEmitter sseEmitter) {
+        try {
+            sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.DONE));
+            sseEmitter.complete();
+        } catch (Exception e) {
+            log.warn("sendComplete error", e);
+        }
+        delSseRequesting(userId);
+    }
+
+    public void sendStartAndComplete(long userId, SseEmitter sseEmitter, String msg) {
         try {
             sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.START));
             sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.DONE).data(msg));
@@ -146,7 +166,7 @@ public class SSEEmitterHelper {
 
     public void sendErrorAndComplete(long userId, SseEmitter sseEmitter, String errorMsg) {
         try {
-            sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.ERROR).data(StringUtils.defaultString(errorMsg, "")));
+            sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.ERROR).data(Objects.toString(errorMsg, "")));
         } catch (IOException e) {
             log.warn("sendErrorAndComplete userId:{},errorMsg:{}", userId, errorMsg);
             throw new RuntimeException(e);
@@ -162,6 +182,15 @@ public class SSEEmitterHelper {
 
     public static void parseAndSendPartialMsg(SseEmitter sseEmitter, String content) {
         parseAndSendPartialMsg(sseEmitter, "", content);
+    }
+
+    public static void sendAudio(SseEmitter sseEmitter, Object content) {
+        try {
+            sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.AUDIO).data(content));
+        } catch (IOException e) {
+            log.error("stream onNext error", e);
+            throw new RuntimeException(e);
+        }
     }
 
     public static void parseAndSendPartialMsg(SseEmitter sseEmitter, String name, String content) {
@@ -192,15 +221,13 @@ public class SSEEmitterHelper {
     }
 
     /**
-     * 计算llm返回消费的token并关闭sse，执行回调
+     * 计算llm返回消费的token
      *
-     * @param response    llm返回的最终内容
-     * @param sseEmitter  sse emitter
-     * @param uuid        标识
-     * @param shutdownSse 是否关闭sse
+     * @param response llm返回的最终内容
+     * @param uuid     标识
      * @return 请求及答案消息对
      */
-    public static Pair<PromptMeta, AnswerMeta> calculateTokenAndShutdown(ChatResponse response, SseEmitter sseEmitter, String uuid, boolean shutdownSse) {
+    public static Pair<PromptMeta, AnswerMeta> calculateToken(ChatResponse response, String uuid) {
         log.info("返回数据结束了:{}", response);
         //缓存以便后续统计此次提问的消耗总token
         int inputTokenCount = response.metadata().tokenUsage().totalTokenCount();
@@ -210,19 +237,6 @@ public class SSEEmitterHelper {
 
         PromptMeta questionMeta = new PromptMeta(inputTokenCount, uuid);
         AnswerMeta answerMeta = new AnswerMeta(outputTokenCount, UuidUtil.createShort());
-        ChatMeta chatMeta = new ChatMeta(questionMeta, answerMeta);
-        String meta = JsonUtil.toJson(chatMeta).replace("\r\n", "");
-        log.info("meta:" + meta);
-        try {
-            sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.DONE).data(" " + AdiConstant.SSEEventName.META + meta));
-        } catch (IOException e) {
-            log.error("stream onComplete error", e);
-            throw new RuntimeException(e);
-        }
-        // close eventSourceEmitter after tokens was calculated
-        if (shutdownSse) {
-            sseEmitter.complete();
-        }
         return Pair.of(questionMeta, answerMeta);
     }
 

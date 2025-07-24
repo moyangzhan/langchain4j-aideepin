@@ -75,6 +75,10 @@ public class AdiConstant {
         }
 
         public static final String DEFAULT_NAME = "通用智能助手";
+
+        public static final int ANSWER_CONTENT_TYPE_AUTO = 1;
+        public static final int ANSWER_CONTENT_TYPE_TEXT = 2;
+        public static final int ANSWER_CONTENT_TYPE_AUDIO = 3;
     }
 
     public static class GenerateImage {
@@ -127,7 +131,10 @@ public class AdiConstant {
         public static final String STORAGE_LOCATION = "storage_location";
         public static final String STORAGE_LOCATION_ALI_OSS = "storage_location_ali_oss";
         public static final String ASR_SETTING = "asr_setting";
+        public static final String TTS_SETTING = "tts_setting";
     }
+
+    public static final int tts_ = 1;
 
     public static final String[] POI_DOC_TYPES = {"doc", "docx", "ppt", "pptx", "xls", "xlsx"};
 
@@ -191,6 +198,7 @@ public class AdiConstant {
         public static final String DONE = "[DONE]";
         public static final String ERROR = "[ERROR]";
         public static final String META = "[META]";
+        public static final String AUDIO = "[AUDIO]";
 
         public static final String AI_SEARCH_SOURCE_LINKS = "[SOURCE_LINKS]";
         public static final String WF_NODE_CHUNK = "[WF_NODE_CHUNK]";
@@ -331,5 +339,22 @@ public class AdiConstant {
         public static final String INSTALL_TYPE_WASM = "wasm";
         public static final String INSTALL_TYPE_LOCAL = "local";
         public static final String INSTALL_TYPE_DOCKER = "docker";
+    }
+
+    public static class TtsConstant {
+
+        /**
+         * 语音合成器位置-客户端
+         */
+        public static final String SYNTHESIZER_CLIENT = "client";
+        /**
+         * 语音合成器位置-服务端
+         */
+        public static final String SYNTHESIZER_SERVER = "server";
+
+        /**
+         * 通义默认语音音色-龙应严(义正严辞女声)
+         */
+        public static final String DASHSCOPE_DEFAULT_VOICE = "longyingyan";
     }
 }

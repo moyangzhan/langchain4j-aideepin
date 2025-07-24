@@ -17,6 +17,11 @@ public class SseAskParams {
 
     private String regenerateQuestionUuid;
 
+    /**
+     * 2:text,3:audio
+     */
+    private Integer answerContentType;
+
     private SseEmitter sseEmitter;
 
     /**

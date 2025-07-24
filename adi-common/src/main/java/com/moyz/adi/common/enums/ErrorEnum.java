@@ -92,6 +92,8 @@ public enum ErrorEnum {
     B_ASR_SETTING_NOT_FOUND("B0026", "语音识别设置未找到"),
     B_URL_INVALID("B0027", "不是有效的网络地址"),
     B_ASR_MODEL_NOT_FOUND("B0028", "语音识别模型未找到"),
+    B_TTS_SETTING_NOT_FOUND("B0029", "语音合成设置未找到"),
+    B_TTS_MODEL_NOT_FOUND("B0030", "语音合成模型未找到"),
     C_DRAW_FAIL("C0001", "大模型生成图片失败,原因:{0}"),
     C_ALI_OSS_CONFIG_ERROR("C0002", "阿里云OSS初始化失败,原因:{0}"),
     C_LLM_RESPONSE_INVALID("C0003", "大模型生成结果内容无效"),

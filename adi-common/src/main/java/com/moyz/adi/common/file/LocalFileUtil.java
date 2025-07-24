@@ -9,11 +9,14 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import ws.schild.jave.MultimediaObject;
+import ws.schild.jave.info.MultimediaInfo;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
@@ -26,7 +29,13 @@ import static com.moyz.adi.common.enums.ErrorEnum.*;
 @Slf4j
 public class LocalFileUtil {
 
-    public static Pair<String, String> saveToLocal(MultipartFile file, String path, String newName) {
+    /**
+     * @param file    文件
+     * @param dir     存放目录
+     * @param newName 文件名（包括后缀）
+     * @return 文件路径及后缀
+     */
+    public static Pair<String, String> saveToLocal(MultipartFile file, String dir, String newName) {
         if (file.isEmpty()) {
             log.info("save to local,file is empty");
             throw new BaseException(A_FILE_NOT_EXIST);
@@ -34,12 +43,35 @@ public class LocalFileUtil {
         String fileName = StringUtils.cleanPath(file.getOriginalFilename());
         String fileExt = getFileExtension(fileName);
         log.info("save to local,original name:{},new name:{}", fileName, newName);
-        String pathName = path + newName + "." + fileExt;
+        String filePath = dir + newName + "." + fileExt;
         try {
             // 将文件保存到目标路径
-            file.transferTo(new File(pathName));
+            file.transferTo(new File(filePath));
         } catch (IOException e) {
             log.error("save to local error", e);
+            throw new BaseException(B_SAVE_FILE_ERROR);
+        }
+        return new ImmutablePair<>(filePath, fileExt);
+    }
+
+    /**
+     * @param file     文件
+     * @param dir      存放目录
+     * @param fileName 文件名
+     * @return 路径及后缀
+     */
+    public static Pair<String, String> saveToLocal(byte[] file, String dir, String fileName) {
+        if (file.length == 0) {
+            log.info("save to local,file is empty");
+            throw new BaseException(A_FILE_NOT_EXIST);
+        }
+        String fileExt = getFileExtension(fileName);
+        log.info("save to local,name:{}", fileName);
+        String pathName = dir + fileName;
+        try (FileOutputStream fos = new FileOutputStream(pathName)) {
+            fos.write(file);
+        } catch (IOException e) {
+            log.error("保存文件失败", e);
             throw new BaseException(B_SAVE_FILE_ERROR);
         }
         return new ImmutablePair<>(pathName, fileExt);
@@ -99,17 +131,37 @@ public class LocalFileUtil {
         }
     }
 
+    public static Pair<String, String> getNameAndExt(String pathOrUrl) {
+        int idx = pathOrUrl.lastIndexOf("/");
+        if (idx == -1) {
+            idx = pathOrUrl.indexOf("\\");
+        }
+        String name = pathOrUrl.substring(idx + 1);
+        return Pair.of(name, getFileExtension(name));
+    }
+
     public static boolean checkIfExist(String filePath) {
         Path path = Paths.get(filePath);
         return Files.exists(path);
     }
 
+    /**
+     * @param fileUrl     文件url
+     * @param newFileName 文件名（不带后缀时解析 fileUrl 得出后缀）
+     * @param defaultExt  默认后缀
+     * @return 文件路径
+     */
     public static String saveFromUrl(String fileUrl, String newFileName, String defaultExt) {
-        String ext = LocalFileUtil.getFileExtension(fileUrl);
-        if (org.apache.commons.lang3.StringUtils.isBlank(ext) && !org.apache.commons.lang3.StringUtils.isNotBlank(defaultExt)) {
-            ext = defaultExt;
+        String filePath;
+        if (newFileName.contains(".")) {
+            filePath = LocalFileOperator.imagePath + newFileName;
+        } else {
+            String ext = LocalFileUtil.getFileExtension(fileUrl);
+            if (org.apache.commons.lang3.StringUtils.isBlank(ext) && !org.apache.commons.lang3.StringUtils.isNotBlank(defaultExt)) {
+                ext = defaultExt;
+            }
+            filePath = LocalFileOperator.imagePath + newFileName + "." + ext;
         }
-        String filePath = LocalFileOperator.imagePath + newFileName + "." + ext;
         File target = new File(filePath);
         try {
             FileUtils.createParentDirectories(target);
@@ -119,5 +171,16 @@ public class LocalFileUtil {
             throw new BaseException(B_SAVE_IMAGE_ERROR);
         }
         return filePath;
+    }
+
+    public static MultimediaInfo getAudioFileInfo(String path) {
+        try {
+            File file = new File(path);
+            MultimediaObject multimediaObject = new MultimediaObject(file);
+            return multimediaObject.getInfo();
+        } catch (Exception e) {
+            log.error("Error processing audio file", e);
+        }
+        return null;
     }
 }

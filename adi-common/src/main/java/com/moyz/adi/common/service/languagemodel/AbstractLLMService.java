@@ -1,8 +1,11 @@
 package com.moyz.adi.common.service.languagemodel;
 
+import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
+import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
+import com.moyz.adi.common.helper.TtsModelContext;
 import com.moyz.adi.common.interfaces.TriConsumer;
 import com.moyz.adi.common.rag.TokenEstimatorFactory;
 import com.moyz.adi.common.rag.TokenEstimatorThreadLocal;
@@ -31,10 +34,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.nio.ByteBuffer;
+import java.util.*;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.LLM_MAX_INPUT_TOKENS_DEFAULT;
 import static com.moyz.adi.common.enums.ErrorEnum.A_PARAMS_ERROR;
@@ -45,10 +46,21 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
 
     protected StringRedisTemplate stringRedisTemplate;
 
+    //TTS相关部分参数
+    private String ttsJobId;
+    private TtsModelContext ttsModelContext;
+    private String ttsJobFilePath;
+    private TtsSetting ttsSetting;
+
     protected AbstractLLMService(AiModel aiModel, String settingName, Class<T> clazz) {
         super(aiModel, settingName, clazz);
 
         initMaxInputTokens();
+        ttsSetting = JsonUtil.fromJson(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.TTS_SETTING), TtsSetting.class);
+        if (null == ttsSetting) {
+            log.error("TTS配置未找到，请检查配置文件，请检查 adi_sys_config 中是否有 tts_setting 配置项");
+            throw new BaseException(ErrorEnum.B_TTS_SETTING_NOT_FOUND);
+        }
     }
 
     private void initMaxInputTokens() {
@@ -108,7 +120,7 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
      * @param params   请求参数
      * @param consumer 响应结果回调
      */
-    public void streamingChat(SseAskParams params, boolean shutdownSse, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
+    public void streamingChat(SseAskParams params, TriConsumer<LLMResponseContent, PromptMeta, AnswerMeta> consumer) {
         if (!isEnabled()) {
             log.error("llm service is disabled");
             throw new BaseException(B_LLM_SERVICE_DISABLED);
@@ -129,10 +141,28 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
                 .chatRequest(chatRequest)
                 .sseEmitter(params.getSseEmitter())
                 .mcpClients(params.getChatModelParams().getMcpClients())
-                .shutdownSse(shutdownSse)
+                .answerContentType(params.getAnswerContentType())
                 .consumer(consumer)
                 .build();
         try {
+
+            //如果系统设置的语音合成器类型是后端合成，并且设置的返回内容是音频，则初始化tts任务并注册回调函数
+            if (AdiConstant.TtsConstant.SYNTHESIZER_SERVER.equals(ttsSetting.getSynthesizerSide()) && params.getAnswerContentType() == AdiConstant.ConversationConstant.ANSWER_CONTENT_TYPE_AUDIO) {
+                ttsJobId = UuidUtil.createShort();
+                ttsModelContext = new TtsModelContext();
+                ttsModelContext.startTtsJob(ttsJobId, "", (ByteBuffer audioFrame) -> {
+                    byte[] frameBytes = new byte[audioFrame.remaining()];
+                    audioFrame.get(frameBytes);
+                    String base64Audio = Base64.getEncoder().encodeToString(frameBytes);
+                    SSEEmitterHelper.sendAudio(params.getSseEmitter(), base64Audio);
+                }, (String filePathOrOssUrl) -> {
+                    ttsJobFilePath = filePathOrOssUrl;
+                }, (String errorMsg) -> {
+                    log.error("tts error: {}", errorMsg);
+                });
+            }
+
+            //不管是不是需要返回音频文件，都需要innerStreamingChat()
             innerStreamingChat(innerStreamChatParams);
         } catch (Exception e) {
             //Close MCP clients
@@ -159,6 +189,10 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
             @Override
             public void onPartialResponse(String partialResponse) {
                 SSEEmitterHelper.parseAndSendPartialMsg(params.getSseEmitter(), partialResponse);
+
+                if (null != ttsModelContext && AdiConstant.TtsConstant.SYNTHESIZER_SERVER.equals(ttsSetting.getSynthesizerSide()) && params.getAnswerContentType() == AdiConstant.ConversationConstant.ANSWER_CONTENT_TYPE_AUDIO) {
+                    ttsModelContext.processPartialText(ttsJobId, partialResponse);
+                }
             }
 
             @Override
@@ -180,8 +214,14 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
                     // recursive call now with tool calling results
                     innerStreamingChat(params);
                 } else {
-                    Pair<PromptMeta, AnswerMeta> pair = SSEEmitterHelper.calculateTokenAndShutdown(response, params.getSseEmitter(), params.getUuid(), params.isShutdownSse());
-                    params.getConsumer().accept(response.aiMessage().text(), pair.getLeft(), pair.getRight());
+                    //结束TTS任务
+                    if (null != ttsModelContext) {
+                        //TODO。。。 停止转换任务，此时有可能导致只合成部分音频，待处理
+                        ttsModelContext.complete(ttsJobId);
+                    }
+                    //结束整个对话任务
+                    Pair<PromptMeta, AnswerMeta> pair = SSEEmitterHelper.calculateToken(response, params.getUuid());
+                    params.getConsumer().accept(new LLMResponseContent(response.aiMessage().text(), ttsJobFilePath), pair.getLeft(), pair.getRight());
                     //Close mcp clients
                     params.getMcpClients().forEach(item -> {
                         try {
@@ -313,6 +353,17 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
             if (StringUtils.isNotBlank(chatModelParams.getSystemMessage())) {
                 memory.add(SystemMessage.from(chatModelParams.getSystemMessage()));
             }
+
+            //处理重复的UserMessage
+            if (!memory.messages().isEmpty()) {
+                ChatMessage lastMessage = memory.messages().get(memory.messages().size() - 1);
+                if (lastMessage instanceof UserMessage) {
+                    List<ChatMessage> list = memory.messages().subList(0, memory.messages().size() - 1);
+                    memory.clear();
+                    list.forEach(memory::add);
+                }
+            }
+
             memory.add(UserMessage.from(userContents));
 
             //得到截断后符合maxTokens的文本消息

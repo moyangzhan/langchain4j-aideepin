@@ -20,4 +20,8 @@ public class ConvEditReq {
     private Boolean understandContextEnable;
 
     private List<Long> mcpIds;
+
+    private Integer answerContentType;
+
+    private Boolean isAutoplayAnswer;
 }

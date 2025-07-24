@@ -8,4 +8,5 @@ import lombok.Data;
 public class ChatMeta {
     private PromptMeta question;
     private AnswerMeta answer;
+    private AudioInfo audioInfo;
 }

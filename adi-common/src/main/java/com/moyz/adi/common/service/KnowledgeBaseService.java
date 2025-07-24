@@ -51,6 +51,7 @@ import static com.moyz.adi.common.cosntant.AdiConstant.SysConfigKey.QUOTA_BY_QA_
 import static com.moyz.adi.common.cosntant.RedisKeyConstant.KB_STATISTIC_RECALCULATE_SIGNAL;
 import static com.moyz.adi.common.cosntant.RedisKeyConstant.USER_INDEXING;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
+import static com.moyz.adi.common.util.LocalDateTimeUtil.PATTERN_YYYY_MM_DD;
 
 @Slf4j
 @Service
@@ -346,7 +347,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
      * 知识库问答限额判断
      */
     private void checkRequestTimesOrThrow() {
-        String key = MessageFormat.format(RedisKeyConstant.AQ_ASK_TIMES, ThreadContext.getCurrentUserId(), LocalDateTimeUtil.format(LocalDateTime.now(), "yyyyMMdd"));
+        String key = MessageFormat.format(RedisKeyConstant.AQ_ASK_TIMES, ThreadContext.getCurrentUserId(), LocalDateTimeUtil.format(LocalDateTime.now(), PATTERN_YYYY_MM_DD));
         String askTimes = stringRedisTemplate.opsForValue().get(key);
         String askQuota = SysConfigService.getByKey(QUOTA_BY_QA_ASK_DAILY);
         if (null != askTimes && null != askQuota && Integer.parseInt(askTimes) >= Integer.parseInt(askQuota)) {
@@ -403,14 +404,15 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "提问内容过长，最多不超过 " + maxInputTokens + " tokens");
                 TokenEstimatorThreadLocal.clearTokenEstimator();
             } else {
-                sseEmitterHelper.call(sseAskParams, true, (response, questionMeta, answerMeta) -> {
+                sseEmitterHelper.call(sseAskParams, (response, questionMeta, answerMeta) -> {
+                            sseEmitterHelper.sendComplete(user.getId(), sseEmitter);
                             updateQaRecord(
                                     UpdateQaParams.builder()
                                             .user(user)
                                             .qaRecord(qaRecord)
                                             .retrievers(null)
                                             .sseAskParams(sseAskParams)
-                                            .response(response)
+                                            .response(response.getContent())
                                             .isTokenFree(aiModel.getIsFree())
                                             .build());
                             TokenEstimatorThreadLocal.clearTokenEstimator();
@@ -426,6 +428,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                     , qaRecordUuid);
             List<ContentRetriever> retrievers = compositeRAG.createRetriever(ChatModel, metadataCond, maxResults, knowledgeBase.getRetrieveMinScore(), knowledgeBase.getIsStrict());
             compositeRAG.ragChat(retrievers, sseAskParams, (response, promptMeta, answerMeta) -> {
+                        sseEmitterHelper.sendComplete(user.getId(), sseAskParams.getSseEmitter());
                         updateQaRecord(
                                 UpdateQaParams.builder()
                                         .user(user)

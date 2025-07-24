@@ -187,6 +187,8 @@ CREATE TABLE adi_conversation
     understand_context_enable boolean       default false             not null,
     llm_temperature           numeric(2, 1) default 0.7               not null,
     mcp_ids                   varchar(1000) default ''                not null,
+    answer_content_type       smallint      default 1                 not null,
+    is_autoplay_answer        boolean       default true              not null,
     create_time               timestamp     default CURRENT_TIMESTAMP not null,
     update_time               timestamp     default CURRENT_TIMESTAMP not null,
     is_deleted                boolean       default false             not null
@@ -199,6 +201,8 @@ COMMENT ON COLUMN adi_conversation.remark IS '备注，如：断案如神，手�
 COMMENT ON COLUMN adi_conversation.ai_system_message IS '角色设定内容，如：你是唐朝的狄仁杰，破了很多大案、疑案 | Role setting content, e.g., You are Sherlock Holmes, a brilliant detective known for your keen observation skills';
 COMMENT ON COLUMN adi_conversation.llm_temperature IS 'LLM响应的创造性/随机性 | LLM response creativity/randomness';
 COMMENT ON COLUMN adi_conversation.mcp_ids IS '启用的MCP服务id,以逗号隔开 | Enabled MCP service IDs, comma-separated';
+COMMENT ON COLUMN adi_conversation.answer_content_type IS '设置响应内容类型：1：自动（跟随用户的输入类型，如果用户输入是音频，则响应内容也同样是音频，如果用户输入是文本，则响应内容显示文本），2：文本，3：音频 | Response content display type: 1: Auto (if user input is audio, response content is also audio; if user input is text, response content displays text), 2: Text, 3: Audio';
+COMMENT ON COLUMN adi_conversation.is_autoplay_answer IS '设置聊天时音频类型的响应内容是否自动播放，true: 自动播放，false: 不自动播放 | Whether audio-type response content automatically plays, true: Auto play, false: Do not auto play';
 
 CREATE TRIGGER trigger_conv_update_time
     BEFORE UPDATE
@@ -236,6 +240,7 @@ CREATE TABLE adi_conversation_message
     parent_message_id               bigint        default 0                 not null,
     conversation_id                 bigint        default 0                 not null,
     conversation_uuid               varchar(32)   default ''                not null,
+    content_type                    smallint      default 2                 not null,
     remark                          text,
     audio_uuid                      varchar(32)   default ''                not null,
     audio_duration                  integer       default 0                 not null,
@@ -256,6 +261,7 @@ COMMENT ON COLUMN adi_conversation_message.parent_message_id IS '父级消息id 
 COMMENT ON COLUMN adi_conversation_message.conversation_id IS '对话id | Conversation ID';
 COMMENT ON COLUMN adi_conversation_message.conversation_uuid IS '对话的UUID | Conversation UUID';
 COMMENT ON COLUMN adi_conversation_message.remark IS '消息内容 | message';
+COMMENT ON COLUMN adi_conversation_message.content_type IS '消息内容类型（跟conversation.answer_content_type对应），2：文本，3：音频 | Message content type, 2: Text, 3: Audio';
 COMMENT ON COLUMN adi_conversation_message.uuid IS '唯一标识消息的UUID | Unique identifier for the message';
 COMMENT ON COLUMN adi_conversation_message.audio_uuid IS '语音聊天时产生的音频文件uuid(对应adi_file.uuid) | UUID of the audio file generated during voice chat (corresponds to adi_file.uuid)';
 COMMENT ON COLUMN adi_conversation_message.audio_duration IS '语音聊天时产生的音频文件时长(单位:秒) | Duration of the audio file generated during voice chat (in seconds)';
@@ -952,9 +958,20 @@ INSERT INTO adi_sys_config (name, value)
 VALUES ('storage_location_ali_oss', '{"access_key_id":"","access_key_secret":"","endpoint":"","bucket_name":""}');
 
 -- ASR设置
--- 音频文件最大10MB，最大录音时长60秒
+-- 音频文件最大10MB，最大录音时长60秒（TODO）
 INSERT INTO adi_sys_config (name, value)
-VALUES ('asr_setting', '{"model_name":"FunAudioLLM/SenseVoiceSmall","platform":"siliconflow","max_record_duration":60,"max_file_size":10485760}');
+VALUES ('asr_setting',
+        '{"model_name":"FunAudioLLM/SenseVoiceSmall","platform":"siliconflow","max_record_duration":60,"max_file_size":10485760}');
+
+-- TTS设置
+-- synthesizer_side指定TTS的合成器类型，如: client,server
+-- synthesizer_side如果设置为client，表示使用客户端（如浏览器）的tts功能，忽略model_name, platform等参数，免费使用
+-- synthesizer_side如果设置为server，表示使用服务端进行语音合成，实际上就是使用各大平台的大语言模型如cosyvoice-v2,FunAudioLLM/CosyVoice2-0.5B等进行合成，付费使用
+-- 注意：大语言模型的TTS接口收费不便宜，请提前做好规划
+INSERT INTO adi_sys_config (name, value)
+VALUES ('tts_setting', '{"synthesizer_side":"client","model_name":"","platform":""}');
+-- INSERT INTO adi_sys_config (name, value)
+-- VALUES ('tts_setting', '{"synthesizer":"server","model_name":"cosyvoice-v2","platform":"dashscope"}');
 
 -- 大语言模型
 -- https://api-docs.deepseek.com/zh-cn/quick_start/pricing
@@ -1001,8 +1018,433 @@ VALUES ('text-embedding-v3', '通义千问-embedding-v3', 'embedding', 'dashscop
 -- 语音识别
 -- paraformer-v2 只支持公网可访问的音频文件，如需要传输本地音频文件，请激活使用下面硅基流动的SenseVoiceSmall
 INSERT INTO adi_ai_model (name, title, type, platform, input_types, is_enable)
-VALUES ('paraformer-v2', '通义-语音识别', 'asr', 'dashscope', 'audio', false);
-
+VALUES ('paraformer-v2', '通义-语音识别ASR', 'asr', 'dashscope', 'audio', false);
+-- 语音合成
+INSERT INTO adi_ai_model (name, title, type, platform, input_types, properties, is_enable)
+VALUES ('cosyvoice-v2', '通义-语音合成TTS', 'tts', 'dashscope', 'text', '{
+  "voices": [
+    {
+      "name": "龙应催",
+      "remark": "严肃催收男",
+      "param_name": "longyingcui",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙应答",
+      "remark": "开朗高音女",
+      "param_name": "longyingda",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙应静",
+      "remark": "低调冷静女",
+      "param_name": "longyingjing",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙应严",
+      "remark": "义正严辞女",
+      "param_name": "longyingyan",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙应甜",
+      "remark": "温柔甜美女",
+      "param_name": "longyingtian",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙应冰",
+      "remark": "尖锐强势女",
+      "param_name": "longyingbing",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙应桃",
+      "remark": "温柔淡定女",
+      "param_name": "longyingtao",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙应聆",
+      "remark": "温和共情女",
+      "param_name": "longyingling",
+      "lang": "中、英"
+    },
+    {
+      "name": "YUMI",
+      "remark": "正经青年女",
+      "param_name": "longyumi_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙小淳",
+      "remark": "知性积极女",
+      "param_name": "longxiaochun_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙小夏",
+      "remark": "沉稳权威女",
+      "param_name": "longxiaoxia_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙安燃",
+      "remark": "活泼质感女",
+      "param_name": "longanran",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙安宣",
+      "remark": "经典直播女",
+      "param_name": "longanxuan",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙三叔",
+      "remark": "沉稳质感男",
+      "param_name": "longsanshu",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙修",
+      "remark": "博才说书男",
+      "param_name": "longxiu_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙妙",
+      "remark": "抑扬顿挫女",
+      "param_name": "longmiao_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙悦",
+      "remark": "温暖磁性女",
+      "param_name": "longyue_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙楠",
+      "remark": "睿智青年男",
+      "param_name": "longnan_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙媛",
+      "remark": "温暖治愈女",
+      "param_name": "longyuan_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙安柔",
+      "remark": "温柔闺蜜女",
+      "param_name": "longanrou",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙嫱",
+      "remark": "浪漫风情女",
+      "param_name": "longqiang_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙寒",
+      "remark": "温暖痴情男",
+      "param_name": "longhan_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙星",
+      "remark": "温婉邻家女",
+      "param_name": "longxing_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙华",
+      "remark": "元气甜美女",
+      "param_name": "longhua_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙婉",
+      "remark": "积极知性女",
+      "param_name": "longwan_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙橙",
+      "remark": "智慧青年男",
+      "param_name": "longcheng_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙菲菲",
+      "remark": "甜美娇气女",
+      "param_name": "longfeifei_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙小诚",
+      "remark": "磁性低音男",
+      "param_name": "longxiaocheng_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙哲",
+      "remark": "呆板大暖男",
+      "param_name": "longzhe_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙颜",
+      "remark": "温暖春风女",
+      "param_name": "longyan_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙天",
+      "remark": "磁性理智男",
+      "param_name": "longtian_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙泽",
+      "remark": "温暖元气男",
+      "param_name": "longze_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙邵",
+      "remark": "积极向上男",
+      "param_name": "longshao_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙浩",
+      "remark": "多情忧郁男",
+      "param_name": "longhao_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙深",
+      "remark": "实力歌手男",
+      "param_name": "kabuleshen_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙杰力豆",
+      "remark": "阳光顽皮男",
+      "param_name": "longjielidou_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙铃",
+      "remark": "稚气呆板女",
+      "param_name": "longling_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙可",
+      "remark": "懵懂乖乖女",
+      "param_name": "longke_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙仙",
+      "remark": "豪放可爱女",
+      "param_name": "longxian_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙老铁",
+      "remark": "东北直率男",
+      "param_name": "longlaotie_v2",
+      "lang": "中（东北）、英"
+    },
+    {
+      "name": "龙嘉怡",
+      "remark": "知性粤语女",
+      "param_name": "longjiayi_v2",
+      "lang": "中（粤语）、英"
+    },
+    {
+      "name": "龙桃",
+      "remark": "积极粤语女",
+      "param_name": "longtao_v2",
+      "lang": "中（粤语）、英"
+    },
+    {
+      "name": "龙飞",
+      "remark": "热血磁性男",
+      "param_name": "longfei_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "李白",
+      "remark": "古代诗仙男",
+      "param_name": "libai_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙津",
+      "remark": "优雅温润男",
+      "param_name": "longjin_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙书",
+      "remark": "沉稳青年男",
+      "param_name": "longshu_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "Bella2.0",
+      "remark": "精准干练女",
+      "param_name": "loongbella_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙硕",
+      "remark": "博才干练男",
+      "param_name": "longshuo_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙小白",
+      "remark": "沉稳播报女",
+      "param_name": "longxiaobai_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "龙婧",
+      "remark": "典型播音女",
+      "param_name": "longjing_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "loongstella",
+      "remark": "飒爽利落女",
+      "param_name": "loongstella_v2",
+      "lang": "中、英"
+    },
+    {
+      "name": "loongeva",
+      "remark": "知性英文女",
+      "param_name": "loongeva_v2",
+      "lang": "英式英文"
+    },
+    {
+      "name": "loongbrian",
+      "remark": "沉稳英文男",
+      "param_name": "loongbrian_v2",
+      "lang": "英式英文"
+    },
+    {
+      "name": "loongluna",
+      "remark": "英式英文女",
+      "param_name": "loongluna_v2",
+      "lang": "英式英文"
+    },
+    {
+      "name": "loongluca",
+      "remark": "英式英文男",
+      "param_name": "loongluca_v2",
+      "lang": "英式英文"
+    },
+    {
+      "name": "loongemily",
+      "remark": "英式英文女",
+      "param_name": "loongemily_v2",
+      "lang": "英式英文"
+    },
+    {
+      "name": "loongeric",
+      "remark": "英式英文男",
+      "param_name": "loongeric_v2",
+      "lang": "英式英文"
+    },
+    {
+      "name": "loongabby",
+      "remark": "美式英文女",
+      "param_name": "loongabby_v2",
+      "lang": "美式英文"
+    },
+    {
+      "name": "loongannie",
+      "remark": "美式英文女",
+      "param_name": "loongannie_v2",
+      "lang": "美式英文"
+    },
+    {
+      "name": "loongandy",
+      "remark": "美式英文男",
+      "param_name": "loongandy_v2",
+      "lang": "美式英文"
+    },
+    {
+      "name": "loongava",
+      "remark": "美式英文女",
+      "param_name": "loongava_v2",
+      "lang": "美式英文"
+    },
+    {
+      "name": "loongbeth",
+      "remark": "美式英文女",
+      "param_name": "loongbeth_v2",
+      "lang": "美式英文"
+    },
+    {
+      "name": "loongbetty",
+      "remark": "美式英文女",
+      "param_name": "loongbetty_v2",
+      "lang": "美式英文"
+    },
+    {
+      "name": "loongcindy",
+      "remark": "美式英文女",
+      "param_name": "loongcindy_v2",
+      "lang": "美式英文"
+    },
+    {
+      "name": "loongcally",
+      "remark": "美式英文女",
+      "param_name": "loongcally_v2",
+      "lang": "美式英文"
+    },
+    {
+      "name": "loongdavid",
+      "remark": "美式英文男",
+      "param_name": "loongdavid_v2",
+      "lang": "美式英文"
+    },
+    {
+      "name": "loongdonna",
+      "remark": "美式英文女",
+      "param_name": "loongdonna_v2",
+      "lang": "美式英文"
+    },
+    {
+      "name": "loongkyong",
+      "remark": "韩语女",
+      "param_name": "loongkyong_v2",
+      "lang": "韩语"
+    },
+    {
+      "name": "loongtomoka",
+      "remark": "日语女",
+      "param_name": "loongtomoka_v2",
+      "lang": "日语"
+    },
+    {
+      "name": "loongtomoya",
+      "remark": "日语男",
+      "param_name": "loongtomoya_v2",
+      "lang": "日语"
+    }
+  ]
+}', false);
 -- https://console.bce.baidu.com/qianfan/modelcenter/model/buildIn/detail/am-bg7n2rn2gsbb
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_free,
                           is_enable,

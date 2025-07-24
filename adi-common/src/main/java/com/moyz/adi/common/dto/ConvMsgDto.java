@@ -51,4 +51,7 @@ public class ConvMsgDto {
 
     @Schema(title = "子级消息（一般指的是AI的响应）")
     private List<ConvMsgDto> children;
+
+    @Schema(title = "内容格式，2：文本；3：音频")
+    private Integer contentType;
 }

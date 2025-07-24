@@ -98,6 +98,22 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         return adiFile;
     }
 
+    public AdiFile saveFromPath(User user, String pathOrUrl) {
+        log.info("saveImageFromPath,path:{}", pathOrUrl);
+        Pair<String, String> nameAndExt = LocalFileUtil.getNameAndExt(pathOrUrl);
+        String uuid = UuidUtil.createShort();
+        AdiFile adiFile = new AdiFile();
+        adiFile.setName(nameAndExt.getLeft());
+        adiFile.setUuid(uuid);
+        adiFile.setSha256(HashUtil.sha256(pathOrUrl));
+        adiFile.setPath(pathOrUrl);
+        adiFile.setUserId(user.getId());
+        adiFile.setExt(nameAndExt.getRight());
+        adiFile.setStorageLocation(FileOperatorContext.getStorageLocation());
+        this.getBaseMapper().insert(adiFile);
+        return adiFile;
+    }
+
     public boolean softDel(String uuid) {
         return this.lambdaUpdate()
                 .eq(AdiFile::getUserId, ThreadContext.getCurrentUserId())
@@ -229,7 +245,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
                 .eq(AdiFile::getIsDeleted, false)
                 .list()
                 .forEach(adiFile -> {
-                    result.add(new FileOperatorContext(adiFile.getStorageLocation()).getFileUrl(adiFile));
+                    result.add(FileOperatorContext.getFileUrl(adiFile));
                 });
         return result;
     }

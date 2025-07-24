@@ -9,23 +9,19 @@ import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.parser.apache.pdfbox.ApachePdfBoxDocumentParser;
 import dev.langchain4j.data.document.parser.apache.poi.ApachePoiDocumentParser;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.POI_DOC_TYPES;
 import static com.moyz.adi.common.enums.ErrorEnum.B_DELETE_FILE_ERROR;
-import static com.moyz.adi.common.enums.ErrorEnum.B_SAVE_IMAGE_ERROR;
 
 @Slf4j
 public class AliyunOssFileOperator implements IFileOperator {
@@ -38,26 +34,36 @@ public class AliyunOssFileOperator implements IFileOperator {
     }
 
     @Override
-    public Pair<String, String> save(MultipartFile file, boolean image, String uuid) {
-        Pair<String, String> pathAndExt = LocalFileUtil.saveToLocal(file, image ? LocalFileOperator.imagePath : LocalFileOperator.filePath, uuid);
-        String objectName = uuid + "." + pathAndExt.getRight();
-        byte[] bytes = LocalFileUtil.readBytes(pathAndExt.getLeft());
-        aliyunOssFileHelper.saveObj(bytes, objectName);
+    public Pair<String, String> save(MultipartFile file, boolean image, String fileName) {
+        String objectName;
+        String ext;
+        if (fileName.contains(".")) {
+            ext = LocalFileUtil.getFileExtension(fileName);
+        } else {
+            ext = LocalFileUtil.getFileExtension(file.getOriginalFilename());
+        }
+        objectName = fileName + "." + ext;
         try {
-            //传到oss后把本地临时文件删除
-            Files.deleteIfExists(Paths.get(pathAndExt.getLeft()));
+            aliyunOssFileHelper.saveObj(file.getBytes(), objectName);
         } catch (IOException e) {
             throw new BaseException(B_DELETE_FILE_ERROR);
         }
-        return new ImmutablePair<>(aliyunOssFileHelper.getUrl(objectName), pathAndExt.getRight());
+        return new ImmutablePair<>(aliyunOssFileHelper.getUrl(objectName), ext);
     }
 
     @Override
-    public SaveRemoteImageResult saveImageFromUrl(String imageUrl, String uuid) {
-        String filePath = LocalFileUtil.saveFromUrl(imageUrl, uuid, "png");
+    public Pair<String, String> save(byte[] file, boolean image, String name) {
+        String ext = LocalFileUtil.getFileExtension(name);
+        aliyunOssFileHelper.saveObj(file, name);
+        return new ImmutablePair<>(aliyunOssFileHelper.getUrl(name), ext);
+    }
+
+    @Override
+    public SaveRemoteImageResult saveImageFromUrl(String imageUrl, String fileName) {
+        String filePath = LocalFileUtil.saveFromUrl(imageUrl, fileName, "png");
         byte[] bytes = LocalFileUtil.readBytes(filePath);
         String ext = LocalFileUtil.getFileExtension(filePath);
-        String objName = uuid + "." + ext;
+        String objName = fileName + "." + ext;
         aliyunOssFileHelper.saveObj(bytes, objName);
         try {
             //传到oss后把本地临时文件删除
@@ -67,7 +73,7 @@ public class AliyunOssFileOperator implements IFileOperator {
         }
         //对于OSS，存储的是对象名称，而不是完整URL
         filePath = objName;
-        return SaveRemoteImageResult.builder().ext(ext).originalName(uuid).pathOrUrl(filePath).build();
+        return SaveRemoteImageResult.builder().ext(ext).originalName(fileName).pathOrUrl(filePath).build();
     }
 
     @Override

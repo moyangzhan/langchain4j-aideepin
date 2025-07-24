@@ -38,8 +38,12 @@ public class FileOperatorContext {
         return CONCRETE_OPT.get(adiFile.getStorageLocation()).checkIfExist(adiFile);
     }
 
-    public Pair<String, String> save(MultipartFile file, boolean image, String uuid) {
-        return currentOpt.save(file, image, uuid);
+    public Pair<String, String> save(MultipartFile file, boolean image, String fileName) {
+        return currentOpt.save(file, image, fileName);
+    }
+
+    public Pair<String, String> save(byte[] file, boolean image, String fileName) {
+        return currentOpt.save(file, image, fileName);
     }
 
     public SaveRemoteImageResult saveImageFromUrl(String imageUrl, String uuid) {

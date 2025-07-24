@@ -26,6 +26,8 @@ public class ConvDto {
     private Boolean understandContextEnable;
 
     private List<Long> mcpIds;
+    private Integer answerContentType;
+    private Boolean isAutoplayAnswer;
 
     private LocalDateTime createTime;
     private LocalDateTime updateTime;

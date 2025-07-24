@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * <p>
@@ -13,6 +14,7 @@ import lombok.Data;
  * @author moyz
  * @since 2023-04-11
  */
+@EqualsAndHashCode(callSuper = true)
 @Data
 @TableName("adi_conversation")
 @Schema(title = "对话实体", description = "对话表")
@@ -53,4 +55,12 @@ public class Conversation extends BaseEntity {
     @Schema(title = "启用的mcp服务id列表")
     @TableField("mcp_ids")
     private String mcpIds;
+
+    @Schema(title = "设置响应内容类型：1：自动（跟随用户的输入类型，如果用户输入是音频，则响应内容也同样是音频，如果用户输入是文本，则响应内容显示文本），2：文本，3：音频")
+    @TableField("answer_content_type")
+    private Integer answerContentType;
+
+    @Schema(title = "设置聊天时音频类型的响应内容是否自动播放")
+    @TableField("is_autoplay_answer")
+    private Boolean isAutoplayAnswer;
 }

@@ -87,11 +87,11 @@ public class SearchService {
     public void asyncSearch(User user, SseEmitter sseEmitter, boolean isBriefSearch, String searchText, String searchName, String modelName) {
         SearchReturn searchResult = SearchEngineServiceContext.getService(searchName).search(searchText, "", "", 5);
         if (StringUtils.isNotBlank(searchResult.getErrorMessage())) {
-            sseEmitterHelper.sendAndComplete(user.getId(), sseEmitter, searchResult.getErrorMessage());
+            sseEmitterHelper.sendStartAndComplete(user.getId(), sseEmitter, searchResult.getErrorMessage());
             return;
         }
         if (CollectionUtils.isEmpty(searchResult.getItems())) {
-            sseEmitterHelper.sendAndComplete(user.getId(), sseEmitter, B_NO_ANSWER.getInfo());
+            sseEmitterHelper.sendStartAndComplete(user.getId(), sseEmitter, B_NO_ANSWER.getInfo());
             return;
         }
         boolean sendFail = false;
@@ -140,7 +140,8 @@ public class SearchService {
         sseAskParams.setSseEmitter(sseEmitter);
         sseAskParams.setModelName(modelName);
         sseAskParams.setUser(user);
-        sseEmitterHelper.call(sseAskParams, true, (response, promptMeta, answerMeta) -> {
+        sseEmitterHelper.call(sseAskParams, (response, promptMeta, answerMeta) -> {
+            sseEmitterHelper.sendComplete(user.getId(), sseEmitter);
 
             AiModel aiModel = aiModelService.getByName(modelName);
 
@@ -150,7 +151,7 @@ public class SearchService {
             newRecord.setSearchEngineResp(resp);
             newRecord.setPrompt(prompt);
             newRecord.setPromptTokens(promptMeta.getTokens());
-            newRecord.setAnswer(response);
+            newRecord.setAnswer(response.getContent());
             newRecord.setAnswerTokens(answerMeta.getTokens());
             newRecord.setUserUuid(user.getUuid());
             newRecord.setUserId(user.getId());
@@ -247,6 +248,8 @@ public class SearchService {
         sseAskParams.setSseEmitter(sseEmitter);
         sseAskParams.setModelName(modelName);
         compositeRAG.ragChat(List.of(contentRetriever), sseAskParams, (response, promptMeta, answerMeta) -> {
+
+            sseEmitterHelper.sendComplete(user.getId(), sseAskParams.getSseEmitter());
 
             AiSearchRecord existRecord = aiSearchRecordService.lambdaQuery().eq(AiSearchRecord::getUuid, searchUuid).one();
 
