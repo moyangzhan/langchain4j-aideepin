@@ -21,7 +21,7 @@ public class ResponseWrapper implements ResponseBodyAdvice<Object> {
 
     @NotNull
     @Override
-    public Object beforeBodyWrite(@NotNull Object result, MethodParameter methodParameter,
+    public Object beforeBodyWrite(Object result, MethodParameter methodParameter,
                                   MediaType mediaType, Class aClass, ServerHttpRequest serverHttpRequest,
                                   ServerHttpResponse serverHttpResponse) {
         if (result instanceof BaseResponse) {

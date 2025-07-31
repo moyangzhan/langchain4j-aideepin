@@ -63,7 +63,7 @@ public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
         aliyunOssFileHelper.reload();
     }
 
-    public void edit(SysConfigEditDto sysConfigDto) {
+    public int edit(SysConfigEditDto sysConfigDto) {
         LambdaQueryWrapper<SysConfig> lambdaQueryWrapper = new LambdaQueryWrapper<>();
         lambdaQueryWrapper.eq(SysConfig::getName, sysConfigDto.getName());
         lambdaQueryWrapper.eq(SysConfig::getIsDeleted, false);
@@ -74,18 +74,21 @@ public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
         SysConfig updateOne = new SysConfig();
         updateOne.setId(existOne.getId());
         updateOne.setValue(sysConfigDto.getValue());
-        baseMapper.updateById(updateOne);
+        int ret = baseMapper.updateById(updateOne);
 
         loadAndCache();
+
+        return ret;
     }
 
-    public void softDelete(Long id) {
+    public boolean softDelete(Long id) {
         SysConfig sysConfig = new SysConfig();
         sysConfig.setIsDeleted(true);
         sysConfig.setId(id);
-        baseMapper.updateById(sysConfig);
+        int ret = baseMapper.updateById(sysConfig);
 
         loadAndCache();
+        return ret > 0;
     }
 
     public int getConversationMaxNum() {

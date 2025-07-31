@@ -28,12 +28,12 @@ public class SystemConfigController {
     }
 
     @PostMapping("/edit")
-    public void edit(@Validated @RequestBody SysConfigEditDto sysConfigDto) {
-        sysConfigService.edit(sysConfigDto);
+    public boolean edit(@Validated @RequestBody SysConfigEditDto sysConfigDto) {
+        return sysConfigService.edit(sysConfigDto) > 0;
     }
 
     @PostMapping("/del/{id}")
-    public void delete(@PathVariable Long id) {
-        sysConfigService.softDelete(id);
+    public boolean delete(@PathVariable Long id) {
+        return sysConfigService.softDelete(id);
     }
 }

@@ -22,6 +22,7 @@ public class AiModelDto {
     @NotBlank(groups = AiModelAddGroup.class)
     private String name;
 
+    private String title;
     private String setting;
 
     @NotBlank(groups = AiModelAddGroup.class)
