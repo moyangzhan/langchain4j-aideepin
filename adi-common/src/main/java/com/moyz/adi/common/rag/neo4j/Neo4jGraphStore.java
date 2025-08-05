@@ -1,10 +1,10 @@
-package com.moyz.adi.common.rag;
+package com.moyz.adi.common.rag.neo4j;
 
 import com.google.common.base.Joiner;
+import com.moyz.adi.common.rag.GraphStore;
 import com.moyz.adi.common.util.AdiStringUtil;
 import com.moyz.adi.common.vo.*;
 import dev.langchain4j.community.rag.content.retriever.neo4j.Neo4jGraph;
-import dev.langchain4j.community.store.embedding.neo4j.Neo4jFilterMapper;
 import lombok.Builder;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -128,7 +128,7 @@ public class Neo4jGraphStore implements GraphStore {
         try (Session session = driver.session()) {
             List<Record> records = session.executeWrite(tx -> {
                 org.neo4j.cypherdsl.core.Node node = node(this.graphName).named("v");
-                Neo4jFilterMapper neo4jFilterMapper = new Neo4jFilterMapper(node);
+                AdiNeo4jFilterMapper neo4jFilterMapper = new AdiNeo4jFilterMapper(node);
 //                    prepareSql = """
 //                               match (v:%1$s)
 //                               where %2$s
@@ -195,7 +195,7 @@ public class Neo4jGraphStore implements GraphStore {
             } else {
                 node = node(this.graphName).named("v");
             }
-            Neo4jFilterMapper neo4jFilterMapper = new Neo4jFilterMapper(node);
+            AdiNeo4jFilterMapper neo4jFilterMapper = new AdiNeo4jFilterMapper(node);
             Condition condition = node.property("name")
                     .in(Cypher.literalOf(search.getNames()))
                     .and(neo4jFilterMapper.getCondition(search.getMetadataFilter()));
@@ -246,7 +246,7 @@ public class Neo4jGraphStore implements GraphStore {
 
             Condition condition = null;
             if (null != sourceFilter) {
-                Neo4jFilterMapper sourceFilerMapper = new Neo4jFilterMapper(sourceNode);
+                AdiNeo4jFilterMapper sourceFilerMapper = new AdiNeo4jFilterMapper(sourceNode);
                 condition = sourceFilerMapper.getCondition(sourceFilter.getMetadataFilter());
                 if (CollectionUtils.isNotEmpty(sourceFilter.getNames())) {
                     condition = sourceNode.property("name")
@@ -255,7 +255,7 @@ public class Neo4jGraphStore implements GraphStore {
                 }
             }
             if (null != targetFilter) {
-                Neo4jFilterMapper targetFilerMapper = new Neo4jFilterMapper(targetNode);
+                AdiNeo4jFilterMapper targetFilerMapper = new AdiNeo4jFilterMapper(targetNode);
                 Condition targetCondition = targetFilerMapper.getCondition(targetFilter.getMetadataFilter());
                 if (CollectionUtils.isNotEmpty(targetFilter.getNames())) {
                     targetCondition = targetNode.property("name")
@@ -269,7 +269,7 @@ public class Neo4jGraphStore implements GraphStore {
                 }
             }
             if (null != search.getEdge()) {
-                Neo4jFilterMapper edgeFilerMapper = new Neo4jFilterMapper(edgeNode);
+                AdiNeo4jFilterMapper edgeFilerMapper = new AdiNeo4jFilterMapper(edgeNode);
                 Condition edgeCondition = edgeFilerMapper.getCondition(search.getEdge().getMetadataFilter());
                 if (CollectionUtils.isNotEmpty(search.getEdge().getNames())) {
                     edgeCondition = edge.property("name")
@@ -319,8 +319,8 @@ public class Neo4jGraphStore implements GraphStore {
             org.neo4j.cypherdsl.core.Node sourceNode = Cypher.node(this.graphName).named("v1");
             org.neo4j.cypherdsl.core.Node targetNode = Cypher.node(this.graphName).named("v2");
             org.neo4j.cypherdsl.core.Relationship newEdge = sourceNode.relationshipTo(targetNode, this.graphName).named("e");
-            Neo4jFilterMapper sourceFilerMapper = new Neo4jFilterMapper(sourceNode);
-            Neo4jFilterMapper targetFilerMapper = new Neo4jFilterMapper(targetNode);
+            AdiNeo4jFilterMapper sourceFilerMapper = new AdiNeo4jFilterMapper(sourceNode);
+            AdiNeo4jFilterMapper targetFilerMapper = new AdiNeo4jFilterMapper(targetNode);
             Condition sourceCondition = sourceNode.property("name")
                     .in(Cypher.literalOf(addInfo.getSourceFilter().getNames()))
                     .and(sourceFilerMapper.getCondition(addInfo.getSourceFilter().getMetadataFilter()));
@@ -367,8 +367,8 @@ public class Neo4jGraphStore implements GraphStore {
             org.neo4j.cypherdsl.core.Node sourceNode = Cypher.node(this.graphName).named("v1");
             org.neo4j.cypherdsl.core.Node targetNode = Cypher.node(this.graphName).named("v2");
             org.neo4j.cypherdsl.core.Relationship edge = sourceNode.relationshipBetween(targetNode).named("e");
-            Neo4jFilterMapper sourceFilerMapper = new Neo4jFilterMapper(sourceNode);
-            Neo4jFilterMapper targetFilerMapper = new Neo4jFilterMapper(targetNode);
+            AdiNeo4jFilterMapper sourceFilerMapper = new AdiNeo4jFilterMapper(sourceNode);
+            AdiNeo4jFilterMapper targetFilerMapper = new AdiNeo4jFilterMapper(targetNode);
             Condition sourceCondition = sourceNode.property("name")
                     .in(Cypher.literalOf(edgeEditInfo.getSourceFilter().getNames()))
                     .and(sourceFilerMapper.getCondition(edgeEditInfo.getSourceFilter().getMetadataFilter()));
@@ -414,7 +414,7 @@ public class Neo4jGraphStore implements GraphStore {
 //                      where %s %s
 //                    """.formatted(graphName, filterClause.getLeft(), includeEdges ? "DETACH DELETE v" : "DELETE v");
             org.neo4j.cypherdsl.core.Node sourceNode = Cypher.node(this.graphName).named("v");
-            Neo4jFilterMapper sourceFilerMapper = new Neo4jFilterMapper(sourceNode);
+            AdiNeo4jFilterMapper sourceFilerMapper = new AdiNeo4jFilterMapper(sourceNode);
             Condition sourceCondition = sourceNode.property("name")
                     .in(Cypher.literalOf(filter.getNames()))
                     .and(sourceFilerMapper.getCondition(filter.getMetadataFilter()));
@@ -454,7 +454,7 @@ public class Neo4jGraphStore implements GraphStore {
             org.neo4j.cypherdsl.core.Node targetNode = Cypher.node(this.graphName).named("v2");
             org.neo4j.cypherdsl.core.Node edgeNode = Cypher.node(this.graphName).named("e");
             org.neo4j.cypherdsl.core.Relationship edge = sourceNode.relationshipBetween(targetNode).named("e");
-            Neo4jFilterMapper edgeFilerMapper = new Neo4jFilterMapper(edgeNode);
+            AdiNeo4jFilterMapper edgeFilerMapper = new AdiNeo4jFilterMapper(edgeNode);
             Condition condition = edge.property("name")
                     .eq(Cypher.literalOf(filter.getNames()))
                     .and(edgeFilerMapper.getCondition(filter.getMetadataFilter()));
@@ -594,7 +594,7 @@ public class Neo4jGraphStore implements GraphStore {
 //            if (!whereCause.isEmpty()) {
 //                whereCause.append(" and ");
 //            }
-//            Neo4jFilterMapper neo4jFilterMapper = new Neo4jFilterMapper(alias);
+//            AdiNeo4jFilterMapper neo4jFilterMapper = new AdiNeo4jFilterMapper(alias);
 //            final AbstractMap.SimpleEntry<String, Map<?, ?>> filterEntry = neo4jFilterMapper.map(search.getMetadataFilter());
 //            whereCause.append(filterEntry.getKey());
 //            whereArgs.putAll(neo4jFilterMapper.getIncrementalKeyMap().getMap());

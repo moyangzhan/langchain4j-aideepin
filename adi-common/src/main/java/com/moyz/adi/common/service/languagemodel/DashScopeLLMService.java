@@ -9,11 +9,13 @@ import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.SseAskParams;
 import dev.langchain4j.community.model.dashscope.QwenChatModel;
+import dev.langchain4j.community.model.dashscope.QwenChatRequestParameters;
 import dev.langchain4j.community.model.dashscope.QwenStreamingChatModel;
 import dev.langchain4j.community.model.dashscope.QwenTokenCountEstimator;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.model.openai.OpenAiTokenCountEstimator;
 import lombok.extern.slf4j.Slf4j;
@@ -69,6 +71,17 @@ public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
                 .modelName(aiModel.getName())
                 .temperature(temperature.floatValue())
                 .build();
+    }
+
+    @Override
+    protected ChatRequestParameters doCreateChatRequestParameters(ChatRequestParameters defaultParameters, Boolean returnThinking) {
+        if (null == returnThinking) {
+            return defaultParameters;
+        }
+        QwenChatRequestParameters parameters = QwenChatRequestParameters.builder()
+                .enableThinking(returnThinking)
+                .build();
+        return parameters.overrideWith(defaultParameters);
     }
 
     @Override

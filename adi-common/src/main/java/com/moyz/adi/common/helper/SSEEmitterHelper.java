@@ -193,6 +193,15 @@ public class SSEEmitterHelper {
         }
     }
 
+    public static void sendThinking(SseEmitter sseEmitter, String content) {
+        try {
+            sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.THINKING).data(content));
+        } catch (IOException e) {
+            log.error("stream onNext error", e);
+            throw new RuntimeException(e);
+        }
+    }
+
     public static void parseAndSendPartialMsg(SseEmitter sseEmitter, String name, String content) {
         try {
             String[] lines = content.split("[\\r\\n]", -1);

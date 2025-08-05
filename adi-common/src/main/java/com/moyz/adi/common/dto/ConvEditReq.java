@@ -9,7 +9,6 @@ import java.util.List;
 @Data
 public class ConvEditReq {
 
-    @NotBlank
     private String title;
 
     private String remark;
@@ -24,4 +23,6 @@ public class ConvEditReq {
     private Integer answerContentType;
 
     private Boolean isAutoplayAnswer;
+
+    private Boolean isEnableThinking;
 }

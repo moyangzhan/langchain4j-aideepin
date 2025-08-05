@@ -23,6 +23,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolService;
@@ -47,10 +48,11 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
     protected StringRedisTemplate stringRedisTemplate;
 
     //TTS相关部分参数
+    //TODO 线程安全问题
     private String ttsJobId;
     private TtsModelContext ttsModelContext;
     private String ttsJobFilePath;
-    private TtsSetting ttsSetting;
+    private final TtsSetting ttsSetting;
 
     protected AbstractLLMService(AiModel aiModel, String settingName, Class<T> clazz) {
         super(aiModel, settingName, clazz);
@@ -134,7 +136,7 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
         List<ChatMessage> chatMessages = createChatMessages(chatModelParams);
         StreamingChatModel streamingChatModel = buildStreamingChatModel(params.getLlmBuilderProperties());
 
-        ChatRequest chatRequest = createChatRequest(chatModelParams.getMcpClients(), chatMessages);
+        ChatRequest chatRequest = createChatRequest(chatModelParams.getMcpClients(), chatMessages, params.getLlmBuilderProperties().getReturnThinking());
         InnerStreamChatParams innerStreamChatParams = InnerStreamChatParams.builder()
                 .uuid(params.getUuid())
                 .streamingChatModel(streamingChatModel)
@@ -196,6 +198,11 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
             }
 
             @Override
+            public void onPartialThinking(PartialThinking partialThinking) {
+                SSEEmitterHelper.sendThinking(params.getSseEmitter(), partialThinking.text());
+            }
+
+            @Override
             public void onCompleteResponse(ChatResponse response) {
                 AiMessage responseAiMessage = response.aiMessage();
                 if (responseAiMessage.hasToolExecutionRequests()) {
@@ -221,7 +228,7 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
                     }
                     //结束整个对话任务
                     Pair<PromptMeta, AnswerMeta> pair = SSEEmitterHelper.calculateToken(response, params.getUuid());
-                    params.getConsumer().accept(new LLMResponseContent(response.aiMessage().text(), ttsJobFilePath), pair.getLeft(), pair.getRight());
+                    params.getConsumer().accept(new LLMResponseContent(response.aiMessage().thinking(), response.aiMessage().text(), ttsJobFilePath), pair.getLeft(), pair.getRight());
                     //Close mcp clients
                     params.getMcpClients().forEach(item -> {
                         try {
@@ -261,7 +268,7 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
         ChatModelParams chatModelParams = params.getChatModelParams();
         ChatModel chatModel = buildChatLLM(params.getLlmBuilderProperties(), params.getUuid());
         List<ChatMessage> chatMessages = createChatMessages(chatModelParams);
-        ChatRequest chatRequest = createChatRequest(chatModelParams.getMcpClients(), chatMessages);
+        ChatRequest chatRequest = createChatRequest(chatModelParams.getMcpClients(), chatMessages, params.getLlmBuilderProperties().getReturnThinking());
 
         ChatResponse chatResponse = chatModel.chat(chatRequest);
         if (chatResponse.aiMessage().hasToolExecutionRequests()) {
@@ -408,7 +415,7 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
         return tools;
     }
 
-    private ChatRequest createChatRequest(List<McpClient> mcpClients, List<ChatMessage> chatMessages) {
+    private ChatRequest createChatRequest(List<McpClient> mcpClients, List<ChatMessage> chatMessages, Boolean returnThinking) {
         ToolProvider toolProvider = McpToolProvider.builder()
                 .mcpClients(mcpClients)
                 .build();
@@ -417,14 +424,19 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
 
         ToolServiceContext toolServiceContext = toolService.createContext(UuidUtil.createShort(), ((UserMessage) chatMessages.get(chatMessages.size() - 1)));
         log.info("tool specs:{}", toolServiceContext.toolSpecifications());
-        ChatRequestParameters parameters = ChatRequestParameters.builder()
+        ChatRequestParameters defaultParameters = ChatRequestParameters.builder()
                 .toolSpecifications(toolServiceContext.toolSpecifications())
                 .build();
+        ChatRequestParameters parameters = doCreateChatRequestParameters(defaultParameters, returnThinking);
 
         return ChatRequest.builder()
                 .messages(chatMessages)
                 .parameters(parameters)
                 .build();
+    }
+
+    protected ChatRequestParameters doCreateChatRequestParameters(ChatRequestParameters defaultParameters, Boolean returnThinking) {
+        return defaultParameters;
     }
 
     private List<ToolExecutionResultMessage> createToolExecutionMessages(AiMessage aiMessage, Map<ToolSpecification, McpClient> toolSpecificationMcpClientMap) {

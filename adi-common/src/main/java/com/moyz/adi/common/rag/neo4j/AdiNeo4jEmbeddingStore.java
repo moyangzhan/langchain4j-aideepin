@@ -1,7 +1,6 @@
 package com.moyz.adi.common.rag.neo4j;
 
 import dev.langchain4j.community.store.embedding.neo4j.Neo4jEmbeddingStore;
-import dev.langchain4j.community.store.embedding.neo4j.Neo4jFilterMapper;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
@@ -72,7 +71,7 @@ public class AdiNeo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
 //                    return properties(node) as metadata, elementId(node) as elementId, node.text as text, node.embedding as embedding, 1 as score
 //                    """.formatted(this.sanitizedLabel, String.join(",", ids));
             Node node = node(this.sanitizedLabel).named("node");
-            Neo4jFilterMapper neo4jFilterMapper = new Neo4jFilterMapper(node);
+            AdiNeo4jFilterMapper neo4jFilterMapper = new AdiNeo4jFilterMapper(node);
             Condition condition = node.property(this.embeddingProperty)
                     .isNotNull()
                     .and(neo4jFilterMapper.getCondition(new IsIn("id", ids)));
@@ -93,7 +92,7 @@ public class AdiNeo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
     public int countByMetadata(Filter filter) {
         try (var session = session()) {
             Node node = node(this.sanitizedLabel).named("node");
-            Neo4jFilterMapper neo4jFilterMapper = new Neo4jFilterMapper(node);
+            AdiNeo4jFilterMapper neo4jFilterMapper = new AdiNeo4jFilterMapper(node);
             Condition condition = node.property(this.embeddingProperty)
                     .isNotNull()
                     .and(neo4jFilterMapper.getCondition(filter));
@@ -111,7 +110,7 @@ public class AdiNeo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
     public EmbeddingSearchResult<TextSegment> searchByMetadata(Filter filter, int maxResult) {
         try (var session = session()) {
             Node node = node(this.sanitizedLabel).named("node");
-            Neo4jFilterMapper neo4jFilterMapper = new Neo4jFilterMapper(node);
+            AdiNeo4jFilterMapper neo4jFilterMapper = new AdiNeo4jFilterMapper(node);
             Condition condition = node.property(this.embeddingProperty)
                     .isNotNull()
                     .and(neo4jFilterMapper.getCondition(filter));

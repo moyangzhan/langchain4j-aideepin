@@ -22,6 +22,9 @@ public class ConvMsgDto {
     @Schema(title = "对话的消息")
     private String remark;
 
+    @Schema(title = "思考的内容")
+    private String thinkingContent;
+
     @Schema(title = "音频文件uuid")
     private String audioUuid;
 

@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class LLMResponseContent {
 
+    private String thinkingContent;
+
     /**
      * 响应文件内容
      */

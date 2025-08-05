@@ -44,6 +44,10 @@ public class ConversationMessage extends BaseEntity {
     @TableField("remark")
     private String remark;
 
+    @Schema(title = "思考内容")
+    @TableField("thinking_content")
+    private String thinkingContent;
+
     @Schema(title = "语音聊天时产生的音频文件uuid(对应adi_file.uuid)")
     @TableField("audio_uuid")
     private String audioUuid;

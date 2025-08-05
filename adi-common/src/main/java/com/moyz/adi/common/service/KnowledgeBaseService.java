@@ -295,7 +295,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
     public SseEmitter sseAsk(String qaRecordUuid) {
         checkRequestTimesOrThrow();
-        SseEmitter sseEmitter = new SseEmitter();
+        SseEmitter sseEmitter = new SseEmitter(150000L);
         User user = ThreadContext.getCurrentUser();
         if (!sseEmitterHelper.checkOrComplete(user, sseEmitter)) {
             return sseEmitter;

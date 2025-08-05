@@ -63,4 +63,8 @@ public class Conversation extends BaseEntity {
     @Schema(title = "设置聊天时音频类型的响应内容是否自动播放")
     @TableField("is_autoplay_answer")
     private Boolean isAutoplayAnswer;
+
+    @Schema(title = "是否启用思考功能")
+    @TableField("is_enable_thinking")
+    private Boolean isEnableThinking;
 }

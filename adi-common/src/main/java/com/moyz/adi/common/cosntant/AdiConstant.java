@@ -199,7 +199,7 @@ public class AdiConstant {
         public static final String ERROR = "[ERROR]";
         public static final String META = "[META]";
         public static final String AUDIO = "[AUDIO]";
-
+        public static final String THINKING = "[THINKING]";
         public static final String AI_SEARCH_SOURCE_LINKS = "[SOURCE_LINKS]";
         public static final String WF_NODE_CHUNK = "[WF_NODE_CHUNK]";
         public static final String WF_NODE_OUTPUT = "[WF_NODE_OUTPUT]";

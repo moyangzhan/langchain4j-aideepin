@@ -11,4 +11,6 @@ public class ModelInfo {
     private String modelPlatform;
     private String inputTypes;
     private Boolean isFree;
+    private Boolean isReasoner;
+    private Boolean isThinkingClosable;
 }

@@ -47,7 +47,7 @@ public class WorkflowStarter {
 
 
     public SseEmitter streaming(User user, String workflowUuid, List<ObjectNode> userInputs) {
-        SseEmitter sseEmitter = new SseEmitter();
+        SseEmitter sseEmitter = new SseEmitter(150000L);
         if (!sseEmitterHelper.checkOrComplete(user, sseEmitter)) {
             return sseEmitter;
         }

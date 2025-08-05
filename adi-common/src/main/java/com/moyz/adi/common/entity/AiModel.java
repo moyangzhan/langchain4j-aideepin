@@ -66,4 +66,12 @@ public class AiModel extends BaseEntity {
     @Schema(title = "属性")
     @TableField(value = "properties", jdbcType = JdbcType.JAVA_OBJECT, typeHandler = ObjectNodeTypeHandler.class)
     private ObjectNode properties;
+
+    @Schema(title = "是否推理模型")
+    @TableField("is_reasoner")
+    private Boolean isReasoner;
+
+    @Schema(title = "思考过程是否可以关闭")
+    @TableField("is_thinking_closable")
+    private Boolean isThinkingClosable;
 }

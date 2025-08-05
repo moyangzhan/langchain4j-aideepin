@@ -185,59 +185,6 @@ Frontend tech stack:
     aideepin:0.0.1
   ```
 
-## TODO:
-
-* Advanced RAG
-    * Query compression  √
-    * Query routing
-    * Re-rank: support local rerank model
-* AI Chat
-    * Multi-role  √
-    * Preset general roles (created in admin backend)  √
-* Image Models:
-    * DALL-E 2 & DALL-E 3 √
-    * Chat view  √
-    * Gallery view  √
-    * Open/collect images √ 
-    * Image comments √
-* Knowledge Base:
-    * Vector  √
-    * Knowledge graph  √
-    * Set the number of document recalls
-        * Auto-adjust (based on LLM context window size)  √
-        * Manual adjustment  √
-    * Set the minimum score for document recall  √
-    * Set the overlap number when chunking  √
-    * Set temperature when requesting model  √
-    * Strict mode and non-strict mode  √
-    * Answer source  √
-    * Support fetching online documents
-    * FAQ
-    * Comments
-* Multi-modal support
-    * Image  √
-    * Audio
-    * Video
-* Tools
-    * FAQ extraction
-    * Document conversation
-    * Translation
-    * Image processing
-      * Image editing
-      * Image matting
-      * Image expansion
-      * Image synthesis
-      * Background switching
-* Search Engines
-    * Google  √
-    * Bing
-    * Baidu
-* Quota statistics and control
-    * Free quota statistics and limits
-    * Paid quota statistics and limits
-    * Total quota statistics
-* Open API
-
 ## Screenshots
 
 **AI Chat:**

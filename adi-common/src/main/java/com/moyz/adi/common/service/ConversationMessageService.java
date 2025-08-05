@@ -70,7 +70,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
 
 
     public SseEmitter sseAsk(AskReq askReq) {
-        SseEmitter sseEmitter = new SseEmitter();
+        SseEmitter sseEmitter = new SseEmitter(150000L);
         User user = ThreadContext.getCurrentUser();
         if (!sseEmitterHelper.checkOrComplete(user, sseEmitter)) {
             return sseEmitter;
@@ -164,9 +164,20 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         ChatModelParams chatModelParams = buildChatModelParams(conversation, askReq);
         sseAskParams.setChatModelParams(chatModelParams);
 
+        AiModel aiModel = LLMContext.getLLMServiceByName(askReq.getModelName()).getAiModel();
+        boolean returnThinking = false;
+        //模型是推理模型，并且不允许关闭推理过程
+        if (Boolean.TRUE.equals(aiModel.getIsReasoner()) && Boolean.FALSE.equals(aiModel.getIsThinkingClosable())) {
+            returnThinking = true;
+        }
+        //模型是推理模型，并且允许关闭推理过程，并且角色会话开启了推理过程
+        else if (Boolean.TRUE.equals(aiModel.getIsReasoner()) && Boolean.TRUE.equals(aiModel.getIsThinkingClosable()) && Boolean.TRUE.equals(conversation.getIsEnableThinking())) {
+            returnThinking = true;
+        }
         sseAskParams.setLlmBuilderProperties(
                 LLMBuilderProperties.builder()
                         .temperature(conversation.getLlmTemperature())
+                        .returnThinking(returnThinking)
                         .build()
         );
         sseEmitterHelper.call(sseAskParams, (response, questionMeta, answerMeta) -> {
@@ -243,6 +254,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         aiAnswer.setConversationId(conversation.getId());
         aiAnswer.setConversationUuid(convUuid);
         aiAnswer.setMessageRole(ChatMessageRoleEnum.ASSISTANT.getValue());
+        aiAnswer.setThinkingContent(Objects.toString(response.getThinkingContent(), ""));
         aiAnswer.setRemark(response.getContent());
         aiAnswer.setAudioUuid(null == audioInfo ? "" : Objects.toString(audioInfo.getUuid(), ""));
         aiAnswer.setAudioDuration(null == audioInfo ? 0 : audioInfo.getDuration());

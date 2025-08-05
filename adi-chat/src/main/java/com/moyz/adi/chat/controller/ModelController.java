@@ -6,6 +6,7 @@ import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.vo.ImageModelInfo;
 import com.moyz.adi.common.vo.LLMModelInfo;
 import io.swagger.v3.oas.annotations.Operation;
+import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,8 +27,7 @@ public class ModelController {
             modelInfo.setModelTitle(aiModel.getTitle());
             modelInfo.setModelPlatform(aiModel.getPlatform());
             modelInfo.setEnable(aiModel.getIsEnable());
-            modelInfo.setInputTypes(aiModel.getInputTypes());
-            modelInfo.setIsFree(aiModel.getIsFree());
+            BeanUtils.copyProperties(aiModel, modelInfo);
             return modelInfo;
         }).toList();
     }
@@ -42,8 +42,8 @@ public class ModelController {
             modelInfo.setModelName(aiModel.getName());
             modelInfo.setModelTitle(aiModel.getTitle());
             modelInfo.setModelPlatform(aiModel.getPlatform());
-            modelInfo.setEnable(item.getAiModel().getIsEnable());
-            modelInfo.setIsFree(aiModel.getIsFree());
+            modelInfo.setEnable(aiModel.getIsEnable());
+            BeanUtils.copyProperties(aiModel, modelInfo);
             return modelInfo;
         }).toList();
     }

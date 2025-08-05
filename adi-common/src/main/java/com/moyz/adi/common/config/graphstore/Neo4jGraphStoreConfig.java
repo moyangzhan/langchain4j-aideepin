@@ -2,7 +2,7 @@ package com.moyz.adi.common.config.graphstore;
 
 import com.moyz.adi.common.config.AdiProperties;
 import com.moyz.adi.common.rag.GraphStore;
-import com.moyz.adi.common.rag.Neo4jGraphStore;
+import com.moyz.adi.common.rag.neo4j.Neo4jGraphStore;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

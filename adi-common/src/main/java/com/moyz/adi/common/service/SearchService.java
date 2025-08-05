@@ -74,7 +74,7 @@ public class SearchService {
 
     public SseEmitter search(boolean isBriefSearch, String searchText, String engineName, String modelName) {
         User user = ThreadContext.getCurrentUser();
-        SseEmitter sseEmitter = new SseEmitter();
+        SseEmitter sseEmitter = new SseEmitter(150000L);
         if (!sseEmitterHelper.checkOrComplete(user, sseEmitter)) {
             return sseEmitter;
         }
