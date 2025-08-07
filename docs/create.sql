@@ -113,24 +113,25 @@ EXECUTE PROCEDURE update_modified_column();
 
 CREATE TABLE adi_ai_model
 (
-    id                bigserial primary key,
-    name              varchar(45)   default ''                not null,
-    title             varchar(45)   default ''                not null,
-    type              varchar(45)   default 'text'            not null,
-    setting           varchar(500)  default ''                not null,
-    remark            varchar(1000) default '',
-    platform          varchar(45)   default ''                not null,
-    context_window    int           default 0                 not null,
-    max_input_tokens  int           default 0                 not null,
-    max_output_tokens int           default 0                 not null,
-    input_types       varchar(100)  default 'text'            not null,
-    properties        jsonb         default '{}'              not null,
-    is_reasoner       boolean       default false             not null,
-    is_free           boolean       default false             not null,
-    is_enable         boolean       default false             not null,
-    create_time       timestamp     default CURRENT_TIMESTAMP not null,
-    update_time       timestamp     default CURRENT_TIMESTAMP not null,
-    is_deleted        boolean       default false             not null
+    id                   bigserial primary key,
+    name                 varchar(45)   default ''                not null,
+    title                varchar(45)   default ''                not null,
+    type                 varchar(45)   default 'text'            not null,
+    setting              varchar(500)  default ''                not null,
+    remark               varchar(1000) default '',
+    platform             varchar(45)   default ''                not null,
+    context_window       int           default 0                 not null,
+    max_input_tokens     int           default 0                 not null,
+    max_output_tokens    int           default 0                 not null,
+    input_types          varchar(100)  default 'text'            not null,
+    properties           jsonb         default '{}'              not null,
+    is_reasoner          boolean       default false             not null,
+    is_thinking_closable boolean       default false             not null,
+    is_free              boolean       default false             not null,
+    is_enable            boolean       default false             not null,
+    create_time          timestamp     default CURRENT_TIMESTAMP not null,
+    update_time          timestamp     default CURRENT_TIMESTAMP not null,
+    is_deleted           boolean       default false             not null
 );
 
 COMMENT ON TABLE adi_ai_model IS 'AI模型 | AI model';
@@ -142,6 +143,7 @@ COMMENT ON COLUMN adi_ai_model.platform IS '平台 | Platform, e.g., openai, das
 COMMENT ON COLUMN adi_ai_model.context_window IS '上下文窗口 | LLM context window';
 COMMENT ON COLUMN adi_ai_model.input_types IS '输入类型 | Input types, e.g., text, image, audio, video';
 COMMENT ON COLUMN adi_ai_model.is_reasoner IS 'true: 推理模型如deepseek-r1, false: 非推理模型如deepseek-v3 | true: Reasoning model, false: Non-reasoning model';
+COMMENT ON COLUMN adi_ai_model.is_thinking_closable IS '思考过程是否可以关闭，Qwen3可以开启或关闭思考过程，而deepseek-r1无法关闭 | Whether the thinking process can be closed, Qwen3 can enable or disable the thinking process, while deepseek-r1 cannot disable it';
 COMMENT ON COLUMN adi_ai_model.is_enable IS '是否启用 | True: Normal usage, false: Not available';
 COMMENT ON COLUMN adi_ai_model.is_free IS '是否免费 | Is free, true: free, false: paid';
 COMMENT ON COLUMN adi_ai_model.create_time IS '创建时间 | Timestamp of record creation';
@@ -189,6 +191,7 @@ CREATE TABLE adi_conversation
     mcp_ids                   varchar(1000) default ''                not null,
     answer_content_type       smallint      default 1                 not null,
     is_autoplay_answer        boolean       default true              not null,
+    is_enable_thinking        boolean       default false             not null,
     create_time               timestamp     default CURRENT_TIMESTAMP not null,
     update_time               timestamp     default CURRENT_TIMESTAMP not null,
     is_deleted                boolean       default false             not null
@@ -203,6 +206,7 @@ COMMENT ON COLUMN adi_conversation.llm_temperature IS 'LLM响应的创造性/随
 COMMENT ON COLUMN adi_conversation.mcp_ids IS '启用的MCP服务id,以逗号隔开 | Enabled MCP service IDs, comma-separated';
 COMMENT ON COLUMN adi_conversation.answer_content_type IS '设置响应内容类型：1：自动（跟随用户的输入类型，如果用户输入是音频，则响应内容也同样是音频，如果用户输入是文本，则响应内容显示文本），2：文本，3：音频 | Response content display type: 1: Auto (if user input is audio, response content is also audio; if user input is text, response content displays text), 2: Text, 3: Audio';
 COMMENT ON COLUMN adi_conversation.is_autoplay_answer IS '设置聊天时音频类型的响应内容是否自动播放，true: 自动播放，false: 不自动播放 | Whether audio-type response content automatically plays, true: Auto play, false: Do not auto play';
+COMMENT ON COLUMN adi_conversation.is_enable_thinking IS '当前使用的模型如果是推理模式并且支持对思考过程的开关，则本字段生效 | Whether the current model supports reasoning mode and thinking process toggle, if so, this field takes effect';
 
 CREATE TRIGGER trigger_conv_update_time
     BEFORE UPDATE
@@ -242,6 +246,7 @@ CREATE TABLE adi_conversation_message
     conversation_uuid               varchar(32)   default ''                not null,
     content_type                    smallint      default 2                 not null,
     remark                          text,
+    thinking_content                text          default ''                not null,
     audio_uuid                      varchar(32)   default ''                not null,
     audio_duration                  integer       default 0                 not null,
     uuid                            varchar(32)   default ''                not null,
@@ -977,6 +982,8 @@ VALUES ('tts_setting', '{"synthesizer_side":"client","model_name":"","platform":
 -- https://api-docs.deepseek.com/zh-cn/quick_start/pricing
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
 VALUES ('deepseek-chat', 'DeepSeek-V3', 'text', 'deepseek', 65536, 61440, 4096, false);
+INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_reasoner, is_thinking_closable, is_enable)
+VALUES ('deepseek-reasoner', 'DeepSeek-R1', 'text', 'deepseek', 65536, 61440, 4096, true, false, false);
 -- https://platform.openai.com/docs/models/gpt-3-5-turbo
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
 VALUES ('gpt-3.5-turbo', 'gpt3.5', 'text', 'openai', 16385, 12385, 4096, false);
@@ -993,8 +1000,8 @@ VALUES ('text-embedding-3-large', 'openai-embedding-large', 'embedding', 'openai
   "dimension": 3072
 }', false);
 -- https://help.aliyun.com/zh/dashscope/developer-reference/model-introduction?spm=a2c4g.11186623.0.i39
-INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
-VALUES ('qwen-turbo', '通义千问turbo', 'text', 'dashscope', 8192, 6144, 1536, false);
+INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_reasoner, is_thinking_closable, is_enable)
+VALUES ('qwen-turbo', '通义千问turbo', 'text', 'dashscope', 8192, 6144, 1536, true, true, false);
 -- 图片识别
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, input_types,
                           is_enable)
