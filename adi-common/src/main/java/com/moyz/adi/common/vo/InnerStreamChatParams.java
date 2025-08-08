@@ -1,5 +1,6 @@
 package com.moyz.adi.common.vo;
 
+import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.interfaces.TriConsumer;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -20,4 +21,5 @@ public class InnerStreamChatParams {
     private ChatRequest chatRequest;
     private Integer answerContentType;
     private TriConsumer<LLMResponseContent, PromptMeta, AnswerMeta> consumer;
+    private User user;
 }

@@ -14,6 +14,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
+import static com.moyz.adi.common.cosntant.AdiConstant.SSE_TIMEOUT;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 @Slf4j
@@ -47,7 +48,7 @@ public class WorkflowStarter {
 
 
     public SseEmitter streaming(User user, String workflowUuid, List<ObjectNode> userInputs) {
-        SseEmitter sseEmitter = new SseEmitter(150000L);
+        SseEmitter sseEmitter = new SseEmitter(SSE_TIMEOUT);
         if (!sseEmitterHelper.checkOrComplete(user, sseEmitter)) {
             return sseEmitter;
         }

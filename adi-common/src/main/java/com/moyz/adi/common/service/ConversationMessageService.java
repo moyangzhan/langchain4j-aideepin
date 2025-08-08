@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static com.moyz.adi.common.cosntant.AdiConstant.SSE_TIMEOUT;
 import static com.moyz.adi.common.enums.ErrorEnum.A_CONVERSATION_NOT_FOUND;
 import static com.moyz.adi.common.enums.ErrorEnum.B_MESSAGE_NOT_FOUND;
 import static com.moyz.adi.common.util.AdiStringUtil.stringToList;
@@ -70,7 +71,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
 
 
     public SseEmitter sseAsk(AskReq askReq) {
-        SseEmitter sseEmitter = new SseEmitter(150000L);
+        SseEmitter sseEmitter = new SseEmitter(SSE_TIMEOUT);
         User user = ThreadContext.getCurrentUser();
         if (!sseEmitterHelper.checkOrComplete(user, sseEmitter)) {
             return sseEmitter;

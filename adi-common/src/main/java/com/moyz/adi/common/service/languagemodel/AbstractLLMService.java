@@ -1,5 +1,7 @@
 package com.moyz.adi.common.service.languagemodel;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.enums.ErrorEnum;
@@ -37,6 +39,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.LLM_MAX_INPUT_TOKENS_DEFAULT;
 import static com.moyz.adi.common.enums.ErrorEnum.A_PARAMS_ERROR;
@@ -47,11 +50,9 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
 
     protected StringRedisTemplate stringRedisTemplate;
 
-    //TTS相关部分参数
-    //TODO 线程安全问题
-    private String ttsJobId;
-    private TtsModelContext ttsModelContext;
-    private String ttsJobFilePath;
+    //User#uuid => ttsJobInfo
+    private final Cache<String, TtsJobInfo> ttsJobCache;
+
     private final TtsSetting ttsSetting;
 
     protected AbstractLLMService(AiModel aiModel, String settingName, Class<T> clazz) {
@@ -63,6 +64,8 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
             log.error("TTS配置未找到，请检查配置文件，请检查 adi_sys_config 中是否有 tts_setting 配置项");
             throw new BaseException(ErrorEnum.B_TTS_SETTING_NOT_FOUND);
         }
+
+        ttsJobCache = CacheBuilder.newBuilder().expireAfterWrite(10, TimeUnit.MINUTES).build();
     }
 
     private void initMaxInputTokens() {
@@ -139,6 +142,7 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
         ChatRequest chatRequest = createChatRequest(chatModelParams.getMcpClients(), chatMessages, params.getLlmBuilderProperties().getReturnThinking());
         InnerStreamChatParams innerStreamChatParams = InnerStreamChatParams.builder()
                 .uuid(params.getUuid())
+                .user(params.getUser())
                 .streamingChatModel(streamingChatModel)
                 .chatRequest(chatRequest)
                 .sseEmitter(params.getSseEmitter())
@@ -148,18 +152,20 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
                 .build();
         try {
 
-            //如果系统设置的语音合成器类型是后端合成，并且设置的返回内容是音频，则初始化tts任务并注册回调函数
+            //如果系统设置的语音合成器类型是后端合成，并且当前聊天设置的返回内容是音频，则初始化tts任务并注册回调函数
             if (AdiConstant.TtsConstant.SYNTHESIZER_SERVER.equals(ttsSetting.getSynthesizerSide()) && params.getAnswerContentType() == AdiConstant.ConversationConstant.ANSWER_CONTENT_TYPE_AUDIO) {
-                ttsJobId = UuidUtil.createShort();
-                ttsModelContext = new TtsModelContext();
+                String ttsJobId = UuidUtil.createShort();
+                TtsJobInfo jobInfo = new TtsJobInfo();
+                TtsModelContext ttsModelContext = new TtsModelContext();
+                jobInfo.setJobId(ttsJobId);
+                jobInfo.setTtsModelContext(ttsModelContext);
+                ttsJobCache.put(params.getUser().getUuid(), jobInfo);
                 ttsModelContext.startTtsJob(ttsJobId, "", (ByteBuffer audioFrame) -> {
                     byte[] frameBytes = new byte[audioFrame.remaining()];
                     audioFrame.get(frameBytes);
                     String base64Audio = Base64.getEncoder().encodeToString(frameBytes);
                     SSEEmitterHelper.sendAudio(params.getSseEmitter(), base64Audio);
-                }, (String filePathOrOssUrl) -> {
-                    ttsJobFilePath = filePathOrOssUrl;
-                }, (String errorMsg) -> {
+                }, jobInfo::setFilePath, (String errorMsg) -> {
                     log.error("tts error: {}", errorMsg);
                 });
             }
@@ -167,6 +173,7 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
             //不管是不是需要返回音频文件，都需要innerStreamingChat()
             innerStreamingChat(innerStreamChatParams);
         } catch (Exception e) {
+            ttsJobCache.invalidate(params.getUser().getUuid());
             //Close MCP clients
             params.getChatModelParams().getMcpClients().forEach(item -> {
                 try {
@@ -192,8 +199,9 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
             public void onPartialResponse(String partialResponse) {
                 SSEEmitterHelper.parseAndSendPartialMsg(params.getSseEmitter(), partialResponse);
 
-                if (null != ttsModelContext && AdiConstant.TtsConstant.SYNTHESIZER_SERVER.equals(ttsSetting.getSynthesizerSide()) && params.getAnswerContentType() == AdiConstant.ConversationConstant.ANSWER_CONTENT_TYPE_AUDIO) {
-                    ttsModelContext.processPartialText(ttsJobId, partialResponse);
+                TtsJobInfo jobInfo = ttsJobCache.getIfPresent(params.getUser().getUuid());
+                if (null != jobInfo && null != jobInfo.getTtsModelContext() && AdiConstant.TtsConstant.SYNTHESIZER_SERVER.equals(ttsSetting.getSynthesizerSide()) && params.getAnswerContentType() == AdiConstant.ConversationConstant.ANSWER_CONTENT_TYPE_AUDIO) {
+                    jobInfo.getTtsModelContext().processPartialText(jobInfo.getJobId(), partialResponse);
                 }
             }
 
@@ -222,13 +230,17 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
                     innerStreamingChat(params);
                 } else {
                     //结束TTS任务
-                    if (null != ttsModelContext) {
+                    TtsJobInfo jobInfo = ttsJobCache.getIfPresent(params.getUser().getUuid());
+                    if (null != jobInfo && null != jobInfo.getTtsModelContext()) {
                         //TODO。。。 停止转换任务，此时有可能导致只合成部分音频，待处理
-                        ttsModelContext.complete(ttsJobId);
+                        jobInfo.getTtsModelContext().complete(jobInfo.getJobId());
                     }
+                    //Remove job info
+                    ttsJobCache.invalidate(params.getUser().getUuid());
+                    String filePath = null != jobInfo ? jobInfo.getFilePath() : null;
                     //结束整个对话任务
                     Pair<PromptMeta, AnswerMeta> pair = SSEEmitterHelper.calculateToken(response, params.getUuid());
-                    params.getConsumer().accept(new LLMResponseContent(response.aiMessage().thinking(), response.aiMessage().text(), ttsJobFilePath), pair.getLeft(), pair.getRight());
+                    params.getConsumer().accept(new LLMResponseContent(response.aiMessage().thinking(), response.aiMessage().text(), filePath), pair.getLeft(), pair.getRight());
                     //Close mcp clients
                     params.getMcpClients().forEach(item -> {
                         try {

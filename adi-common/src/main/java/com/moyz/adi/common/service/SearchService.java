@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
+import static com.moyz.adi.common.cosntant.AdiConstant.SSE_TIMEOUT;
 import static com.moyz.adi.common.enums.ErrorEnum.B_NO_ANSWER;
 
 /**
@@ -74,7 +75,7 @@ public class SearchService {
 
     public SseEmitter search(boolean isBriefSearch, String searchText, String engineName, String modelName) {
         User user = ThreadContext.getCurrentUser();
-        SseEmitter sseEmitter = new SseEmitter(150000L);
+        SseEmitter sseEmitter = new SseEmitter(SSE_TIMEOUT);
         if (!sseEmitterHelper.checkOrComplete(user, sseEmitter)) {
             return sseEmitter;
         }
