@@ -17,6 +17,7 @@ import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.moyz.adi.common.enums.ErrorEnum.B_BREAK_SEARCH;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -93,6 +94,7 @@ public class GraphStoreContentRetriever implements ContentRetriever {
         if (breakIfSearchMissed && entities.isEmpty()) {
             throw new BaseException(B_BREAK_SEARCH);
         }
+        entities = entities.stream().map(AdiStringUtil::removeSpecialChar).filter(StringUtils::isNotBlank).collect(Collectors.toSet());
         if (entities.isEmpty()) {
             log.info("从用户查询中没有解析出实体");
             return Collections.emptyList();

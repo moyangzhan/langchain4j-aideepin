@@ -138,8 +138,8 @@ abstract class AdiApacheAgeFilterMapper {
     }
 
     String formatValuesAsString(Collection<?> values) {
-        return "(" + values.stream().map(v -> String.format("'%s'", v))
-                .collect(Collectors.joining(",")) + ")";
+        return "[" + values.stream().map(v -> String.format("'%s'", v))
+                .collect(Collectors.joining(",")) + "]";
     }
 
     String formatJsonValuesAsString(Collection<?> values) {

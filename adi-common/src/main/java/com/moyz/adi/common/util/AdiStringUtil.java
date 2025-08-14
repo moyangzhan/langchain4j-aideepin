@@ -5,6 +5,8 @@ import org.jsoup.Jsoup;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class AdiStringUtil {
 
@@ -41,5 +43,13 @@ public class AdiStringUtil {
             }
         }
         return result;
+    }
+
+    public static String removeSpecialChar(String input) {
+        // 匹配常见特殊符号（包括中英文符号）
+        String regEx = "[\\-`~!@#$%^&*()+=|{}':;,.<>/?！￥…（）—【】‘；：”“’。，、？]";
+        Pattern p = Pattern.compile(regEx);
+        Matcher m = p.matcher(input);
+        return m.replaceAll("").trim(); // 替换为空字符串并去除首尾空格
     }
 }
