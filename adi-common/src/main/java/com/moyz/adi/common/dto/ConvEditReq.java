@@ -20,6 +20,8 @@ public class ConvEditReq {
 
     private List<Long> mcpIds;
 
+    private List<Long> kbIds;
+
     private Integer answerContentType;
 
     private Boolean isAutoplayAnswer;

@@ -47,7 +47,6 @@ public class GraphStoreUtil {
             for (int i = 0; i < search.getNames().size(); i++) {
                 result.put(alias + "_name_" + i, search.getNames().get(i));
             }
-
         }
         return result;
     }

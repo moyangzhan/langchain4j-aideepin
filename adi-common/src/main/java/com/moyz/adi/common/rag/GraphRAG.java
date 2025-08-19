@@ -94,17 +94,7 @@ public class GraphRAG {
         ingestor.ingest(graphIngestParams.getDocument());
     }
 
-    public GraphStoreContentRetriever createRetriever(ChatModel ChatModel, Map<String, String> metadataCond, int maxResults, boolean breakIfSearchMissed) {
-        Filter filter = null;
-        for (Map.Entry<String, String> entry : metadataCond.entrySet()) {
-            String key = entry.getKey();
-            String value = entry.getValue();
-            if (null == filter) {
-                filter = new IsEqualTo(key, value);
-            } else {
-                filter = filter.and(new IsEqualTo(key, value));
-            }
-        }
+    public GraphStoreContentRetriever createRetriever(ChatModel ChatModel, Filter filter, int maxResults, boolean breakIfSearchMissed) {
         return GraphStoreContentRetriever.builder()
                 .graphStore(graphStore)
                 .ChatModel(ChatModel)

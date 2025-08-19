@@ -24,4 +24,6 @@ public class ConvAddReq {
     private String aiSystemMessage;
 
     private List<Long> mcpIds;
+
+    private List<Long> kbIds;
 }

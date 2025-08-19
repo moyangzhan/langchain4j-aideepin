@@ -192,7 +192,6 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                     LLMBuilderProperties.builder()
                             .temperature(knowledgeBase.getQueryLlmTemperature())
                             .build()
-                    , kbItem.getUuid()
             );
 
             //Ingest document

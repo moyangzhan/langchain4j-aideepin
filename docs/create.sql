@@ -189,6 +189,7 @@ CREATE TABLE adi_conversation
     understand_context_enable boolean       default false             not null,
     llm_temperature           numeric(2, 1) default 0.7               not null,
     mcp_ids                   varchar(1000) default ''                not null,
+    kb_ids                    varchar(1000) default ''                not null,
     answer_content_type       smallint      default 1                 not null,
     is_autoplay_answer        boolean       default true              not null,
     is_enable_thinking        boolean       default false             not null,
@@ -204,6 +205,7 @@ COMMENT ON COLUMN adi_conversation.remark IS '备注，如：断案如神，手�
 COMMENT ON COLUMN adi_conversation.ai_system_message IS '角色设定内容，如：你是唐朝的狄仁杰，破了很多大案、疑案 | Role setting content, e.g., You are Sherlock Holmes, a brilliant detective known for your keen observation skills';
 COMMENT ON COLUMN adi_conversation.llm_temperature IS 'LLM响应的创造性/随机性 | LLM response creativity/randomness';
 COMMENT ON COLUMN adi_conversation.mcp_ids IS '启用的MCP服务id,以逗号隔开 | Enabled MCP service IDs, comma-separated';
+COMMENT ON COLUMN adi_conversation.kb_ids IS '关联使用的知识库id列表,以逗号隔开 | Associated knowledge base IDs, comma-separated';
 COMMENT ON COLUMN adi_conversation.answer_content_type IS '设置响应内容类型：1：自动（跟随用户的输入类型，如果用户输入是音频，则响应内容也同样是音频，如果用户输入是文本，则响应内容显示文本），2：文本，3：音频 | Response content display type: 1: Auto (if user input is audio, response content is also audio; if user input is text, response content displays text), 2: Text, 3: Audio';
 COMMENT ON COLUMN adi_conversation.is_autoplay_answer IS '设置聊天时音频类型的响应内容是否自动播放，true: 自动播放，false: 不自动播放 | Whether audio-type response content automatically plays, true: Auto play, false: Do not auto play';
 COMMENT ON COLUMN adi_conversation.is_enable_thinking IS '当前使用的模型如果是推理模式并且支持对思考过程的开关，则本字段生效 | Whether the current model supports reasoning mode and thinking process toggle, if so, this field takes effect';
@@ -245,7 +247,8 @@ CREATE TABLE adi_conversation_message
     conversation_id                 bigint        default 0                 not null,
     conversation_uuid               varchar(32)   default ''                not null,
     content_type                    smallint      default 2                 not null,
-    remark                          text,
+    remark                          text          default ''                not null,
+    processed_remark                text          default ''                not null,
     thinking_content                text          default ''                not null,
     audio_uuid                      varchar(32)   default ''                not null,
     audio_duration                  integer       default 0                 not null,
@@ -265,7 +268,8 @@ COMMENT ON TABLE adi_conversation_message IS '对话消息表 | Conversation mes
 COMMENT ON COLUMN adi_conversation_message.parent_message_id IS '父级消息id | Parent message ID';
 COMMENT ON COLUMN adi_conversation_message.conversation_id IS '对话id | Conversation ID';
 COMMENT ON COLUMN adi_conversation_message.conversation_uuid IS '对话的UUID | Conversation UUID';
-COMMENT ON COLUMN adi_conversation_message.remark IS '消息内容 | message';
+COMMENT ON COLUMN adi_conversation_message.remark IS '原始的对话消息，如用户输入的问题，AI产生的回答';
+COMMENT ON COLUMN adi_conversation_message.processed_remark IS '处理过的有效的对话消息，如 1.提供给LLM的内容：用户输入的问题+关联的知识库；2.显示在用户面前的答案：AI产生的回答经过合规校验及过滤、个性化调整后的内容';
 COMMENT ON COLUMN adi_conversation_message.content_type IS '消息内容类型（跟conversation.answer_content_type对应），2：文本，3：音频 | Message content type, 2: Text, 3: Audio';
 COMMENT ON COLUMN adi_conversation_message.uuid IS '唯一标识消息的UUID | Unique identifier for the message';
 COMMENT ON COLUMN adi_conversation_message.audio_uuid IS '语音聊天时产生的音频文件uuid(对应adi_file.uuid) | UUID of the audio file generated during voice chat (corresponds to adi_file.uuid)';

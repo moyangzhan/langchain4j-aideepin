@@ -50,6 +50,9 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
     private UserMcpService userMcpService;
 
     @Resource
+    private KnowledgeBaseService knowledgeBaseService;
+
+    @Resource
     private FileService fileService;
 
     public Page<ConvDto> search(ConvSearchReq convSearchReq, int currentPage, int pageSize) {
@@ -62,20 +65,16 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
     }
 
     public List<ConvDto> listByUser() {
+        User user = ThreadContext.getCurrentUser();
         List<Conversation> list = this.lambdaQuery()
-                .eq(Conversation::getUserId, ThreadContext.getCurrentUserId())
+                .eq(Conversation::getUserId, user.getId())
                 .eq(Conversation::getIsDeleted, false)
                 .orderByDesc(Conversation::getId)
                 .last("limit " + sysConfigService.getConversationMaxNum())
                 .list();
         return MPPageUtil.convertToList(list, ConvDto.class, (source, target) -> {
-            if (StringUtils.isNotBlank(source.getMcpIds())) {
-                target.setMcpIds(Arrays.stream(source.getMcpIds().split(","))
-                        .map(Long::parseLong)
-                        .toList());
-            } else {
-                target.setMcpIds(Collections.emptyList());
-            }
+            setMcpToDto(source, target);
+            setKbInfoToDto(source, target);
             return target;
         });
     }
@@ -192,7 +191,8 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
             throw new BaseException(A_CONVERSATION_TITLE_EXIST);
         }
 
-        List<Long> filteredMcpIds = findEnableMcpIds(convAddReq.getMcpIds());
+        List<Long> filteredMcpIds = filterEnableMcpIds(convAddReq.getMcpIds());
+        List<Long> filteredKbIds = filterEnableKbIds(ThreadContext.getCurrentUser(), convAddReq.getKbIds());
 
         String uuid = UuidUtil.createShort();
         Conversation one = new Conversation();
@@ -202,18 +202,59 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
         one.setUserId(ThreadContext.getCurrentUserId());
         one.setRemark(convAddReq.getRemark());
         one.setMcpIds(StringUtils.join(filteredMcpIds, ","));
+        one.setKbIds(StringUtils.join(filteredKbIds, ","));
         baseMapper.insert(one);
 
         Conversation conv = this.lambdaQuery().eq(Conversation::getUuid, uuid).one();
         ConvDto dto = MPPageUtil.convertTo(conv, ConvDto.class);
-        if (StringUtils.isNotBlank(one.getMcpIds())) {
-            dto.setMcpIds(Arrays.stream(one.getMcpIds().split(","))
+        setMcpToDto(conv, dto);
+        setKbInfoToDto(conv, dto);
+        return dto;
+    }
+
+    /**
+     * 组装MCP信息
+     *
+     * @param conversation 对话信息
+     * @param dto          对话DTO
+     */
+    private void setMcpToDto(Conversation conversation, ConvDto dto) {
+        if (StringUtils.isNotBlank(conversation.getMcpIds())) {
+            dto.setMcpIds(Arrays.stream(conversation.getMcpIds().split(","))
                     .map(Long::parseLong)
                     .toList());
         } else {
             dto.setMcpIds(new ArrayList<>());
         }
-        return dto;
+    }
+
+    /**
+     * 组装已关联的知识库信息
+     *
+     * @param conv 对话信息
+     * @param dto  对话DTO
+     */
+    private void setKbInfoToDto(Conversation conv, ConvDto dto) {
+        //组装已关联的知识库信息
+        List<Long> kids = new ArrayList<>();
+        List<ConvKnowledge> convKnowledgeList = new ArrayList<>();
+        if (StringUtils.isNotBlank(conv.getKbIds())) {
+            List<Long> kbIds = Arrays.stream(conv.getKbIds().split(","))
+                    .map(Long::parseLong)
+                    .toList();
+            knowledgeBaseService.listByIds(kbIds).forEach(kb -> {
+                ConvKnowledge convKnowledge = convertToConvKbDto(ThreadContext.getCurrentUser(), kb);
+                // Skip if not mine and not public
+                if (!convKnowledge.getIsMine() && !convKnowledge.getIsPublic()) {
+                    convKnowledge.setKbInfo(null);
+                    convKnowledge.setIsEnable(false);
+                }
+                convKnowledgeList.add(convKnowledge);
+                kids.add(kb.getId());
+            });
+        }
+        dto.setKbIds(kids);
+        dto.setConvKnowledgeList(convKnowledgeList);
     }
 
     /**
@@ -262,8 +303,16 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
             one.setUnderstandContextEnable(convEditReq.getUnderstandContextEnable());
         }
         if (null != convEditReq.getMcpIds()) {
-            List<Long> filteredMcpIds = findEnableMcpIds(convEditReq.getMcpIds());
-            one.setMcpIds(StringUtils.join(filteredMcpIds, ","));
+            List<Long> filteredMcpIds = filterEnableMcpIds(convEditReq.getMcpIds());
+            if (filteredMcpIds.isEmpty()) {
+                one.setMcpIds(StringUtils.join(filteredMcpIds, ","));
+            }
+        }
+        if (null != convEditReq.getKbIds()) {
+            List<Long> filteredKbIds = filterEnableKbIds(ThreadContext.getCurrentUser(), convEditReq.getKbIds());
+            if (!filteredKbIds.isEmpty()) {
+                one.setKbIds(StringUtils.join(filteredKbIds, ","));
+            }
         }
         return baseMapper.updateById(one) > 0;
     }
@@ -309,7 +358,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
      * @param mcpIdsInReq 请求中传入的MCP服务id列表 | List of MCP service IDs passed in the request
      * @return 有效的MCP服务id列表 | List of valid MCP service IDs
      */
-    private List<Long> findEnableMcpIds(List<Long> mcpIdsInReq) {
+    private List<Long> filterEnableMcpIds(List<Long> mcpIdsInReq) {
         List<Long> result = new ArrayList<>();
         if (CollectionUtils.isEmpty(mcpIdsInReq)) {
             return result;
@@ -323,6 +372,39 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
                 log.warn("User mcp id {} not found or disabled in user mcp list, userId: {}, mcpId:{}", mcpIdInReq, ThreadContext.getCurrentUserId(), mcpIdInReq);
             }
         }
+        return result;
+    }
+
+    public List<Long> filterEnableKbIds(User user, List<Long> kbIdsInReq) {
+        if (CollectionUtils.isEmpty(kbIdsInReq)) {
+            return Collections.emptyList();
+        }
+        List<KbInfoResp> validKbList = filterEnableKb(user, kbIdsInReq);
+        return validKbList.stream().map(KbInfoResp::getId).toList();
+    }
+
+    /**
+     * 过滤出有效的知识库id列表 | Find the list of valid knowledge base IDs
+     * 如果知识库是别人的且不是公开的，则不属于有效的可以关联的知识库
+     *
+     * @param user 当前用户 | Current user
+     * @param ids  知识库id列表 | List of knowledge base IDs
+     * @return 有效的知识库列表 | List of valid knowledge base
+     */
+    public List<KbInfoResp> filterEnableKb(User user, List<Long> ids) {
+        if (CollectionUtils.isEmpty(ids)) {
+            return Collections.emptyList();
+        }
+        return knowledgeBaseService.listByIds(ids).stream()
+                .filter(item -> item.getIsPublic() || user.getUuid().equals(item.getOwnerUuid()))
+                .toList();
+    }
+
+    private ConvKnowledge convertToConvKbDto(User user, KbInfoResp kbInfo) {
+        ConvKnowledge result = new ConvKnowledge();
+        BeanUtils.copyProperties(kbInfo, result);
+        result.setKbInfo(kbInfo);
+        result.setIsMine(user.getUuid().equals(kbInfo.getOwnerUuid()));
         return result;
     }
 }

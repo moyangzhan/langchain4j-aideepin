@@ -40,9 +40,13 @@ public class ConversationMessage extends BaseEntity {
     @TableField("user_id")
     private Long userId;
 
-    @Schema(title = "对话的消息")
+    @Schema(title = "原始的对话消息，如用户输入的问题，AI产生的回答")
     @TableField("remark")
     private String remark;
+
+    @Schema(title = "处理过的有效的对话消息，如 1.提供给LLM的内容：用户输入的问题+关联的知识库；2.显示在用户面前的答案：AI产生的回答经过合规校验及过滤、个性化调整后的内容")
+    @TableField("processed_remark")
+    private String processedRemark;
 
     @Schema(title = "思考内容")
     @TableField("thinking_content")

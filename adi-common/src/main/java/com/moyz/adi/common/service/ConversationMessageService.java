@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.AskReq;
+import com.moyz.adi.common.dto.KbInfoResp;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.enums.ChatMessageRoleEnum;
 import com.moyz.adi.common.enums.ErrorEnum;
@@ -16,13 +17,18 @@ import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.QuotaHelper;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.ConversationMessageMapper;
-import com.moyz.adi.common.util.LocalCache;
-import com.moyz.adi.common.util.MapDBChatMemoryStore;
-import com.moyz.adi.common.util.UuidUtil;
+import com.moyz.adi.common.rag.CompositeRAG;
+import com.moyz.adi.common.service.languagemodel.AbstractLLMService;
+import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.vo.*;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.mcp.client.McpClient;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.store.embedding.filter.comparison.IsIn;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -34,10 +40,12 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import ws.schild.jave.info.MultimediaInfo;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import static com.moyz.adi.common.cosntant.AdiConstant.SSE_TIMEOUT;
+import static com.moyz.adi.common.cosntant.AdiConstant.*;
+import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.KB_UUID;
 import static com.moyz.adi.common.enums.ErrorEnum.A_CONVERSATION_NOT_FOUND;
 import static com.moyz.adi.common.enums.ErrorEnum.B_MESSAGE_NOT_FOUND;
 import static com.moyz.adi.common.util.AdiStringUtil.stringToList;
@@ -59,6 +67,9 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
     @Lazy
     @Resource
     private ConversationService conversationService;
+
+    @Resource
+    private CompositeRAG compositeRAG;
 
     @Resource
     private UserMcpService userMcpService;
@@ -151,6 +162,23 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             askReq.setPrompt(audioText);
         }
 
+        AbstractLLMService<?> llmService = LLMContext.getLLMServiceByName(askReq.getModelName());
+
+        //如果关联了知识库，则先进行知识库查询
+        String retrieveContents = "";
+        if (StringUtils.isNotBlank(conversation.getKbIds())) {
+            List<Long> kbIds = Arrays.stream(conversation.getKbIds().split(",")).map(Long::parseLong).toList();
+            List<KbInfoResp> filteredKb = conversationService.filterEnableKb(user, kbIds);
+            retrieveContents = retrieveContents(filteredKb, llmService, askReq);
+        }
+
+        int answerContentType = getAnswerContentType(conversation, askReq);
+        boolean answerToAudio = TtsUtil.needTts(llmService.getTtsSetting(), answerContentType);
+        String processedPrompt = PromptUtil.createPrompt(askReq.getPrompt(), retrieveContents, answerToAudio ? PROMPT_EXTRA_AUDIO : "");
+        if (!Objects.equals(askReq.getPrompt(), processedPrompt)) {
+            askReq.setProcessedPrompt(processedPrompt);
+        }
+
         String questionUuid = StringUtils.isNotBlank(askReq.getRegenerateQuestionUuid()) ? askReq.getRegenerateQuestionUuid() : UuidUtil.createShort();
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setUser(user);
@@ -158,23 +186,13 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         sseAskParams.setModelName(askReq.getModelName());
         sseAskParams.setSseEmitter(sseEmitter);
         sseAskParams.setRegenerateQuestionUuid(askReq.getRegenerateQuestionUuid());
-
-        int answerContentType = getAnswerContentType(conversation, askReq);
         sseAskParams.setAnswerContentType(answerContentType);
 
         ChatModelParams chatModelParams = buildChatModelParams(conversation, askReq);
         sseAskParams.setChatModelParams(chatModelParams);
 
         AiModel aiModel = LLMContext.getLLMServiceByName(askReq.getModelName()).getAiModel();
-        boolean returnThinking = false;
-        //模型是推理模型，并且不允许关闭推理过程
-        if (Boolean.TRUE.equals(aiModel.getIsReasoner()) && Boolean.FALSE.equals(aiModel.getIsThinkingClosable())) {
-            returnThinking = true;
-        }
-        //模型是推理模型，并且允许关闭推理过程，并且角色会话开启了推理过程
-        else if (Boolean.TRUE.equals(aiModel.getIsReasoner()) && Boolean.TRUE.equals(aiModel.getIsThinkingClosable()) && Boolean.TRUE.equals(conversation.getIsEnableThinking())) {
-            returnThinking = true;
-        }
+        boolean returnThinking = checkIfReturnThinking(aiModel, conversation);
         sseAskParams.setLlmBuilderProperties(
                 LLMBuilderProperties.builder()
                         .temperature(conversation.getLlmTemperature())
@@ -200,6 +218,57 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             sseEmitterHelper.sendComplete(user.getId(), sseEmitter, questionMeta, answerMeta, audioInfo);
             self.saveAfterAiResponse(user, askReq, response, questionMeta, answerMeta, audioInfo);
         });
+    }
+
+    /**
+     * 判断是否需要返回推理过程
+     * 以下两种场景表示需要返回推理过程
+     * 场景1：模型是推理模型 && 不允许关闭推理过程，
+     * 场景2：模型是推理模型 && 允许关闭推理过程 && 角色会话开启了推理过程
+     *
+     * @param aiModel      模型
+     * @param conversation 会话
+     * @return 是否需要返回推理过程
+     */
+    private boolean checkIfReturnThinking(AiModel aiModel, Conversation conversation) {
+        return Boolean.TRUE.equals(aiModel.getIsReasoner()) && (Boolean.FALSE.equals(aiModel.getIsThinkingClosable()) || Boolean.TRUE.equals(conversation.getIsEnableThinking()));
+    }
+
+    /**
+     * 多知识库搜索
+     *
+     * @param filteredKb 有效的已关联的知识库
+     * @param llmService 大模型服务
+     * @param askReq     请求参数
+     */
+    private String retrieveContents(List<KbInfoResp> filteredKb, AbstractLLMService<?> llmService, AskReq askReq) {
+        if (filteredKb.isEmpty()) {
+            log.warn("关联的知识库为空");
+        }
+        List<String> kbUuids = filteredKb.stream().map(KbInfoResp::getUuid).toList();
+        log.info("开始搜索相关联的知识库,kbUuids:{},question:{}", String.join(",", kbUuids), askReq.getPrompt());
+        ChatModel chatModel = llmService.buildChatLLM(
+                LLMBuilderProperties.builder()
+                        .temperature(LLM_TEMPERATURE_DEFAULT)
+                        .build());
+        //跨多个知识库查询
+        IsIn isIn = new IsIn(KB_UUID, kbUuids);
+        //忽略知识库自身的设置如最大召回数量maxResult，最小命中分数minScore，角色设置，是否强行中断搜索设置 等
+        List<ContentRetriever> retrievers = compositeRAG.createRetriever(chatModel, isIn, 3, RAG_RETRIEVE_MIN_SCORE_DEFAULT, false);
+        List<Content> retrieveContents = new ArrayList<>();
+        //TODO... 将搜索事件通过sse推到前端
+        //TODO... 并发执行ContentRetriever.retrieve以加快响应速度
+        retrievers.forEach(item -> retrieveContents.addAll(item.retrieve(Query.from(askReq.getPrompt()))));
+        if (!retrieveContents.isEmpty()) {
+            //如果命中了知识库内容，则将知识库内容添加到用户输入的prompt中
+            StringBuilder promptBuilder = new StringBuilder();
+            retrieveContents.forEach(content -> promptBuilder.append(content.textSegment().text()).append("\n"));
+            promptBuilder.append("\n");
+            return promptBuilder.toString();
+        } else {
+            log.info("问题没有命中知识库中的文档");
+            return "";
+        }
     }
 
     public List<ConversationMessage> listQuestionsByConvId(long convId, long maxId, int pageSize) {
@@ -237,6 +306,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             question.setConversationUuid(convUuid);
             question.setMessageRole(ChatMessageRoleEnum.USER.getValue());
             question.setRemark(prompt);
+            question.setProcessedRemark(askReq.getProcessedPrompt());
             question.setAiModelId(aiModel.getId());
             question.setAudioUuid(askReq.getAudioUuid());
             question.setAudioDuration(askReq.getAudioDuration());
@@ -257,6 +327,8 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         aiAnswer.setMessageRole(ChatMessageRoleEnum.ASSISTANT.getValue());
         aiAnswer.setThinkingContent(Objects.toString(response.getThinkingContent(), ""));
         aiAnswer.setRemark(response.getContent());
+        //TODO 过滤或转换AI返回的内容
+        //aiAnswer.setProcessedRemark("");
         aiAnswer.setAudioUuid(null == audioInfo ? "" : Objects.toString(audioInfo.getUuid(), ""));
         aiAnswer.setAudioDuration(null == audioInfo ? 0 : audioInfo.getDuration());
         aiAnswer.setTokens(answerMeta.getTokens());
@@ -276,6 +348,8 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             newMessages.add(AiMessage.aiMessage(response.getContent()));
             mapDBChatMemoryStore.updateMessages(askReq.getConversationUuid(), newMessages);
         }
+
+        //TODO... 如果关联了知识库，把命中的知识库片段存储起来
     }
 
     private void calcTodayCost(User user, Conversation conversation, PromptMeta questionMeta, AnswerMeta answerMeta, boolean isFreeToken) {
@@ -333,9 +407,11 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         if (Boolean.TRUE.equals(conversation.getUnderstandContextEnable())) {
             builder.memoryId(askReq.getConversationUuid());
         }
-        String prompt = askReq.getPrompt();
+        //如果用户问题已处理过，例如增加了召回的文档文段，则使用该增强的问题，否则使用用户的原始问题
+        String prompt = StringUtils.isNotBlank(askReq.getProcessedPrompt()) ? askReq.getProcessedPrompt() : askReq.getPrompt();
         if (StringUtils.isNotBlank(askReq.getRegenerateQuestionUuid())) {
-            prompt = getPromptMsgByQuestionUuid(askReq.getRegenerateQuestionUuid()).getRemark();
+            ConversationMessage lastMsg = getPromptMsgByQuestionUuid(askReq.getRegenerateQuestionUuid());
+            prompt = StringUtils.isNotBlank(lastMsg.getProcessedRemark()) ? lastMsg.getProcessedRemark() : lastMsg.getRemark();
         }
         builder.userMessage(prompt);
         builder.imageUrls(askReq.getImageUrls());

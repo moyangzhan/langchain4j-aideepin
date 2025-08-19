@@ -62,6 +62,7 @@ public enum ErrorEnum {
     A_USER_MCP_SERVER_NOT_FOUND("A00053", "用户的MCP服务找不到"),
     A_PARAMS_INVALID_BY_("A00054", "参数校验异常:{0}"),
     A_AI_MESSAGE_NOT_FOUND("A00055", "找不到AI的消息"),
+    A_USER_QUESTION_NOT_FOUND("A00056", "用户问题不存在"),
     B_UNCAUGHT_ERROR("B0001", "未捕捉异常"),
     B_COMMON_ERROR("B0002", "业务出错"),
     B_GLOBAL_ERROR("B0003", "全局异常"),

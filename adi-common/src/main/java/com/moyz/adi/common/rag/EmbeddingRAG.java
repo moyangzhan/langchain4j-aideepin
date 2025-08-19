@@ -56,24 +56,16 @@ public class EmbeddingRAG implements IRAGService {
     }
 
     /**
-     * @param metadataCond
-     * @param maxResults
-     * @param minScore
+     * 创建召回器
+     *
+     * @param filter              过滤条件
+     * @param maxResults          最大返回数量
+     * @param minScore            最小命中分数
      * @param breakIfSearchMissed 如果向量数据库中搜索不到数据，是否强行中断该搜索，不继续往下执行（即不继续请求LLM进行回答）
-     * @return
+     * @return ContentRetriever
      */
     @Override
-    public AdiEmbeddingStoreContentRetriever createRetriever(Map<String, String> metadataCond, int maxResults, double minScore, boolean breakIfSearchMissed) {
-        Filter filter = null;
-        for (Map.Entry<String, String> entry : metadataCond.entrySet()) {
-            String key = entry.getKey();
-            String value = entry.getValue();
-            if (null == filter) {
-                filter = new IsEqualTo(key, value);
-            } else {
-                filter = filter.and(new IsEqualTo(key, value));
-            }
-        }
+    public AdiEmbeddingStoreContentRetriever createRetriever(Filter filter, int maxResults, double minScore, boolean breakIfSearchMissed) {
         return AdiEmbeddingStoreContentRetriever.builder()
                 .embeddingStore(embeddingStore)
                 .embeddingModel(embeddingModel)
@@ -82,10 +74,6 @@ public class EmbeddingRAG implements IRAGService {
                 .filter(filter)
                 .breakIfSearchMissed(breakIfSearchMissed)
                 .build();
-    }
-
-    public static final String parsePromptTemplate(String question, String information) {
-        return PROMPT_TEMPLATE.apply(Map.of("question", question, "information", Matcher.quoteReplacement(information))).text();
     }
 
     /**

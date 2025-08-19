@@ -56,6 +56,10 @@ public class Conversation extends BaseEntity {
     @TableField("mcp_ids")
     private String mcpIds;
 
+    @Schema(title = "关联使用的知识库id列表")
+    @TableField("kb_ids")
+    private String kbIds;
+
     @Schema(title = "设置响应内容类型：1：自动（跟随用户的输入类型，如果用户输入是音频，则响应内容也同样是音频，如果用户输入是文本，则响应内容显示文本），2：文本，3：音频")
     @TableField("answer_content_type")
     private Integer answerContentType;

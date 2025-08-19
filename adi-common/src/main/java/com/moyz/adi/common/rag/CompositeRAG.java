@@ -22,6 +22,7 @@ import dev.langchain4j.rag.query.transformer.CompressingQueryTransformer;
 import dev.langchain4j.rag.query.transformer.QueryTransformer;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.store.embedding.filter.Filter;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -52,18 +53,27 @@ public class CompositeRAG {
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
-    public List<ContentRetriever> createRetriever(ChatModel ChatModel, Map<String, String> metadataCond, int maxResults, double minScore, boolean breakIfSearchMissed) {
-        ContentRetriever contentRetriever1 = embeddingRAGService.createRetriever(metadataCond, maxResults, minScore, breakIfSearchMissed);
-        ContentRetriever contentRetriever2 = graphRAGService.createRetriever(ChatModel, metadataCond, maxResults, breakIfSearchMissed);
+    /**
+     * 创建Retriever列表
+     *
+     * @param filter              过滤条件
+     * @param maxResults          最大返回数量
+     * @param minScore            最小命中分数
+     * @param breakIfSearchMissed 如果数据库中搜索不到数据，是否强行中断该搜索，不继续往下执行（即不继续请求LLM进行回答）
+     * @return ContentRetriever列表
+     */
+    public List<ContentRetriever> createRetriever(ChatModel ChatModel, Filter filter, int maxResults, double minScore, boolean breakIfSearchMissed) {
+        ContentRetriever contentRetriever1 = embeddingRAGService.createRetriever(filter, maxResults, minScore, breakIfSearchMissed);
+        ContentRetriever contentRetriever2 = graphRAGService.createRetriever(ChatModel, filter, maxResults, breakIfSearchMissed);
         return List.of(contentRetriever1, contentRetriever2);
     }
 
     /**
      * 使用RAG处理提问
      *
-     * @param retrievers
-     * @param sseAskParams
-     * @param consumer
+     * @param retrievers   ContentRetriver列表
+     * @param sseAskParams 请求参数
+     * @param consumer     回调
      */
     public void ragChat(List<ContentRetriever> retrievers, SseAskParams sseAskParams, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
         User user = sseAskParams.getUser();
@@ -115,7 +125,7 @@ public class CompositeRAG {
                     .maxMessages(2)
                     .chatMemoryStore(MapDBChatMemoryStore.getSingleton())
                     .build();
-            QueryTransformer queryTransformer = new CompressingQueryTransformer(llmService.buildChatLLM(params.getLlmBuilderProperties(), params.getUuid()));
+            QueryTransformer queryTransformer = new CompressingQueryTransformer(llmService.buildChatLLM(params.getLlmBuilderProperties()));
             RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
                     .queryTransformer(queryTransformer)
                     .queryRouter(queryRouter)

@@ -100,9 +100,10 @@ public class GraphStoreContentRetriever implements ContentRetriever {
             return Collections.emptyList();
         }
 
+        List<String> entityNames = entities.stream().toList();
         List<GraphVertex> vertices = graphStore.searchVertices(
                 GraphVertexSearch.builder()
-                        .names(entities.stream().toList())
+                        .names(entityNames)
                         .metadataFilter(filterProvider.apply(query))
                         .limit(maxResultsProvider.apply(query))
                         .build()
@@ -122,7 +123,7 @@ public class GraphStoreContentRetriever implements ContentRetriever {
             allEdges.add(triple.getMiddle());
         }
         allVertices.putAll(vertices.stream().collect(toMap(GraphVertex::getId, Function.identity())));
-        kbQaRecordRefGraphDto.setEntitiesFromLlm(entities.stream().toList());
+        kbQaRecordRefGraphDto.setEntitiesFromLlm(entityNames);
         kbQaRecordRefGraphDto.setVertices(allVertices.values().stream().toList());
         kbQaRecordRefGraphDto.setEdges(allEdges);
 

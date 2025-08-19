@@ -13,6 +13,7 @@ import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.rag.CompositeRAG;
 import com.moyz.adi.common.rag.EmbeddingRAG;
 import com.moyz.adi.common.searchengine.SearchEngineServiceContext;
+import com.moyz.adi.common.util.PromptUtil;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.ChatModelParams;
 import com.moyz.adi.common.vo.SseAskParams;
@@ -20,6 +21,7 @@ import dev.langchain4j.data.document.DefaultDocument;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -35,7 +37,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.SSE_TIMEOUT;
@@ -131,7 +132,7 @@ public class SearchService {
             builder.append(item.getSnippet()).append("\n\n");
         }
         String ragQuestion = builder.toString();
-        String prompt = EmbeddingRAG.parsePromptTemplate(searchText, ragQuestion);
+        String prompt = PromptUtil.createPrompt(searchText, ragQuestion, "");
 
         SearchEngineResp resp = new SearchEngineResp().setItems(resultItems);
 
@@ -234,7 +235,7 @@ public class SearchService {
         log.info("Create prompt");
         int maxInputTokens = aiModel.getMaxInputTokens();
         int maxResults = EmbeddingRAG.getRetrieveMaxResults(searchText, maxInputTokens);
-        ContentRetriever contentRetriever = searchRagService.createRetriever(Map.of(AdiConstant.MetadataKey.SEARCH_UUID, searchUuid), maxResults, 0, false);
+        ContentRetriever contentRetriever = searchRagService.createRetriever(new IsEqualTo(AdiConstant.MetadataKey.SEARCH_UUID, searchUuid), maxResults, 0, false);
 
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setUuid(searchUuid);

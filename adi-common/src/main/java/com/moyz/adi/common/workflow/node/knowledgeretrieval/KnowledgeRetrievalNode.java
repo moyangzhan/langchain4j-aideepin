@@ -16,6 +16,7 @@ import com.moyz.adi.common.workflow.node.AbstractWfNode;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
@@ -63,8 +64,7 @@ public class KnowledgeRetrievalNode extends AbstractWfNode {
                     .build();
         }
         EmbeddingRAG embeddingRAG = SpringUtil.getBean(EmbeddingRAG.class);
-        Map<String, String> metadataCond = Map.of(AdiConstant.MetadataKey.KB_UUID, kbUuid);
-        ContentRetriever retriever = embeddingRAG.createRetriever(metadataCond, nodeConfigObj.getTopN(), nodeConfigObj.getScore(), nodeConfigObj.getIsStrict());
+        ContentRetriever retriever = embeddingRAG.createRetriever(new IsEqualTo(AdiConstant.MetadataKey.KB_UUID, kbUuid), nodeConfigObj.getTopN(), nodeConfigObj.getScore(), nodeConfigObj.getIsStrict());
         StringBuilder resp = new StringBuilder();
         try {
             List<Content> contents = retriever.retrieve(Query.from(textInput));
