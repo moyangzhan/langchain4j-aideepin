@@ -309,8 +309,10 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
             }
         }
         if (null != convEditReq.getKbIds()) {
-            List<Long> filteredKbIds = filterEnableKbIds(ThreadContext.getCurrentUser(), convEditReq.getKbIds());
-            if (!filteredKbIds.isEmpty()) {
+            if (convEditReq.getKbIds().isEmpty()) {
+                one.setKbIds("");
+            } else {
+                List<Long> filteredKbIds = filterEnableKbIds(ThreadContext.getCurrentUser(), convEditReq.getKbIds());
                 one.setKbIds(StringUtils.join(filteredKbIds, ","));
             }
         }
