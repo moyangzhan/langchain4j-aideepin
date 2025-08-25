@@ -83,4 +83,13 @@ public class ConversationMessage extends BaseEntity {
     @Schema(title = "响应内容类型：2：文本，3：音频")
     @TableField("content_type")
     private Integer contentType;
+
+    @Schema(title = "是否引用了向量库知识")
+    @TableField(value = "is_ref_embedding")
+    private Boolean isRefEmbedding;
+
+    @Schema(title = "是否引用了图谱库知识")
+    @TableField(value = "is_ref_graph")
+    private Boolean isRefGraph;
+
 }

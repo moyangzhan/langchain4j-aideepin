@@ -6,6 +6,7 @@ import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.AskReq;
 import com.moyz.adi.common.dto.KbInfoResp;
+import com.moyz.adi.common.dto.RefGraphDto;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.enums.ChatMessageRoleEnum;
 import com.moyz.adi.common.enums.ErrorEnum;
@@ -17,7 +18,9 @@ import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.QuotaHelper;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.ConversationMessageMapper;
+import com.moyz.adi.common.rag.AdiEmbeddingStoreContentRetriever;
 import com.moyz.adi.common.rag.CompositeRAG;
+import com.moyz.adi.common.rag.GraphStoreContentRetriever;
 import com.moyz.adi.common.service.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.vo.*;
@@ -31,7 +34,9 @@ import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.filter.comparison.IsIn;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -39,10 +44,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import ws.schild.jave.info.MultimediaInfo;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.*;
 import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.KB_UUID;
@@ -69,6 +71,12 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
     private ConversationService conversationService;
 
     @Resource
+    private ConversationMessageRefEmbeddingService conversationMessageRefEmbeddingService;
+
+    @Resource
+    private ConversationMessageRefGraphService conversationMessageRefGraphService;
+
+    @Resource
     private CompositeRAG compositeRAG;
 
     @Resource
@@ -79,7 +87,6 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
 
     @Resource
     private FileService fileService;
-
 
     public SseEmitter sseAsk(AskReq askReq) {
         SseEmitter sseEmitter = new SseEmitter(SSE_TIMEOUT);
@@ -166,10 +173,13 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
 
         //如果关联了知识库，则先进行知识库查询
         String retrieveContents = "";
+        List<ContentRetriever> retrievers = new ArrayList<>();
         if (StringUtils.isNotBlank(conversation.getKbIds())) {
             List<Long> kbIds = Arrays.stream(conversation.getKbIds().split(",")).map(Long::parseLong).toList();
             List<KbInfoResp> filteredKb = conversationService.filterEnableKb(user, kbIds);
-            retrieveContents = retrieveContents(filteredKb, llmService, askReq);
+            Pair<List<ContentRetriever>, String> retrievePair = retrieveContents(filteredKb, llmService, askReq);
+            retrievers.addAll(retrievePair.getLeft());
+            retrieveContents = retrievePair.getRight();
         }
 
         int answerContentType = getAnswerContentType(conversation, askReq);
@@ -215,8 +225,20 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                 audioInfo.setUuid(adiFile.getUuid());
                 audioInfo.setUrl(FileOperatorContext.getFileUrl(adiFile));
             }
+            boolean isRefEmbedding = false;
+            boolean isRefGraph = false;
+            for (ContentRetriever retriever : retrievers) {
+                if (retriever instanceof AdiEmbeddingStoreContentRetriever embeddingStoreContentRetriever) {
+                    isRefEmbedding = !embeddingStoreContentRetriever.getRetrievedEmbeddingToScore().isEmpty();
+                } else if (retriever instanceof GraphStoreContentRetriever graphStoreContentRetriever) {
+                    RefGraphDto graphDto = graphStoreContentRetriever.getGraphRef();
+                    isRefGraph = !graphDto.getVertices().isEmpty() || !graphDto.getEdges().isEmpty();
+                }
+            }
+            answerMeta.setIsRefEmbedding(isRefEmbedding);
+            answerMeta.setIsRefGraph(isRefGraph);
             sseEmitterHelper.sendComplete(user.getId(), sseEmitter, questionMeta, answerMeta, audioInfo);
-            self.saveAfterAiResponse(user, askReq, response, questionMeta, answerMeta, audioInfo);
+            self.saveAfterAiResponse(user, askReq, retrievers, response, questionMeta, answerMeta, audioInfo);
         });
     }
 
@@ -241,9 +263,10 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
      * @param llmService 大模型服务
      * @param askReq     请求参数
      */
-    private String retrieveContents(List<KbInfoResp> filteredKb, AbstractLLMService<?> llmService, AskReq askReq) {
+    private Pair<List<ContentRetriever>, String> retrieveContents(List<KbInfoResp> filteredKb, AbstractLLMService<?> llmService, AskReq askReq) {
         if (filteredKb.isEmpty()) {
             log.warn("关联的知识库为空");
+            return Pair.of(Collections.emptyList(), "");
         }
         List<String> kbUuids = filteredKb.stream().map(KbInfoResp::getUuid).toList();
         log.info("开始搜索相关联的知识库,kbUuids:{},question:{}", String.join(",", kbUuids), askReq.getPrompt());
@@ -264,10 +287,10 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             StringBuilder promptBuilder = new StringBuilder();
             retrieveContents.forEach(content -> promptBuilder.append(content.textSegment().text()).append("\n"));
             promptBuilder.append("\n");
-            return promptBuilder.toString();
+            return Pair.of(retrievers, promptBuilder.toString());
         } else {
             log.info("问题没有命中知识库中的文档");
-            return "";
+            return Pair.of(Collections.emptyList(), "");
         }
     }
 
@@ -283,7 +306,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
     }
 
     @Transactional
-    public void saveAfterAiResponse(User user, AskReq askReq, LLMResponseContent response, PromptMeta questionMeta, AnswerMeta answerMeta, AudioInfo audioInfo) {
+    public void saveAfterAiResponse(User user, AskReq askReq, List<ContentRetriever> retrievers, LLMResponseContent response, PromptMeta questionMeta, AnswerMeta answerMeta, AudioInfo audioInfo) {
         Conversation conversation;
         String prompt = askReq.getPrompt();
         String convUuid = askReq.getConversationUuid();
@@ -315,6 +338,8 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             question.setAttachments(String.join(",", askReq.getImageUrls()));
             baseMapper.insert(question);
 
+            createRef(retrievers, user, question.getId());
+
             promptMsg = this.lambdaQuery().eq(ConversationMessage::getUuid, questionMeta.getUuid()).one();
         }
 
@@ -334,9 +359,13 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         aiAnswer.setTokens(answerMeta.getTokens());
         aiAnswer.setParentMessageId(promptMsg.getId());
         aiAnswer.setAiModelId(aiModel.getId());
+        aiAnswer.setIsRefEmbedding(answerMeta.getIsRefEmbedding());
+        aiAnswer.setIsRefGraph(answerMeta.getIsRefGraph());
         int answerContentType = getAnswerContentType(conversation, askReq);
         aiAnswer.setContentType(answerContentType);
         baseMapper.insert(aiAnswer);
+
+        createRef(retrievers, user, aiAnswer.getId());
 
         calcTodayCost(user, conversation, questionMeta, answerMeta, aiModel.getIsFree());
 
@@ -396,6 +425,64 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             return null;
         }
         return conversationMessage.getRemark();
+    }
+
+    private void createRef(List<ContentRetriever> retrievers, User user, Long msgId) {
+        if (CollectionUtils.isEmpty(retrievers)) {
+            return;
+        }
+        for (ContentRetriever retriever : retrievers) {
+            if (retriever instanceof AdiEmbeddingStoreContentRetriever embeddingRetriever) {
+                self.createEmbeddingRefs(user, msgId, embeddingRetriever.getRetrievedEmbeddingToScore());
+            } else if (retriever instanceof GraphStoreContentRetriever graphRetriever) {
+                self.createGraphRefs(user, msgId, graphRetriever.getGraphRef());
+            }
+        }
+    }
+
+    /**
+     * 增加嵌入引用记录
+     *
+     * @param user             用户
+     * @param messageId        消息id
+     * @param embeddingToScore 嵌入向量id和分数的映射
+     */
+    public void createEmbeddingRefs(User user, Long messageId, Map<String, Double> embeddingToScore) {
+        log.info("创建向量引用,userId:{},qaRecordId:{},embeddingToScore.size:{}", user.getId(), messageId, embeddingToScore.size());
+        for (Map.Entry<String, Double> entry : embeddingToScore.entrySet()) {
+            String embeddingId = entry.getKey();
+            ConversationMessageRefEmbedding recordReference = new ConversationMessageRefEmbedding();
+            recordReference.setMessageId(messageId);
+            recordReference.setEmbeddingId(embeddingId);
+            recordReference.setScore(embeddingToScore.get(embeddingId));
+            recordReference.setUserId(user.getId());
+            conversationMessageRefEmbeddingService.save(recordReference);
+        }
+    }
+
+    /**
+     * 增加图谱引用记录
+     *
+     * @param user      用户
+     * @param messageId 消息id
+     * @param graphDto  图谱引用数据传输对象
+     */
+    public void createGraphRefs(User user, Long messageId, RefGraphDto graphDto) {
+        log.info("准备创建图谱引用,userId:{},qaRecordId:{},vertices.Size:{},edges.size:{}", user.getId(), messageId, graphDto.getVertices().size(), graphDto.getEdges().size());
+        if (graphDto.getVertices().isEmpty() && graphDto.getEdges().isEmpty()) {
+            log.warn("图谱引用数据为空，无法创建图谱引用记录,userId:{},qaRecordId:{}", user.getId(), messageId);
+            return;
+        }
+        String entities = null == graphDto.getEntitiesFromLlm() ? "" : String.join(",", graphDto.getEntitiesFromLlm());
+        Map<String, Object> graphFromStore = new HashMap<>();
+        graphFromStore.put("vertices", graphDto.getVertices());
+        graphFromStore.put("edges", graphDto.getEdges());
+        ConversationMessageRefGraph refGraph = new ConversationMessageRefGraph();
+        refGraph.setMessageId(messageId);
+        refGraph.setUserId(user.getId());
+        refGraph.setEntitiesFromQuestion(entities);
+        refGraph.setGraphFromStore(JsonUtil.toJson(graphFromStore));
+        conversationMessageRefGraphService.save(refGraph);
     }
 
     private ChatModelParams buildChatModelParams(Conversation conversation, AskReq askReq) {

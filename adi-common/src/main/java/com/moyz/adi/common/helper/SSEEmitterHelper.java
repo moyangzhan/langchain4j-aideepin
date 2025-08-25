@@ -1,5 +1,7 @@
 package com.moyz.adi.common.helper;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.cosntant.RedisKeyConstant;
 import com.moyz.adi.common.entity.User;
@@ -31,6 +33,8 @@ public class SSEEmitterHelper {
 
     @Resource
     private RateLimitHelper rateLimitHelper;
+
+    private static final Cache<SseEmitter, Boolean> COMPLETED_SSE = CacheBuilder.newBuilder().expireAfterWrite(10, TimeUnit.MINUTES).build();
 
     public boolean checkOrComplete(User user, SseEmitter sseEmitter) {
         //Check: rate limit
@@ -70,6 +74,7 @@ public class SSEEmitterHelper {
         } catch (IOException e) {
             log.error("startSse error", e);
             sseEmitter.completeWithError(e);
+            COMPLETED_SSE.put(sseEmitter, Boolean.TRUE);
             stringRedisTemplate.delete(askingKey);
         }
     }
@@ -89,6 +94,7 @@ public class SSEEmitterHelper {
                 log.error("commonProcess error", e);
                 errorAndShutdown(e, sseAskParams.getSseEmitter());
             } finally {
+                COMPLETED_SSE.put(sseAskParams.getSseEmitter(), Boolean.TRUE);
                 stringRedisTemplate.delete(askingKey);
             }
         });
@@ -114,6 +120,7 @@ public class SSEEmitterHelper {
                     } catch (IOException e) {
                         log.error("error", e);
                     } finally {
+                        COMPLETED_SSE.put(sseAskParams.getSseEmitter(), Boolean.TRUE);
                         stringRedisTemplate.delete(askingKey);
                     }
                 }
@@ -122,13 +129,20 @@ public class SSEEmitterHelper {
     }
 
     public void sendComplete(long userId, SseEmitter sseEmitter, String msg) {
+        if (Boolean.TRUE.equals(COMPLETED_SSE.getIfPresent(sseEmitter))) {
+            log.warn("sseEmitter already completed,userId:{}", userId);
+            delSseRequesting(userId);
+            return;
+        }
         try {
             sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.DONE).data(msg));
         } catch (IOException e) {
             throw new RuntimeException(e);
+        } finally {
+            COMPLETED_SSE.put(sseEmitter, Boolean.TRUE);
+            delSseRequesting(userId);
+            sseEmitter.complete();
         }
-        sseEmitter.complete();
-        delSseRequesting(userId);
     }
 
     public void sendComplete(long userId, SseEmitter sseEmitter, PromptMeta questionMeta, AnswerMeta answerMeta, AudioInfo audioInfo) {
@@ -144,13 +158,20 @@ public class SSEEmitterHelper {
      * @param sseEmitter sse
      */
     public void sendComplete(long userId, SseEmitter sseEmitter) {
+        if (Boolean.TRUE.equals(COMPLETED_SSE.getIfPresent(sseEmitter))) {
+            log.warn("sseEmitter already completed,userId:{}", userId);
+            delSseRequesting(userId);
+            return;
+        }
         try {
             sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.DONE));
             sseEmitter.complete();
         } catch (Exception e) {
             log.warn("sendComplete error", e);
+        } finally {
+            COMPLETED_SSE.put(sseEmitter, Boolean.TRUE);
+            delSseRequesting(userId);
         }
-        delSseRequesting(userId);
     }
 
     public void sendStartAndComplete(long userId, SseEmitter sseEmitter, String msg) {
@@ -159,20 +180,29 @@ public class SSEEmitterHelper {
             sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.DONE).data(msg));
         } catch (IOException e) {
             throw new RuntimeException(e);
+        } finally {
+            COMPLETED_SSE.put(sseEmitter, Boolean.TRUE);
+            delSseRequesting(userId);
+            sseEmitter.complete();
         }
-        sseEmitter.complete();
-        delSseRequesting(userId);
     }
 
     public void sendErrorAndComplete(long userId, SseEmitter sseEmitter, String errorMsg) {
+        if (Boolean.TRUE.equals(COMPLETED_SSE.getIfPresent(sseEmitter))) {
+            log.warn("sseEmitter already completed,ignore error:{}", errorMsg);
+            delSseRequesting(userId);
+            return;
+        }
         try {
             sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.ERROR).data(Objects.toString(errorMsg, "")));
         } catch (IOException e) {
             log.warn("sendErrorAndComplete userId:{},errorMsg:{}", userId, errorMsg);
             throw new RuntimeException(e);
+        } finally {
+            COMPLETED_SSE.put(sseEmitter, Boolean.TRUE);
+            delSseRequesting(userId);
+            sseEmitter.complete();
         }
-        sseEmitter.complete();
-        delSseRequesting(userId);
     }
 
     private void delSseRequesting(long userId) {
@@ -203,6 +233,10 @@ public class SSEEmitterHelper {
     }
 
     public static void parseAndSendPartialMsg(SseEmitter sseEmitter, String name, String content) {
+        if (Boolean.TRUE.equals(COMPLETED_SSE.getIfPresent(sseEmitter))) {
+            log.warn("sseEmitter already completed,name:{}", name);
+            return;
+        }
         try {
             String[] lines = content.split("[\\r\\n]", -1);
             if (lines.length > 1) {
@@ -222,6 +256,10 @@ public class SSEEmitterHelper {
     }
 
     private static void sendPartial(SseEmitter sseEmitter, String name, String msg) throws IOException {
+        if (Boolean.TRUE.equals(COMPLETED_SSE.getIfPresent(sseEmitter))) {
+            log.warn("sseEmitter already completed,name:{}", name);
+            return;
+        }
         if (StringUtils.isNotBlank(name)) {
             sseEmitter.send(SseEmitter.event().name(name).data(msg));
         } else {
@@ -245,11 +283,15 @@ public class SSEEmitterHelper {
         LLMTokenUtil.cacheTokenUsage(SpringUtil.getBean(StringRedisTemplate.class), uuid, response.metadata().tokenUsage());
 
         PromptMeta questionMeta = new PromptMeta(inputTokenCount, uuid);
-        AnswerMeta answerMeta = new AnswerMeta(outputTokenCount, UuidUtil.createShort());
+        AnswerMeta answerMeta = new AnswerMeta(outputTokenCount, UuidUtil.createShort(), false, false);
         return Pair.of(questionMeta, answerMeta);
     }
 
     public static void errorAndShutdown(Throwable error, SseEmitter sseEmitter) {
+        if (Boolean.TRUE.equals(COMPLETED_SSE.getIfPresent(sseEmitter))) {
+            log.warn("sseEmitter already completed,ignore error:{}", error.getMessage());
+            return;
+        }
         log.error("stream error", error);
         try {
             String errorMsg = error.getMessage();
@@ -262,7 +304,10 @@ public class SSEEmitterHelper {
             sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.ERROR).data(errorMsg));
         } catch (IOException e) {
             log.error("sse error", e);
+        } finally {
+            COMPLETED_SSE.put(sseEmitter, Boolean.TRUE);
+            sseEmitter.complete();
         }
-        sseEmitter.complete();
+
     }
 }

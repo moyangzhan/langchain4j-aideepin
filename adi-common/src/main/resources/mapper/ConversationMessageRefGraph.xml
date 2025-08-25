@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moyz.adi.common.mapper.ConversationMessageRefGraphMapper">
+    <select id="listByMsgUuid" resultType="com.moyz.adi.common.entity.ConversationMessageRefGraph">
+        select *
+        from adi_conversation_message_ref_graph a
+                 inner join adi_conversation_message b on a.message_id = b.id
+        where b.uuid = #{uuid}
+    </select>
+</mapper>

@@ -94,10 +94,10 @@ public class GraphRAG {
         ingestor.ingest(graphIngestParams.getDocument());
     }
 
-    public GraphStoreContentRetriever createRetriever(ChatModel ChatModel, Filter filter, int maxResults, boolean breakIfSearchMissed) {
+    public GraphStoreContentRetriever createRetriever(ChatModel chatModel, Filter filter, int maxResults, boolean breakIfSearchMissed) {
         return GraphStoreContentRetriever.builder()
                 .graphStore(graphStore)
-                .ChatModel(ChatModel)
+                .chatModel(chatModel)
                 .maxResults(maxResults)
                 .filter(filter)
                 .breakIfSearchMissed(breakIfSearchMissed)

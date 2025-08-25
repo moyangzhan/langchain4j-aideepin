@@ -10,20 +10,20 @@ import lombok.Data;
 import java.io.Serializable;
 
 @Data
-@TableName("adi_knowledge_base_qa_ref_graph")
-@Schema(title = "知识库问答记录-图谱引用", description = "知识库问答记录-图谱引用列表")
-public class KnowledgeBaseQaRefGraph implements Serializable {
+@TableName("adi_conversation_message_ref_graph")
+@Schema(title = "会话消息-知识库-图谱引用", description = "会话消息-知识库-图谱引用列表")
+public class ConversationMessageRefGraph implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    @Schema(title = "问答记录ID")
-    @TableField("qa_record_id")
-    private Long qaRecordId;
+    @Schema(title = "消息ID")
+    @TableField("message_id")
+    private Long messageId;
 
-    @Schema(title = "从用户问题中解析出来的实体")
+    @Schema(title = "用户问题解析出来的实体")
     @TableField("entities_from_question")
     private String entitiesFromQuestion;
 

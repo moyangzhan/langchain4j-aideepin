@@ -2,6 +2,7 @@ package com.moyz.adi.common.service.embedding;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.dto.KbItemEmbeddingDto;
+import com.moyz.adi.common.dto.RefEmbeddingDto;
 
 import java.util.List;
 

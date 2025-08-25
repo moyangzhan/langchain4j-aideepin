@@ -3,8 +3,8 @@ package com.moyz.adi.common.service;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.moyz.adi.common.dto.KbItemEmbeddingDto;
 import com.moyz.adi.common.dto.RefEmbeddingDto;
-import com.moyz.adi.common.entity.KnowledgeBaseQaRefEmbedding;
-import com.moyz.adi.common.mapper.KnowledgeBaseQaRecordReferenceMapper;
+import com.moyz.adi.common.entity.ConversationMessageRefEmbedding;
+import com.moyz.adi.common.mapper.ConversationMessageRefEmbeddingMapper;
 import com.moyz.adi.common.service.embedding.IEmbeddingService;
 import com.moyz.adi.common.util.EmbeddingUtil;
 import jakarta.annotation.Resource;
@@ -17,21 +17,22 @@ import java.util.List;
 
 @Slf4j
 @Service
-public class KnowledgeBaseQaRecordReferenceService extends ServiceImpl<KnowledgeBaseQaRecordReferenceMapper, KnowledgeBaseQaRefEmbedding> {
+public class ConversationMessageRefEmbeddingService extends ServiceImpl<ConversationMessageRefEmbeddingMapper, ConversationMessageRefEmbedding> {
 
     @Resource
     private IEmbeddingService iEmbeddingService;
 
-    public List<RefEmbeddingDto> listRefEmbeddings(String aqRecordUuid) {
-        List<KnowledgeBaseQaRefEmbedding> recordReferences = this.getBaseMapper().listByQaUuid(aqRecordUuid);
+    public List<RefEmbeddingDto> listRefEmbeddings(String msgUuid) {
+        List<ConversationMessageRefEmbedding> recordReferences = this.getBaseMapper().listByMsgUuid(msgUuid);
         if (CollectionUtils.isEmpty(recordReferences)) {
             return Collections.emptyList();
         }
-        List<String> embeddingIds = recordReferences.stream().map(KnowledgeBaseQaRefEmbedding::getEmbeddingId).toList();
+        List<String> embeddingIds = recordReferences.stream().map(ConversationMessageRefEmbedding::getEmbeddingId).toList();
         if (CollectionUtils.isEmpty(embeddingIds)) {
             return Collections.emptyList();
         }
         List<KbItemEmbeddingDto> embeddings = iEmbeddingService.listByEmbeddingIds(embeddingIds);
         return EmbeddingUtil.itemToRefEmbeddingDto(embeddings);
     }
+
 }

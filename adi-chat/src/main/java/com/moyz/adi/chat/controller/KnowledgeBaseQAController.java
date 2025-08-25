@@ -3,6 +3,7 @@ package com.moyz.adi.chat.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.dto.*;
 import com.moyz.adi.common.entity.KnowledgeBase;
+import com.moyz.adi.common.service.KnowledgeBaseQaRecordReferenceService;
 import com.moyz.adi.common.service.KnowledgeBaseQaRefGraphService;
 import com.moyz.adi.common.service.KnowledgeBaseQaService;
 import com.moyz.adi.common.service.KnowledgeBaseService;
@@ -30,6 +31,9 @@ public class KnowledgeBaseQAController {
     private KnowledgeBaseQaService knowledgeBaseQaService;
 
     @Resource
+    private KnowledgeBaseQaRecordReferenceService knowledgeBaseQaRecordReferenceService;
+
+    @Resource
     private KnowledgeBaseQaRefGraphService knowledgeBaseQaRefGraphService;
 
     @PostMapping("/add/{kbUuid}")
@@ -54,13 +58,13 @@ public class KnowledgeBaseQAController {
         return knowledgeBaseQaService.softDelete(uuid);
     }
 
-    @GetMapping("/reference/{uuid}")
-    public List<KbQaRefEmbeddingDto> embeddingRef(@PathVariable String uuid) {
-        return knowledgeBaseQaService.listReferences(uuid);
+    @GetMapping("/embedding-ref/{uuid}")
+    public List<RefEmbeddingDto> embeddingRef(@PathVariable String uuid) {
+        return knowledgeBaseQaRecordReferenceService.listRefEmbeddings(uuid);
     }
 
     @GetMapping("/graph-ref/{uuid}")
-    public KbQaRefGraphDto graphRef(@PathVariable String uuid) {
+    public RefGraphDto graphRef(@PathVariable String uuid) {
         return knowledgeBaseQaRefGraphService.getByQaUuid(uuid);
     }
 

@@ -261,6 +261,8 @@ CREATE TABLE adi_conversation_message
     attachments                     varchar(1000) default ''                not null,
     create_time                     timestamp     default CURRENT_TIMESTAMP not null,
     update_time                     timestamp     default CURRENT_TIMESTAMP not null,
+    is_ref_embedding                boolean       default false             not null,
+    is_ref_graph                    boolean       default false             not null,
     is_deleted                      boolean       default false             not null
 );
 
@@ -280,12 +282,44 @@ COMMENT ON COLUMN adi_conversation_message.user_id IS '用户ID | User ID';
 COMMENT ON COLUMN adi_conversation_message.ai_model_id IS '模型表的ID | adi_ai_model id';
 COMMENT ON COLUMN adi_conversation_message.understand_context_msg_pair_num IS '上下文消息对数量 | Number of context message pairs';
 COMMENT ON COLUMN adi_conversation_message.attachments IS '附件,存储格式: uuid,uuid | Attachments, stored as: uuid,uuid';
+COMMENT ON COLUMN adi_conversation_message.is_ref_embedding IS '是否引用了向量库知识 | Whether embedding knowledge is referenced';
+COMMENT ON COLUMN adi_conversation_message.is_ref_graph IS '是否引用了图库知识 | Whether graph knowledge is referenced';
 
 CREATE TRIGGER trigger_conv_message_update_time
     BEFORE UPDATE
     ON adi_conversation_message
     FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
+
+create table adi_conversation_message_ref_embedding
+(
+    id           bigserial primary key,
+    message_id   bigint        default 0  not null,
+    embedding_id varchar(36)   default '' not null,
+    score        numeric(3, 2) default 0  not null,
+    user_id      bigint        default 0  not null
+);
+
+comment on table adi_conversation_message_ref_embedding is '会话消息-知识库的向量引用 | Conversation-Question Record-Knowledge Base Embedding Reference List';
+comment on column adi_conversation_message_ref_embedding.message_id is '消息id | adi_conversation_message ID';
+comment on column adi_conversation_message_ref_embedding.embedding_id is '根据消息从向量库中获取到的向量uuid | adi_knowledge_base_embedding UUID';
+comment on column adi_conversation_message_ref_embedding.score is '评分 | Score';
+comment on column adi_conversation_message_ref_embedding.user_id is '所属用户 | User ID';
+
+create table adi_conversation_message_ref_graph
+(
+    id                     bigserial primary key,
+    message_id             bigint default 0  not null,
+    entities_from_question text   default '' not null,
+    graph_from_store       text   default '' not null,
+    user_id                bigint default 0  not null
+);
+
+comment on table adi_conversation_message_ref_graph is '会话消息-知识库的图谱引用记录 | Knowledge Base - Question Records - Graph References';
+comment on column adi_conversation_message_ref_graph.message_id is '消息id | adi_conversation_message ID';
+comment on column adi_conversation_message_ref_graph.entities_from_question is '从问题中解析出来的实体: vertexName1,vertexName2 | Graph parsed by LLM: vertexName1,vertexName2';
+comment on column adi_conversation_message_ref_graph.graph_from_store is '根据消息从图数据库中查找到的图谱: {vertices:[{id:"111",name:"vertexName1"},{id:"222",name:"vertexName2"}],edges:[{id:"333",name:"edgeName1",start:"111",end:"222"}] | Graph retrieved from graph database: {vertices:[{id:"111",name:"vertexName1"},{id:"222",name:"vertexName2"}],edges:[{id:"333",name:"edgeName1",start:"111",end:"222"}]';
+comment on column adi_conversation_message_ref_graph.user_id is '所属用户 | adi_user ID';
 
 CREATE TABLE adi_file
 (
@@ -629,15 +663,9 @@ create table adi_knowledge_base_qa_ref_embedding
 
 comment on table adi_knowledge_base_qa_ref_embedding is '知识库-提问记录-向量引用列表 | Knowledge Base - Question Records - Embedding References';
 comment on column adi_knowledge_base_qa_ref_embedding.qa_record_id is '提问记录id | adi_knowledge_base_qa ID';
-comment on column adi_knowledge_base_qa_ref_embedding.embedding_id is '向量uuid | adi_knowledge_base_embedding UUID';
+comment on column adi_knowledge_base_qa_ref_embedding.embedding_id is '由消息从向量库中获取到的向量uuid | adi_knowledge_base_embedding UUID';
 comment on column adi_knowledge_base_qa_ref_embedding.score is '评分 | Score';
 comment on column adi_knowledge_base_qa_ref_embedding.user_id is '所属用户 | User ID';
-
-create trigger trigger_kb_qa_ref_update_time
-    before update
-    on adi_knowledge_base_qa_ref_embedding
-    for each row
-execute procedure update_modified_column();
 
 -- Graph RAG
 create table adi_knowledge_base_graph_segment
@@ -671,16 +699,16 @@ execute procedure update_modified_column();
 
 create table adi_knowledge_base_qa_ref_graph
 (
-    id               bigserial primary key,
-    qa_record_id     bigint default 0  not null,
-    graph_from_llm   text   default '' not null,
-    graph_from_store text   default '' not null,
-    user_id          bigint default 0  not null
+    id                     bigserial primary key,
+    qa_record_id           bigint default 0  not null,
+    entities_from_question text   default '' not null, -- 原名为 graph_from_llm
+    graph_from_store       text   default '' not null,
+    user_id                bigint default 0  not null
 );
 
 comment on table adi_knowledge_base_qa_ref_graph is '知识库-提问记录-图谱引用记录 | Knowledge Base - Question Records - Graph References';
 comment on column adi_knowledge_base_qa_ref_graph.qa_record_id is '提问记录id | adi_knowledge_base_qa ID';
-comment on column adi_knowledge_base_qa_ref_graph.graph_from_llm is 'LLM解析出来的图谱: vertexName1,vertexName2 | Graph parsed by LLM: vertexName1,vertexName2';
+comment on column adi_knowledge_base_qa_ref_graph.entities_from_question is '从问题中解析出来的实体: vertexName1,vertexName2 | Graph parsed by LLM: vertexName1,vertexName2';
 comment on column adi_knowledge_base_qa_ref_graph.graph_from_store is '从图数据库中查找得到的图谱: {vertices:[{id:"111",name:"vertexName1"},{id:"222",name:"vertexName2"}],edges:[{id:"333",name:"edgeName1",start:"111",end:"222"}] | Graph retrieved from graph database: {vertices:[{id:"111",name:"vertexName1"},{id:"222",name:"vertexName2"}],edges:[{id:"333",name:"edgeName1",start:"111",end:"222"}]';
 comment on column adi_knowledge_base_qa_ref_graph.user_id is '所属用户 | adi_user ID';
 
@@ -986,7 +1014,8 @@ VALUES ('tts_setting', '{"synthesizer_side":"client","model_name":"","platform":
 -- https://api-docs.deepseek.com/zh-cn/quick_start/pricing
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
 VALUES ('deepseek-chat', 'DeepSeek-V3', 'text', 'deepseek', 65536, 61440, 4096, false);
-INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_reasoner, is_thinking_closable, is_enable)
+INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_reasoner,
+                          is_thinking_closable, is_enable)
 VALUES ('deepseek-reasoner', 'DeepSeek-R1', 'text', 'deepseek', 65536, 61440, 4096, true, false, false);
 -- https://platform.openai.com/docs/models/gpt-3-5-turbo
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
@@ -1004,7 +1033,8 @@ VALUES ('text-embedding-3-large', 'openai-embedding-large', 'embedding', 'openai
   "dimension": 3072
 }', false);
 -- https://help.aliyun.com/zh/dashscope/developer-reference/model-introduction?spm=a2c4g.11186623.0.i39
-INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_reasoner, is_thinking_closable, is_enable)
+INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_reasoner,
+                          is_thinking_closable, is_enable)
 VALUES ('qwen-turbo', '通义千问turbo', 'text', 'dashscope', 8192, 6144, 1536, true, true, false);
 -- 图片识别
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, input_types,

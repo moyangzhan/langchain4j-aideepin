@@ -10,4 +10,6 @@ import lombok.Data;
 public class AnswerMeta {
     private Integer tokens;
     private String uuid;
+    private Boolean isRefEmbedding;
+    private Boolean isRefGraph;
 }

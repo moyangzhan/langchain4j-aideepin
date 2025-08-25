@@ -5,22 +5,23 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.moyz.adi.common.base.ThreadContext;
-import com.moyz.adi.common.dto.*;
+import com.moyz.adi.common.dto.KbQaDto;
+import com.moyz.adi.common.dto.QARecordReq;
+import com.moyz.adi.common.dto.RefGraphDto;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.KnowledgeBaseQaRecordMapper;
-import com.moyz.adi.common.service.embedding.IEmbeddingService;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.MPPageUtil;
 import com.moyz.adi.common.util.UuidUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_DATA_NOT_FOUND;
 import static com.moyz.adi.common.util.LocalCache.MODEL_ID_TO_OBJ;
@@ -34,9 +35,6 @@ public class KnowledgeBaseQaService extends ServiceImpl<KnowledgeBaseQaRecordMap
 
     @Resource
     private KnowledgeBaseQaRefGraphService knowledgeBaseQaRecordRefGraphService;
-
-    @Resource
-    private IEmbeddingService iEmbeddingService;
 
     @Resource
     private AiModelService aiModelService;
@@ -105,7 +103,7 @@ public class KnowledgeBaseQaService extends ServiceImpl<KnowledgeBaseQaRecordMap
      * @param qaRecordId
      * @param graphDto
      */
-    public void createGraphRefs(User user, Long qaRecordId, KbQaRefGraphDto graphDto) {
+    public void createGraphRefs(User user, Long qaRecordId, RefGraphDto graphDto) {
         log.info("更新图谱引用,userId:{},qaRecordId:{},vertices.Size:{},edges.size:{}", user.getId(), qaRecordId, graphDto.getVertices().size(), graphDto.getEdges().size());
         String entities = null == graphDto.getEntitiesFromLlm() ? "" : String.join(",", graphDto.getEntitiesFromLlm());
         Map<String, Object> graphFromStore = new HashMap<>();
@@ -114,30 +112,9 @@ public class KnowledgeBaseQaService extends ServiceImpl<KnowledgeBaseQaRecordMap
         KnowledgeBaseQaRefGraph refGraph = new KnowledgeBaseQaRefGraph();
         refGraph.setQaRecordId(qaRecordId);
         refGraph.setUserId(user.getId());
-        refGraph.setGraphFromLlm(entities);
+        refGraph.setEntitiesFromQuestion(entities);
         refGraph.setGraphFromStore(JsonUtil.toJson(graphFromStore));
         knowledgeBaseQaRecordRefGraphService.save(refGraph);
-    }
-
-    public List<KbQaRefEmbeddingDto> listReferences(String uuid) {
-        List<KnowledgeBaseQaRefEmbedding> recordReferences = knowledgeBaseQaRecordReferenceService.listByQaUuid(uuid);
-        if (CollectionUtils.isEmpty(recordReferences)) {
-            return Collections.emptyList();
-        }
-        List<String> embeddingIds = recordReferences.stream().map(KnowledgeBaseQaRefEmbedding::getEmbeddingId).toList();
-        if (CollectionUtils.isEmpty(embeddingIds)) {
-            return Collections.emptyList();
-        }
-        List<KbItemEmbeddingDto> embeddings = iEmbeddingService.listByEmbeddingIds(embeddingIds);
-        List<KbQaRefEmbeddingDto> result = new ArrayList<>();
-        for (KbItemEmbeddingDto embedding : embeddings) {
-            KbQaRefEmbeddingDto newOne = KbQaRefEmbeddingDto.builder()
-                    .embeddingId(embedding.getEmbeddingId())
-                    .text(embedding.getText())
-                    .build();
-            result.add(newOne);
-        }
-        return result;
     }
 
     public KnowledgeBaseQa getOrThrow(String uuid) {
