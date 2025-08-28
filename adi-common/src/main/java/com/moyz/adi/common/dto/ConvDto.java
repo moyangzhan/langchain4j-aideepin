@@ -30,7 +30,7 @@ public class ConvDto {
     private List<ConvKnowledge> convKnowledgeList;
     private Integer answerContentType;
     private Boolean isAutoplayAnswer;
-
+    private Boolean isEnableThinking;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }
