@@ -3,7 +3,7 @@ package com.moyz.adi.common.service.languagemodel;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.util.JsonUtil;
-import com.moyz.adi.common.vo.LLMBuilderProperties;
+import com.moyz.adi.common.vo.ChatModelBuilderProperties;
 import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.QianFanAiModelSetting;
 import com.moyz.adi.common.vo.QianFanAiPlatformSetting;
@@ -42,7 +42,7 @@ public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetti
     }
 
     @Override
-    protected ChatModel doBuildChatModel(LLMBuilderProperties properties) {
+    protected ChatModel doBuildChatModel(ChatModelBuilderProperties properties) {
         QianfanChatModel.QianfanChatModelBuilder builder = QianfanChatModel.builder()
                 .baseUrl(platformSetting.getBaseUrl())
                 .modelName(aiModel.getName())
@@ -60,7 +60,7 @@ public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetti
     }
 
     @Override
-    public StreamingChatModel buildStreamingChatModel(LLMBuilderProperties properties) {
+    public StreamingChatModel buildStreamingChatModel(ChatModelBuilderProperties properties) {
         double temperature = properties.getTemperatureWithDefault(0.7);
         QianfanStreamingChatModel.QianfanStreamingChatModelBuilder builder = QianfanStreamingChatModel.builder()
                 .baseUrl(platformSetting.getBaseUrl())

@@ -20,7 +20,7 @@ import com.moyz.adi.common.rag.CompositeRAG;
 import com.moyz.adi.common.service.embedding.IEmbeddingService;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.GraphIngestParams;
-import com.moyz.adi.common.vo.LLMBuilderProperties;
+import com.moyz.adi.common.vo.ChatModelBuilderProperties;
 import dev.langchain4j.data.document.DefaultDocument;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
@@ -189,7 +189,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                     .update();
             AbstractLLMService<?> llmService = LLMContext.getLLMServiceById(knowledgeBase.getIngestModelId());
             ChatModel ChatModel = llmService.buildChatLLM(
-                    LLMBuilderProperties.builder()
+                    ChatModelBuilderProperties.builder()
                             .temperature(knowledgeBase.getQueryLlmTemperature())
                             .build()
             );

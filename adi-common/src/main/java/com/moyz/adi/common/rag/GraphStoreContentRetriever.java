@@ -43,7 +43,7 @@ public class GraphStoreContentRetriever implements ContentRetriever {
 
     private final boolean breakIfSearchMissed;
 
-    private final RefGraphDto kbQaRecordRefGraphDto = RefGraphDto.builder().vertices(Collections.emptyList()).edges(Collections.emptyList()).entitiesFromLlm(Collections.emptyList()).build();
+    private final RefGraphDto kbQaRecordRefGraphDto = RefGraphDto.builder().vertices(Collections.emptyList()).edges(Collections.emptyList()).entitiesFromQuestion(Collections.emptyList()).build();
 
     @Builder
     private GraphStoreContentRetriever(String displayName,
@@ -123,7 +123,7 @@ public class GraphStoreContentRetriever implements ContentRetriever {
             allEdges.add(triple.getMiddle());
         }
         allVertices.putAll(vertices.stream().collect(toMap(GraphVertex::getId, Function.identity())));
-        kbQaRecordRefGraphDto.setEntitiesFromLlm(entityNames);
+        kbQaRecordRefGraphDto.setEntitiesFromQuestion(entityNames);
         kbQaRecordRefGraphDto.setVertices(allVertices.values().stream().toList());
         kbQaRecordRefGraphDto.setEdges(allEdges);
 

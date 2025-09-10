@@ -1,6 +1,7 @@
 package com.moyz.adi.common.service.languagemodel;
 
 import com.alibaba.dashscope.audio.tts.SpeechSynthesisResult;
+import com.alibaba.dashscope.audio.tts.timestamp.Word;
 import com.alibaba.dashscope.audio.ttsv2.SpeechSynthesisAudioFormat;
 import com.alibaba.dashscope.audio.ttsv2.SpeechSynthesisParam;
 import com.alibaba.dashscope.audio.ttsv2.SpeechSynthesizer;
@@ -17,7 +18,6 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import java.nio.ByteBuffer;
 import java.time.LocalDateTime;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -46,13 +46,11 @@ public class DashScopeTtsService extends AbstractTtsModelService<DashScopeSettin
             public void onEvent(SpeechSynthesisResult result) {
                 if (result.getAudioFrame() != null) {
                     ByteBuffer audioFrame = result.getAudioFrame();
-                    // 此处实现处理音频数据的逻辑
-                    ByteBuffer copyBuffer = cloneBuffer(audioFrame);
                     ByteBuffer byteBuffer = jobToAudioData.get(jobId);
                     if (null == byteBuffer) {
-                        jobToAudioData.put(jobId, copyBuffer);
+                        jobToAudioData.put(jobId, audioFrame);
                     } else {
-                        jobToAudioData.put(jobId, appendBuffer(byteBuffer, copyBuffer));
+                        jobToAudioData.put(jobId, combineBuffer(byteBuffer, audioFrame));
                     }
                     onProcess.accept(audioFrame);
                 }
@@ -175,7 +173,7 @@ public class DashScopeTtsService extends AbstractTtsModelService<DashScopeSettin
         return clone;
     }
 
-    private static ByteBuffer appendBuffer(ByteBuffer original, ByteBuffer toAppend) {
+    private static ByteBuffer combineBuffer(ByteBuffer original, ByteBuffer toAppend) {
         original.rewind();
         toAppend.rewind();
         ByteBuffer combined = ByteBuffer.allocate(original.capacity() + toAppend.capacity());

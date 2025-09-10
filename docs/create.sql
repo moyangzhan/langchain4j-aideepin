@@ -193,6 +193,7 @@ CREATE TABLE adi_conversation
     answer_content_type       smallint      default 1                 not null,
     is_autoplay_answer        boolean       default true              not null,
     is_enable_thinking        boolean       default false             not null,
+    audio_config              jsonb         default '{}'              not null,
     create_time               timestamp     default CURRENT_TIMESTAMP not null,
     update_time               timestamp     default CURRENT_TIMESTAMP not null,
     is_deleted                boolean       default false             not null
@@ -209,6 +210,8 @@ COMMENT ON COLUMN adi_conversation.kb_ids IS '关联使用的知识库id列表,�
 COMMENT ON COLUMN adi_conversation.answer_content_type IS '设置响应内容类型：1：自动（跟随用户的输入类型，如果用户输入是音频，则响应内容也同样是音频，如果用户输入是文本，则响应内容显示文本），2：文本，3：音频 | Response content display type: 1: Auto (if user input is audio, response content is also audio; if user input is text, response content displays text), 2: Text, 3: Audio';
 COMMENT ON COLUMN adi_conversation.is_autoplay_answer IS '设置聊天时音频类型的响应内容是否自动播放，true: 自动播放，false: 不自动播放 | Whether audio-type response content automatically plays, true: Auto play, false: Do not auto play';
 COMMENT ON COLUMN adi_conversation.is_enable_thinking IS '当前使用的模型如果是推理模式并且支持对思考过程的开关，则本字段生效 | Whether the current model supports reasoning mode and thinking process toggle, if so, this field takes effect';
+COMMENT ON COLUMN adi_conversation.audio_config IS '音频配置，json格式存储，如 {"voice":{"param_name":"longyingda","model":"cosyvoice-v2","platform":"dashscope"}} | Audio configuration, stored in JSON format, e.g., {"voice":{"param_name":"longyingda","model":"cosyvoice-v2","platform":"dashscope"}}';
+
 
 CREATE TRIGGER trigger_conv_update_time
     BEFORE UPDATE
@@ -701,14 +704,14 @@ create table adi_knowledge_base_qa_ref_graph
 (
     id                     bigserial primary key,
     qa_record_id           bigint default 0  not null,
-    entities_from_question text   default '' not null, -- 原名为 graph_from_llm
+    entities_from_question text   default '' not null, -- 原字段名 graph_from_llm
     graph_from_store       text   default '' not null,
     user_id                bigint default 0  not null
 );
 
 comment on table adi_knowledge_base_qa_ref_graph is '知识库-提问记录-图谱引用记录 | Knowledge Base - Question Records - Graph References';
 comment on column adi_knowledge_base_qa_ref_graph.qa_record_id is '提问记录id | adi_knowledge_base_qa ID';
-comment on column adi_knowledge_base_qa_ref_graph.entities_from_question is '从问题中解析出来的实体: vertexName1,vertexName2 | Graph parsed by LLM: vertexName1,vertexName2';
+comment on column adi_knowledge_base_qa_ref_graph.entities_from_question is '从用户问题中解析出来的实体: vertexName1,vertexName2 | Graph parsed by LLM: vertexName1,vertexName2';
 comment on column adi_knowledge_base_qa_ref_graph.graph_from_store is '从图数据库中查找得到的图谱: {vertices:[{id:"111",name:"vertexName1"},{id:"222",name:"vertexName2"}],edges:[{id:"333",name:"edgeName1",start:"111",end:"222"}] | Graph retrieved from graph database: {vertices:[{id:"111",name:"vertexName1"},{id:"222",name:"vertexName2"}],edges:[{id:"333",name:"edgeName1",start:"111",end:"222"}]';
 comment on column adi_knowledge_base_qa_ref_graph.user_id is '所属用户 | adi_user ID';
 

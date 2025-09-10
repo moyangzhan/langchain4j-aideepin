@@ -237,33 +237,33 @@ public class SSEEmitterHelper {
             log.warn("sseEmitter already completed,name:{}", name);
             return;
         }
-        try {
-            String[] lines = content.split("[\\r\\n]", -1);
-            if (lines.length > 1) {
-                sendPartial(sseEmitter, name, " " + lines[0]);
-                for (int i = 1; i < lines.length; i++) {
-                    sendPartial(sseEmitter, name, "-_wrap_-");
-                    sendPartial(sseEmitter, name, " " + lines[i]);
-                }
-            } else {
-                sendPartial(sseEmitter, name, " " + content);
+        String[] lines = content.split("[\\r\\n]", -1);
+        if (lines.length > 1) {
+            sendPartial(sseEmitter, name, " " + lines[0]);
+            for (int i = 1; i < lines.length; i++) {
+                sendPartial(sseEmitter, name, "-_wrap_-");
+                sendPartial(sseEmitter, name, " " + lines[i]);
             }
+        } else {
+            sendPartial(sseEmitter, name, " " + content);
+        }
 //            content = content.replaceAll("[\\r\\n]", "\ndata:");
 //            sendPartial(sseEmitter, name, " " + content);
-        } catch (IOException e) {
-            log.error("stream onNext error", e);
-        }
     }
 
-    private static void sendPartial(SseEmitter sseEmitter, String name, String msg) throws IOException {
+    public static void sendPartial(SseEmitter sseEmitter, String name, String msg) {
         if (Boolean.TRUE.equals(COMPLETED_SSE.getIfPresent(sseEmitter))) {
             log.warn("sseEmitter already completed,name:{}", name);
             return;
         }
-        if (StringUtils.isNotBlank(name)) {
-            sseEmitter.send(SseEmitter.event().name(name).data(msg));
-        } else {
-            sseEmitter.send(msg);
+        try {
+            if (StringUtils.isNotBlank(name)) {
+                sseEmitter.send(SseEmitter.event().name(name).data(msg));
+            } else {
+                sseEmitter.send(msg);
+            }
+        } catch (IOException ioException) {
+            log.error("stream onNext error", ioException);
         }
     }
 

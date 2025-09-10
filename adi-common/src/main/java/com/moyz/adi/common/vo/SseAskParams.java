@@ -22,15 +22,17 @@ public class SseAskParams {
      */
     private Integer answerContentType;
 
+    private String voice;
+
     private SseEmitter sseEmitter;
 
     /**
-     * 组装LLMService所属的属性，非必填
+     * 创建LLM时用到的属性，非必填
      */
-    private LLMBuilderProperties llmBuilderProperties;
+    private ChatModelBuilderProperties chatModelBuilderProperties;
 
     /**
-     * 最终提交给llm的信息，必填
+     * 进行http请求时最终提交给LLM的信息，必填
      */
-    private ChatModelParams chatModelParams;
+    private ChatModelRequestProperties chatModelRequestProperties;
 }

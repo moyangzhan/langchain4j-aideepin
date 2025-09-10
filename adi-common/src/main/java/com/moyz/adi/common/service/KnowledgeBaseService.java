@@ -19,8 +19,8 @@ import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.rag.*;
 import com.moyz.adi.common.service.embedding.IEmbeddingService;
 import com.moyz.adi.common.util.*;
-import com.moyz.adi.common.vo.ChatModelParams;
-import com.moyz.adi.common.vo.LLMBuilderProperties;
+import com.moyz.adi.common.vo.ChatModelBuilderProperties;
+import com.moyz.adi.common.vo.ChatModelRequestProperties;
 import com.moyz.adi.common.vo.SseAskParams;
 import com.moyz.adi.common.vo.UpdateQaParams;
 import dev.langchain4j.data.document.Document;
@@ -392,15 +392,15 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setUuid(qaRecord.getUuid());
-        sseAskParams.setChatModelParams(
-                ChatModelParams.builder()
+        sseAskParams.setChatModelRequestProperties(
+                ChatModelRequestProperties.builder()
                         .memoryId(qaRecord.getKbUuid() + "_" + user.getUuid())
                         .systemMessage(knowledgeBase.getQuerySystemMessage())
                         .userMessage(qaRecord.getQuestion())
                         .build()
         );
-        sseAskParams.setLlmBuilderProperties(
-                LLMBuilderProperties.builder()
+        sseAskParams.setChatModelBuilderProperties(
+                ChatModelBuilderProperties.builder()
                         .temperature(knowledgeBase.getQueryLlmTemperature())
                         .build()
         );
@@ -431,7 +431,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         } else {
             log.info("进行RAG请求,maxResults:{}", maxResults);
             ChatModel chatModel = LLMContext.getLLMServiceById(knowledgeBase.getIngestModelId()).buildChatLLM(
-                    LLMBuilderProperties.builder()
+                    ChatModelBuilderProperties.builder()
                             .temperature(knowledgeBase.getQueryLlmTemperature())
                             .build());
             List<ContentRetriever> retrievers = compositeRAG.createRetriever(chatModel, new IsEqualTo(AdiConstant.MetadataKey.KB_UUID, qaRecord.getKbUuid()), maxResults, knowledgeBase.getRetrieveMinScore(), knowledgeBase.getIsStrict());
@@ -461,7 +461,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
         KnowledgeBaseQa updateRecord = new KnowledgeBaseQa();
         updateRecord.setId(qaRecord.getId());
-        updateRecord.setPrompt(updateQaParams.getSseAskParams().getChatModelParams().getUserMessage());
+        updateRecord.setPrompt(updateQaParams.getSseAskParams().getChatModelRequestProperties().getUserMessage());
         updateRecord.setPromptTokens(inputOutputTokenCost.getLeft());
         updateRecord.setAnswer(updateQaParams.getResponse());
         updateRecord.setAnswerTokens(inputOutputTokenCost.getRight());

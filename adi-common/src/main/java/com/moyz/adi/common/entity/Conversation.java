@@ -2,9 +2,12 @@ package com.moyz.adi.common.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.moyz.adi.common.base.AudioConfigTypeHandler;
+import com.moyz.adi.common.vo.AudioConfig;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.apache.ibatis.type.JdbcType;
 
 /**
  * <p>
@@ -16,7 +19,7 @@ import lombok.EqualsAndHashCode;
  */
 @EqualsAndHashCode(callSuper = true)
 @Data
-@TableName("adi_conversation")
+@TableName(value = "adi_conversation", autoResultMap = true)
 @Schema(title = "对话实体", description = "对话表")
 public class Conversation extends BaseEntity {
 
@@ -71,4 +74,7 @@ public class Conversation extends BaseEntity {
     @Schema(title = "是否启用思考功能")
     @TableField("is_enable_thinking")
     private Boolean isEnableThinking;
+
+    @TableField(value = "audio_config", jdbcType = JdbcType.JAVA_OBJECT, typeHandler = AudioConfigTypeHandler.class)
+    private AudioConfig audioConfig;
 }

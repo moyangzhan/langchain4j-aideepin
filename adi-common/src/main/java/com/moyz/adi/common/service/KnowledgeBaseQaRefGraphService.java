@@ -24,7 +24,7 @@ public class KnowledgeBaseQaRefGraphService extends ServiceImpl<KnowledgeBaseQaR
                     .builder()
                     .vertices(Collections.emptyList())
                     .edges(Collections.emptyList())
-                    .entitiesFromLlm(Collections.emptyList())
+                    .entitiesFromQuestion(Collections.emptyList())
                     .build();
         }
         KnowledgeBaseQaRefGraph refGraph = list.get(0);
@@ -34,7 +34,7 @@ public class KnowledgeBaseQaRefGraphService extends ServiceImpl<KnowledgeBaseQaR
         if (StringUtils.isNotBlank(graphStr)) {
             result = JsonUtils.fromJson(graphStr, RefGraphDto.class);
         }
-        result.setEntitiesFromLlm(Arrays.asList(refGraph.getEntitiesFromQuestion().split(",")).stream().filter(StringUtils::isNotBlank).toList());
+        result.setEntitiesFromQuestion(Arrays.stream(refGraph.getEntitiesFromQuestion().split(",")).filter(StringUtils::isNotBlank).toList());
         if (null == result.getVertices()) {
             result.setVertices(Collections.emptyList());
         }

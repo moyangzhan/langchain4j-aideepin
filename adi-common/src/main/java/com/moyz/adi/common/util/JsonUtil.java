@@ -1,9 +1,14 @@
 package com.moyz.adi.common.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.*;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
@@ -38,10 +43,6 @@ public class JsonUtil {
         String resp = null;
         try {
             resp = objectMapper.writeValueAsString(obj);
-        } catch (JsonGenerationException e) {
-            log.error("JsonUtil error", e);
-        } catch (JsonMappingException e) {
-            log.error("JsonUtil error", e);
         } catch (IOException e) {
             log.error("JsonUtil error", e);
         }
@@ -84,13 +85,16 @@ public class JsonUtil {
      * JSON对象反序列化
      */
     public static <T> T fromJson(String json, Class<T> clazz) {
+        if (StringUtils.isBlank(json)) {
+            return null;
+        }
         try {
             JsonParser jp = getParser(json);
+            if (null == jp) {
+                log.error("json parser is null");
+                return null;
+            }
             return jp.readValueAs(clazz);
-        } catch (JsonParseException jpe) {
-            log.error("反序列化失败", jpe);
-        } catch (JsonMappingException jme) {
-            log.error("反序列化失败", jme);
         } catch (IOException ioe) {
             log.error("反序列化失败", ioe);
         }

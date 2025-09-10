@@ -6,7 +6,7 @@ import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.OpenAiUtil;
-import com.moyz.adi.common.vo.LLMBuilderProperties;
+import com.moyz.adi.common.vo.ChatModelBuilderProperties;
 import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.OpenAiSetting;
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
@@ -52,7 +52,7 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
     }
 
     @Override
-    protected ChatModel doBuildChatModel(LLMBuilderProperties properties) {
+    protected ChatModel doBuildChatModel(ChatModelBuilderProperties properties) {
         if (StringUtils.isBlank(platformSetting.getSecretKey())) {
             throw new BaseException(ErrorEnum.B_LLM_SECRET_KEY_NOT_SET);
         }
@@ -74,7 +74,7 @@ public class OpenAiLLMService extends AbstractLLMService<OpenAiSetting> {
     }
 
     @Override
-    public StreamingChatModel buildStreamingChatModel(LLMBuilderProperties properties) {
+    public StreamingChatModel buildStreamingChatModel(ChatModelBuilderProperties properties) {
         if (StringUtils.isBlank(platformSetting.getSecretKey())) {
             throw new BaseException(ErrorEnum.B_LLM_SECRET_KEY_NOT_SET);
         }

@@ -1,5 +1,6 @@
 package com.moyz.adi.common.dto;
 
+import com.moyz.adi.common.vo.AudioConfig;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,4 +27,6 @@ public class ConvAddReq {
     private List<Long> mcpIds;
 
     private List<Long> kbIds;
+
+    private AudioConfig audioConfig;
 }

@@ -1,7 +1,7 @@
 package com.moyz.adi.common.dto;
 
+import com.moyz.adi.common.vo.AudioConfig;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 import java.util.List;
@@ -27,4 +27,6 @@ public class ConvEditReq {
     private Boolean isAutoplayAnswer;
 
     private Boolean isEnableThinking;
+
+    private AudioConfig audioConfig;
 }

@@ -105,7 +105,7 @@ public class KnowledgeBaseQaService extends ServiceImpl<KnowledgeBaseQaRecordMap
      */
     public void createGraphRefs(User user, Long qaRecordId, RefGraphDto graphDto) {
         log.info("更新图谱引用,userId:{},qaRecordId:{},vertices.Size:{},edges.size:{}", user.getId(), qaRecordId, graphDto.getVertices().size(), graphDto.getEdges().size());
-        String entities = null == graphDto.getEntitiesFromLlm() ? "" : String.join(",", graphDto.getEntitiesFromLlm());
+        String entities = null == graphDto.getEntitiesFromQuestion() ? "" : String.join(",", graphDto.getEntitiesFromQuestion());
         Map<String, Object> graphFromStore = new HashMap<>();
         graphFromStore.put("vertices", graphDto.getVertices());
         graphFromStore.put("edges", graphDto.getEdges());

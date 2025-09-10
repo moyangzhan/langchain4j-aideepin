@@ -2,14 +2,19 @@ package com.moyz.adi.common.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.*;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.ConversationMapper;
+import com.moyz.adi.common.util.JsonUtil;
+import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.util.MPPageUtil;
 import com.moyz.adi.common.util.UuidUtil;
+import com.moyz.adi.common.vo.AudioConfig;
+import com.moyz.adi.common.vo.TtsSetting;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -54,6 +59,9 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
 
     @Resource
     private FileService fileService;
+
+    @Resource
+    private AiModelService aiModelService;
 
     public Page<ConvDto> search(ConvSearchReq convSearchReq, int currentPage, int pageSize) {
         Page<Conversation> page = this.lambdaQuery()
@@ -203,6 +211,9 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
         one.setRemark(convAddReq.getRemark());
         one.setMcpIds(StringUtils.join(filteredMcpIds, ","));
         one.setKbIds(StringUtils.join(filteredKbIds, ","));
+        if (null != convAddReq.getAudioConfig()) {
+            one.setAudioConfig(convAddReq.getAudioConfig());
+        }
         baseMapper.insert(one);
 
         Conversation conv = this.lambdaQuery().eq(Conversation::getUuid, uuid).one();
@@ -211,6 +222,54 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
         setKbInfoToDto(conv, dto);
         return dto;
     }
+
+    /**
+     * 检查音频配置是否正确
+     *
+     * @param audioConfig 音频配置
+     * @return AudioConfig
+     */
+    private boolean checkAudioConfig(AudioConfig audioConfig) {
+        if (null == audioConfig) {
+            return false;
+        }
+        String ttsSetting = LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.TTS_SETTING);
+        TtsSetting setting = JsonUtil.fromJson(ttsSetting, TtsSetting.class);
+        if (null == setting) {
+            log.error("TTS setting not found or invalid json: {}", ttsSetting);
+            return false;
+        }
+        String modelName = setting.getModelName();
+        AiModel aiModel = aiModelService.getByNameOrThrow(modelName);
+        if (null == aiModel) {
+            log.error("Model {} not found in db", modelName);
+            return false;
+        }
+        AudioConfig.Voice configVoice = audioConfig.getVoice();
+        if (!aiModel.getPlatform().equals(configVoice.getPlatform())) {
+            log.error("Model {} platform {} not match voice {} platform {}", modelName, aiModel.getPlatform(), configVoice.getParamName(), configVoice.getPlatform());
+            return false;
+        }
+        JsonNode modelVoices = aiModel.getProperties().get("voices");
+        if (null == modelVoices || !modelVoices.isArray()) {
+            log.error("Voices not found or not array in model {}, properties: {}", modelName, aiModel.getProperties());
+            return false;
+        }
+        boolean found = false;
+        for (int i = 0; i < modelVoices.size(); i++) {
+            JsonNode modelVoice = modelVoices.get(i);
+            if (modelVoice.get("name").asText().equals(configVoice.getParamName())) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            log.error("Voice {} not support in model {}, available voices: {}", configVoice.getParamName(), modelName, modelVoices);
+            return false;
+        }
+        return true;
+    }
+
 
     /**
      * 组装MCP信息
@@ -315,6 +374,9 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
                 List<Long> filteredKbIds = filterEnableKbIds(ThreadContext.getCurrentUser(), convEditReq.getKbIds());
                 one.setKbIds(StringUtils.join(filteredKbIds, ","));
             }
+        }
+        if (null != convEditReq.getAudioConfig()) {
+            one.setAudioConfig(convEditReq.getAudioConfig());
         }
         return baseMapper.updateById(one) > 0;
     }

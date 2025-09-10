@@ -4,8 +4,8 @@ import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.DashscopeUtil;
+import com.moyz.adi.common.vo.ChatModelBuilderProperties;
 import com.moyz.adi.common.vo.DashScopeSetting;
-import com.moyz.adi.common.vo.LLMBuilderProperties;
 import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.SseAskParams;
 import dev.langchain4j.community.model.dashscope.QwenChatModel;
@@ -41,14 +41,14 @@ public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
 
     @Override
     protected boolean checkBeforeChat(SseAskParams params) {
-        if (CollectionUtils.isEmpty(params.getChatModelParams().getImageUrls()) && DashscopeUtil.vlChatModelNameProvider().anyMatch(item -> item.equalsIgnoreCase(params.getModelName()))) {
+        if (CollectionUtils.isEmpty(params.getChatModelRequestProperties().getImageUrls()) && DashscopeUtil.vlChatModelNameProvider().anyMatch(item -> item.equalsIgnoreCase(params.getModelName()))) {
             log.warn("多模态LLM没有接收到图片,modelName:{}", params.getModelName());
         }
         return true;
     }
 
     @Override
-    protected ChatModel doBuildChatModel(LLMBuilderProperties properties) {
+    protected ChatModel doBuildChatModel(ChatModelBuilderProperties properties) {
         if (StringUtils.isBlank(platformSetting.getApiKey())) {
             throw new BaseException(B_LLM_SECRET_KEY_NOT_SET);
         }
@@ -61,7 +61,7 @@ public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
     }
 
     @Override
-    public StreamingChatModel buildStreamingChatModel(LLMBuilderProperties properties) {
+    public StreamingChatModel buildStreamingChatModel(ChatModelBuilderProperties properties) {
         if (StringUtils.isBlank(platformSetting.getApiKey())) {
             throw new BaseException(B_LLM_SECRET_KEY_NOT_SET);
         }

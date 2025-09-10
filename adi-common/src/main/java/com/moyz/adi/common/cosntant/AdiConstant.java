@@ -82,7 +82,7 @@ public class AdiConstant {
                         
             ## 已知信息
             {{information}}
-            
+                        
             ## 注意
             回答的内容不能让用户感知到已知信息的存在
             """);
@@ -119,6 +119,9 @@ public class AdiConstant {
         public static final int ANSWER_CONTENT_TYPE_AUTO = 1;
         public static final int ANSWER_CONTENT_TYPE_TEXT = 2;
         public static final int ANSWER_CONTENT_TYPE_AUDIO = 3;
+
+        public static final String AUDIO_CONFIG_FIELD_ANSWER_VOICE = "answer_voice";
+        public static final String AUDIO_CONFIG_FIELD_VOICE_PLATFORM = "platform";
     }
 
     public static class GenerateImage {
@@ -245,6 +248,29 @@ public class AdiConstant {
         public static final String AI_SEARCH_SOURCE_LINKS = "[SOURCE_LINKS]";
         public static final String WF_NODE_CHUNK = "[WF_NODE_CHUNK]";
         public static final String WF_NODE_OUTPUT = "[WF_NODE_OUTPUT]";
+        public static final String STATE_CHANGED = "[STATE_CHANGED]";
+    }
+
+    public static class SSEEventData {
+
+        /**
+         * 状态：问题分析中
+         * 如敏感词校验等
+         */
+        public static final String STATE_QUESTION_ANALYSING = """
+                {"state":"question_analysing","remark":"问题分析中"}
+                """;
+
+        public static final String STATE_KNOWLEDGE_SEARCHING = """
+                {"state":"knowledge_searching","remark":"知识库搜索中"}
+                """;
+        //使用 THINKING 事件代替
+        public static final String STATE_THINKING = """
+                {"state":"thinking","remark":"推理中"}
+                """;
+        public static final String STATE_RESPONDING = """
+                {"state":"responding","remark":"回答中"}
+                """;
     }
 
     public static final int RAG_TYPE_KB = 1;

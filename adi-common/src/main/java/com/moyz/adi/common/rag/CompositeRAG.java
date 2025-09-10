@@ -32,7 +32,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import static com.moyz.adi.common.enums.ErrorEnum.B_BREAK_SEARCH;
 import static com.moyz.adi.common.enums.ErrorEnum.B_LLM_SERVICE_DISABLED;
@@ -118,37 +117,37 @@ public class CompositeRAG {
 
         QueryRouter queryRouter = new DefaultQueryRouter(retrievers);
         TokenStream tokenStream;
-        ChatModelParams chatModelParams = params.getChatModelParams();
-        if (StringUtils.isNotBlank(chatModelParams.getMemoryId())) {
+        ChatModelRequestProperties chatModelRequestProperties = params.getChatModelRequestProperties();
+        if (StringUtils.isNotBlank(chatModelRequestProperties.getMemoryId())) {
             ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.builder()
                     .id(memoryId)
                     .maxMessages(2)
                     .chatMemoryStore(MapDBChatMemoryStore.getSingleton())
                     .build();
-            QueryTransformer queryTransformer = new CompressingQueryTransformer(llmService.buildChatLLM(params.getLlmBuilderProperties()));
+            QueryTransformer queryTransformer = new CompressingQueryTransformer(llmService.buildChatLLM(params.getChatModelBuilderProperties()));
             RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
                     .queryTransformer(queryTransformer)
                     .queryRouter(queryRouter)
                     .build();
             IStreamingChatAssistant assistant = AiServices.builder(IStreamingChatAssistant.class)
-                    .streamingChatModel(llmService.buildStreamingChatModel(params.getLlmBuilderProperties()))
+                    .streamingChatModel(llmService.buildStreamingChatModel(params.getChatModelBuilderProperties()))
                     .retrievalAugmentor(retrievalAugmentor)
                     .chatMemoryProvider(chatMemoryProvider)
                     .build();
-            if (StringUtils.isNotBlank(chatModelParams.getSystemMessage())) {
-                tokenStream = assistant.chatWithSystem(chatModelParams.getMemoryId(), chatModelParams.getSystemMessage(), chatModelParams.getUserMessage(), new ArrayList<>());
+            if (StringUtils.isNotBlank(chatModelRequestProperties.getSystemMessage())) {
+                tokenStream = assistant.chatWithSystem(chatModelRequestProperties.getMemoryId(), chatModelRequestProperties.getSystemMessage(), chatModelRequestProperties.getUserMessage(), new ArrayList<>());
             } else {
-                tokenStream = assistant.chat(chatModelParams.getMemoryId(), chatModelParams.getUserMessage(), new ArrayList<>());
+                tokenStream = assistant.chat(chatModelRequestProperties.getMemoryId(), chatModelRequestProperties.getUserMessage(), new ArrayList<>());
             }
         } else {
             ITempStreamingChatAssistant assistant = AiServices.builder(ITempStreamingChatAssistant.class)
-                    .streamingChatModel(llmService.buildStreamingChatModel(params.getLlmBuilderProperties()))
+                    .streamingChatModel(llmService.buildStreamingChatModel(params.getChatModelBuilderProperties()))
                     .retrievalAugmentor(DefaultRetrievalAugmentor.builder().queryRouter(queryRouter).build())
                     .build();
-            if (StringUtils.isNotBlank(chatModelParams.getSystemMessage())) {
-                tokenStream = assistant.chatWithSystem(chatModelParams.getSystemMessage(), chatModelParams.getUserMessage(), new ArrayList<>());
+            if (StringUtils.isNotBlank(chatModelRequestProperties.getSystemMessage())) {
+                tokenStream = assistant.chatWithSystem(chatModelRequestProperties.getSystemMessage(), chatModelRequestProperties.getUserMessage(), new ArrayList<>());
             } else {
-                tokenStream = assistant.chatSimple(chatModelParams.getUserMessage(), new ArrayList<>());
+                tokenStream = assistant.chatSimple(chatModelRequestProperties.getUserMessage(), new ArrayList<>());
             }
         }
         tokenStream

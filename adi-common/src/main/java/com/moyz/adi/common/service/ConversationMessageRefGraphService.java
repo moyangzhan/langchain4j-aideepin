@@ -24,7 +24,7 @@ public class ConversationMessageRefGraphService extends ServiceImpl<Conversation
                     .builder()
                     .vertices(Collections.emptyList())
                     .edges(Collections.emptyList())
-                    .entitiesFromLlm(Collections.emptyList())
+                    .entitiesFromQuestion(Collections.emptyList())
                     .build();
         }
         ConversationMessageRefGraph refGraph = list.get(0);
@@ -34,7 +34,7 @@ public class ConversationMessageRefGraphService extends ServiceImpl<Conversation
         if (StringUtils.isNotBlank(graphStr)) {
             result = JsonUtils.fromJson(graphStr, RefGraphDto.class);
         }
-        result.setEntitiesFromLlm(Arrays.stream(refGraph.getEntitiesFromQuestion().split(",")).filter(StringUtils::isNotBlank).toList());
+        result.setEntitiesFromQuestion(Arrays.stream(refGraph.getGraphFromLlm().split(",")).filter(StringUtils::isNotBlank).toList());
         if (null == result.getVertices()) {
             result.setVertices(Collections.emptyList());
         }

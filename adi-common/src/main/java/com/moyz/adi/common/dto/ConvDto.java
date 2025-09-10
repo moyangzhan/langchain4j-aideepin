@@ -1,5 +1,7 @@
 package com.moyz.adi.common.dto;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.moyz.adi.common.vo.AudioConfig;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
@@ -31,6 +33,8 @@ public class ConvDto {
     private Integer answerContentType;
     private Boolean isAutoplayAnswer;
     private Boolean isEnableThinking;
+    private AudioConfig audioConfig;
+
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

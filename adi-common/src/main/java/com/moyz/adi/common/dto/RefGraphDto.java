@@ -14,7 +14,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RefGraphDto {
-    private List<String> entitiesFromLlm;
+    private List<String> entitiesFromQuestion;
     private List<GraphVertex> vertices;
     private List<GraphEdge> edges;
 }

@@ -38,6 +38,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +46,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import ws.schild.jave.info.MultimediaInfo;
 
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.*;
 import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.KB_UUID;
@@ -87,6 +90,9 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
 
     @Resource
     private FileService fileService;
+
+    @Resource
+    private AsyncTaskExecutor mainExecutor;
 
     public SseEmitter sseAsk(AskReq askReq) {
         SseEmitter sseEmitter = new SseEmitter(SSE_TIMEOUT);
@@ -158,6 +164,8 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             return;
         }
 
+        //Send analysing question event to client
+        SSEEmitterHelper.sendPartial(sseEmitter, SSEEventName.STATE_CHANGED, SSEEventData.STATE_QUESTION_ANALYSING);
         //如果是语音输入，将音频转成文本
         if (StringUtils.isNotBlank(askReq.getAudioUuid())) {
             String path = fileService.getImagePath(askReq.getAudioUuid());
@@ -177,6 +185,9 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         if (StringUtils.isNotBlank(conversation.getKbIds())) {
             List<Long> kbIds = Arrays.stream(conversation.getKbIds().split(",")).map(Long::parseLong).toList();
             List<KbInfoResp> filteredKb = conversationService.filterEnableKb(user, kbIds);
+
+            //Send searching knowledge event to client
+            SSEEmitterHelper.sendPartial(sseEmitter, SSEEventName.STATE_CHANGED, SSEEventData.STATE_KNOWLEDGE_SEARCHING);
             Pair<List<ContentRetriever>, String> retrievePair = retrieveContents(filteredKb, llmService, askReq);
             retrievers.addAll(retrievePair.getLeft());
             retrieveContents = retrievePair.getRight();
@@ -197,14 +208,18 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         sseAskParams.setSseEmitter(sseEmitter);
         sseAskParams.setRegenerateQuestionUuid(askReq.getRegenerateQuestionUuid());
         sseAskParams.setAnswerContentType(answerContentType);
+        if (null != conversation.getAudioConfig() && null != conversation.getAudioConfig().getVoice()) {
+            //如果对话配置了语音，则使用对话的语音配置
+            sseAskParams.setVoice(conversation.getAudioConfig().getVoice().getParamName());
+        }
 
-        ChatModelParams chatModelParams = buildChatModelParams(conversation, askReq);
-        sseAskParams.setChatModelParams(chatModelParams);
+        ChatModelRequestProperties chatModelRequestProperties = buildChatModelParams(conversation, askReq);
+        sseAskParams.setChatModelRequestProperties(chatModelRequestProperties);
 
         AiModel aiModel = LLMContext.getLLMServiceByName(askReq.getModelName()).getAiModel();
         boolean returnThinking = checkIfReturnThinking(aiModel, conversation);
-        sseAskParams.setLlmBuilderProperties(
-                LLMBuilderProperties.builder()
+        sseAskParams.setChatModelBuilderProperties(
+                ChatModelBuilderProperties.builder()
                         .temperature(conversation.getLlmTemperature())
                         .returnThinking(returnThinking)
                         .build()
@@ -246,7 +261,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
      * 判断是否需要返回推理过程
      * 以下两种场景表示需要返回推理过程
      * 场景1：模型是推理模型 && 不允许关闭推理过程，
-     * 场景2：模型是推理模型 && 允许关闭推理过程 && 角色会话开启了推理过程
+     * 场景2：模型是推理模型 && 允许关闭推理过程 && 角色会话开启了深度思考
      *
      * @param aiModel      模型
      * @param conversation 会话
@@ -271,7 +286,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         List<String> kbUuids = filteredKb.stream().map(KbInfoResp::getUuid).toList();
         log.info("开始搜索相关联的知识库,kbUuids:{},question:{}", String.join(",", kbUuids), askReq.getPrompt());
         ChatModel chatModel = llmService.buildChatLLM(
-                LLMBuilderProperties.builder()
+                ChatModelBuilderProperties.builder()
                         .temperature(LLM_TEMPERATURE_DEFAULT)
                         .build());
         //跨多个知识库查询
@@ -279,9 +294,32 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         //忽略知识库自身的设置如最大召回数量maxResult，最小命中分数minScore，角色设置，是否强行中断搜索设置 等
         List<ContentRetriever> retrievers = compositeRAG.createRetriever(chatModel, isIn, 3, RAG_RETRIEVE_MIN_SCORE_DEFAULT, false);
         List<Content> retrieveContents = new ArrayList<>();
-        //TODO... 将搜索事件通过sse推到前端
-        //TODO... 并发执行ContentRetriever.retrieve以加快响应速度
-        retrievers.forEach(item -> retrieveContents.addAll(item.retrieve(Query.from(askReq.getPrompt()))));
+        if (!retrievers.isEmpty()) {
+            CountDownLatch countDownLatch = new CountDownLatch(retrievers.size());
+            for (ContentRetriever retriever : retrievers) {
+                mainExecutor.execute(() -> {
+                    try {
+                        List<Content> contents = retriever.retrieve(Query.from(askReq.getPrompt()));
+                        synchronized (retrieveContents) {
+                            retrieveContents.addAll(contents);
+                        }
+                    } catch (Exception e) {
+                        log.error("检索知识库异常", e);
+                    } finally {
+                        countDownLatch.countDown();
+                    }
+                });
+            }
+            try {
+                boolean awaitRet = countDownLatch.await(2, TimeUnit.MINUTES);
+                if (!awaitRet) {
+                    log.warn("retrieveContents CountDownLatch await timeout");
+                }
+            } catch (InterruptedException e) {
+                log.error("retrieveContents CountDownLatch await error", e);
+                Thread.currentThread().interrupt();
+            }
+        }
         if (!retrieveContents.isEmpty()) {
             //如果命中了知识库内容，则将知识库内容添加到用户输入的prompt中
             StringBuilder promptBuilder = new StringBuilder();
@@ -338,8 +376,6 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             question.setAttachments(String.join(",", askReq.getImageUrls()));
             baseMapper.insert(question);
 
-            createRef(retrievers, user, question.getId());
-
             promptMsg = this.lambdaQuery().eq(ConversationMessage::getUuid, questionMeta.getUuid()).one();
         }
 
@@ -377,8 +413,6 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             newMessages.add(AiMessage.aiMessage(response.getContent()));
             mapDBChatMemoryStore.updateMessages(askReq.getConversationUuid(), newMessages);
         }
-
-        //TODO... 如果关联了知识库，把命中的知识库片段存储起来
     }
 
     private void calcTodayCost(User user, Conversation conversation, PromptMeta questionMeta, AnswerMeta answerMeta, boolean isFreeToken) {
@@ -473,20 +507,20 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             log.warn("图谱引用数据为空，无法创建图谱引用记录,userId:{},qaRecordId:{}", user.getId(), messageId);
             return;
         }
-        String entities = null == graphDto.getEntitiesFromLlm() ? "" : String.join(",", graphDto.getEntitiesFromLlm());
+        String entities = null == graphDto.getEntitiesFromQuestion() ? "" : String.join(",", graphDto.getEntitiesFromQuestion());
         Map<String, Object> graphFromStore = new HashMap<>();
         graphFromStore.put("vertices", graphDto.getVertices());
         graphFromStore.put("edges", graphDto.getEdges());
         ConversationMessageRefGraph refGraph = new ConversationMessageRefGraph();
         refGraph.setMessageId(messageId);
         refGraph.setUserId(user.getId());
-        refGraph.setEntitiesFromQuestion(entities);
+        refGraph.setGraphFromLlm(entities);
         refGraph.setGraphFromStore(JsonUtil.toJson(graphFromStore));
         conversationMessageRefGraphService.save(refGraph);
     }
 
-    private ChatModelParams buildChatModelParams(Conversation conversation, AskReq askReq) {
-        ChatModelParams.ChatModelParamsBuilder builder = ChatModelParams.builder();
+    private ChatModelRequestProperties buildChatModelParams(Conversation conversation, AskReq askReq) {
+        ChatModelRequestProperties.ChatModelRequestPropertiesBuilder builder = ChatModelRequestProperties.builder();
         if (StringUtils.isNotBlank(conversation.getAiSystemMessage())) {
             builder.systemMessage(conversation.getAiSystemMessage());
         }
