@@ -135,13 +135,15 @@ CREATE TABLE adi_ai_model
 );
 
 COMMENT ON TABLE adi_ai_model IS 'AI模型 | AI model';
-COMMENT ON COLUMN adi_ai_model.type IS '模型类型(以输出类型或使用目的做判断，如dalle2可文本和图像输入，但使用方关注的是输出的图片，所以属于image类型),eg: text,image,embedding,rerank | Model type (judged by output type or usage purpose, e.g., dalle2 can input text and image, but users focus on the output image, so it belongs to the image type), e.g., text, image, embedding, rerank';
+COMMENT ON COLUMN adi_ai_model.type IS '模型类型, e.g., text, image, embedding, rerank, asr, tts, multimodality(GPT-4o) | Model type, e.g., text, image, embedding, rerank, multimodality(GPT-4o)';
 COMMENT ON COLUMN adi_ai_model.name IS '模型名称，传到接口中请求响应的参数名，需跟模型提供方指定的模型名称一模一样 | Model name, the parameter name passed to the interface for requesting a response, must be exactly the same as the model name specified by the model provider';
 COMMENT ON COLUMN adi_ai_model.title IS '模型标题，可读性更高的名称，如: openai-gpt3 | Model title, a more readable name, e.g., openai-gpt3';
+COMMENT ON COLUMN adi_ai_model.setting IS 'json format, e.g., {voice_for_group1: "v1", voice_for_group2: "v2"}';
+COMMENT ON COLUMN adi_ai_model.properties IS 'e.g., { "dimension": 1536 } for embedding model,{"voices":["v1","v2","v3"]} for tts model';
 COMMENT ON COLUMN adi_ai_model.remark IS '备注 | Additional remarks about the AI model';
-COMMENT ON COLUMN adi_ai_model.platform IS '平台 | Platform, e.g., openai, dashscope, qianfan, ollama';
+COMMENT ON COLUMN adi_ai_model.platform IS '平台 | Model platform (as model provider): openai, dashscope, qianfan, ollama';
 COMMENT ON COLUMN adi_ai_model.context_window IS '上下文窗口 | LLM context window';
-COMMENT ON COLUMN adi_ai_model.input_types IS '输入类型 | Input types, e.g., text, image, audio, video';
+COMMENT ON COLUMN adi_ai_model.input_types IS '输入类型 | Input types: text, image, audio, video';
 COMMENT ON COLUMN adi_ai_model.is_reasoner IS 'true: 推理模型如deepseek-r1, false: 非推理模型如deepseek-v3 | true: Reasoning model, false: Non-reasoning model';
 COMMENT ON COLUMN adi_ai_model.is_thinking_closable IS '思考过程是否可以关闭，Qwen3可以开启或关闭思考过程，而deepseek-r1无法关闭 | Whether the thinking process can be closed, Qwen3 can enable or disable the thinking process, while deepseek-r1 cannot disable it';
 COMMENT ON COLUMN adi_ai_model.is_enable IS '是否启用 | True: Normal usage, false: Not available';
@@ -345,7 +347,7 @@ COMMENT ON COLUMN adi_file.name IS '文件名 | File name';
 COMMENT ON COLUMN adi_file.uuid IS '文件的UUID | UUID of the file';
 COMMENT ON COLUMN adi_file.ext IS '文件扩展名 | File extension';
 COMMENT ON COLUMN adi_file.user_id IS '用户ID，0: 系统；其他: 用户 | User ID, 0: System; Other: User';
-COMMENT ON COLUMN adi_file.path IS '文件路径或对象名称(OSS)，如https://*.png 或 123.png | File path or object name, eg: httts://*.png or 123.png(name in OSS bucket)';
+COMMENT ON COLUMN adi_file.path IS '文件路径或对象名称(OSS)，如https://*.png 或 123.png | File path or object name, e.g., httts://*.png or 123.png(name in OSS bucket)';
 COMMENT ON COLUMN adi_file.storage_location IS '存储位置，1：本地存储，2：阿里云OSS | Storage Location: 1 - Local Storage, 2 - Alibaba Cloud OSS';
 COMMENT ON COLUMN adi_file.ref_count IS '引用此文件的次数 | The number of references to this file';
 COMMENT ON COLUMN adi_file.create_time IS '记录创建的时间戳 | Timestamp of record creation';

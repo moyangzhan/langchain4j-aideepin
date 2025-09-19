@@ -46,10 +46,12 @@ AIDEEPIN
 * AI工作流
 * MCP服务市场
 * ASR & TTS
-  * 文本提问-文本回复
-  * 文本提问-语音回复
-  * 语音提问-文本回复
-  * 语音提问-语音回复
+  * 提问及回复的格式可选
+    * 文字提问-文字回复
+    * 文字提问-语音回复
+    * 语音提问-文字回复
+    * 语音提问-语音回复
+  * AI的音色可选
 
 ## 接入的平台/模型：
 
@@ -122,7 +124,7 @@ ps: neo4j 与 pgvector + apache age 二选一即可
         update adi_sys_config set value = '{"api_key":"my_dashcope_api_key"}' where name = 'dashscope_setting';
 
         -- 硅基流动的配置
-        update adi_sys_config set value = '{"base_url":"https://api.siliconflow.cn","secret_key":"my_siliconflow_api_key"}' where name = 'siliconflow_setting';
+        update adi_sys_config set value = '{"base_url":"https://api.siliconflow.cn/v1","secret_key":"my_siliconflow_api_key"}' where name = 'siliconflow_setting';
 
         -- 千帆大模型平台的配置
         update adi_sys_config set value = '{"api_key":"my_qianfan_api_key","secret_key":"my_qianfan_secret_key"}' where name = 'qianfan_setting';
