@@ -11,6 +11,7 @@ public class SseAskParams {
     //请求标识,如:知识库的记录uuid,搜索记录uuid
     private String uuid;
 
+    private String modelPlatform;
     private String modelName;
 
     private User user;

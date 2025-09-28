@@ -130,7 +130,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             }
 
             //check 3: current user's quota
-            AiModel aiModel = LLMContext.getAiModel(askReq.getModelName());
+            AiModel aiModel = LLMContext.getAiModel(askReq.getModelPlatform(), askReq.getModelName());
             if (null != aiModel && !aiModel.getIsFree()) {
                 ErrorEnum errorMsg = quotaHelper.checkTextQuota(user);
                 if (null != errorMsg) {
@@ -177,7 +177,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             askReq.setPrompt(audioText);
         }
 
-        AbstractLLMService<?> llmService = LLMContext.getLLMServiceByName(askReq.getModelName());
+        AbstractLLMService llmService = LLMContext.getServiceOrDefault(askReq.getModelPlatform(), askReq.getModelName());
 
         //如果关联了知识库，则先进行知识库查询
         String retrieveContents = "";
@@ -216,7 +216,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         ChatModelRequestProperties chatModelRequestProperties = buildChatModelParams(conversation, askReq);
         sseAskParams.setChatModelRequestProperties(chatModelRequestProperties);
 
-        AiModel aiModel = LLMContext.getLLMServiceByName(askReq.getModelName()).getAiModel();
+        AiModel aiModel = LLMContext.getServiceOrDefault(askReq.getModelPlatform(), askReq.getModelName()).getAiModel();
         boolean returnThinking = checkIfReturnThinking(aiModel, conversation);
         sseAskParams.setChatModelBuilderProperties(
                 ChatModelBuilderProperties.builder()
@@ -278,7 +278,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
      * @param llmService 大模型服务
      * @param askReq     请求参数
      */
-    private Pair<List<ContentRetriever>, String> retrieveContents(List<KbInfoResp> filteredKb, AbstractLLMService<?> llmService, AskReq askReq) {
+    private Pair<List<ContentRetriever>, String> retrieveContents(List<KbInfoResp> filteredKb, AbstractLLMService llmService, AskReq askReq) {
         if (filteredKb.isEmpty()) {
             log.warn("关联的知识库为空");
             return Pair.of(Collections.emptyList(), "");
@@ -353,7 +353,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                 .eq(Conversation::getUserId, user.getId())
                 .oneOpt()
                 .orElseGet(() -> conversationService.createByFirstMessage(user.getId(), convUuid, prompt));
-        AiModel aiModel = LLMContext.getAiModel(askReq.getModelName());
+        AiModel aiModel = LLMContext.getAiModel(askReq.getModelPlatform(),askReq.getModelName());
         //Check if regenerate question
         ConversationMessage promptMsg;
         if (StringUtils.isNotBlank(askReq.getRegenerateQuestionUuid())) {

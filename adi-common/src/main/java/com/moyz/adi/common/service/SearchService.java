@@ -2,6 +2,7 @@ package com.moyz.adi.common.service;
 
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.AdiConstant;
+import com.moyz.adi.common.dto.AiSearchReq;
 import com.moyz.adi.common.dto.SearchEngineResp;
 import com.moyz.adi.common.dto.SearchReturn;
 import com.moyz.adi.common.dto.SearchReturnWebPage;
@@ -74,20 +75,20 @@ public class SearchService {
     @Resource
     private AsyncTaskExecutor mainExecutor;
 
-    public SseEmitter search(boolean isBriefSearch, String searchText, String engineName, String modelName) {
+    public SseEmitter search(AiSearchReq req) {
         User user = ThreadContext.getCurrentUser();
         SseEmitter sseEmitter = new SseEmitter(SSE_TIMEOUT);
         if (!sseEmitterHelper.checkOrComplete(user, sseEmitter)) {
             return sseEmitter;
         }
         sseEmitterHelper.startSse(user, sseEmitter);
-        self.asyncSearch(user, sseEmitter, isBriefSearch, searchText, engineName, modelName);
+        self.asyncSearch(user, sseEmitter, req);
         return sseEmitter;
     }
 
     @Async
-    public void asyncSearch(User user, SseEmitter sseEmitter, boolean isBriefSearch, String searchText, String searchName, String modelName) {
-        SearchReturn searchResult = SearchEngineServiceContext.getService(searchName).search(searchText, "", "", 5);
+    public void asyncSearch(User user, SseEmitter sseEmitter, AiSearchReq req) {
+        SearchReturn searchResult = SearchEngineServiceContext.getService(req.getEngineName()).search(req.getSearchText(), "", "", 5);
         if (StringUtils.isNotBlank(searchResult.getErrorMessage())) {
             sseEmitterHelper.sendStartAndComplete(user.getId(), sseEmitter, searchResult.getErrorMessage());
             return;
@@ -107,10 +108,10 @@ public class SearchService {
         if (sendFail) {
             return;
         }
-        if (isBriefSearch) {
-            briefSearch(user, searchText, modelName, searchResult.getItems(), sseEmitter);
+        if (req.isBriefSearch()) {
+            briefSearch(user, req.getSearchText(), req.getModelName(), searchResult.getItems(), sseEmitter);
         } else {
-            detailSearch(user, searchText, searchName, modelName, searchResult.getItems(), sseEmitter);
+            detailSearch(user, req.getSearchText(), req.getEngineName(), req.getModelPlatform(), req.getModelName(), searchResult.getItems(), sseEmitter);
         }
     }
 
@@ -179,9 +180,9 @@ public class SearchService {
      * @param resultItems
      * @param sseEmitter
      */
-    public void detailSearch(User user, String searchText, String engineName, String modelName, List<SearchReturnWebPage> resultItems, SseEmitter sseEmitter) {
+    public void detailSearch(User user, String searchText, String engineName, String modelPlatform, String modelName, List<SearchReturnWebPage> resultItems, SseEmitter sseEmitter) {
         log.info("detailSearch,searchText:{}", searchText);
-        AiModel aiModel = LLMContext.getAiModel(modelName);
+        AiModel aiModel = LLMContext.getAiModel(modelPlatform, modelName);
         //Save to DB
         SearchEngineResp resp = new SearchEngineResp().setItems(resultItems);
         AiSearchRecord newRecord = new AiSearchRecord();

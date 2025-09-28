@@ -4,11 +4,10 @@ import com.alibaba.dashscope.audio.asr.transcription.*;
 import com.alibaba.dashscope.common.TaskStatus;
 import com.aliyun.oss.common.utils.StringUtils;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
+import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.SpringUtil;
-import com.moyz.adi.common.vo.DashScopeSetting;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.client.RestTemplate;
 
@@ -19,10 +18,10 @@ import java.util.List;
 import static com.moyz.adi.common.enums.ErrorEnum.B_URL_INVALID;
 
 @Slf4j
-public class DashScopeAsrService extends AbstractAsrModelService<DashScopeSetting> {
+public class DashScopeAsrService extends AbstractAsrModelService {
 
-    public DashScopeAsrService(AiModel aiModel) {
-        super(aiModel, AdiConstant.SysConfigKey.DASHSCOPE_SETTING, DashScopeSetting.class);
+    public DashScopeAsrService(AiModel model, ModelPlatform modelPlatform) {
+        super(model, modelPlatform);
     }
 
     @Override
@@ -33,7 +32,7 @@ public class DashScopeAsrService extends AbstractAsrModelService<DashScopeSettin
             throw new BaseException(B_URL_INVALID);
         }
         TranscriptionParam param = TranscriptionParam.builder()
-                .apiKey(platformSetting.getApiKey())
+                .apiKey(platform.getApiKey())
                 .model(aiModel.getName())
                 // “language_hints”只支持paraformer-v2模型，指定中文、粤语、英文
                 .parameter("language_hints", new String[]{"zh", "yue", "en"})

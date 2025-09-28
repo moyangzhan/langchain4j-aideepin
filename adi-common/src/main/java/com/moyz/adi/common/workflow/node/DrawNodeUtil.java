@@ -26,7 +26,7 @@ public class DrawNodeUtil {
      * @param imageModelService 绘图service
      * @return 节点处理结果
      */
-    public static NodeProcessResult createResultContent(User user, Draw draw, AbstractImageModelService<?> imageModelService) {
+    public static NodeProcessResult createResultContent(User user, Draw draw, AbstractImageModelService imageModelService) {
         List<String> images = imageModelService.generateImage(user, draw);
         FileService fileService = SpringUtil.getBean(FileService.class);
         String imageUrl = "";

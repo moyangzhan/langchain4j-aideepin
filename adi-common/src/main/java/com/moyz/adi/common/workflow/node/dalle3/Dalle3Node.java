@@ -53,7 +53,7 @@ public class Dalle3Node extends AbstractWfNode {
             log.warn("找不到Dall3节点的提示词");
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
-        AbstractImageModelService<?> imageModelService = ImageModelContext.getModelService(OpenAiImageModelName.DALL_E_3.toString());
+        AbstractImageModelService imageModelService = ImageModelContext.getOrDefault(OpenAiImageModelName.DALL_E_3.toString());
         if (null == imageModelService) {
             log.error("image model not found:{}", OpenAiImageModelName.DALL_E_3);
             throw new BaseException(A_MODEL_NOT_FOUND);

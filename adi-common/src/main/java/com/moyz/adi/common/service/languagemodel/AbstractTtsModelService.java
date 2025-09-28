@@ -1,14 +1,15 @@
 package com.moyz.adi.common.service.languagemodel;
 
 import com.moyz.adi.common.entity.AiModel;
+import com.moyz.adi.common.entity.ModelPlatform;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-public abstract class AbstractTtsModelService<T> extends CommonModelService<T> {
-    public AbstractTtsModelService(AiModel aiModel, String settingName, Class<T> clazz) {
-        super(aiModel, settingName, clazz);
+public abstract class AbstractTtsModelService extends CommonModelService {
+    public AbstractTtsModelService(AiModel model, ModelPlatform modelPlatform) {
+        super(model, modelPlatform);
     }
 
     public abstract void start(String jobId, String voice, Consumer<ByteBuffer> onProcess, Consumer<String> onComplete, Consumer<String> onError);
@@ -23,7 +24,7 @@ public abstract class AbstractTtsModelService<T> extends CommonModelService<T> {
 
     public abstract void complete(String jobId);
 
-    public AbstractTtsModelService<T> setProxyAddress(InetSocketAddress proxyAddress) {
+    public AbstractTtsModelService setProxyAddress(InetSocketAddress proxyAddress) {
         this.proxyAddress = proxyAddress;
         return this;
     }

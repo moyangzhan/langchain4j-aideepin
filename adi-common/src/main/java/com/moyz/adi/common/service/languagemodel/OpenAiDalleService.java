@@ -1,8 +1,8 @@
 package com.moyz.adi.common.service.languagemodel;
 
-import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.Draw;
+import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
@@ -10,7 +10,6 @@ import com.moyz.adi.common.util.ImageUtil;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.OpenAiUtil;
 import com.moyz.adi.common.vo.LLMException;
-import com.moyz.adi.common.vo.OpenAiSetting;
 import com.theokanning.openai.OpenAiApi;
 import com.theokanning.openai.image.CreateImageEditRequest;
 import com.theokanning.openai.image.CreateImageVariationRequest;
@@ -33,6 +32,7 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.*;
 import static com.theokanning.openai.service.OpenAiService.defaultClient;
@@ -41,15 +41,15 @@ import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_2;
 import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_3;
 
 @Slf4j
-public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting> {
+public class OpenAiDalleService extends AbstractImageModelService {
 
-    public OpenAiDalleService(AiModel aiModel) {
-        super(aiModel, AdiConstant.SysConfigKey.OPENAI_SETTING, OpenAiSetting.class);
+    public OpenAiDalleService(AiModel model, ModelPlatform modelPlatform) {
+        super(model, modelPlatform);
     }
 
     @Override
     public boolean isEnabled() {
-        return StringUtils.isNotBlank(platformSetting.getSecretKey()) && aiModel.getIsEnable();
+        return StringUtils.isNotBlank(platform.getApiKey()) && aiModel.getIsEnable();
     }
 
     @Override
@@ -86,7 +86,7 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
      */
     @Override
     public ImageModel buildImageModel(User user, Draw draw) {
-        if (StringUtils.isBlank(platformSetting.getSecretKey())) {
+        if (StringUtils.isBlank(platform.getApiKey())) {
             throw new BaseException(ErrorEnum.B_LLM_SECRET_KEY_NOT_SET);
         }
         if (aiModel.getName().equals(DALL_E_3.toString())) {
@@ -105,16 +105,16 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
      */
     private ImageModel createDalle2Model(User user, Draw draw) {
         OpenAiImageModel.OpenAiImageModelBuilder builder = OpenAiImageModel.builder()
-                .baseUrl(platformSetting.getBaseUrl())
+                .baseUrl(platform.getBaseUrl())
                 .modelName(aiModel.getName())
-                .apiKey(platformSetting.getSecretKey())
+                .apiKey(platform.getApiKey())
                 .user(user.getUuid())
                 .responseFormat(OPENAI_CREATE_IMAGE_RESP_FORMATS_URL)
-                .size(StringUtils.defaultString(draw.getGenerateSize(), DALLE2_CREATE_IMAGE_SIZES.get(1)))
+                .size(Objects.toString(draw.getGenerateSize(), DALLE2_CREATE_IMAGE_SIZES.get(1)))
                 .logRequests(true)
                 .logResponses(true)
                 .maxRetries(1);
-        if (null != proxyAddress) {
+        if (null != proxyAddress && platform.getIsProxyEnable()) {
             HttpClient.Builder httpClientBuilder = HttpClient.newBuilder().proxy(ProxySelector.of(proxyAddress));
             builder.httpClientBuilder(JdkHttpClient.builder().httpClientBuilder(httpClientBuilder));
         }
@@ -131,9 +131,9 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
 
     private ImageModel createDalle3Model(User user, Draw draw) {
         OpenAiImageModel.OpenAiImageModelBuilder builder = OpenAiImageModel.builder()
-                .baseUrl(platformSetting.getBaseUrl())
+                .baseUrl(platform.getBaseUrl())
                 .modelName(DALL_E_3.toString())
-                .apiKey(platformSetting.getSecretKey())
+                .apiKey(platform.getApiKey())
                 .user(user.getUuid())
                 .responseFormat(OPENAI_CREATE_IMAGE_RESP_FORMATS_URL)
                 .size(draw.getGenerateSize())
@@ -141,7 +141,7 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
                 .logRequests(true)
                 .logResponses(true)
                 .maxRetries(1);
-        if (null != proxyAddress) {
+        if (null != proxyAddress && platform.getIsProxyEnable()) {
             HttpClient.Builder httpClientBuilder = HttpClient.newBuilder().proxy(ProxySelector.of(proxyAddress));
             builder.httpClientBuilder(JdkHttpClient.builder().httpClientBuilder(httpClientBuilder));
         }
@@ -194,8 +194,8 @@ public class OpenAiDalleService extends AbstractImageModelService<OpenAiSetting>
     }
 
     public OpenAiService getOpenAiService() {
-        String secretKey = platformSetting.getSecretKey();
-        if (null != proxyAddress) {
+        String secretKey = platform.getApiKey();
+        if (null != proxyAddress && platform.getIsProxyEnable()) {
             OkHttpClient client = defaultClient(secretKey, Duration.of(60, ChronoUnit.SECONDS))
                     .newBuilder()
                     .proxy(new Proxy(Proxy.Type.HTTP, proxyAddress))

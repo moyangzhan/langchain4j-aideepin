@@ -10,5 +10,5 @@ import lombok.EqualsAndHashCode;
 public class ImageModelInfo extends ModelInfo {
 
     @JsonIgnore
-    private AbstractImageModelService<?> modelService;
+    private AbstractImageModelService modelService;
 }

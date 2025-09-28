@@ -46,9 +46,9 @@ public class WorkflowUtil {
         return result;
     }
 
-    public static void streamingInvokeLLM(WfState wfState, WfNodeState state, WorkflowNode node, String modelName, List<ChatMessage> msgs) {
+    public static void streamingInvokeLLM(WfState wfState, WfNodeState state, WorkflowNode node, String modelPlatform, String modelName, List<ChatMessage> msgs) {
         log.info("stream invoke");
-        AbstractLLMService<?> llmService = LLMContext.getLLMServiceByName(modelName);
+        AbstractLLMService llmService = LLMContext.getServiceOrDefault(modelPlatform, modelName);
         StreamingChatGenerator<AgentState> streamingGenerator = StreamingChatGenerator.builder()
                 .mapResult(response -> {
                     String responseTxt = response.aiMessage().text();
@@ -83,9 +83,9 @@ public class WorkflowUtil {
 //            }
     }
 
-    public static NodeIOData invokeLLM(WfState wfState, String modelName, String prompt) {
+    public static NodeIOData invokeLLM(WfState wfState, String modelPlatform, String modelName, String prompt) {
         log.info("common invoke");
-        AbstractLLMService<?> llmService = LLMContext.getLLMServiceByName(modelName);
+        AbstractLLMService llmService = LLMContext.getServiceOrDefault(modelPlatform, modelName);
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setUuid(wfState.getUuid());
         sseAskParams.setChatModelRequestProperties(ChatModelRequestProperties.builder().systemMessage(StringUtils.EMPTY).userMessage(prompt).build());

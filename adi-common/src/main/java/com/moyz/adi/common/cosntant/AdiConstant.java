@@ -1,11 +1,13 @@
 package com.moyz.adi.common.cosntant;
 
 import dev.langchain4j.model.input.PromptTemplate;
+import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 public class AdiConstant {
     private AdiConstant() {
     }
@@ -202,6 +204,7 @@ public class AdiConstant {
                     String value = (String) field.get(null);
                     list.add(value);
                 } catch (ReflectiveOperationException e) {
+                    log.error("error", e);
                 }
 
             }
@@ -219,6 +222,21 @@ public class AdiConstant {
         public static final String RERANK = "rerank";
         public static final String ASR = "asr";
         public static final String TTS = "tts";
+
+        public static List<String> getModelType() {
+            List<String> list = new ArrayList<>();
+            Class<ModelType> clazz = ModelType.class;
+            for (Field field : clazz.getDeclaredFields()) {
+                try {
+                    String value = (String) field.get(null);
+                    list.add(value);
+                } catch (ReflectiveOperationException e) {
+                    log.error("error", e);
+                }
+
+            }
+            return list;
+        }
     }
 
     public static class SearchEngineName {

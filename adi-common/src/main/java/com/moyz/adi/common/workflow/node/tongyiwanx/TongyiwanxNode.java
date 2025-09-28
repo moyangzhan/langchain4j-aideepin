@@ -53,7 +53,7 @@ public class TongyiwanxNode extends AbstractWfNode {
             log.warn("找不到通义万相节点的提示词");
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
-        AbstractImageModelService<?> imageModelService = ImageModelContext.getModelService(nodeConfigObj.getModelName());
+        AbstractImageModelService imageModelService = ImageModelContext.getOrDefault(nodeConfigObj.getModelName());
         if (null == imageModelService) {
             log.error("image service not found,ai platform:{}", DASHSCOPE);
             throw new BaseException(A_MODEL_NOT_FOUND);

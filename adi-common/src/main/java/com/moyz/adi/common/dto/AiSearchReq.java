@@ -13,6 +13,8 @@ public class AiSearchReq {
 
     private String engineName;
 
+    private String modelPlatform;
+
     private String modelName;
 
     private boolean briefSearch;

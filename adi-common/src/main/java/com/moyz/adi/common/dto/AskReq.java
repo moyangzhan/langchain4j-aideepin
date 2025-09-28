@@ -34,6 +34,7 @@ public class AskReq {
      */
     private String regenerateQuestionUuid;
 
+    private String modelPlatform;
     private String modelName;
 
     //后端用的临时变量

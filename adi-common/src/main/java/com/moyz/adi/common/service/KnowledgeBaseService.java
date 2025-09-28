@@ -430,7 +430,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             }
         } else {
             log.info("进行RAG请求,maxResults:{}", maxResults);
-            ChatModel chatModel = LLMContext.getLLMServiceById(knowledgeBase.getIngestModelId()).buildChatLLM(
+            ChatModel chatModel = LLMContext.getServiceById(knowledgeBase.getIngestModelId(), true).buildChatLLM(
                     ChatModelBuilderProperties.builder()
                             .temperature(knowledgeBase.getQueryLlmTemperature())
                             .build());

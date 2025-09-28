@@ -11,4 +11,6 @@ public class KeywordExtractorNodeConfig {
     private Integer topN;
     @JsonProperty("model_name")
     private String modelName;
+    @JsonProperty("model_platform")
+    private String modelPlatform;
 }

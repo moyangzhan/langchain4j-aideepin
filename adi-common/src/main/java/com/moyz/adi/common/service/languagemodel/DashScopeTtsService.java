@@ -1,17 +1,15 @@
 package com.moyz.adi.common.service.languagemodel;
 
 import com.alibaba.dashscope.audio.tts.SpeechSynthesisResult;
-import com.alibaba.dashscope.audio.tts.timestamp.Word;
 import com.alibaba.dashscope.audio.ttsv2.SpeechSynthesisAudioFormat;
 import com.alibaba.dashscope.audio.ttsv2.SpeechSynthesisParam;
 import com.alibaba.dashscope.audio.ttsv2.SpeechSynthesizer;
 import com.alibaba.dashscope.common.ResultCallback;
-import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
+import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.file.FileOperatorContext;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.moyz.adi.common.util.UuidUtil;
-import com.moyz.adi.common.vo.DashScopeSetting;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -27,14 +25,14 @@ import static com.moyz.adi.common.cosntant.AdiConstant.TtsConstant.DASHSCOPE_DEF
 import static com.moyz.adi.common.util.LocalDateTimeUtil.PATTERN_YYYYMMDDMMHHSS;
 
 @Slf4j
-public class DashScopeTtsService extends AbstractTtsModelService<DashScopeSetting> {
+public class DashScopeTtsService extends AbstractTtsModelService {
 
     private final Map<String, SpeechSynthesizer> jobToSynthesizer = new HashMap<>();
     private final Map<String, ByteBuffer> jobToAudioData = new HashMap<>();
     private static final SpeechSynthesisAudioFormat AUDIO_FORMAT = SpeechSynthesisAudioFormat.PCM_22050HZ_MONO_16BIT;
 
-    public DashScopeTtsService(AiModel aiModel) {
-        super(aiModel, AdiConstant.SysConfigKey.DASHSCOPE_SETTING, DashScopeSetting.class);
+    public DashScopeTtsService(AiModel model, ModelPlatform modelPlatform) {
+        super(model, modelPlatform);
     }
 
     @Override
@@ -86,7 +84,7 @@ public class DashScopeTtsService extends AbstractTtsModelService<DashScopeSettin
         // 请求参数
         SpeechSynthesisParam param =
                 SpeechSynthesisParam.builder()
-                        .apiKey(platformSetting.getApiKey())
+                        .apiKey(platform.getApiKey())
                         .model(aiModel.getName())
                         .voice(StringUtils.isBlank(voice) ? DASHSCOPE_DEFAULT_VOICE : voice)
                         .format(MP3_16000HZ_MONO_128KBPS) // 流式合成使用PCM或者MP3

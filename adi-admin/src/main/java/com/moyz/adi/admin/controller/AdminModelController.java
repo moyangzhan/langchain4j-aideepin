@@ -32,13 +32,13 @@ public class AdminModelController {
 
     @PostMapping("/addOne")
     public AiModelDto addOne(@Validated(AiModelAddGroup.class) @RequestBody AiModelDto aiModelDto) {
-        check(aiModelDto.getPlatform(), aiModelDto.getType());
+        check(aiModelDto.getType());
         return aiModelService.addOne(aiModelDto);
     }
 
     @PostMapping("/edit")
     public void edit(@Validated(AiModelEditGroup.class) @RequestBody AiModelDto aiModelDto) {
-        check(aiModelDto.getPlatform(), aiModelDto.getType());
+        check(aiModelDto.getType());
         aiModelService.edit(aiModelDto);
     }
 
@@ -47,10 +47,7 @@ public class AdminModelController {
         aiModelService.softDelete(id);
     }
 
-    private void check(String platform, String type) {
-        if (StringUtils.isNotBlank(platform) && !AiModelUtil.checkModelPlatform(platform)) {
-            throw new BaseException(A_PARAMS_ERROR);
-        }
+    private void check(String type) {
         if (StringUtils.isNotBlank(type) && !AiModelUtil.checkModelType(type)) {
             throw new BaseException(A_PARAMS_ERROR);
         }

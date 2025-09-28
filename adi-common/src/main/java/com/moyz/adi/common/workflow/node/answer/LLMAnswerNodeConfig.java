@@ -14,5 +14,7 @@ public class LLMAnswerNodeConfig {
     @NotNull
     @JsonProperty("model_name")
     private String modelName;
+    @JsonProperty("model_platform")
+    private String modelPlatform;
     private Boolean streaming;
 }

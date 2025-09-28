@@ -432,7 +432,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         String token = UuidUtil.createShort();
         String tokenKey = MessageFormat.format(USER_TOKEN, token);
         String jsonUser = JsonUtil.toJson(user);
-        log.info("jsonUser:{}", jsonUser);
+//        log.info("jsonUser:{}", jsonUser);
         stringRedisTemplate.opsForValue().set(tokenKey, jsonUser, AdiConstant.USER_TOKEN_EXPIRE, TimeUnit.HOURS);
         return token;
     }

@@ -24,6 +24,6 @@ public class SearchController {
     @Operation(summary = "sse process")
     @PostMapping(value = "/process", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter sseAsk(@RequestBody @Validated AiSearchReq req) {
-        return searchService.search(req.isBriefSearch(), req.getSearchText(), req.getEngineName(), req.getModelName());
+        return searchService.search(req);
     }
 }

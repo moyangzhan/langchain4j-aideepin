@@ -5,5 +5,5 @@ import lombok.EqualsAndHashCode;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-public class OllamaSetting extends CommonAiPlatformSetting {
+public class OllamaSetting extends ModelPlatformSetting {
 }

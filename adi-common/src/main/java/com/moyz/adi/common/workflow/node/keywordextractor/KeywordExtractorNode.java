@@ -65,7 +65,7 @@ public class KeywordExtractorNode extends AbstractWfNode {
         log.info("KeywordExtractorNode prompt:{}", prompt);
 
         //调用LLM
-        WorkflowUtil.streamingInvokeLLM(wfState, state, node, nodeConfigObj.getModelName(), llmMessages);
+        WorkflowUtil.streamingInvokeLLM(wfState, state, node, nodeConfigObj.getModelPlatform(), nodeConfigObj.getModelName(), llmMessages);
         return new NodeProcessResult();
     }
 }

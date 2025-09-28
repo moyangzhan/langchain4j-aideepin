@@ -114,23 +114,23 @@ ps: neo4j 与 pgvector + apache age 二选一即可
     使用SQL直接更新表数据
     +  配置AI平台
         ```plain
-        -- DeepSeek的secretKey
-        update adi_sys_config set value = '{"base_url":"https://api.deepseek.com","secret_key":"my_deepseek_secret_key"}' where name = 'deepseek_setting';
+        -- DeepSeek
+        update adi_model_platform set api_key = 'my_deepseek_secret_key' where name = 'deepseek';
 
         -- openai的secretKey
-        update adi_sys_config set value = '{"secret_key":"my_openai_secret_key"}' where name = 'openai_setting';
+        update adi_model_platform set api_key = 'my_openai_secret_key' where name = 'openai';
 
         -- 灵积大模型平台的apiKey
-        update adi_sys_config set value = '{"api_key":"my_dashcope_api_key"}' where name = 'dashscope_setting';
+        update adi_model_platform set api_key = 'my_dashcope_api_key' where name = 'dashscope';
 
         -- 硅基流动的配置
-        update adi_sys_config set value = '{"base_url":"https://api.siliconflow.cn/v1","secret_key":"my_siliconflow_api_key"}' where name = 'siliconflow_setting';
+        update adi_model_platform set api_key = 'my_siliconflow_api_key' where name = 'siliconflow_setting';
 
         -- 千帆大模型平台的配置
-        update adi_sys_config set value = '{"api_key":"my_qianfan_api_key","secret_key":"my_qianfan_secret_key"}' where name = 'qianfan_setting';
+        update adi_model_platform set api_key = 'my_qianfan_api_key',secret_key='my_qianfan_secret_key' where name = 'qianfan';
 
         -- ollama的配置
-        update adi_sys_config set value = '{"base_url":"my_ollama_base_url"}' where name = 'ollama_setting';
+        update adi_model_platform set base_url = 'my_ollama_base_url' where name = 'ollama';
         ```
 
   + 启用AI平台下的模型或新增模型

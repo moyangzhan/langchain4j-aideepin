@@ -19,10 +19,12 @@ import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.rag.EmbeddingRAG;
 import com.moyz.adi.common.rag.GraphRAG;
 import com.moyz.adi.common.rag.GraphStore;
+import com.moyz.adi.common.service.ModelPlatformService;
 import com.moyz.adi.common.service.languagemodel.DashScopeEmbeddingModelService;
 import com.moyz.adi.common.service.languagemodel.OpenAiEmbeddingModelService;
 import com.moyz.adi.common.util.AdiPropertiesUtil;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
+import com.moyz.adi.common.util.SpringUtil;
 import com.pgvector.PGvector;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -140,11 +142,12 @@ public class BeanConfig {
         if (adiProperties.getEmbeddingModel().equals(AdiConstant.EmbeddingModel.ALL_MINILM_L6)) {
             return new AllMiniLmL6V2EmbeddingModel();
         }
+        ModelPlatformService modelPlatformService = SpringUtil.getBean(ModelPlatformService.class);
         AiModel aiModel = AdiPropertiesUtil.getEmbeddingModelByProperty(adiProperties);
         if (aiModel.getPlatform().equals(AdiConstant.ModelPlatform.DASHSCOPE)) {
-            return new DashScopeEmbeddingModelService(aiModel).buildModel();
+            return new DashScopeEmbeddingModelService(aiModel, modelPlatformService.getByName(aiModel.getPlatform())).buildModel();
         } else if (aiModel.getPlatform().equals(AdiConstant.ModelPlatform.OPENAI)) {
-            return new OpenAiEmbeddingModelService(aiModel).buildModel();
+            return new OpenAiEmbeddingModelService(aiModel, modelPlatformService.getByName(aiModel.getPlatform())).buildModel();
         } else {
             throw new RuntimeException("Unsupported embedding model: " + adiProperties.getEmbeddingModel());
         }

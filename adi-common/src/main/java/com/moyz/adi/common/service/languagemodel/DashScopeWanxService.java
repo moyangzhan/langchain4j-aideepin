@@ -2,15 +2,14 @@ package com.moyz.adi.common.service.languagemodel;
 
 import com.alibaba.dashscope.exception.ApiException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.Draw;
+import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.wanx.AdiWanxImageModel;
-import com.moyz.adi.common.vo.DashScopeSetting;
 import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.WanxBackgroundGenerationParams;
 import dev.langchain4j.model.image.ImageModel;
@@ -23,15 +22,15 @@ import java.util.List;
  * 通义万相
  */
 @Slf4j
-public class DashScopeWanxService extends AbstractImageModelService<DashScopeSetting> {
+public class DashScopeWanxService extends AbstractImageModelService {
 
-    public DashScopeWanxService(AiModel aiModel) {
-        super(aiModel, AdiConstant.SysConfigKey.DASHSCOPE_SETTING, DashScopeSetting.class);
+    public DashScopeWanxService(AiModel model, ModelPlatform modelPlatform) {
+        super(model, modelPlatform);
     }
 
     @Override
     public boolean isEnabled() {
-        return StringUtils.isNotBlank(platformSetting.getApiKey()) && aiModel.getIsEnable();
+        return StringUtils.isNotBlank(platform.getApiKey()) && aiModel.getIsEnable();
     }
 
     @Override
@@ -52,8 +51,8 @@ public class DashScopeWanxService extends AbstractImageModelService<DashScopeSet
                 throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
             }
             AdiWanxImageModel model = AdiWanxImageModel.builder()
-                    .baseUrl(platformSetting.getBaseUrl())
-                    .apiKey(platformSetting.getApiKey())
+                    .baseUrl(platform.getBaseUrl())
+                    .apiKey(platform.getApiKey())
                     .modelName(draw.getAiModelName())
                     .task("background-generation")
                     .function("generation")
@@ -72,8 +71,8 @@ public class DashScopeWanxService extends AbstractImageModelService<DashScopeSet
             return model;
         } else {
             AdiWanxImageModel.WanxImageModelBuilder builder = AdiWanxImageModel.builder()
-                    .baseUrl(platformSetting.getBaseUrl())
-                    .apiKey(platformSetting.getApiKey())
+                    .baseUrl(platform.getBaseUrl())
+                    .apiKey(platform.getApiKey())
                     .modelName(draw.getAiModelName())
                     .size(draw.getGenerateSize())
                     .negativePrompt(draw.getNegativePrompt());

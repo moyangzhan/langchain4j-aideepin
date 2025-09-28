@@ -109,7 +109,7 @@ public class CompositeRAG {
      * @param consumer   LLM响应内容的消费者
      */
     private void query(List<ContentRetriever> retrievers, SseAskParams params, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
-        AbstractLLMService<?> llmService = LLMContext.getLLMServiceByName(params.getModelName());
+        AbstractLLMService llmService = LLMContext.getServiceOrDefault(params.getModelPlatform(), params.getModelName());
         if (!llmService.isEnabled()) {
             log.error("llm service is disabled");
             throw new BaseException(B_LLM_SERVICE_DISABLED);

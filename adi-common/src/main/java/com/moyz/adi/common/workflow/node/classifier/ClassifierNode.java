@@ -52,7 +52,7 @@ public class ClassifierNode extends AbstractWfNode {
             throw new BaseException(A_WF_INPUT_INVALID);
         }
         String prompt = ClassifierPrompt.createPrompt(defaultInputOpt.get().valueToString(), nodeConfig.getCategories());
-        NodeIOData nodeIODataText = WorkflowUtil.invokeLLM(wfState, nodeConfig.getModelName(), prompt);
+        NodeIOData nodeIODataText = WorkflowUtil.invokeLLM(wfState, nodeConfig.getModelPlatform(), nodeConfig.getModelName(), prompt);
         ClassifierLLMResp classifierLLMResp = JsonUtil.fromJson(nodeIODataText.valueToString(), ClassifierLLMResp.class);
         if (null == classifierLLMResp || StringUtils.isBlank(classifierLLMResp.getCategoryUuid())) {
             throw new BaseException(C_LLM_RESPONSE_INVALID);

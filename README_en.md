@@ -107,23 +107,23 @@ Frontend tech stack:
     * Configure AI platforms
       ```plaintext
 
-      -- DeepSeeksecretKey
-        update adi_sys_config set value = '{"base_url":"https://api.deepseek.com","secret_key":"my_deepseek_secret_key"}' where name = 'deepseek_setting';
+      -- DeepSeek
+      update adi_model_platform set api_key = 'my_deepseek_secret_key' where name = 'deepseek';
 
-      -- OpenAI secretKey
-      update adi_sys_config set value = '{"secret_key":"my_openai_secret_key"}' where name = 'openai_setting';
+      -- OpenAI
+      update adi_model_platform set api_key = 'my_openai_secret_key' where name = 'openai';
   
-      -- Dashscope API key
-      update adi_sys_config set value = '{"api_key":"my_dashcope_api_key"}' where name = 'dashscope_setting';
+      -- Dashscope
+      update adi_model_platform set api_key = 'my_dashcope_api_key' where name = 'dashscope';
 
-      --siliconflow secret key
-      update adi_sys_config set value = '{"base_url":"https://api.siliconflow.cn","secret_key":"my_siliconflow_api_key"}' where name = 'siliconflow_setting';
+      --siliconflow
+      update adi_model_platform set api_key = 'my_siliconflow_api_key' where name = 'siliconflow_setting';
   
       -- Qianfan API key and secret key
-      update adi_sys_config set value = '{"api_key":"my_qianfan_api_key","secret_key":"my_qianfan_secret_key"}' where name = 'qianfan_setting';
+      update adi_model_platform set api_key = 'my_qianfan_api_key',secret_key='my_qianfan_secret_key' where name = 'qianfan';
   
       -- Ollama configuration
-      update adi_sys_config set value = '{"base_url":"my_ollama_base_url"}' where name = 'ollama_setting';
+      update adi_model_platform set base_url = 'my_ollama_base_url' where name = 'ollama';
       ```
     * Enable AI platform models or add new models
       ```

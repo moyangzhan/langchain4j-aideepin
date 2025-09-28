@@ -48,20 +48,23 @@ public class SysConfigController {
             throw new BaseException(B_TTS_SETTING_NOT_FOUND);
         }
 
-        //Available voices depend on the modelName in ttsSetting
-        AiModel aiModel = aiModelService.getByNameOrThrow(tts.getModelName());
-        if (null == aiModel) {
-            log.error("Model {} not found in db", tts.getModelName());
-            throw new BaseException(B_TTS_MODEL_NOT_FOUND);
-        }
-        List<ModelVoice> voices = new ArrayList<>();
-        JsonNode modelVoices = aiModel.getProperties().get("voices");
-        for (JsonNode voice : modelVoices) {
-            voices.add(JsonUtil.fromJson(voice, ModelVoice.class));
-        }
         SysConfigResp sysConfigResp = new SysConfigResp();
         sysConfigResp.setAsrSetting(JsonUtil.fromJson(asrSetting, AsrSetting.class));
         sysConfigResp.setTtsSetting(JsonUtil.fromJson(ttsSetting, TtsSetting.class));
+
+        //Available voices depend on the modelName in ttsSetting
+        List<ModelVoice> voices = new ArrayList<>();
+        if (tts.getSynthesizerSide().equalsIgnoreCase(AdiConstant.TtsConstant.SYNTHESIZER_SERVER)) {
+            AiModel aiModel = aiModelService.getByName(tts.getModelName());
+            if (null == aiModel) {
+                log.error("Synthesizer side is server, but model {} not found", tts.getModelName());
+                throw new BaseException(B_TTS_MODEL_NOT_FOUND);
+            }
+            JsonNode modelVoices = aiModel.getProperties().get("voices");
+            for (JsonNode voice : modelVoices) {
+                voices.add(JsonUtil.fromJson(voice, ModelVoice.class));
+            }
+        }
         sysConfigResp.setAvailableVoices(voices);
         return sysConfigResp;
     }

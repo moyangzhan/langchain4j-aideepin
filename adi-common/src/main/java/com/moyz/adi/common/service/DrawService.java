@@ -202,7 +202,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
             String requestTimesKey = MessageFormat.format(RedisKeyConstant.USER_REQUEST_TEXT_TIMES, user.getId());
             rateLimitHelper.increaseRequestTimes(requestTimesKey, LocalCache.IMAGE_RATE_LIMIT_CONFIG);
 
-            AbstractImageModelService<?> imageModelService = ImageModelContext.getModelService(draw.getAiModelName());
+            AbstractImageModelService imageModelService = ImageModelContext.getOrDefault(draw.getAiModelName());
             List<String> images;
             if (draw.getInteractingMethod() == INTERACTING_METHOD_EDIT_IMAGE) {
                 images = imageModelService.editImage(user, draw);

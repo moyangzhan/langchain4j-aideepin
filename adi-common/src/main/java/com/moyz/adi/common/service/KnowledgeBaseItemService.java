@@ -187,7 +187,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                     .set(KnowledgeBaseItem::getGraphicalStatusChangeTime, LocalDateTime.now())
                     .set(KnowledgeBaseItem::getGraphicalStatus, GraphicalStatusEnum.DOING)
                     .update();
-            AbstractLLMService<?> llmService = LLMContext.getLLMServiceById(knowledgeBase.getIngestModelId());
+            AbstractLLMService llmService = LLMContext.getServiceById(knowledgeBase.getIngestModelId(), true);
             ChatModel ChatModel = llmService.buildChatLLM(
                     ChatModelBuilderProperties.builder()
                             .temperature(knowledgeBase.getQueryLlmTemperature())

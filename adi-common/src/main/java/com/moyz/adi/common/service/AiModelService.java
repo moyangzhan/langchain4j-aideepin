@@ -24,12 +24,12 @@ import java.util.List;
 public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
 
     @Resource
-    private AiModelSettingService aiModelSettingService;
+    private AiModelInitializer aiModelInitializer;
 
     public void init() {
         log.info("Initializing AI model...");
         List<AiModel> aiModels = ChainWrappers.lambdaQueryChain(baseMapper).eq(AiModel::getIsDeleted, false).list();
-        aiModelSettingService.init(aiModels);
+        aiModelInitializer.init(aiModels);
     }
 
     public List<AiModel> listBy(String platform, String type) {
@@ -120,18 +120,22 @@ public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
             throw new BaseException(ErrorEnum.A_MODEL_ALREADY_EXIST);
         }
         AiModel aiModel = new AiModel();
+        aiModelDto.setName(aiModelDto.getName().strip());
+        aiModelDto.setTitle(aiModelDto.getTitle().strip());
         BeanUtils.copyProperties(aiModelDto, aiModel);
         baseMapper.insert(aiModel);
 
         AiModelDto result = new AiModelDto();
         BeanUtils.copyProperties(aiModel, result);
 
-        aiModelSettingService.addOrUpdate(aiModel);
+        aiModelInitializer.addOrUpdate(aiModel);
 
         return result;
     }
 
     public void edit(AiModelDto aiModelDto) {
+        aiModelDto.setName(aiModelDto.getName().strip());
+        aiModelDto.setTitle(aiModelDto.getTitle().strip());
         AiModel oldAiModel = getByIdOrThrow(aiModelDto.getId());
 
         AiModel aiModel = new AiModel();
@@ -139,8 +143,8 @@ public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
         baseMapper.updateById(aiModel);
 
         AiModel updatedOne = getByIdOrThrow(aiModelDto.getId());
-        aiModelSettingService.delete(oldAiModel);
-        aiModelSettingService.addOrUpdate(updatedOne);
+        aiModelInitializer.delete(oldAiModel);
+        aiModelInitializer.addOrUpdate(updatedOne);
     }
 
     public void softDelete(Long id) {
@@ -151,6 +155,6 @@ public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
         model.setIsDeleted(true);
         baseMapper.updateById(model);
 
-        aiModelSettingService.delete(existModel);
+        aiModelInitializer.delete(existModel);
     }
 }

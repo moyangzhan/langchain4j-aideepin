@@ -1,6 +1,5 @@
 package com.moyz.adi.common.vo;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -12,7 +11,5 @@ import lombok.EqualsAndHashCode;
  */
 @EqualsAndHashCode(callSuper = true)
 @Data
-public class SiliconflowSetting extends CommonAiPlatformSetting {
-    @JsonProperty("secret_key")
-    private String secretKey;
+public class SiliconflowSetting extends ModelPlatformSetting {
 }

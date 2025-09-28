@@ -87,7 +87,7 @@ public class SSEEmitterHelper {
      */
     public void call(SseAskParams sseAskParams, TriConsumer<LLMResponseContent, PromptMeta, AnswerMeta> completeCallback) {
         String askingKey = registerEventStreamListener(sseAskParams);
-        LLMContext.getLLMServiceByName(sseAskParams.getModelName()).streamingChat(sseAskParams, (response, promptMeta, answerMeta) -> {
+        LLMContext.getServiceOrDefault(sseAskParams.getModelPlatform(), sseAskParams.getModelName()).streamingChat(sseAskParams, (response, promptMeta, answerMeta) -> {
             try {
                 completeCallback.accept(response, promptMeta, answerMeta);
             } catch (Exception e) {

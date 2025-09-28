@@ -9,7 +9,7 @@ public class AiModelUtil {
     }
 
     public static boolean checkModelType(String modelType) {
-        return StringUtils.equalsAny(modelType, AdiConstant.ModelType.TEXT, AdiConstant.ModelType.IMAGE, AdiConstant.ModelType.EMBEDDING, AdiConstant.ModelType.RERANK);
+        return AdiConstant.ModelType.getModelType().contains(modelType);
     }
 
     public static boolean checkModelPlatform(String platform) {

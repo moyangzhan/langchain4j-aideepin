@@ -23,8 +23,7 @@ public class TokenEstimatorFactory {
         } else if (AdiConstant.TokenEstimator.HUGGING_FACE.equals(tokenEstimator)) {
             return new HuggingFaceTokenCountEstimator();
         } else if (AdiConstant.TokenEstimator.QWEN.equals(tokenEstimator)) {
-            AbstractLLMService<?> llmService = LLMContext.getAllServices()
-                    .values()
+            AbstractLLMService llmService = LLMContext.getAllServices()
                     .stream()
                     .filter(item -> {
                         AiModel aiModel = item.getAiModel();

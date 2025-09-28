@@ -1,7 +1,7 @@
 package com.moyz.adi.common.service.languagemodel;
 
-import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
+import com.moyz.adi.common.entity.ModelPlatform;
 
 
 /**
@@ -12,7 +12,7 @@ import com.moyz.adi.common.entity.AiModel;
  */
 public class SiliconflowLLMService extends OpenAiLLMService {
 
-    public SiliconflowLLMService(AiModel aiModel) {
-        super(aiModel, AdiConstant.SysConfigKey.SILICONFLOW_SETTING);
+    public SiliconflowLLMService(AiModel model, ModelPlatform modelPlatform) {
+        super(model, modelPlatform);
     }
 }

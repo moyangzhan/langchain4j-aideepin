@@ -26,7 +26,7 @@ public class LLMAnswerNode extends AbstractWfNode {
 
     /**
      * nodeConfig格式：<br/>
-     * {"prompt": "将以下内容翻译成英文：{input}","model_name":"deepseek-chat"}<br/>
+     * {"prompt": "将以下内容翻译成英文：{input}","model_platform":"deepseek","model_name":"deepseek-chat"}<br/>
      *
      * @return LLM的返回内容
      */
@@ -42,7 +42,7 @@ public class LLMAnswerNode extends AbstractWfNode {
         log.info("LLM prompt:{}", prompt);
         String modelName = nodeConfigObj.getModelName();
         //调用LLM
-        WorkflowUtil.streamingInvokeLLM(wfState, state, node, modelName, List.of(UserMessage.from(prompt)));
+        WorkflowUtil.streamingInvokeLLM(wfState, state, node, nodeConfigObj.getModelPlatform(), modelName, List.of(UserMessage.from(prompt)));
         return new NodeProcessResult();
     }
 }

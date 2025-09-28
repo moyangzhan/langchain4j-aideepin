@@ -19,9 +19,9 @@ import java.util.function.Consumer;
 public class TtsModelContext {
 
     //ModelName to TTS service mapping
-    private static final Map<String, AbstractTtsModelService<?>> NAME_TO_SERVICE = new HashMap<>();
+    private static final Map<String, AbstractTtsModelService> NAME_TO_SERVICE = new HashMap<>();
 
-    private final AbstractTtsModelService<?> current;
+    private final AbstractTtsModelService current;
 
     /**
      * 直接由系统设置来决定使用哪个TTS模型，不需要让用户选择。
@@ -42,7 +42,7 @@ public class TtsModelContext {
         }
     }
 
-    public static void addService(AbstractTtsModelService<?> modelService) {
+    public static void addService(AbstractTtsModelService modelService) {
         NAME_TO_SERVICE.put(modelService.getAiModel().getName(), modelService);
     }
 

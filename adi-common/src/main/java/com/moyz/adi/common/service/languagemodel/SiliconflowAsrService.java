@@ -1,12 +1,11 @@
 package com.moyz.adi.common.service.languagemodel;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
+import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.file.LocalFileUtil;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.UuidUtil;
-import com.moyz.adi.common.vo.SiliconflowSetting;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.Consts;
@@ -28,10 +27,10 @@ import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.http.HttpHeaders.CONTENT_TYPE;
 
 @Slf4j
-public class SiliconflowAsrService extends AbstractAsrModelService<SiliconflowSetting> {
+public class SiliconflowAsrService extends AbstractAsrModelService {
 
-    public SiliconflowAsrService(AiModel aiModel) {
-        super(aiModel, AdiConstant.SysConfigKey.SILICONFLOW_SETTING, SiliconflowSetting.class);
+    public SiliconflowAsrService(AiModel model, ModelPlatform modelPlatform) {
+        super(model, modelPlatform);
     }
 
     @Override
@@ -41,7 +40,7 @@ public class SiliconflowAsrService extends AbstractAsrModelService<SiliconflowSe
             audioPath = LocalFileUtil.saveFromUrl(audioPath, UuidUtil.createShort(), "wav");
         }
         log.info("audio to text,path:{}", audioPath);
-        String baseUrl = platformSetting.getBaseUrl();
+        String baseUrl = platform.getBaseUrl();
         if (StringUtils.isBlank(baseUrl)) {
             baseUrl = "https://api.siliconflow.cn";
         }
@@ -56,7 +55,7 @@ public class SiliconflowAsrService extends AbstractAsrModelService<SiliconflowSe
             String boundary = FORM_DATA_BOUNDARY_PRE + System.currentTimeMillis();
             HttpPost httpRequest = new HttpPost(baseUrl + "/audio/transcriptions");
             httpRequest.addHeader(CONTENT_TYPE, "multipart/form-data; boundary=" + boundary);
-            httpRequest.addHeader(AUTHORIZATION, "Bearer " + platformSetting.getSecretKey());
+            httpRequest.addHeader(AUTHORIZATION, "Bearer " + platform.getApiKey());
             MultipartEntityBuilder entityBuilder = MultipartEntityBuilder.create();
             entityBuilder.setBoundary(boundary);
             entityBuilder.addPart("file", new FileBody(new File(audioPath)));

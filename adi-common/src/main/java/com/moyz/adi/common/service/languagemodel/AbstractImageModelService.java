@@ -2,6 +2,7 @@ package com.moyz.adi.common.service.languagemodel;
 
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.Draw;
+import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.service.FileService;
@@ -18,15 +19,15 @@ import java.util.List;
 import static com.moyz.adi.common.enums.ErrorEnum.C_DRAW_FAIL;
 
 @Slf4j
-public abstract class AbstractImageModelService<T> extends CommonModelService<T> {
+public abstract class AbstractImageModelService extends CommonModelService {
 
     private FileService fileService;
 
-    protected AbstractImageModelService(AiModel aiModel, String settingName, Class<T> clazz) {
-        super(aiModel, settingName, clazz);
+    protected AbstractImageModelService(AiModel model, ModelPlatform modelPlatform) {
+        super(model, modelPlatform);
     }
 
-    public AbstractImageModelService<T> setProxyAddress(InetSocketAddress proxyAddress) {
+    public AbstractImageModelService setProxyAddress(InetSocketAddress proxyAddress) {
         this.proxyAddress = proxyAddress;
         return this;
     }

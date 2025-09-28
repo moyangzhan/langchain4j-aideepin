@@ -1,9 +1,9 @@
 package com.moyz.adi.common.service.languagemodel;
 
 import com.moyz.adi.common.entity.AiModel;
+import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.vo.ChatModelBuilderProperties;
 import com.moyz.adi.common.vo.LLMException;
-import com.moyz.adi.common.vo.OllamaSetting;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -11,23 +11,21 @@ import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import org.apache.commons.lang3.StringUtils;
 
-import static com.moyz.adi.common.cosntant.AdiConstant.SysConfigKey.OLLAMA_SETTING;
+public class OllamaLLMService extends AbstractLLMService {
 
-public class OllamaLLMService extends AbstractLLMService<OllamaSetting> {
-
-    public OllamaLLMService(AiModel aiModel) {
-        super(aiModel, OLLAMA_SETTING, OllamaSetting.class);
+    public OllamaLLMService(AiModel aiModel, ModelPlatform modelPlatform) {
+        super(aiModel, modelPlatform);
     }
 
     @Override
     public boolean isEnabled() {
-        return StringUtils.isNotBlank(platformSetting.getBaseUrl()) && aiModel.getIsEnable();
+        return StringUtils.isNotBlank(platform.getBaseUrl()) && aiModel.getIsEnable();
     }
 
     @Override
     protected ChatModel doBuildChatModel(ChatModelBuilderProperties properties) {
         return OllamaChatModel.builder()
-                .baseUrl(platformSetting.getBaseUrl())
+                .baseUrl(platform.getBaseUrl())
                 .modelName(aiModel.getName())
                 .temperature(properties.getTemperature())
                 .build();
@@ -37,7 +35,7 @@ public class OllamaLLMService extends AbstractLLMService<OllamaSetting> {
     public StreamingChatModel buildStreamingChatModel(ChatModelBuilderProperties properties) {
         double temperature = properties.getTemperatureWithDefault(0.7);
         return OllamaStreamingChatModel.builder()
-                .baseUrl(platformSetting.getBaseUrl())
+                .baseUrl(platform.getBaseUrl())
                 .modelName(aiModel.getName())
                 .temperature(temperature)
                 .build();

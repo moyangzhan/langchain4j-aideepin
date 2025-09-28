@@ -1,12 +1,11 @@
 package com.moyz.adi.common.service.languagemodel;
 
-import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
+import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.vo.ChatModelBuilderProperties;
 import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.QianFanAiModelSetting;
-import com.moyz.adi.common.vo.QianFanAiPlatformSetting;
 import dev.langchain4j.community.model.qianfan.QianfanChatModel;
 import dev.langchain4j.community.model.qianfan.QianfanStreamingChatModel;
 import dev.langchain4j.model.TokenCountEstimator;
@@ -21,12 +20,12 @@ import org.apache.commons.lang3.StringUtils;
  */
 @Slf4j
 @Accessors(chain = true)
-public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetting> {
+public class QianFanLLMService extends AbstractLLMService {
 
     private String endpoint = "";
 
-    public QianFanLLMService(AiModel aiModel) {
-        super(aiModel, AdiConstant.SysConfigKey.QIANFAN_SETTING, QianFanAiPlatformSetting.class);
+    public QianFanLLMService(AiModel aiModel, ModelPlatform modelPlatform) {
+        super(aiModel, modelPlatform);
         String ms = aiModel.getSetting();
         if (StringUtils.isNotBlank(ms)) {
             QianFanAiModelSetting aiModelSetting = JsonUtil.fromJson(ms, QianFanAiModelSetting.class);
@@ -38,19 +37,19 @@ public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetti
 
     @Override
     public boolean isEnabled() {
-        return StringUtils.isNoneBlank(platformSetting.getApiKey(), platformSetting.getSecretKey()) && aiModel.getIsEnable();
+        return StringUtils.isNoneBlank(platform.getApiKey(), platform.getSecretKey()) && aiModel.getIsEnable();
     }
 
     @Override
     protected ChatModel doBuildChatModel(ChatModelBuilderProperties properties) {
         QianfanChatModel.QianfanChatModelBuilder builder = QianfanChatModel.builder()
-                .baseUrl(platformSetting.getBaseUrl())
+                .baseUrl(platform.getBaseUrl())
                 .modelName(aiModel.getName())
                 .temperature(properties.getTemperature())
                 .topP(1.0)
                 .maxRetries(1)
-                .apiKey(platformSetting.getApiKey())
-                .secretKey(platformSetting.getSecretKey())
+                .apiKey(platform.getApiKey())
+                .secretKey(platform.getSecretKey())
                 .logRequests(true)
                 .logResponses(true);
         if (StringUtils.isNotBlank(endpoint)) {
@@ -63,12 +62,12 @@ public class QianFanLLMService extends AbstractLLMService<QianFanAiPlatformSetti
     public StreamingChatModel buildStreamingChatModel(ChatModelBuilderProperties properties) {
         double temperature = properties.getTemperatureWithDefault(0.7);
         QianfanStreamingChatModel.QianfanStreamingChatModelBuilder builder = QianfanStreamingChatModel.builder()
-                .baseUrl(platformSetting.getBaseUrl())
+                .baseUrl(platform.getBaseUrl())
                 .modelName(aiModel.getName())
                 .temperature(temperature)
                 .topP(1.0)
-                .apiKey(platformSetting.getApiKey())
-                .secretKey(platformSetting.getSecretKey())
+                .apiKey(platform.getApiKey())
+                .secretKey(platform.getSecretKey())
                 .logRequests(true)
                 .logResponses(true);
         if (StringUtils.isNotBlank(endpoint)) {

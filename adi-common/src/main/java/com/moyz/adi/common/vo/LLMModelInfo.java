@@ -8,5 +8,5 @@ import lombok.Data;
 public class LLMModelInfo extends ModelInfo {
 
     @JsonIgnore
-    private AbstractLLMService<?> llmService;
+    private AbstractLLMService llmService;
 }

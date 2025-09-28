@@ -111,6 +111,41 @@ CREATE TRIGGER trigger_draw_comment_update_time
     FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
 
+-- 旧版本（3.15.0及以下）中本表 adi_model_platform 的数据位于 adi_sys_config 中
+-- 需要手动将 adi_sys_config 中对应的模型平台配置项移动到 adi_model_platform 表中
+-- 需要迁移的配置为：deepseek_setting、openai_setting、dashscope_setting、qianfan_setting、ollama_setting、siliconflow_setting
+CREATE TABLE adi_model_platform
+(
+    id                       bigserial primary key,
+    name                     varchar(45)   default ''                not null,
+    title                    varchar(45)   default ''                not null,
+    base_url                 varchar(250)  default ''                not null,
+    api_key                  varchar(100)  default ''                not null,
+    secret_key               varchar(100)  default ''                not null,
+    remark                   varchar(1000) default ''                not null,
+    is_proxy_enable          boolean       default false             not null,
+    is_openai_api_compatible boolean       default false             not null,
+    create_time              timestamp     default CURRENT_TIMESTAMP not null,
+    update_time              timestamp     default CURRENT_TIMESTAMP not null,
+    is_deleted               boolean       default false             not null
+);
+
+COMMENT ON TABLE adi_model_platform IS '模型平台表（模型供应商表） | Model platform (model provider)';
+COMMENT ON COLUMN adi_model_platform.name IS '模型平台名称，如openai, dashscope, qianfan, ollama | Model provider name, e.g., openai, dashscope, qianfan, ollama';
+COMMENT ON COLUMN adi_model_platform.title IS '模型平台标题，可读性更高的名称，如: OpenAI，DeepSeek深度求索 | Model provider title, a more readable name, e.g., OpenAI, DeepSeek';
+COMMENT ON COLUMN adi_model_platform.base_url IS '模型平台的API请求地址 | API base URL of the model provider';
+COMMENT ON COLUMN adi_model_platform.api_key IS '模型平台的API Key | API Key of the model provider';
+COMMENT ON COLUMN adi_model_platform.secret_key IS '模型平台的Secret Key，目前只有百度的千帆在用，其他供应商的key直接放到 api_key 即可 | Secret Key of the model provider';
+COMMENT ON COLUMN adi_model_platform.is_proxy_enable IS '是否通过代理访问模型平台的API | Whether to access the model provider API through a proxy';
+COMMENT ON COLUMN adi_model_platform.is_openai_api_compatible IS '是否兼容OpenAI的API，如果是，则可以使用OpenAI的API请求格式 | Whether it is compatible with OpenAI API, if true, OpenAI API request format can be used';
+COMMENT ON COLUMN adi_model_platform.remark IS '备注 | Additional remarks about the model provider';
+
+CREATE TRIGGER trigger_model_platform_update_time
+    BEFORE UPDATE
+    ON adi_model_platform
+    FOR EACH ROW
+EXECUTE PROCEDURE update_modified_column();
+
 CREATE TABLE adi_ai_model
 (
     id                   bigserial primary key,
@@ -141,7 +176,7 @@ COMMENT ON COLUMN adi_ai_model.title IS '模型标题，可读性更高的名称
 COMMENT ON COLUMN adi_ai_model.setting IS 'json format, e.g., {voice_for_group1: "v1", voice_for_group2: "v2"}';
 COMMENT ON COLUMN adi_ai_model.properties IS 'e.g., { "dimension": 1536 } for embedding model,{"voices":["v1","v2","v3"]} for tts model';
 COMMENT ON COLUMN adi_ai_model.remark IS '备注 | Additional remarks about the AI model';
-COMMENT ON COLUMN adi_ai_model.platform IS '平台 | Model platform (as model provider): openai, dashscope, qianfan, ollama';
+COMMENT ON COLUMN adi_ai_model.platform IS '平台，对应了 adi_model_platform.name | Model platform (as model provider): openai, dashscope, qianfan, ollama';
 COMMENT ON COLUMN adi_ai_model.context_window IS '上下文窗口 | LLM context window';
 COMMENT ON COLUMN adi_ai_model.input_types IS '输入类型 | Input types: text, image, audio, video';
 COMMENT ON COLUMN adi_ai_model.is_reasoner IS 'true: 推理模型如deepseek-r1, false: 非推理模型如deepseek-v3 | true: Reasoning model, false: Non-reasoning model';
@@ -954,9 +989,9 @@ VALUES ('catkeeper', '$2a$10$z44gncmQk6xCBCeDx55gMe1Zc8uYtOKcoT4/HE2F92VcF7wP2iq
 -- 配置信息
 -- https://api-docs.deepseek.com/zh-cn/
 INSERT INTO adi_sys_config (name, value)
-VALUES ('deepseek_setting', '{"base_url":"https://api.deepseek.com","secret_key":""}');
+VALUES ('deepseek_setting', '{"base_url":"https://api.deepseek.com","api_key":""}');
 INSERT INTO adi_sys_config (name, value)
-VALUES ('openai_setting', '{"secret_key":""}');
+VALUES ('openai_setting', '{"api_key":""}');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('dashscope_setting', '{"api_key":""}');
 INSERT INTO adi_sys_config (name, value)
@@ -964,7 +999,7 @@ VALUES ('qianfan_setting', '{"api_key":"","secret_key":""}');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('ollama_setting', '{"base_url":""}');
 INSERT INTO adi_sys_config (name, value)
-VALUES ('siliconflow_setting', '{"base_url":"https://api.siliconflow.cn/v1","secret_key":""}');
+VALUES ('siliconflow_setting', '{"base_url":"https://api.siliconflow.cn/v1","api_key":""}');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('google_setting',
         '{"url":"https://www.googleapis.com/customsearch/v1","key":"","cx":""}');
@@ -1014,6 +1049,17 @@ INSERT INTO adi_sys_config (name, value)
 VALUES ('tts_setting', '{"synthesizer_side":"client","model_name":"","platform":""}');
 -- INSERT INTO adi_sys_config (name, value)
 -- VALUES ('tts_setting', '{"synthesizer":"server","model_name":"cosyvoice-v2","platform":"dashscope"}');
+
+-- 模型平台
+insert into adi_model_platform (name, title, base_url) values ('openai', 'OpenAi', 'https://api.openai.com/v1');
+insert into adi_model_platform (name, title, base_url) values ('deepseek', 'DeepSeek深度求索', 'https://api.deepseek.com/v1');
+insert into adi_model_platform (name, title, base_url) values ('dashscope', 'DashScope', 'https://dashscope.aliyuncs.com/compatible-mode/v1');
+insert into adi_model_platform (name, title, base_url) values ('siliconflow', '硅基流动', 'https://api.siliconflow.cn/v1');
+insert into adi_model_platform (name, title, base_url) values ('ollama', 'ollama', 'http://localhost:11434');
+insert into adi_model_platform (name, title, base_url) values ('qianfan', '千帆', '');
+
+-- 硅基流动的文本模型的api兼容 openai api，本行数据用来测试动态创建的模型平台及模型是否正常使用了 OpenAiCompatibleLLMService 进行请求
+insert into adi_model_platform (name, title, base_url, is_openai_api_compatible) values ('openai-compatible-platform-test', '兼容openai的平台', 'https://api.siliconflow.cn/v1', true);
 
 -- 大语言模型
 -- https://api-docs.deepseek.com/zh-cn/quick_start/pricing
@@ -1501,6 +1547,13 @@ INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
 VALUES ('tinydolphin', 'ollama-tinydolphin', 'text', 'ollama', false);
 INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
 VALUES ('THUDM/GLM-Z1-9B-0414', '硅基流动-GLM-Z1-9B', 'text', 'siliconflow', false);
+
+-- test data
+INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
+VALUES ('THUDM/GLM-Z1-9B-0414', 'openai-compatible-model-test', 'text', 'openai-compatible-platform-test', false);
+-- test data end
+
+
 -- 语音识别
 INSERT INTO adi_ai_model (name, title, type, platform, input_types, is_enable)
 VALUES ('FunAudioLLM/SenseVoiceSmall', '硅基流动-语音识别', 'asr', 'siliconflow', 'audio', false);

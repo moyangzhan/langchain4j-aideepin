@@ -20,9 +20,9 @@ import java.util.Map;
 public class AsrModelContext {
 
     //ModelName to ASR service mapping
-    private static final Map<String, AbstractAsrModelService<?>> NAME_TO_SERVICE = new HashMap<>();
+    private static final Map<String, AbstractAsrModelService> NAME_TO_SERVICE = new HashMap<>();
 
-    private final AbstractAsrModelService<?> current;
+    private final AbstractAsrModelService current;
 
     /**
      * 直接由系统设置来决定使用哪个ASR模型，不需要让用户选择。
@@ -47,7 +47,7 @@ public class AsrModelContext {
         return this.current.audioToText(urlOrUuid);
     }
 
-    public static void addService(AbstractAsrModelService<?> modelService) {
+    public static void addService(AbstractAsrModelService modelService) {
         NAME_TO_SERVICE.put(modelService.getAiModel().getName(), modelService);
     }
 

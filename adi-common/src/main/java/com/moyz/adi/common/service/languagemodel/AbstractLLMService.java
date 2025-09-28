@@ -4,6 +4,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
+import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
@@ -47,7 +48,7 @@ import static com.moyz.adi.common.enums.ErrorEnum.A_PARAMS_ERROR;
 import static com.moyz.adi.common.enums.ErrorEnum.B_LLM_SERVICE_DISABLED;
 
 @Slf4j
-public abstract class AbstractLLMService<T> extends CommonModelService<T> {
+public abstract class AbstractLLMService extends CommonModelService {
 
     protected StringRedisTemplate stringRedisTemplate;
 
@@ -57,8 +58,8 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
     @Getter
     private final TtsSetting ttsSetting;
 
-    protected AbstractLLMService(AiModel aiModel, String settingName, Class<T> clazz) {
-        super(aiModel, settingName, clazz);
+    protected AbstractLLMService(AiModel aiModel, ModelPlatform modelPlatform) {
+        super(aiModel, modelPlatform);
 
         initMaxInputTokens();
         ttsSetting = JsonUtil.fromJson(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.TTS_SETTING), TtsSetting.class);
@@ -83,7 +84,7 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
         return this.stringRedisTemplate;
     }
 
-    public AbstractLLMService<T> setProxyAddress(InetSocketAddress proxyAddress) {
+    public AbstractLLMService setProxyAddress(InetSocketAddress proxyAddress) {
         this.proxyAddress = proxyAddress;
         return this;
     }
@@ -260,10 +261,10 @@ public abstract class AbstractLLMService<T> extends CommonModelService<T> {
     /**
      * 程序内部调用的聊天方法，通常用于处理工具调用等复杂逻辑
      *
-     * @param uuid            唯一标识
-     * @param chatModel       聊天模型
+     * @param uuid                       唯一标识
+     * @param chatModel                  聊天模型
      * @param chatModelRequestProperties 聊天模型参数
-     * @param chatRequest     聊天请求
+     * @param chatRequest                聊天请求
      * @return ChatResponse 聊天响应
      */
     private ChatResponse innerChat(String uuid, ChatModel chatModel, ChatModelRequestProperties chatModelRequestProperties, ChatRequest chatRequest) {

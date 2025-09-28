@@ -1,21 +1,29 @@
 package com.moyz.adi.common.service.languagemodel;
 
 import com.moyz.adi.common.entity.AiModel;
-import com.moyz.adi.common.util.JsonUtil;
-import com.moyz.adi.common.util.LocalCache;
+import com.moyz.adi.common.entity.ModelPlatform;
 import lombok.Getter;
+import lombok.Setter;
+import org.apache.commons.lang3.StringUtils;
 
 import java.net.InetSocketAddress;
 
-public class CommonModelService<T> {
+public class CommonModelService {
     protected InetSocketAddress proxyAddress;
     @Getter
     protected AiModel aiModel;
-    protected T platformSetting;
+    @Setter
+    @Getter
+    protected ModelPlatform platform;
 
-    public CommonModelService(AiModel aiModel, String settingName, Class<T> clazz) {
+    public CommonModelService(AiModel aiModel, ModelPlatform modelPlatform) {
         this.aiModel = aiModel;
-        String st = LocalCache.CONFIGS.get(settingName);
-        platformSetting = JsonUtil.fromJson(st, clazz);
+        this.platform = modelPlatform;
+
+        //兼容旧版配置部分没有 api_key 的情况，后续统一使用 api_key 字段名作为秘钥字段
+        if (null != platform && StringUtils.isNotBlank(platform.getSecretKey()) && StringUtils.isBlank(platform.getApiKey())) {
+            platform.setApiKey(platform.getSecretKey());
+        }
     }
+
 }

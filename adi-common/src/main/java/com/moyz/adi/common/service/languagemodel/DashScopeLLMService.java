@@ -1,11 +1,10 @@
 package com.moyz.adi.common.service.languagemodel;
 
-import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
+import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.DashscopeUtil;
 import com.moyz.adi.common.vo.ChatModelBuilderProperties;
-import com.moyz.adi.common.vo.DashScopeSetting;
 import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.SseAskParams;
 import dev.langchain4j.community.model.dashscope.QwenChatModel;
@@ -28,15 +27,15 @@ import static com.moyz.adi.common.enums.ErrorEnum.B_LLM_SECRET_KEY_NOT_SET;
  * 灵积模型服务(DashScope LLM service)
  */
 @Slf4j
-public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
+public class DashScopeLLMService extends AbstractLLMService {
 
-    public DashScopeLLMService(AiModel aiModel) {
-        super(aiModel, AdiConstant.SysConfigKey.DASHSCOPE_SETTING, DashScopeSetting.class);
+    public DashScopeLLMService(AiModel aiModel, ModelPlatform modelPlatform) {
+        super(aiModel, modelPlatform);
     }
 
     @Override
     public boolean isEnabled() {
-        return StringUtils.isNotBlank(platformSetting.getApiKey()) && aiModel.getIsEnable();
+        return StringUtils.isNotBlank(platform.getApiKey()) && aiModel.getIsEnable();
     }
 
     @Override
@@ -49,25 +48,25 @@ public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
 
     @Override
     protected ChatModel doBuildChatModel(ChatModelBuilderProperties properties) {
-        if (StringUtils.isBlank(platformSetting.getApiKey())) {
+        if (StringUtils.isBlank(platform.getApiKey())) {
             throw new BaseException(B_LLM_SECRET_KEY_NOT_SET);
         }
         return QwenChatModel.builder()
-                .apiKey(platformSetting.getApiKey())
+                .apiKey(platform.getApiKey())
                 .temperature(properties.getTemperature().floatValue())
                 .modelName(aiModel.getName())
-                .baseUrl(platformSetting.getBaseUrl())
+                .baseUrl(platform.getBaseUrl())
                 .build();
     }
 
     @Override
     public StreamingChatModel buildStreamingChatModel(ChatModelBuilderProperties properties) {
-        if (StringUtils.isBlank(platformSetting.getApiKey())) {
+        if (StringUtils.isBlank(platform.getApiKey())) {
             throw new BaseException(B_LLM_SECRET_KEY_NOT_SET);
         }
         Double temperature = properties.getTemperatureWithDefault(0.7);
         return QwenStreamingChatModel.builder()
-                .apiKey(platformSetting.getApiKey())
+                .apiKey(platform.getApiKey())
                 .modelName(aiModel.getName())
                 .temperature(temperature.floatValue())
                 .build();
@@ -87,7 +86,7 @@ public class DashScopeLLMService extends AbstractLLMService<DashScopeSetting> {
     @Override
     public TokenCountEstimator getTokenEstimator() {
         if (aiModel.getName().contains("qwen-turbo") || aiModel.getName().contains("qwen-plus")) {
-            return new QwenTokenCountEstimator(platformSetting.getApiKey(), aiModel.getName());
+            return new QwenTokenCountEstimator(platform.getApiKey(), aiModel.getName());
         } else {
             return new OpenAiTokenCountEstimator(OpenAiChatModelName.GPT_3_5_TURBO);
         }
