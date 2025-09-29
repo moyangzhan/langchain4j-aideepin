@@ -58,6 +58,11 @@ public class ModelController {
     @Operation(summary = "模型平台列表")
     @GetMapping(value = "/platforms")
     public List<ModelPlatform> platforms() {
-        return modelPlatformService.listAll();
+        List<ModelPlatform> platforms = modelPlatformService.listAll();
+        platforms.forEach(item -> {
+            item.setApiKey("");
+            item.setSecretKey("");
+        });
+        return platforms;
     }
 }
