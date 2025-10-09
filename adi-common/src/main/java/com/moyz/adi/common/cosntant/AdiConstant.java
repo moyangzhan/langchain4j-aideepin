@@ -443,4 +443,14 @@ public class AdiConstant {
          */
         public static final String DASHSCOPE_DEFAULT_VOICE = "longyingyan";
     }
+
+    public static class CustomChatRequestParameterKeys {
+        private CustomChatRequestParameterKeys() {
+        }
+
+        /**
+         * 是否开启思考模式，默认不开启
+         */
+        public static final String ENABLE_THINKING = "enable_thinking";
+    }
 }

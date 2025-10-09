@@ -43,6 +43,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+import static com.moyz.adi.common.cosntant.AdiConstant.CustomChatRequestParameterKeys.ENABLE_THINKING;
 import static com.moyz.adi.common.cosntant.AdiConstant.LLM_MAX_INPUT_TOKENS_DEFAULT;
 import static com.moyz.adi.common.enums.ErrorEnum.A_PARAMS_ERROR;
 import static com.moyz.adi.common.enums.ErrorEnum.B_LLM_SERVICE_DISABLED;
@@ -404,7 +405,7 @@ public abstract class AbstractLLMService extends CommonModelService {
         ChatRequestParameters defaultParameters = ChatRequestParameters.builder()
                 .toolSpecifications(toolServiceContext.toolSpecifications())
                 .build();
-        ChatRequestParameters parameters = doCreateChatRequestParameters(defaultParameters, returnThinking);
+        ChatRequestParameters parameters = doCreateChatRequestParameters(defaultParameters, Map.of(ENABLE_THINKING, returnThinking));
 
         return ChatRequest.builder()
                 .messages(chatMessages)
@@ -412,7 +413,7 @@ public abstract class AbstractLLMService extends CommonModelService {
                 .build();
     }
 
-    protected ChatRequestParameters doCreateChatRequestParameters(ChatRequestParameters defaultParameters, Boolean returnThinking) {
+    protected ChatRequestParameters doCreateChatRequestParameters(ChatRequestParameters defaultParameters, Map<String, Object> customParameters) {
         return defaultParameters;
     }
 

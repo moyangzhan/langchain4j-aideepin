@@ -13,17 +13,21 @@ import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenCountEstimator;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.net.ProxySelector;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.Map;
 
 /**
  * OpenAi LLM service
@@ -82,6 +86,18 @@ public class OpenAiLLMService extends AbstractLLMService {
             builder.httpClientBuilder(JdkHttpClient.builder().httpClientBuilder(httpClientBuilder));
         }
         return builder.build();
+    }
+
+    @Override
+    protected ChatRequestParameters doCreateChatRequestParameters(ChatRequestParameters defaultParameters, Map<String, Object> customParameters) {
+        // 兼容 OpenAi api 的平台可能会需要自定义参数
+        if (null != customParameters && !customParameters.isEmpty()) {
+            ChatRequestParameters openAiChatRequestParameters = OpenAiChatRequestParameters.builder()
+                    .customParameters(customParameters)
+                    .build();
+            return openAiChatRequestParameters.overrideWith(defaultParameters);
+        }
+        return super.doCreateChatRequestParameters(defaultParameters, customParameters);
     }
 
     @Override

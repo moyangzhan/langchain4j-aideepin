@@ -19,8 +19,12 @@ import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.model.openai.OpenAiTokenCountEstimator;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.Map;
+
+import static com.moyz.adi.common.cosntant.AdiConstant.CustomChatRequestParameterKeys.ENABLE_THINKING;
 import static com.moyz.adi.common.enums.ErrorEnum.B_LLM_SECRET_KEY_NOT_SET;
 
 /**
@@ -73,12 +77,13 @@ public class DashScopeLLMService extends AbstractLLMService {
     }
 
     @Override
-    protected ChatRequestParameters doCreateChatRequestParameters(ChatRequestParameters defaultParameters, Boolean returnThinking) {
-        if (null == returnThinking) {
+    protected ChatRequestParameters doCreateChatRequestParameters(ChatRequestParameters defaultParameters, Map<String, Object> customParameters) {
+        if (MapUtils.isEmpty(customParameters)) {
             return defaultParameters;
         }
+        Boolean enableThinking = (Boolean) customParameters.get(ENABLE_THINKING);
         QwenChatRequestParameters parameters = QwenChatRequestParameters.builder()
-                .enableThinking(returnThinking)
+                .enableThinking(null != enableThinking ? enableThinking : false)
                 .build();
         return parameters.overrideWith(defaultParameters);
     }
