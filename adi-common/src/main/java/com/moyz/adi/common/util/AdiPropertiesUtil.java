@@ -18,7 +18,13 @@ public class AdiPropertiesUtil {
     public static Pair<String, Integer> getSuffixAndDimension(AdiProperties adiProperties) {
         String suffix = "";
         int dimension = 384;
-        if (!AdiConstant.EmbeddingModel.ALL_MINILM_L6.equals(adiProperties.getEmbeddingModel())) {
+        if (AdiConstant.EmbeddingModel.BGE_SMALL_ZH_V15.equals(adiProperties.getEmbeddingModel())) {
+            dimension = AdiConstant.EmbeddingModel.BGE_SMALL_ZH_V15_DIMENSION;
+            suffix = "_bge_" + dimension;
+            EMBEDDING_TABLE_SUFFIX = suffix;
+        }
+        //非本地向量模型
+        else if (!AdiConstant.EmbeddingModel.LOCAL_MODELS.contains(adiProperties.getEmbeddingModel())) {
             AiModel aiModel = getEmbeddingModelByProperty(adiProperties);
             String platform = aiModel.getPlatform();
             String modelName = aiModel.getName();

@@ -417,6 +417,8 @@ public class AdiConstant {
     public static class EmbeddingModel {
         public static String ALL_MINILM_L6 = "local:all-minilm-l6-v2";
         public static String BGE_SMALL_ZH_V15 = "local:bge-small-zh-v1.5";
+        public static int BGE_SMALL_ZH_V15_DIMENSION = 512;
+        public static List<String> LOCAL_MODELS = List.of(ALL_MINILM_L6, BGE_SMALL_ZH_V15);
     }
 
     public static class McpConstant {
