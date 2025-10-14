@@ -29,6 +29,7 @@ import com.pgvector.PGvector;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.bgesmallzhv15.BgeSmallZhV15EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -141,6 +142,9 @@ public class BeanConfig {
     public EmbeddingModel initEmbeddingModel() {
         if (adiProperties.getEmbeddingModel().equals(AdiConstant.EmbeddingModel.ALL_MINILM_L6)) {
             return new AllMiniLmL6V2EmbeddingModel();
+        }
+        if (adiProperties.getEmbeddingModel().equals(AdiConstant.EmbeddingModel.BGE_SMALL_ZH_V15)) {
+            return new BgeSmallZhV15EmbeddingModel();
         }
         ModelPlatformService modelPlatformService = SpringUtil.getBean(ModelPlatformService.class);
         AiModel aiModel = AdiPropertiesUtil.getEmbeddingModelByProperty(adiProperties);

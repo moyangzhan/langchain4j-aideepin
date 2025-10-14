@@ -44,11 +44,12 @@ adi:
     host: 127.0.0.1
     http-port: 1087
   # embedding model可选值如下（见adi_ai_model中的embedding类型的数据）：
-  # local:all-minilm-l6-v2 (default)
-  # openai:text-embedding-3-small、openai:text-embedding-3-large
-  # dashscope:text-embedding-v1、dashscope:text-embedding-v3
+  # local:all-minilm-l6-v2 (英文效果较好，中文效果较差)
+  # local:bge-small-zh-v1.5 (默认、中文效果较好、相比 all-minilm-l6-v2 占用内存较大)
+  # openai:text-embedding-3-small、openai:text-embedding-3-large (多语言)
+  # dashscope:text-embedding-v1、dashscope:text-embedding-v3  (多语言，中文效果较好)
   # 注意：由于不同向量模型不同维度参数生成的向量特征空间不一致，无法兼容存储于一张表并进行混合搜索，建议项目初期确定好向量模型及其维度，后期如有修改，需重新生成向量数据
-  embedding-model: local:all-minilm-l6-v2
+  embedding-model: local:bge-small-zh-v1.5
   # vector-database: pgvector、neo4j
   vector-database: pgvector
   # graph-database: apache-age、neo4j
