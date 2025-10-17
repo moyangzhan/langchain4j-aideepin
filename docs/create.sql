@@ -170,7 +170,7 @@ CREATE TABLE adi_ai_model
 );
 
 COMMENT ON TABLE adi_ai_model IS 'AI模型 | AI model';
-COMMENT ON COLUMN adi_ai_model.type IS '模型类型, e.g., text, image, embedding, rerank, asr, tts, multimodality(GPT-4o) | Model type, e.g., text, image, embedding, rerank, multimodality(GPT-4o)';
+COMMENT ON COLUMN adi_ai_model.type IS '模型类型, e.g., text, image, vision, embedding, rerank, asr, tts, multimodality(GPT-4o) | Model type, e.g., text, image, vision, embedding, rerank, multimodality(GPT-4o)';
 COMMENT ON COLUMN adi_ai_model.name IS '模型名称，传到接口中请求响应的参数名，需跟模型提供方指定的模型名称一模一样 | Model name, the parameter name passed to the interface for requesting a response, must be exactly the same as the model name specified by the model provider';
 COMMENT ON COLUMN adi_ai_model.title IS '模型标题，可读性更高的名称，如: openai-gpt3 | Model title, a more readable name, e.g., openai-gpt3';
 COMMENT ON COLUMN adi_ai_model.setting IS 'json format, e.g., {voice_for_group1: "v1", voice_for_group2: "v2"}';
@@ -1090,7 +1090,7 @@ VALUES ('qwen-turbo', '通义千问turbo', 'text', 'dashscope', 8192, 6144, 1536
 -- 图片识别
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, input_types,
                           is_enable)
-VALUES ('qwen2-vl-7b-instruct', '通义千问-识图', 'text', 'dashscope', 32768, 16384, 16384, 'text,image', false);
+VALUES ('qwen2-vl-7b-instruct', '通义千问-识图', 'vision', 'dashscope', 32768, 16384, 16384, 'text,image', false);
 -- https://help.aliyun.com/zh/model-studio/developer-reference/text-to-image-v2-api-reference?spm=a2c4g.11186623.0.i2
 -- 通义万相-文生图（wanx2.1-t2i-plus、wanx2.1-t2i-turbo）
 INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
@@ -1555,8 +1555,8 @@ VALUES ('THUDM/GLM-Z1-9B-0414', 'openai-compatible-model-test', 'text', 'openai-
 
 
 -- 语音识别
-INSERT INTO adi_ai_model (name, title, type, platform, input_types, is_enable)
-VALUES ('FunAudioLLM/SenseVoiceSmall', '硅基流动-语音识别', 'asr', 'siliconflow', 'audio', false);
+INSERT INTO adi_ai_model (name, title, type, platform, input_types, is_free, is_enable)
+VALUES ('FunAudioLLM/SenseVoiceSmall', '硅基流动-语音识别', 'asr', 'siliconflow', 'audio', true, false);
 -- 预设角色
 INSERT INTO adi_conversation_preset (uuid, title, remark, ai_system_message)
 VALUES ('26a8f54c560948d6b2d4969f08f3f2fb', '开发工程师', '技术好', '你是一个经验丰富的开发工程师,开发技能极其熟练');
