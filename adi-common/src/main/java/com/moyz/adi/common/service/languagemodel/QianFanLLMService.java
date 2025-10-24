@@ -43,7 +43,7 @@ public class QianFanLLMService extends AbstractLLMService {
     @Override
     protected ChatModel doBuildChatModel(ChatModelBuilderProperties properties) {
         QianfanChatModel.QianfanChatModelBuilder builder = QianfanChatModel.builder()
-                .baseUrl(platform.getBaseUrl())
+                .baseUrl(StringUtils.isBlank(platform.getBaseUrl()) ? null : platform.getBaseUrl())
                 .modelName(aiModel.getName())
                 .temperature(properties.getTemperature())
                 .topP(1.0)

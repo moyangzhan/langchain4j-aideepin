@@ -52,4 +52,11 @@ public class AdiStringUtil {
         Matcher m = p.matcher(input);
         return m.replaceAll("").trim(); // 替换为空字符串并去除首尾空格
     }
+
+    public static String removeCodeBlock(String input) {
+        String regEx = "^```[a-zA-Z0-9]*\\n([\\s\\S]*?)\\n```$";
+        Pattern p = Pattern.compile(regEx);
+        Matcher m = p.matcher(input);
+        return m.replaceAll("").trim(); // 替换为空字符串并去除首尾空格
+    }
 }

@@ -14,13 +14,14 @@ import com.moyz.adi.common.enums.EmbeddingStatusEnum;
 import com.moyz.adi.common.enums.GraphicalStatusEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.LLMContext;
-import com.moyz.adi.common.service.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.mapper.KnowledgeBaseItemMapper;
-import com.moyz.adi.common.rag.CompositeRAG;
+import com.moyz.adi.common.rag.EmbeddingRagContext;
+import com.moyz.adi.common.rag.GraphRagContext;
 import com.moyz.adi.common.service.embedding.IEmbeddingService;
+import com.moyz.adi.common.service.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.util.UuidUtil;
-import com.moyz.adi.common.vo.GraphIngestParams;
 import com.moyz.adi.common.vo.ChatModelBuilderProperties;
+import com.moyz.adi.common.vo.GraphIngestParams;
 import dev.langchain4j.data.document.DefaultDocument;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
@@ -41,6 +42,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.DOC_INDEX_TYPE_EMBEDDING;
 import static com.moyz.adi.common.cosntant.AdiConstant.DOC_INDEX_TYPE_GRAPHICAL;
+import static com.moyz.adi.common.cosntant.AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE;
 import static com.moyz.adi.common.cosntant.RedisKeyConstant.KB_STATISTIC_RECALCULATE_SIGNAL;
 import static com.moyz.adi.common.cosntant.RedisKeyConstant.USER_INDEXING;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
@@ -55,9 +57,6 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
-
-    @Resource
-    private CompositeRAG compositeRAG;
 
     @Resource
     private IEmbeddingService iEmbeddingService;
@@ -165,7 +164,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                     .set(KnowledgeBaseItem::getEmbeddingStatusChangeTime, LocalDateTime.now())
                     .set(KnowledgeBaseItem::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
                     .update();
-            compositeRAG.getEmbeddingRAGService().ingest(document, knowledgeBase.getIngestMaxOverlap(), knowledgeBase.getIngestTokenEstimator(), null);
+            EmbeddingRagContext.get(KNOWLEDGE_BASE).ingest(document, knowledgeBase.getIngestMaxOverlap(), knowledgeBase.getIngestTokenEstimator(), null);
             ChainWrappers.lambdaUpdateChain(baseMapper)
                     .eq(KnowledgeBaseItem::getId, kbItem.getId())
                     .set(KnowledgeBaseItem::getEmbeddingStatus, EmbeddingStatusEnum.DONE)
@@ -195,7 +194,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
             );
 
             //Ingest document
-            compositeRAG.getGraphRAGService().ingest(
+            GraphRagContext.get(KNOWLEDGE_BASE).ingest(
                     GraphIngestParams.builder()
                             .user(user)
                             .document(document)

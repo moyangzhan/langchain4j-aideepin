@@ -41,7 +41,6 @@ public class PgVectorEmbeddingStoreConfig {
 
     @Bean(name = "kbEmbeddingStore")
     @Primary
-    @DependsOn("initializer")
     public EmbeddingStore<TextSegment> initKbEmbeddingStore() {
         log.info("Initializing kbEmbeddingStore...");
         String tableName = "adi_knowledge_base_embedding";
@@ -52,8 +51,23 @@ public class PgVectorEmbeddingStoreConfig {
         return createEmbeddingStore(tableName, pair.getRight());
     }
 
+    /**
+     * 角色记忆使用的向量库
+     *
+     * @return EmbeddingStore实例
+     */
+    @Bean(name = "convMemoryEmbeddingStore")
+    public EmbeddingStore<TextSegment> initConvMemoryEmbeddingStore() {
+        log.info("Initializing convMemoryEmbeddingStore...");
+        String tableName = "adi_conversation_memory_embedding";
+        Pair<String, Integer> pair = AdiPropertiesUtil.getSuffixAndDimension(adiProperties);
+        if (StringUtils.isNotBlank(pair.getLeft())) {
+            tableName = tableName + "_" + pair.getLeft();
+        }
+        return createEmbeddingStore(tableName, pair.getRight());
+    }
+
     @Bean(name = "searchEmbeddingStore")
-    @DependsOn("initializer")
     public EmbeddingStore<TextSegment> initSearchEmbeddingStore() {
         log.info("Initializing searchEmbeddingStore...");
         String tableName = "adi_ai_search_embedding";

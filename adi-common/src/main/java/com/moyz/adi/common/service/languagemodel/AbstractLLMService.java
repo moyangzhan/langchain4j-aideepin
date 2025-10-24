@@ -10,6 +10,7 @@ import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.helper.TtsModelContext;
 import com.moyz.adi.common.interfaces.TriConsumer;
+import com.moyz.adi.common.memory.shortterm.MapDBChatMemoryStore;
 import com.moyz.adi.common.rag.TokenEstimatorFactory;
 import com.moyz.adi.common.rag.TokenEstimatorThreadLocal;
 import com.moyz.adi.common.util.*;
@@ -25,6 +26,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -45,6 +47,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.CustomChatRequestParameterKeys.ENABLE_THINKING;
 import static com.moyz.adi.common.cosntant.AdiConstant.LLM_MAX_INPUT_TOKENS_DEFAULT;
+import static com.moyz.adi.common.cosntant.AdiConstant.RESPONSE_FORMAT_TYPE_JSON;
 import static com.moyz.adi.common.enums.ErrorEnum.A_PARAMS_ERROR;
 import static com.moyz.adi.common.enums.ErrorEnum.B_LLM_SERVICE_DISABLED;
 
@@ -247,8 +250,9 @@ public abstract class AbstractLLMService extends CommonModelService {
         }
 
         ChatModelRequestProperties chatModelRequestProperties = params.getChatModelRequestProperties();
-        ChatModel chatModel = buildChatLLM(params.getChatModelBuilderProperties());
-        ChatRequest chatRequest = createChatRequest(chatModelRequestProperties, params.getChatModelBuilderProperties().getReturnThinking());
+        ChatModelBuilderProperties chatModelBuilderProperties = params.getChatModelBuilderProperties();
+        ChatModel chatModel = buildChatLLM(chatModelBuilderProperties);
+        ChatRequest chatRequest = createChatRequest(chatModelRequestProperties, null != chatModelBuilderProperties ? chatModelBuilderProperties.getReturnThinking() : null);
 
         ChatResponse chatResponse = chatModel.chat(chatRequest);
         if (chatResponse.aiMessage().hasToolExecutionRequests()) {
@@ -394,18 +398,28 @@ public abstract class AbstractLLMService extends CommonModelService {
         log.info("sseChat,messageId:{}", chatModelRequestProperties.getMemoryId());
         List<ChatMessage> chatMessages = createChatMessages(chatModelRequestProperties);
 
-        ToolProvider toolProvider = McpToolProvider.builder()
-                .mcpClients(chatModelRequestProperties.getMcpClients())
-                .build();
-        ToolService toolService = new ToolService();
-        toolService.toolProvider(toolProvider);
-
-        ToolServiceContext toolServiceContext = toolService.createContext(UuidUtil.createShort(), ((UserMessage) chatMessages.get(chatMessages.size() - 1)));
-        log.info("tool specs:{}", toolServiceContext.toolSpecifications());
+        List<ToolSpecification> toolSpecifications = new ArrayList<>();
+        if (!CollectionUtils.isEmpty(chatModelRequestProperties.getMcpClients())) {
+            log.info("no mcp clients configured, skip tool spec creation");
+            ToolProvider toolProvider = McpToolProvider.builder()
+                    .mcpClients(chatModelRequestProperties.getMcpClients())
+                    .build();
+            ToolService toolService = new ToolService();
+            toolService.toolProvider(toolProvider);
+            ToolServiceContext toolServiceContext = toolService.createContext(UuidUtil.createShort(), ((UserMessage) chatMessages.get(chatMessages.size() - 1)));
+            log.info("tool specs:{}", toolServiceContext.toolSpecifications());
+            toolSpecifications = toolServiceContext.toolSpecifications();
+        }
         ChatRequestParameters defaultParameters = ChatRequestParameters.builder()
-                .toolSpecifications(toolServiceContext.toolSpecifications())
+                .toolSpecifications(toolSpecifications)
+                .responseFormat(RESPONSE_FORMAT_TYPE_JSON.equals(chatModelRequestProperties.getResponseFormat()) ? ResponseFormat.JSON : ResponseFormat.TEXT)
                 .build();
-        ChatRequestParameters parameters = doCreateChatRequestParameters(defaultParameters, Map.of(ENABLE_THINKING, returnThinking));
+
+        Map<String, Object> customParameters = new HashMap<>();
+        if (null != returnThinking) {
+            customParameters.put(ENABLE_THINKING, returnThinking);
+        }
+        ChatRequestParameters parameters = doCreateChatRequestParameters(defaultParameters, customParameters);
 
         return ChatRequest.builder()
                 .messages(chatMessages)

@@ -310,4 +310,8 @@ public class SSEEmitterHelper {
         }
 
     }
+
+    public void deleteCache(String cache){
+        stringRedisTemplate.delete(cache);
+    }
 }

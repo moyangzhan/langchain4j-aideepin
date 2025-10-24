@@ -19,10 +19,7 @@ import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.rag.*;
 import com.moyz.adi.common.service.embedding.IEmbeddingService;
 import com.moyz.adi.common.util.*;
-import com.moyz.adi.common.vo.ChatModelBuilderProperties;
-import com.moyz.adi.common.vo.ChatModelRequestProperties;
-import com.moyz.adi.common.vo.SseAskParams;
-import com.moyz.adi.common.vo.UpdateQaParams;
+import com.moyz.adi.common.vo.*;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -46,8 +43,12 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.text.MessageFormat;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
+import static com.moyz.adi.common.cosntant.AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE;
 import static com.moyz.adi.common.cosntant.AdiConstant.SSE_TIMEOUT;
 import static com.moyz.adi.common.cosntant.AdiConstant.SysConfigKey.QUOTA_BY_QA_ASK_DAILY;
 import static com.moyz.adi.common.cosntant.RedisKeyConstant.KB_STATISTIC_RECALCULATE_SIGNAL;
@@ -65,9 +66,6 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
-
-    @Resource
-    private CompositeRAG compositeRAG;
 
     @Resource
     private KnowledgeBaseItemService knowledgeBaseItemService;
@@ -360,7 +358,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         String key = MessageFormat.format(RedisKeyConstant.AQ_ASK_TIMES, ThreadContext.getCurrentUserId(), LocalDateTimeUtil.format(LocalDateTime.now(), PATTERN_YYYY_MM_DD));
         String askTimes = stringRedisTemplate.opsForValue().get(key);
         String askQuota = SysConfigService.getByKey(QUOTA_BY_QA_ASK_DAILY);
-        if (null != askTimes && null != askQuota && Integer.parseInt(askTimes) >= Integer.parseInt(askQuota)) {
+        if (null != askQuota && Integer.parseInt(askTimes) >= Integer.parseInt(askQuota)) {
             throw new BaseException(A_QA_ASK_LIMIT);
         }
         stringRedisTemplate.opsForValue().increment(key);
@@ -387,7 +385,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         int maxResults = knowledgeBase.getRetrieveMaxResults();
         //maxResults < 1 表示由系统根据设置的模型maxInputTokens自动计算大小
         if (maxResults < 1) {
-            maxResults = EmbeddingRAG.getRetrieveMaxResults(qaRecord.getQuestion(), maxInputTokens);
+            maxResults = EmbeddingRag.getRetrieveMaxResults(qaRecord.getQuestion(), maxInputTokens);
         }
 
         SseAskParams sseAskParams = new SseAskParams();
@@ -434,8 +432,17 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                     ChatModelBuilderProperties.builder()
                             .temperature(knowledgeBase.getQueryLlmTemperature())
                             .build());
-            List<ContentRetriever> retrievers = compositeRAG.createRetriever(chatModel, new IsEqualTo(AdiConstant.MetadataKey.KB_UUID, qaRecord.getKbUuid()), maxResults, knowledgeBase.getRetrieveMinScore(), knowledgeBase.getIsStrict());
-            compositeRAG.ragChat(retrievers, sseAskParams, (response, promptMeta, answerMeta) -> {
+            RetrieverCreateParam createParam = RetrieverCreateParam.builder()
+                    .chatModel(chatModel)
+                    .filter(new IsEqualTo(AdiConstant.MetadataKey.KB_UUID, qaRecord.getKbUuid()))
+                    .maxResults(maxResults)
+                    .minScore(knowledgeBase.getRetrieveMinScore())
+                    .breakIfSearchMissed(knowledgeBase.getIsStrict())
+                    .build();
+            CompositeRag compositeRag = new CompositeRag(KNOWLEDGE_BASE);
+            List<RetrieverWrapper> retrieverWrappers = compositeRag.createRetriever(createParam);
+            List<ContentRetriever> retrievers = retrieverWrappers.stream().map(RetrieverWrapper::getRetriever).toList();
+            compositeRag.ragChat(retrievers, sseAskParams, (response, promptMeta, answerMeta) -> {
                         sseEmitterHelper.sendComplete(user.getId(), sseAskParams.getSseEmitter());
                         updateQaRecord(
                                 UpdateQaParams.builder()

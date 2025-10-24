@@ -4,10 +4,12 @@ import com.alibaba.dashscope.audio.asr.transcription.*;
 import com.alibaba.dashscope.common.TaskStatus;
 import com.aliyun.oss.common.utils.StringUtils;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.SpringUtil;
+import com.moyz.adi.common.vo.DashScopeSetting;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.client.RestTemplate;
 

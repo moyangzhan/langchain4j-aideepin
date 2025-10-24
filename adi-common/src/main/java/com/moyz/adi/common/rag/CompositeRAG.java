@@ -4,15 +4,15 @@ import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
-import com.moyz.adi.common.service.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.interfaces.IStreamingChatAssistant;
 import com.moyz.adi.common.interfaces.ITempStreamingChatAssistant;
 import com.moyz.adi.common.interfaces.TriConsumer;
-import com.moyz.adi.common.util.MapDBChatMemoryStore;
+import com.moyz.adi.common.memory.shortterm.MapDBChatMemoryStore;
+import com.moyz.adi.common.service.languagemodel.AbstractLLMService;
+import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.vo.*;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -22,13 +22,9 @@ import dev.langchain4j.rag.query.transformer.CompressingQueryTransformer;
 import dev.langchain4j.rag.query.transformer.QueryTransformer;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
-import dev.langchain4j.store.embedding.filter.Filter;
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,42 +35,49 @@ import static com.moyz.adi.common.enums.ErrorEnum.B_LLM_SERVICE_DISABLED;
 /**
  * 组合向量及图谱数据进行RAG
  */
-@Component
 @Slf4j
-public class CompositeRAG {
+public class CompositeRag {
 
-    @Resource
-    private EmbeddingRAG embeddingRAGService;
-    @Resource
-    private GraphRAG graphRAGService;
-    @Resource
-    private SSEEmitterHelper sseEmitterHelper;
-    @Resource
-    private StringRedisTemplate stringRedisTemplate;
+    private final EmbeddingRag embeddingRag;
+    private final GraphRag graphRag;
+
+    public CompositeRag(String retrieverName) {
+        this.embeddingRag = EmbeddingRagContext.get(retrieverName);
+        this.graphRag = GraphRagContext.get(retrieverName);
+    }
 
     /**
      * 创建Retriever列表
      *
-     * @param filter              过滤条件
-     * @param maxResults          最大返回数量
-     * @param minScore            最小命中分数
-     * @param breakIfSearchMissed 如果数据库中搜索不到数据，是否强行中断该搜索，不继续往下执行（即不继续请求LLM进行回答）
+     * @param param 参数
      * @return ContentRetriever列表
      */
-    public List<ContentRetriever> createRetriever(ChatModel ChatModel, Filter filter, int maxResults, double minScore, boolean breakIfSearchMissed) {
-        ContentRetriever contentRetriever1 = embeddingRAGService.createRetriever(filter, maxResults, minScore, breakIfSearchMissed);
-        ContentRetriever contentRetriever2 = graphRAGService.createRetriever(ChatModel, filter, maxResults, breakIfSearchMissed);
-        return List.of(contentRetriever1, contentRetriever2);
+    public List<RetrieverWrapper> createRetriever(RetrieverCreateParam param) {
+        List<RetrieverWrapper> retrievers = new ArrayList<>();
+        if (null == embeddingRag && null == graphRag) {
+            log.warn("No RAG configured");
+            return retrievers;
+        }
+        if (null != embeddingRag) {
+            ContentRetriever embeddingRetriever = embeddingRag.createRetriever(param);
+            retrievers.add(RetrieverWrapper.builder().contentFrom(embeddingRag.getName()).retriever(embeddingRetriever).response(new ArrayList<>()).build());
+        }
+        if (null != graphRag) {
+            ContentRetriever graphRetriever = graphRag.createRetriever(param);
+            retrievers.add(RetrieverWrapper.builder().contentFrom(graphRag.getName()).retriever(graphRetriever).response(new ArrayList<>()).build());
+        }
+        return retrievers;
     }
 
     /**
      * 使用RAG处理提问
      *
-     * @param retrievers   ContentRetriver列表
+     * @param retrievers   ContentRetriever列表
      * @param sseAskParams 请求参数
      * @param consumer     回调
      */
     public void ragChat(List<ContentRetriever> retrievers, SseAskParams sseAskParams, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
+        SSEEmitterHelper sseEmitterHelper = SpringUtil.getBean(SSEEmitterHelper.class);
         User user = sseAskParams.getUser();
         String askingKey = sseEmitterHelper.registerEventStreamListener(sseAskParams);
         try {
@@ -84,7 +87,7 @@ public class CompositeRAG {
                 } catch (Exception e) {
                     log.error("ragProcess error", e);
                 } finally {
-                    stringRedisTemplate.delete(askingKey);
+                    sseEmitterHelper.deleteCache(askingKey);
                 }
             });
         } catch (Exception baseException) {
@@ -160,11 +163,4 @@ public class CompositeRAG {
                 .start();
     }
 
-    public EmbeddingRAG getEmbeddingRAGService() {
-        return embeddingRAGService;
-    }
-
-    public GraphRAG getGraphRAGService() {
-        return graphRAGService;
-    }
 }

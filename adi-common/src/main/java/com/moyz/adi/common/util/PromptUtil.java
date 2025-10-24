@@ -23,18 +23,14 @@ import static com.moyz.adi.common.enums.ErrorEnum.A_USER_QUESTION_NOT_FOUND;
 
 public class PromptUtil {
 
-    public static String createPrompt(String question, String information, String extraInfo) {
+    public static String createPrompt(String question, String memory, String information, String extraInfo) {
         if (StringUtils.isBlank(question)) {
             throw new BaseException(A_USER_QUESTION_NOT_FOUND);
         }
-        if (StringUtils.isAllBlank(information, extraInfo)) {
+        if (StringUtils.isAllBlank(memory, information, extraInfo)) {
             return question;
-        } else if (StringUtils.isBlank(information) && StringUtils.isNotBlank(extraInfo)) {
-            return PROMPT_EXTRA_TEMPLATE.apply(Map.of("question", question, "extraInfo", extraInfo)).text();
-        } else if (StringUtils.isNotBlank(information) && StringUtils.isBlank(extraInfo)) {
-            return PROMPT_INFO_TEMPLATE.apply(Map.of("question", question, "information", Matcher.quoteReplacement(information))).text();
         }
-        return PROMPT_INFO_EXTRA_TEMPLATE.apply(Map.of("question", question, "information", Matcher.quoteReplacement(information), "extraInfo", extraInfo)).text();
+        return PROMPT_INFO_EXTRA_TEMPLATE.apply(Map.of("question", question, "memory", memory, "information", Matcher.quoteReplacement(information), "extraInfo", extraInfo)).text();
     }
 
     public static List<Content> findImagesContentInParameters(Method method, Object[] args) {

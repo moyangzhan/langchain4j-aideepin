@@ -69,7 +69,7 @@ public class GraphStoreContentRetriever implements ContentRetriever {
         log.info("Graph retrieve,query:{}", query);
         String response = "";
         try {
-            response = chatModel.chat(GraphExtractPrompt.GRAPH_EXTRACTION_PROMPT_CN.replace("{input_text}", query.text()));
+            response = chatModel.chat(GraphExtractPrompt.GRAPH_EXTRACTION_PROMPT.replace("{input_text}", query.text()));
         } catch (Exception e) {
             log.error("Graph retrieve. extract graph error", e);
         }

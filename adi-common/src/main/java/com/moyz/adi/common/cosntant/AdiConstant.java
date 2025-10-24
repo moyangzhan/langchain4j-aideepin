@@ -64,37 +64,17 @@ public class AdiConstant {
 
     public static final List<String> DALLE3_CREATE_IMAGE_SIZES = List.of("1024x1024", "1024x1792", "1792x1024");
 
-    public static final PromptTemplate PROMPT_EXTRA_TEMPLATE = PromptTemplate.from("""
-            ## 要求
-            尽可能准确地回答用户的问题
-                        
-            ## 用户的问题
-            {{question}}
-                        
-            ## 注意
-            {{extraInfo}}
-            """);
-
-    public static final PromptTemplate PROMPT_INFO_TEMPLATE = PromptTemplate.from("""
-            ## 要求
-            根据已知信息，尽可能准确地回答用户的问题
-                        
-            ## 用户的问题
-            {{question}}
-                        
-            ## 已知信息
-            {{information}}
-                        
-            ## 注意
-            回答的内容不能让用户感知到已知信息的存在
-            """);
-
     /**
-     * 可能的 extraInfo 如适用转音频的要求： 2. 回答的内容要尽量口语化，以方便将内容转成语音
+     * 可能的 extraInfo 如适用转音频的要求： 3. 回答的内容要尽量口语化，以方便将内容转成语音
      */
     public static final PromptTemplate PROMPT_INFO_EXTRA_TEMPLATE = PromptTemplate.from("""
+            ## 任务
+            根据已知信息及用户的记忆，尽可能准确地回答用户的问题
+                        
             ## 要求
-            根据已知信息，尽可能准确地回答用户的问题
+            1. 根据对用户的记忆，回答时可以适当调整语气和风格，以更符合用户的偏好
+            2. 回答的内容不能让用户感知到已知信息的存在
+            {{extraInfo}}
                         
             ## 用户的问题
             {{question}}
@@ -102,12 +82,14 @@ public class AdiConstant {
             ## 已知信息
             {{information}}
                         
-            ## 注意
-            1. 回答的内容不能让用户感知到已知信息的存在
-            {{extraInfo}}
+            ## 关于用户的记忆
+            {{memory}}
+                        
+            ## 输出语言
+            使用用户提问的语言进行内容输出
             """);
 
-    public static final String PROMPT_EXTRA_AUDIO = "2. 回答的内容要尽量口语化，以方便将内容转成语音";
+    public static final String PROMPT_EXTRA_AUDIO = "3. 回答的内容要尽量口语化，以方便将内容转成语音";
 
     public static final Double LLM_TEMPERATURE_DEFAULT = 0.7D;
     public static final Double RAG_RETRIEVE_MIN_SCORE_DEFAULT = 0.6D;
@@ -148,6 +130,9 @@ public class AdiConstant {
         public static final String KB_ITEM_UUID = "kb_item_uuid";
         public static final String ENGINE_NAME = "engine_name";
         public static final String SEARCH_UUID = "search_uuid";
+        public static final String CONVERSATION_ID = "conv_id";
+
+        public static final String TEXT = "text";
     }
 
     public static class SysConfigKey {
@@ -324,7 +309,7 @@ public class AdiConstant {
     public static final String LLM_INPUT_TYPE_AUDIO = "audio";
     public static final String LLM_INPUT_TYPE_VIDEO = "video";
 
-    public static final String[] GRAPH_ENTITY_EXTRACTION_ENTITY_TYPES = {"organization", "person", "geo", "event"};
+    public static final String[] GRAPH_ENTITY_EXTRACTION_ENTITY_TYPES = {"ORGANIZATION", "PERSON", "GEO", "EVENT"};
     public static final String GRAPH_TUPLE_DELIMITER = "<|>";
     public static final String GRAPH_RECORD_DELIMITER = "##";
     public static final String GRAPH_COMPLETION_DELIMITER = "<|COMPLETE|>";
@@ -381,6 +366,10 @@ public class AdiConstant {
     public static final String COLUMN_NAME_UUID = "uuid";
 
     public static final String FORM_DATA_BOUNDARY_PRE = "----WebKitFormBoundary";
+
+    public static final String RESPONSE_FORMAT_TYPE_TEXT = "text";
+
+    public static final String RESPONSE_FORMAT_TYPE_JSON = "json";
 
     public static class WorkflowConstant {
         public static final String DEFAULT_INPUT_PARAM_NAME = "input";
@@ -456,4 +445,27 @@ public class AdiConstant {
          */
         public static final String ENABLE_THINKING = "enable_thinking";
     }
+
+    public static class MemoryEvent {
+        private MemoryEvent() {
+        }
+
+        public static final String NONE = "NONE";
+        public static final String ADD = "ADD";
+        public static final String UPDATE = "UPDATE";
+        public static final String DELETE = "DELETE";
+    }
+
+    /**
+     * 召回数据的来源：knowledge_base conversation_memory web
+     */
+    public static class RetrieveContentFrom {
+        private RetrieveContentFrom() {
+        }
+
+        public static final String KNOWLEDGE_BASE = "knowledge_base";
+        public static final String CONV_MEMORY = "conversation_memory";
+        public static final String WEB = "web";
+    }
+
 }

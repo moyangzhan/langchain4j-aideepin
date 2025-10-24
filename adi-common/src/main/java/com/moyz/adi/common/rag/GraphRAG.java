@@ -10,34 +10,40 @@ import com.moyz.adi.common.service.UserDayCostService;
 import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.GraphIngestParams;
+import com.moyz.adi.common.vo.RetrieverCreateParam;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.store.embedding.filter.Filter;
-import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.RAG_MAX_SEGMENT_SIZE_IN_TOKENS;
 
+/**
+ * 知识图谱RAG，基于图谱存储进行问答增强
+ */
 @Slf4j
-public class GraphRAG {
+public class GraphRag {
+
+    /**
+     * RAG名称，用于区分不同实例
+     */
+    @Getter
+    private final String name;
 
     private final GraphStore graphStore;
 
     private KnowledgeBaseGraphSegmentService knowledgeBaseGraphSegmentService;
 
-    public GraphRAG(GraphStore kbGraphStore) {
+    public GraphRag(String name, GraphStore kbGraphStore) {
+        this.name = name;
         this.graphStore = kbGraphStore;
     }
 
@@ -49,7 +55,7 @@ public class GraphRAG {
     }
 
     public void ingest(GraphIngestParams graphIngestParams) {
-        log.info("GraphRAG ingest");
+        log.info("GraphRag ingest");
         User user = graphIngestParams.getUser();
         DocumentSplitter documentSplitter = DocumentSplitters.recursive(RAG_MAX_SEGMENT_SIZE_IN_TOKENS, graphIngestParams.getOverlap(), TokenEstimatorFactory.create(graphIngestParams.getTokenEstimator()));
         GraphStoreIngestor ingestor = GraphStoreIngestor.builder()
@@ -78,7 +84,7 @@ public class GraphRAG {
                                 }
                             }
                             log.info("请求LLM从文本中抽取实体及关系,segmentId:{}", segmentId);
-                            ChatResponse aiMessageResponse = graphIngestParams.getChatModel().chat(UserMessage.from(GraphExtractPrompt.GRAPH_EXTRACTION_PROMPT_CN.replace("{input_text}", segment.text())));
+                            ChatResponse aiMessageResponse = graphIngestParams.getChatModel().chat(UserMessage.from(GraphExtractPrompt.GRAPH_EXTRACTION_PROMPT.replace("{input_text}", segment.text())));
                             response = aiMessageResponse.aiMessage().text();
 
                             SpringUtil.getBean(UserDayCostService.class).appendCostToUser(user, aiMessageResponse.tokenUsage().totalTokenCount(), graphIngestParams.isFreeToken());
@@ -94,13 +100,13 @@ public class GraphRAG {
         ingestor.ingest(graphIngestParams.getDocument());
     }
 
-    public GraphStoreContentRetriever createRetriever(ChatModel chatModel, Filter filter, int maxResults, boolean breakIfSearchMissed) {
+    public GraphStoreContentRetriever createRetriever(RetrieverCreateParam param) {
         return GraphStoreContentRetriever.builder()
                 .graphStore(graphStore)
-                .chatModel(chatModel)
-                .maxResults(maxResults)
-                .filter(filter)
-                .breakIfSearchMissed(breakIfSearchMissed)
+                .chatModel(param.getChatModel())
+                .maxResults(param.getMaxResults())
+                .filter(param.getFilter())
+                .breakIfSearchMissed(param.isBreakIfSearchMissed())
                 .build();
     }
 }

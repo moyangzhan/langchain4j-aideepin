@@ -1,5 +1,6 @@
-package com.moyz.adi.common.util;
+package com.moyz.adi.common.memory.shortterm;
 
+import com.moyz.adi.common.util.SpringUtil;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -16,6 +17,9 @@ import static dev.langchain4j.data.message.ChatMessageDeserializer.messagesFromJ
 import static dev.langchain4j.data.message.ChatMessageSerializer.messagesToJson;
 import static org.mapdb.Serializer.STRING;
 
+/**
+ * Short-Term Memory Storage based on MapDB
+ */
 @Slf4j
 public class MapDBChatMemoryStore implements ChatMemoryStore {
 

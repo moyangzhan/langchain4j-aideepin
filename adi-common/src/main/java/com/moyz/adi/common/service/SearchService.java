@@ -11,12 +11,14 @@ import com.moyz.adi.common.entity.AiSearchRecord;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
-import com.moyz.adi.common.rag.CompositeRAG;
-import com.moyz.adi.common.rag.EmbeddingRAG;
+import com.moyz.adi.common.rag.CompositeRag;
+import com.moyz.adi.common.rag.EmbeddingRag;
+import com.moyz.adi.common.rag.EmbeddingRagContext;
 import com.moyz.adi.common.searchengine.SearchEngineServiceContext;
 import com.moyz.adi.common.util.PromptUtil;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.ChatModelRequestProperties;
+import com.moyz.adi.common.vo.RetrieverCreateParam;
 import com.moyz.adi.common.vo.SseAskParams;
 import dev.langchain4j.data.document.DefaultDocument;
 import dev.langchain4j.data.document.Document;
@@ -40,6 +42,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
+import static com.moyz.adi.common.cosntant.AdiConstant.RetrieveContentFrom.WEB;
 import static com.moyz.adi.common.cosntant.AdiConstant.SSE_TIMEOUT;
 import static com.moyz.adi.common.enums.ErrorEnum.B_NO_ANSWER;
 
@@ -53,12 +56,6 @@ public class SearchService {
     @Lazy
     @Resource
     private SearchService self;
-
-    @Resource
-    private EmbeddingRAG searchRagService;
-
-    @Resource
-    private CompositeRAG compositeRAG;
 
     @Resource
     private SSEEmitterHelper sseEmitterHelper;
@@ -133,7 +130,7 @@ public class SearchService {
             builder.append(item.getSnippet()).append("\n\n");
         }
         String ragQuestion = builder.toString();
-        String prompt = PromptUtil.createPrompt(searchText, ragQuestion, "");
+        String prompt = PromptUtil.createPrompt(searchText, "", ragQuestion, "");
 
         SearchEngineResp resp = new SearchEngineResp().setItems(resultItems);
 
@@ -217,7 +214,7 @@ public class SearchService {
                         metadata.put(AdiConstant.MetadataKey.ENGINE_NAME, engineName);
                         metadata.put(AdiConstant.MetadataKey.SEARCH_UUID, searchUuid);
                         Document document = new DefaultDocument(content, metadata);
-                        searchRagService.ingest(document, 0, "", null);
+                        EmbeddingRagContext.get(WEB).ingest(document, 0, "", null);
                     }
                 } catch (Exception e) {
                     log.error("Detail search error,uuid:{}", searchUuid, e);
@@ -235,9 +232,14 @@ public class SearchService {
 
         log.info("Create prompt");
         int maxInputTokens = aiModel.getMaxInputTokens();
-        int maxResults = EmbeddingRAG.getRetrieveMaxResults(searchText, maxInputTokens);
-        ContentRetriever contentRetriever = searchRagService.createRetriever(new IsEqualTo(AdiConstant.MetadataKey.SEARCH_UUID, searchUuid), maxResults, 0, false);
-
+        int maxResults = EmbeddingRag.getRetrieveMaxResults(searchText, maxInputTokens);
+        RetrieverCreateParam createParam = RetrieverCreateParam.builder()
+                .filter(new IsEqualTo(AdiConstant.MetadataKey.SEARCH_UUID, searchUuid))
+                .maxResults(maxResults)
+                .minScore(0)
+                .breakIfSearchMissed(false)
+                .build();
+        ContentRetriever contentRetriever = EmbeddingRagContext.get(WEB).createRetriever(createParam);
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setUuid(searchUuid);
         sseAskParams.setUser(user);
@@ -250,7 +252,7 @@ public class SearchService {
         );
         sseAskParams.setSseEmitter(sseEmitter);
         sseAskParams.setModelName(modelName);
-        compositeRAG.ragChat(List.of(contentRetriever), sseAskParams, (response, promptMeta, answerMeta) -> {
+        new CompositeRag(WEB).ragChat(List.of(contentRetriever), sseAskParams, (response, promptMeta, answerMeta) -> {
 
             sseEmitterHelper.sendComplete(user.getId(), sseAskParams.getSseEmitter());
 
