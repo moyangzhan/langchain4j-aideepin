@@ -358,7 +358,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         String key = MessageFormat.format(RedisKeyConstant.AQ_ASK_TIMES, ThreadContext.getCurrentUserId(), LocalDateTimeUtil.format(LocalDateTime.now(), PATTERN_YYYY_MM_DD));
         String askTimes = stringRedisTemplate.opsForValue().get(key);
         String askQuota = SysConfigService.getByKey(QUOTA_BY_QA_ASK_DAILY);
-        if (null != askQuota && Integer.parseInt(askTimes) >= Integer.parseInt(askQuota)) {
+        if (null != askQuota && null != askTimes && Integer.parseInt(askTimes) >= Integer.parseInt(askQuota)) {
             throw new BaseException(A_QA_ASK_LIMIT);
         }
         stringRedisTemplate.opsForValue().increment(key);
