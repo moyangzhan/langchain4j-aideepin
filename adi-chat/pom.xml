@@ -24,7 +24,7 @@
             <artifactId>Happy-Captcha</artifactId>
             <scope>system</scope>
             <version>1.0.1</version>
-            <systemPath>${project.basedir}/src/lib/ADI-Happy-Captcha-1.0.1.jar</systemPath>
+            <systemPath>${project.basedir}/src/lib/adi-Happy-Captcha-1.0.1.jar</systemPath>
         </dependency>
 
     </dependencies>
