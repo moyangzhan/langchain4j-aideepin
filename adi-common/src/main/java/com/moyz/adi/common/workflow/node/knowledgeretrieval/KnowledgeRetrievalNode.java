@@ -5,9 +5,10 @@ import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.WorkflowComponent;
 import com.moyz.adi.common.entity.WorkflowNode;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.rag.EmbeddingRAG;
+import com.moyz.adi.common.rag.EmbeddingRag;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.SpringUtil;
+import com.moyz.adi.common.vo.RetrieverCreateParam;
 import com.moyz.adi.common.workflow.NodeProcessResult;
 import com.moyz.adi.common.workflow.WfNodeState;
 import com.moyz.adi.common.workflow.WfState;
@@ -17,12 +18,14 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
+import dev.langchain4j.store.embedding.filter.comparison.IsIn;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
-import java.util.Map;
 
+import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.KB_UUID;
+import static com.moyz.adi.common.cosntant.AdiConstant.RAG_RETRIEVE_MIN_SCORE_DEFAULT;
 import static com.moyz.adi.common.cosntant.AdiConstant.WorkflowConstant.DEFAULT_OUTPUT_PARAM_NAME;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 import static com.moyz.adi.common.enums.ErrorEnum.B_BREAK_SEARCH;
@@ -63,8 +66,14 @@ public class KnowledgeRetrievalNode extends AbstractWfNode {
                     .content(List.of(NodeIOData.createByText(DEFAULT_OUTPUT_PARAM_NAME, "", "")))
                     .build();
         }
-        EmbeddingRAG embeddingRAG = SpringUtil.getBean(EmbeddingRAG.class);
-        ContentRetriever retriever = embeddingRAG.createRetriever(new IsEqualTo(AdiConstant.MetadataKey.KB_UUID, kbUuid), nodeConfigObj.getTopN(), nodeConfigObj.getScore(), nodeConfigObj.getIsStrict());
+        RetrieverCreateParam kbRetrieveParam = RetrieverCreateParam.builder()
+                .filter(new IsEqualTo(AdiConstant.MetadataKey.KB_UUID, kbUuid))
+                .maxResults(nodeConfigObj.getTopN())
+                .minScore(nodeConfigObj.getScore())
+                .breakIfSearchMissed(nodeConfigObj.getIsStrict())
+                .build();
+        EmbeddingRag embeddingRag = SpringUtil.getBean(EmbeddingRag.class);
+        ContentRetriever retriever = embeddingRag.createRetriever(kbRetrieveParam);
         StringBuilder resp = new StringBuilder();
         try {
             List<Content> contents = retriever.retrieve(Query.from(textInput));
@@ -75,6 +84,7 @@ public class KnowledgeRetrievalNode extends AbstractWfNode {
             if (B_BREAK_SEARCH.getCode().equals(e.getCode())) {
                 log.warn(B_BREAK_SEARCH.getInfo());
             } else {
+                log.error("KnowledgeRetrievalNode retrieve error", e);
                 throw e;
             }
         }

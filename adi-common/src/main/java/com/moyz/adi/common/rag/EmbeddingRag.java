@@ -3,6 +3,7 @@ package com.moyz.adi.common.rag;
 import com.moyz.adi.common.interfaces.IRAGService;
 import com.moyz.adi.common.util.InputAdaptor;
 import com.moyz.adi.common.vo.InputAdaptorMsg;
+import com.moyz.adi.common.vo.RetrieverCreateParam;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
@@ -11,30 +12,29 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
-import dev.langchain4j.store.embedding.filter.Filter;
-import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-
-import java.util.Map;
-import java.util.regex.Matcher;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.*;
 import static com.moyz.adi.common.vo.InputAdaptorMsg.TOKEN_TOO_MUCH_QUESTION;
 
 @Slf4j
-public class EmbeddingRAG implements IRAGService {
+public class EmbeddingRag implements IRAGService {
 
-    private EmbeddingModel embeddingModel;
+    /**
+     * RAG名称，用于区分不同的实例
+     */
+    @Getter
+    private final String name;
+
+    private final EmbeddingModel embeddingModel;
 
     private final EmbeddingStore<TextSegment> embeddingStore;
 
-    public EmbeddingRAG(EmbeddingStore<TextSegment> embeddingStore) {
-        this.embeddingStore = embeddingStore;
-    }
-
-    public void init(EmbeddingModel embeddingModel) {
-        log.info("initEmbeddingModel");
+    public EmbeddingRag(String name, EmbeddingModel embeddingModel, EmbeddingStore<TextSegment> embeddingStore) {
+        this.name = name;
         this.embeddingModel = embeddingModel;
+        this.embeddingStore = embeddingStore;
     }
 
     /**
@@ -45,7 +45,7 @@ public class EmbeddingRAG implements IRAGService {
      */
     @Override
     public void ingest(Document document, int overlap, String tokenEstimator, ChatModel ChatModel) {
-        log.info("EmbeddingRAG ingest,TokenCountEstimator:{}", tokenEstimator);
+        log.info("EmbeddingRag ingest,TokenCountEstimator:{}", tokenEstimator);
         DocumentSplitter documentSplitter = DocumentSplitters.recursive(RAG_MAX_SEGMENT_SIZE_IN_TOKENS, overlap, TokenEstimatorFactory.create(tokenEstimator));
         EmbeddingStoreIngestor embeddingStoreIngestor = EmbeddingStoreIngestor.builder()
                 .documentSplitter(documentSplitter)
@@ -58,21 +58,18 @@ public class EmbeddingRAG implements IRAGService {
     /**
      * 创建召回器
      *
-     * @param filter              过滤条件
-     * @param maxResults          最大返回数量
-     * @param minScore            最小命中分数
-     * @param breakIfSearchMissed 如果向量数据库中搜索不到数据，是否强行中断该搜索，不继续往下执行（即不继续请求LLM进行回答）
+     * @param param 条件
      * @return ContentRetriever
      */
     @Override
-    public AdiEmbeddingStoreContentRetriever createRetriever(Filter filter, int maxResults, double minScore, boolean breakIfSearchMissed) {
+    public AdiEmbeddingStoreContentRetriever createRetriever(RetrieverCreateParam param) {
         return AdiEmbeddingStoreContentRetriever.builder()
                 .embeddingStore(embeddingStore)
                 .embeddingModel(embeddingModel)
-                .maxResults(maxResults <= 0 ? 3 : maxResults)
-                .minScore(minScore <= 0 ? RAG_MIN_SCORE : minScore)
-                .filter(filter)
-                .breakIfSearchMissed(breakIfSearchMissed)
+                .maxResults(param.getMaxResults() <= 0 ? 3 : param.getMaxResults())
+                .minScore(param.getMinScore() <= 0 ? RAG_MIN_SCORE : param.getMinScore())
+                .filter(param.getFilter())
+                .breakIfSearchMissed(param.isBreakIfSearchMissed())
                 .build();
     }
 
@@ -90,7 +87,7 @@ public class EmbeddingRAG implements IRAGService {
         }
         InputAdaptorMsg inputAdaptorMsg = InputAdaptor.isQuestionValid(userQuestion, maxInputTokens);
         if (inputAdaptorMsg.getTokenTooMuch() == TOKEN_TOO_MUCH_QUESTION) {
-            log.warn("用户问题太长了，没有足够的token数量留给知识库召回的内容");
+            log.warn("用户问题太长了，没有足够的token数量留给召回的内容");
             return 0;
         } else {
             int maxRetrieveDocLength = maxInputTokens - inputAdaptorMsg.getUserQuestionTokenCount();

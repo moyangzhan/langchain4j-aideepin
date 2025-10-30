@@ -16,8 +16,7 @@ import com.moyz.adi.common.base.UUIDTypeHandler;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.SearchEngineResp;
 import com.moyz.adi.common.entity.AiModel;
-import com.moyz.adi.common.rag.EmbeddingRAG;
-import com.moyz.adi.common.rag.GraphRAG;
+import com.moyz.adi.common.rag.GraphRag;
 import com.moyz.adi.common.rag.GraphStore;
 import com.moyz.adi.common.service.ModelPlatformService;
 import com.moyz.adi.common.service.languagemodel.DashScopeEmbeddingModelService;
@@ -26,11 +25,9 @@ import com.moyz.adi.common.util.AdiPropertiesUtil;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.moyz.adi.common.util.SpringUtil;
 import com.pgvector.PGvector;
-import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.bgesmallzhv15.BgeSmallZhV15EmbeddingModel;
-import dev.langchain4j.store.embedding.EmbeddingStore;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -137,13 +134,18 @@ public class BeanConfig {
         return bean.getObject();
     }
 
+    /**
+     * 初始化EmbeddingModel(单例),根据配置的embeddingModel选择不同的实现
+     *
+     * @return EmbeddingModel实例
+     */
     @Bean
     @DependsOn("initializer")
     public EmbeddingModel initEmbeddingModel() {
         if (adiProperties.getEmbeddingModel().equals(AdiConstant.EmbeddingModel.ALL_MINILM_L6)) {
             return new AllMiniLmL6V2EmbeddingModel();
         }
-        if (adiProperties.getEmbeddingModel().equals(AdiConstant.EmbeddingModel.BGE_SMALL_ZH_V15)) {
+        if (adiProperties.getEmbeddingModel().equalsIgnoreCase(AdiConstant.EmbeddingModel.BGE_SMALL_ZH_V15)) {
             return new BgeSmallZhV15EmbeddingModel();
         }
         ModelPlatformService modelPlatformService = SpringUtil.getBean(ModelPlatformService.class);
@@ -155,27 +157,6 @@ public class BeanConfig {
         } else {
             throw new RuntimeException("Unsupported embedding model: " + adiProperties.getEmbeddingModel());
         }
-    }
-
-    @Bean
-    @Primary
-    public EmbeddingRAG initKnowledgeBaseRAGService(EmbeddingStore<TextSegment> kbEmbeddingStore, EmbeddingModel embeddingModel) {
-        EmbeddingRAG ragService = new EmbeddingRAG(kbEmbeddingStore);
-        ragService.init(embeddingModel);
-        return ragService;
-    }
-
-    @Bean(name = "searchRagService")
-    public EmbeddingRAG initSearchRAG(EmbeddingStore<TextSegment> searchEmbeddingStore, EmbeddingModel embeddingModel) {
-        EmbeddingRAG ragService = new EmbeddingRAG(searchEmbeddingStore);
-        ragService.init(embeddingModel);
-        return ragService;
-    }
-
-    @Bean(name = "graphRag")
-    @Primary
-    public GraphRAG initGraphRAG(GraphStore graphStore) {
-        return new GraphRAG(graphStore);
     }
 
 //    @Bean(name = "queryRouterRagService")

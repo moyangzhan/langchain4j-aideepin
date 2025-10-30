@@ -20,7 +20,7 @@ public class AdiPropertiesUtil {
         int dimension = 384;
         if (AdiConstant.EmbeddingModel.BGE_SMALL_ZH_V15.equals(adiProperties.getEmbeddingModel())) {
             dimension = AdiConstant.EmbeddingModel.BGE_SMALL_ZH_V15_DIMENSION;
-            suffix = "_bge_" + dimension;
+            suffix = "bge_" + dimension;
             EMBEDDING_TABLE_SUFFIX = suffix;
         }
         //非本地向量模型

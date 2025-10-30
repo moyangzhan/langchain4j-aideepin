@@ -2,6 +2,7 @@ package com.moyz.adi.common.service.languagemodel;
 
 import com.alibaba.dashscope.exception.ApiException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.Draw;
 import com.moyz.adi.common.entity.ModelPlatform;
@@ -10,6 +11,7 @@ import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.wanx.AdiWanxImageModel;
+import com.moyz.adi.common.vo.DashScopeSetting;
 import com.moyz.adi.common.vo.LLMException;
 import com.moyz.adi.common.vo.WanxBackgroundGenerationParams;
 import dev.langchain4j.model.image.ImageModel;

@@ -50,6 +50,7 @@ Frontend projects:
   * Text question - Voice response
   * Voice question - Text response
   * Voice question - Voice response
+* Long-term memory
 
 ## Integrated Models:
 
@@ -61,14 +62,6 @@ Frontend projects:
 * Ollama
 * DALL-E 2
 * DALL-E 3
-
-## Integrated Search Engines
-
-Google
-
-Bing (TODO)
-
-Baidu (TODO)
 
 ## Tech Stack
 

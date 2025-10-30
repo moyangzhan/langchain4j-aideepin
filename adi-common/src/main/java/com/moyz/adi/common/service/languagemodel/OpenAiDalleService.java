@@ -1,5 +1,6 @@
 package com.moyz.adi.common.service.languagemodel;
 
+import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.Draw;
 import com.moyz.adi.common.entity.ModelPlatform;
@@ -10,6 +11,7 @@ import com.moyz.adi.common.util.ImageUtil;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.OpenAiUtil;
 import com.moyz.adi.common.vo.LLMException;
+import com.moyz.adi.common.vo.OpenAiSetting;
 import com.theokanning.openai.OpenAiApi;
 import com.theokanning.openai.image.CreateImageEditRequest;
 import com.theokanning.openai.image.CreateImageVariationRequest;

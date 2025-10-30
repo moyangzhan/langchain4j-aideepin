@@ -1,8 +1,10 @@
 package com.moyz.adi.common.service.languagemodel;
 
+import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.vo.DashScopeSetting;
 import dev.langchain4j.community.model.dashscope.QwenEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import lombok.experimental.Accessors;

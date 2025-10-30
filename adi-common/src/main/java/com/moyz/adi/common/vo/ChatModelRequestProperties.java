@@ -22,4 +22,5 @@ public class ChatModelRequestProperties {
     //图片地址，多模态LLM才生效
     private List<String> imageUrls;
     private List<McpClient> mcpClients;
+    private String responseFormat;
 }

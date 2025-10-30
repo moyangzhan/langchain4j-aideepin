@@ -6,32 +6,32 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 
 /**
- * Copy https://github.com/microsoft/graphrag/blob/main/graphrag/index/graph/extractors/graph/prompts.py
+ * Copy https://github.com/microsoft/graphrag/blob/main/graphrag/prompts/index/extract_graph.py
  */
 public class GraphExtractPrompt {
     public static final String GRAPH_EXTRACTION_PROMPT = """
             -Goal-
             Given a text document that is potentially relevant to this activity and a list of entity types, identify all entities of those types from the text and all relationships among the identified entities.
-             
+            
             -Steps-
             1. Identify all entities. For each identified entity, extract the following information:
             - entity_name: Name of the entity, capitalized
             - entity_type: One of the following types: [{entity_types}]
             - entity_description: Comprehensive description of the entity's attributes and activities
             Format each entity as ("entity"{tuple_delimiter}<entity_name>{tuple_delimiter}<entity_type>{tuple_delimiter}<entity_description>)
-             
+            
             2. From the entities identified in step 1, identify all pairs of (source_entity, target_entity) that are *clearly related* to each other.
             For each pair of related entities, extract the following information:
             - source_entity: name of the source entity, as identified in step 1
             - target_entity: name of the target entity, as identified in step 1
             - relationship_description: explanation as to why you think the source entity and the target entity are related to each other
             - relationship_strength: a numeric score indicating strength of the relationship between the source entity and target entity
-             Format each relationship as ("relationship"{tuple_delimiter}<source_entity>{tuple_delimiter}<target_entity>{tuple_delimiter}<relationship_description>{tuple_delimiter}<relationship_strength>)
-             
+            Format each relationship as ("relationship"{tuple_delimiter}<source_entity>{tuple_delimiter}<target_entity>{tuple_delimiter}<relationship_description>{tuple_delimiter}<relationship_strength>)
+            
             3. Return output in English as a single list of all the entities and relationships identified in steps 1 and 2. Use **{record_delimiter}** as the list delimiter.
-             
+            
             4. When finished, output {completion_delimiter}
-             
+            
             ######################
             -Examples-
             ######################
@@ -49,13 +49,13 @@ public class GraphExtractPrompt {
             {record_delimiter}
             ("relationship"{tuple_delimiter}MARTIN SMITH{tuple_delimiter}CENTRAL INSTITUTION{tuple_delimiter}Martin Smith is the Chair of the Central Institution and will answer questions at a press conference{tuple_delimiter}9)
             {completion_delimiter}
-
+            
             ######################
             Example 2:
             Entity_types: ORGANIZATION
             Text:
             TechGlobal's (TG) stock skyrocketed in its opening day on the Global Exchange Thursday. But IPO experts warn that the semiconductor corporation's debut on the public markets isn't indicative of how other newly listed companies may perform.
-
+            
             TechGlobal, a formerly public company, was taken private by Vision Holdings in 2014. The well-established chip designer says it powers 85% of premium smartphones.
             ######################
             Output:
@@ -65,38 +65,38 @@ public class GraphExtractPrompt {
             {record_delimiter}
             ("relationship"{tuple_delimiter}TECHGLOBAL{tuple_delimiter}VISION HOLDINGS{tuple_delimiter}Vision Holdings formerly owned TechGlobal from 2014 until present{tuple_delimiter}5)
             {completion_delimiter}
-
+            
             ######################
             Example 3:
-            Entity_types: ORGANIZATION,LOCATION,PERSON
+            Entity_types: ORGANIZATION,GEO,PERSON
             Text:
             Five Aurelians jailed for 8 years in Firuzabad and widely regarded as hostages are on their way home to Aurelia.
-
+            
             The swap orchestrated by Quintara was finalized when $8bn of Firuzi funds were transferred to financial institutions in Krohaara, the capital of Quintara.
-
+            
             The exchange initiated in Firuzabad's capital, Tiruzia, led to the four men and one woman, who are also Firuzi nationals, boarding a chartered flight to Krohaara.
-
+            
             They were welcomed by senior Aurelian officials and are now on their way to Aurelia's capital, Cashion.
-
+            
             The Aurelians include 39-year-old businessman Samuel Namara, who has been held in Tiruzia's Alhamia Prison, as well as journalist Durke Bataglani, 59, and environmentalist Meggie Tazbah, 53, who also holds Bratinas nationality.
             ######################
             Output:
-            ("entity"{tuple_delimiter}FIRUZABAD{tuple_delimiter}LOCATION{tuple_delimiter}Firuzabad held Aurelians as hostages)
+            ("entity"{tuple_delimiter}FIRUZABAD{tuple_delimiter}GEO{tuple_delimiter}Firuzabad held Aurelians as hostages)
             {record_delimiter}
-            ("entity"{tuple_delimiter}AURELIA{tuple_delimiter}LOCATION{tuple_delimiter}Country seeking to release hostages)
+            ("entity"{tuple_delimiter}AURELIA{tuple_delimiter}GEO{tuple_delimiter}Country seeking to release hostages)
             {record_delimiter}
-            ("entity"{tuple_delimiter}QUINTARA{tuple_delimiter}LOCATION{tuple_delimiter}Country that negotiated a swap of money in exchange for hostages)
+            ("entity"{tuple_delimiter}QUINTARA{tuple_delimiter}GEO{tuple_delimiter}Country that negotiated a swap of money in exchange for hostages)
             {record_delimiter}
             {record_delimiter}
-            ("entity"{tuple_delimiter}TIRUZIA{tuple_delimiter}LOCATION{tuple_delimiter}Capital of Firuzabad where the Aurelians were being held)
+            ("entity"{tuple_delimiter}TIRUZIA{tuple_delimiter}GEO{tuple_delimiter}Capital of Firuzabad where the Aurelians were being held)
             {record_delimiter}
-            ("entity"{tuple_delimiter}KROHAARA{tuple_delimiter}LOCATION{tuple_delimiter}Capital city in Quintara)
+            ("entity"{tuple_delimiter}KROHAARA{tuple_delimiter}GEO{tuple_delimiter}Capital city in Quintara)
             {record_delimiter}
-            ("entity"{tuple_delimiter}CASHION{tuple_delimiter}LOCATION{tuple_delimiter}Capital city in Aurelia)
+            ("entity"{tuple_delimiter}CASHION{tuple_delimiter}GEO{tuple_delimiter}Capital city in Aurelia)
             {record_delimiter}
             ("entity"{tuple_delimiter}SAMUEL NAMARA{tuple_delimiter}PERSON{tuple_delimiter}Aurelian who spent time in Tiruzia's Alhamia Prison)
             {record_delimiter}
-            ("entity"{tuple_delimiter}ALHAMIA PRISON{tuple_delimiter}LOCATION{tuple_delimiter}Prison in Tiruzia)
+            ("entity"{tuple_delimiter}ALHAMIA PRISON{tuple_delimiter}GEO{tuple_delimiter}Prison in Tiruzia)
             {record_delimiter}
             ("entity"{tuple_delimiter}DURKE BATAGLANI{tuple_delimiter}PERSON{tuple_delimiter}Aurelian journalist who was held hostage)
             {record_delimiter}
@@ -122,7 +122,7 @@ public class GraphExtractPrompt {
             {record_delimiter}
             ("relationship"{tuple_delimiter}DURKE BATAGLANI{tuple_delimiter}FIRUZABAD{tuple_delimiter}Durke Bataglani was a hostage in Firuzabad{tuple_delimiter}2)
             {completion_delimiter}
-
+            
             ######################
             -Real Data-
             ######################
@@ -130,7 +130,7 @@ public class GraphExtractPrompt {
             Text: {input_text}
             ######################
             Output:""".replace("{tuple_delimiter}", AdiConstant.GRAPH_TUPLE_DELIMITER)
-            .replace("{entity_types}", Arrays.stream(AdiConstant.GRAPH_ENTITY_EXTRACTION_ENTITY_TYPES).collect(Collectors.joining(",")))
+            .replace("{entity_types}", String.join(",", AdiConstant.GRAPH_ENTITY_EXTRACTION_ENTITY_TYPES))
             .replace("{completion_delimiter}", AdiConstant.GRAPH_COMPLETION_DELIMITER)
             .replace("{record_delimiter}", AdiConstant.GRAPH_RECORD_DELIMITER);
 
@@ -256,7 +256,7 @@ public class GraphExtractPrompt {
             ######################
             输出:
             """.replace("{tuple_delimiter}", AdiConstant.GRAPH_TUPLE_DELIMITER)
-            .replace("{entity_types}", Arrays.stream(AdiConstant.GRAPH_ENTITY_EXTRACTION_ENTITY_TYPES).collect(Collectors.joining(",")))
+            .replace("{entity_types}", String.join(",", AdiConstant.GRAPH_ENTITY_EXTRACTION_ENTITY_TYPES))
             .replace("{completion_delimiter}", AdiConstant.GRAPH_COMPLETION_DELIMITER)
             .replace("{record_delimiter}", AdiConstant.GRAPH_RECORD_DELIMITER);
     public static final String CONTINUE_PROMPT = "MANY entities and relationships were missed in the last extraction. Remember to ONLY emit entities that match any of the previously extracted types. Add them below using the same format:\n";

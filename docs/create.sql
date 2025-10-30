@@ -1051,15 +1051,22 @@ VALUES ('tts_setting', '{"synthesizer_side":"client","model_name":"","platform":
 -- VALUES ('tts_setting', '{"synthesizer":"server","model_name":"cosyvoice-v2","platform":"dashscope"}');
 
 -- 模型平台
-insert into adi_model_platform (name, title, base_url) values ('openai', 'OpenAi', 'https://api.openai.com/v1');
-insert into adi_model_platform (name, title, base_url) values ('deepseek', 'DeepSeek深度求索', 'https://api.deepseek.com/v1');
-insert into adi_model_platform (name, title, base_url) values ('dashscope', 'DashScope', 'https://dashscope.aliyuncs.com/compatible-mode/v1');
-insert into adi_model_platform (name, title, base_url) values ('siliconflow', '硅基流动', 'https://api.siliconflow.cn/v1');
-insert into adi_model_platform (name, title, base_url) values ('ollama', 'ollama', 'http://localhost:11434');
-insert into adi_model_platform (name, title, base_url) values ('qianfan', '千帆', '');
+insert into adi_model_platform (name, title, base_url)
+values ('openai', 'OpenAi', 'https://api.openai.com/v1');
+insert into adi_model_platform (name, title, base_url)
+values ('deepseek', 'DeepSeek深度求索', 'https://api.deepseek.com/v1');
+insert into adi_model_platform (name, title, base_url)
+values ('dashscope', 'DashScope', 'https://dashscope.aliyuncs.com/compatible-mode/v1');
+insert into adi_model_platform (name, title, base_url)
+values ('siliconflow', '硅基流动', 'https://api.siliconflow.cn/v1');
+insert into adi_model_platform (name, title, base_url)
+values ('ollama', 'ollama', 'http://localhost:11434');
+insert into adi_model_platform (name, title, base_url)
+values ('qianfan', '千帆', '');
 
 -- 硅基流动的文本模型的api兼容 openai api，本行数据用来测试动态创建的模型平台及模型是否正常使用了 OpenAiCompatibleLLMService 进行请求
-insert into adi_model_platform (name, title, base_url, is_openai_api_compatible) values ('openai-compatible-platform-test', '兼容openai的平台', 'https://api.siliconflow.cn/v1', true);
+insert into adi_model_platform (name, title, base_url, is_openai_api_compatible)
+values ('openai-compatible-platform-test', '兼容openai的平台', 'https://api.siliconflow.cn/v1', true);
 
 -- 大语言模型
 -- https://api-docs.deepseek.com/zh-cn/quick_start/pricing
