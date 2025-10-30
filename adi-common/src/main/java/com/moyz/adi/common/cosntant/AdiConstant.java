@@ -150,6 +150,9 @@ public class AdiConstant {
         public static final String SEARCH_UUID = "search_uuid";
     }
 
+    //Max length of metadata value
+    public static int MAX_METADATA_VALUE_LENGTH = 500;
+
     public static class SysConfigKey {
         private SysConfigKey() {
         }

@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import static com.moyz.adi.common.cosntant.AdiConstant.MAX_METADATA_VALUE_LENGTH;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -295,13 +296,37 @@ public class GraphStoreIngestor {
         log.info("Finished storing {} text segments into the graph store", segments.size());
     }
 
+    /**
+     * metadata记录的值为Map，如：kb_uuid=>123,kb_item_uuid=>22222,3333，其中类似 3333 的值是追加的，超过最大限度时丢弃最早的数据
+     * TODO 重构以记录所有追加的值
+     *
+     * @param existMetadata 已存在的metadata
+     * @param newMetadata   新的metadata
+     */
     private void appendExistsToNewOne(Map<String, Object> existMetadata, Map<String, Object> newMetadata) {
         for (String columnName : appendColumns) {
-            String val = String.valueOf(existMetadata.get(columnName));
-            if (StringUtils.isNotBlank(val) && !val.contains(newMetadata.get(columnName).toString())) {
-                newMetadata.put(columnName, val + "," + newMetadata.get(columnName));
+            String existValue = String.valueOf(existMetadata.get(columnName));
+            String newValue = String.valueOf(newMetadata.get(columnName));
+            if (StringUtils.isNotBlank(existValue) && !existValue.contains(newValue)) {
+                String cleanedTxt = existValue.replaceAll("[\\s\"/\\\\]", "");
+                newMetadata.put(columnName, checkAndRemoveOldest(cleanedTxt) + "," + newValue);
             }
         }
+    }
+
+    private String checkAndRemoveOldest(String cleanedTxt) {
+        if (StringUtils.isBlank(cleanedTxt)) {
+            return cleanedTxt;
+        }
+        String result = cleanedTxt;
+        while (result.length() > MAX_METADATA_VALUE_LENGTH) {
+            String[] existValues = result.split(",", 2); // Only split into 2 parts
+            if (existValues.length <= 1) {
+                return result.substring(0, MAX_METADATA_VALUE_LENGTH);
+            }
+            result = existValues[1]; // Take everything after the first comma
+        }
+        return result;
     }
 
     private void checkOrCreateVertex(String label, String name, String textSegmentId, Filter metadataFilter, Map<String, Object> metadata) {

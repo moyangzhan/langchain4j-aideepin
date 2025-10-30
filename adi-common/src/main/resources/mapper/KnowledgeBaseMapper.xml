@@ -26,7 +26,7 @@
         <if test="keyword != null and keyword != ''">
             and title like CONCAT('%', #{keyword}, '%')
         </if>
-        order by star_count,update_time desc
+        order by star_count desc,update_time desc
     </select>
 
     <select id="countCreatedByTimePeriod" resultType="Integer">
