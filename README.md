@@ -102,7 +102,7 @@ ps: neo4j 与 pgvector + apache age 二选一即可
 
 + 创建数据库aideepin
 + 执行docs/create.sql
-+ 启用并配置模型平台(有些项目也称为模型供应商) 或者 使用[管理端](https://github.com/moyangzhan/langchain4j-aideepin-admin)在界面上配置
++ 启用并配置模型平台(有些项目也称为模型提供商) 或者 使用[管理端](https://github.com/moyangzhan/langchain4j-aideepin-admin)在界面上配置
       
     使用SQL直接更新表数据
     +  配置模型平台（至少启用一个）
