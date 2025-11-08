@@ -95,9 +95,9 @@ Frontend tech stack:
 
 * Create the database `aideepin`
 * Execute `docs/create.sql`
-* Configure models (at least set one) or use the [admin web](https://github.com/moyangzhan/langchain4j-aideepin-admin) to configure on the interface
+* Enable and configure the model platform (also referred to as model provider in some projects) or use the [admin web](https://github.com/moyangzhan/langchain4j-aideepin-admin) to configure on the interface
 
-    * Configure AI platforms
+    * Configure model platforms
       ```plaintext
 
       -- DeepSeek
@@ -118,7 +118,7 @@ Frontend tech stack:
       -- Ollama configuration
       update adi_model_platform set base_url = 'my_ollama_base_url' where name = 'ollama';
       ```
-    * Enable AI platform models or add new models
+    * Enable model platform models or add new models
       ```
       -- Enable model
       update adi_ai_model set is_enable = true where name = 'deepseek-chat';
