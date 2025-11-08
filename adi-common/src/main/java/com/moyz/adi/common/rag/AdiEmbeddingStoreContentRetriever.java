@@ -55,7 +55,7 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
     private final boolean breakIfSearchMissed;
 
     public AdiEmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore,
-                                          EmbeddingModel embeddingModel) {
+                                             EmbeddingModel embeddingModel) {
         this(
                 DEFAULT_DISPLAY_NAME,
                 embeddingStore,
@@ -68,8 +68,8 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
     }
 
     public AdiEmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore,
-                                          EmbeddingModel embeddingModel,
-                                          int maxResults) {
+                                             EmbeddingModel embeddingModel,
+                                             int maxResults) {
         this(
                 DEFAULT_DISPLAY_NAME,
                 embeddingStore,
@@ -82,9 +82,9 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
     }
 
     public AdiEmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore,
-                                          EmbeddingModel embeddingModel,
-                                          Integer maxResults,
-                                          Double minScore) {
+                                             EmbeddingModel embeddingModel,
+                                             Integer maxResults,
+                                             Double minScore) {
         this(
                 DEFAULT_DISPLAY_NAME,
                 embeddingStore,
@@ -198,7 +198,7 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
             return this;
         }
 
-        public AdiEmbeddingStoreContentRetrieverBuilder breakIfSearchMissed(boolean breakIfSearchMissed){
+        public AdiEmbeddingStoreContentRetrieverBuilder breakIfSearchMissed(boolean breakIfSearchMissed) {
             this.breakIfSearchMissed = breakIfSearchMissed;
             return this;
         }
@@ -246,6 +246,7 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
 
         //判断是否要强行中断查询，没有命中则不再进行下一步操作（比如说请求LLM），直接抛出异常中断流程
         if (breakIfSearchMissed && CollectionUtils.isEmpty(result)) {
+            log.warn("Embedding search missed,query:{}", query.text());
             throw new BaseException(B_BREAK_SEARCH);
         }
         return result;

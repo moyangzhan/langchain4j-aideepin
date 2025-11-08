@@ -92,6 +92,7 @@ public class GraphStoreContentRetriever implements ContentRetriever {
         }
         //判断是否要强行中断查询，没有命中则不再进行下一步操作（比如说请求LLM），直接抛出异常中断流程
         if (breakIfSearchMissed && entities.isEmpty()) {
+            log.warn("Graph search missed");
             throw new BaseException(B_BREAK_SEARCH);
         }
         entities = entities.stream().map(AdiStringUtil::removeSpecialChar).filter(StringUtils::isNotBlank).collect(Collectors.toSet());

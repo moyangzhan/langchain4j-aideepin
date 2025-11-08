@@ -98,6 +98,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
     public ConvMsgListResp detail(String uuid, String maxMsgUuid, int pageSize) {
         Conversation conversation = this.lambdaQuery().eq(Conversation::getUuid, uuid).one();
         if (null == conversation) {
+            log.error("conversation not exist, uuid: {}", uuid);
             throw new BaseException(A_CONVERSATION_NOT_EXIST);
         }
 

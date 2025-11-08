@@ -118,9 +118,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             knowledgeBase.setId(kbEditReq.getId());
             baseMapper.updateById(knowledgeBase);
         }
-        return ChainWrappers.lambdaQueryChain(baseMapper)
-                .eq(KnowledgeBase::getId, kbEditReq.getId())
-                .one();
+        return knowledgeBase;
     }
 
     public List<AdiFile> uploadDocs(String kbUuid, Boolean embedding, MultipartFile[] docs, List<String> indexTypes) {
