@@ -2,7 +2,7 @@
 
 **LangChain4j-AIDeepin（得应AI） 是基于AI的工作效率提升工具。**
 
- *可用于辅助企业/团队进行技术研发、产品设计、人事/财务/IT信息咨询、系统/商品咨询、客服话术支撑等工作*
+*可用于辅助企业/团队进行技术研发、产品设计、人事/财务/IT信息咨询、系统/商品咨询、客服话术支撑等工作*
 
 > **🌟该项目如对您有帮助，欢迎点赞🌟**
 
@@ -53,20 +53,20 @@ AIDEEPIN
     * 语音提问-语音回复
   * AI的音色可选
 * 长期记忆
+* 存储
+  * 本地存储
+  * OSS（阿里云）
 
-## 接入的平台/模型：
+## 已集成的模型平台的功能
 
-* DeepSeek
-* OpenAI
-  * ChatGPT 3.5
-  * DALL-E 2
-  * DALL-E 3
-* 灵积
-  * 通义千问
-  * 通义万相
-* 硅基流动
-* 文心一言
-* ollama
+| 模型平台     | 对话 | 文生图  | 修图 | 图生图 | 背景生成 | 图像识别 | 语音合成TTS | 语音识别ASR |
+|----------| :----- |:-----| ----- | ------- | ---------- |------|---------|---------|
+| 灵积       | ✓   | ✓    |     |       | ✓       | ✓    | ✓       | ✓       |
+| OpenAI   | ✓   | ✓    | ✓  | ✓    |          |      |         |         |
+| 硅基流动     | ✓   |      |     |       |          |      |         | ✓       |
+| Ollama   | ✓   |      |    |      |          |      |         |         |
+| DeepSeek | ✓   |      |     |       |          |      |         |         |
+| 千帆       | ✓   |      |     |       |          |      |         |         |
 
 ## 技术栈
 
@@ -102,52 +102,53 @@ ps: neo4j 与 pgvector + apache age 二选一即可
 
 + 创建数据库aideepin
 + 执行docs/create.sql
-+ 启用并配置模型平台(有些项目也称为模型提供商) 或者 使用[管理端](https://github.com/moyangzhan/langchain4j-aideepin-admin)在界面上配置
-      
-    使用SQL直接更新表数据
-    +  配置模型平台（至少启用一个）
-        ```plain
-        -- DeepSeek
-        update adi_model_platform set api_key = 'my_deepseek_secret_key' where name = 'deepseek';
++ 配置并启用 *模型平台* (有些项目也称为 *模型提供商* ) 或者 使用[管理端](https://github.com/moyangzhan/langchain4j-aideepin-admin)在界面上配置
 
-        -- openai的secretKey
-        update adi_model_platform set api_key = 'my_openai_secret_key' where name = 'openai';
+  使用SQL直接更新表数据
 
-        -- 灵积大模型平台的apiKey
-        update adi_model_platform set api_key = 'my_dashcope_api_key' where name = 'dashscope';
+  + 配置模型平台（至少启用一个，可参考 **已集成的模型平台的功能** 表格进行选择）
 
-        -- 硅基流动的配置
-        update adi_model_platform set api_key = 'my_siliconflow_api_key' where name = 'siliconflow_setting';
+    ```plain
+    -- DeepSeek
+    update adi_model_platform set api_key = 'my_deepseek_secret_key' where name = 'deepseek';
 
-        -- 千帆大模型平台的配置
-        update adi_model_platform set api_key = 'my_qianfan_api_key',secret_key='my_qianfan_secret_key' where name = 'qianfan';
+    -- openai的secretKey
+    update adi_model_platform set api_key = 'my_openai_secret_key' where name = 'openai';
 
-        -- ollama的配置
-        update adi_model_platform set base_url = 'my_ollama_base_url' where name = 'ollama';
-        ```
+    -- 灵积大模型平台的apiKey
+    update adi_model_platform set api_key = 'my_dashcope_api_key' where name = 'dashscope';
 
+    -- 硅基流动的配置
+    update adi_model_platform set api_key = 'my_siliconflow_api_key' where name = 'siliconflow_setting';
+
+    -- 千帆大模型平台的配置
+    update adi_model_platform set api_key = 'my_qianfan_api_key',secret_key='my_qianfan_secret_key' where name = 'qianfan';
+
+    -- ollama的配置
+    update adi_model_platform set base_url = 'my_ollama_base_url' where name = 'ollama';
+    ```
   + 启用模型平台下的模型或新增模型
 
-      ```plain
-      -- Enable model
-      update adi_ai_model set is_enable = true where name = 'deepseek-chat';
-      update adi_ai_model set is_enable = true where name = 'gpt-3.5-turbo';
-      update adi_ai_model set is_enable = true where name = 'dall-e-2';
-      update adi_ai_model set is_enable = true where name = 'qwen-turbo';
-      update adi_ai_model set is_enable = true where name = 'THUDM/GLM-Z1-9B-0414';
-      update adi_ai_model set is_enable = true where name = 'ernie_speed';
-      update adi_ai_model set is_enable = true where name = 'tinydolphin';
+    ```plain
+    -- Enable model
+    update adi_ai_model set is_enable = true where name = 'deepseek-chat';
+    update adi_ai_model set is_enable = true where name = 'gpt-3.5-turbo';
+    update adi_ai_model set is_enable = true where name = 'dall-e-2';
+    update adi_ai_model set is_enable = true where name = 'qwen-turbo';
+    update adi_ai_model set is_enable = true where name = 'THUDM/GLM-Z1-9B-0414';
+    update adi_ai_model set is_enable = true where name = 'ernie_speed';
+    update adi_ai_model set is_enable = true where name = 'tinydolphin';
 
-      -- Add new model
-      INSERT INTO adi_ai_model (name, type, platform, is_enable) VALUES ('vicuna', 'text', 'ollama', true);
-      ```
-
+    -- Add new model
+    INSERT INTO adi_ai_model (name, type, platform, is_enable) VALUES ('vicuna', 'text', 'ollama', true);
+    ```
 + 填充搜索引擎的配置
-    - Google的配置
 
-      ```plain
-      update adi_sys_config set value = '{"url":"https://www.googleapis.com/customsearch/v1","key":"my key from cloud.google.com","cx":"my cx from programmablesearchengine.google.com"}' where name = 'google_setting';
-      ```
+  - Google的配置
+
+    ```plain
+    update adi_sys_config set value = '{"url":"https://www.googleapis.com/customsearch/v1","key":"my key from cloud.google.com","cx":"my cx from programmablesearchengine.google.com"}' where name = 'google_setting';
+    ```
 
 **b. 修改配置文件**
 
