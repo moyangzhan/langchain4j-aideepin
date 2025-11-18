@@ -1,6 +1,6 @@
 package com.moyz.adi.common.helper;
 
-import com.moyz.adi.common.service.languagemodel.AbstractImageModelService;
+import com.moyz.adi.common.languagemodel.AbstractImageModelService;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;

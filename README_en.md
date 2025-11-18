@@ -25,11 +25,11 @@ Backend source repository: [github](https://github.com/moyangzhan/langchain4j-ai
 Frontend projects:
 
 * User Web: langchain4j-aideepin-web
-  * [github](https://github.com/moyangzhan/langchain4j-aideepin-web)
-  * [gitee](https://gitee.com/moyangzhan/langchain4j-aideepin-web)
+    * [github](https://github.com/moyangzhan/langchain4j-aideepin-web)
+    * [gitee](https://gitee.com/moyangzhan/langchain4j-aideepin-web)
 * Admin Web: langchain4j-aideepin-admin
-  * [github](https://github.com/moyangzhan/langchain4j-aideepin-admin)
-  * [gitee](https://gitee.com/moyangzhan/langchain4j-aideepin-admin)
+    * [github](https://github.com/moyangzhan/langchain4j-aideepin-admin)
+    * [gitee](https://gitee.com/moyangzhan/langchain4j-aideepin-admin)
 
 ## Demo URL
 
@@ -58,13 +58,13 @@ Frontend projects:
 ## Integrated Platform Features
 
 | Model Platform | Chat | Image Generation | Image Edit | Image variation | Background Generation | Image Recognition | Text-to-Speech | Speech Recognition |
-|----------------|:-----|:---------------| ----- |-----------------| ---------- | ---------- |---------|-------------------------------|
-| OpenAI         | ✓    | ✓              | ✓  | ✓               |          |          |         |                               |
-| Dashscope      | ✓    | ✓              |     |                 | ✓       | ✓       | ✓       | ✓                             |
-| SiliconFlow    | ✓    |                |     |                 |          |          |         | ✓                             |
-| Ollama         | ✓    |                |    |                 |          |          |         |                               |
-| DeepSeek       | ✓    |                |     |                 |          |          |         |                               |
-| Qianfan        | ✓    |                |     |                 |          |          |         |                               |
+|----------------|:-----|:-----------------| ----- |-----------------| ---------- | ---------- |---------|-------------------------------|
+| OpenAI         | ✓    | ✓                | ✓  | ✓               |          |          |         |                               |
+| Dashscope      | ✓    | ✓                |     |                 | ✓       | ✓       | ✓       | ✓                             |
+| SiliconFlow    | ✓    | ✓                |     |                 |          |          |         | ✓                             |
+| Ollama         | ✓    |                  |    |                 |          |          |         |                               |
+| DeepSeek       | ✓    |                  |     |                 |          |          |         |                               |
+| Qianfan        | ✓    |                  |     |                 |          |          |         |                               |
 
 ## Tech Stack
 
@@ -77,8 +77,8 @@ Tech stack:
 * [langchain4j(Java version of LangChain)](https://github.com/langchain4j/langchain4j)
 * [langgraph4j](https://github.com/bsorrentino/langgraph4j)
 * Postgresql
-  * pgvector extension: https://github.com/pgvector/pgvector
-  * Apache AGE extension: https://github.com/apache/age
+    * pgvector extension: https://github.com/pgvector/pgvector
+    * Apache AGE extension: https://github.com/apache/age
 * [neo4j](https://neo4j.com/deployment-center/)
 
 Frontend tech stack:
@@ -98,49 +98,49 @@ Frontend tech stack:
 
 * Create the database `aideepin`
 * Execute `docs/create.sql`
-* Configure and enable the *model platform* (also referred to as *model provider* in some projects) or use the [admin web](https://github.com/moyangzhan/langchain4j-aideepin-admin) to configure on the interface
+* Enable and configure the model platform (also referred to as model provider in some projects) or use the [admin web](https://github.com/moyangzhan/langchain4j-aideepin-admin) to configure on the interface
 
-  * Configure model platforms
-    ```plaintext
+    * Configure model platforms
+      ```plaintext
 
-    -- DeepSeek
-    update adi_model_platform set api_key = 'my_deepseek_secret_key' where name = 'deepseek';
+      -- DeepSeek
+      update adi_model_platform set api_key = 'my_deepseek_secret_key' where name = 'deepseek';
 
-    -- OpenAI
-    update adi_model_platform set api_key = 'my_openai_secret_key' where name = 'openai';
+      -- OpenAI
+      update adi_model_platform set api_key = 'my_openai_secret_key' where name = 'openai';
+  
+      -- Dashscope
+      update adi_model_platform set api_key = 'my_dashcope_api_key' where name = 'dashscope';
 
-    -- Dashscope
-    update adi_model_platform set api_key = 'my_dashcope_api_key' where name = 'dashscope';
-
-    --siliconflow
-    update adi_model_platform set api_key = 'my_siliconflow_api_key' where name = 'siliconflow_setting';
-
-    -- Qianfan API key and secret key
-    update adi_model_platform set api_key = 'my_qianfan_api_key',secret_key='my_qianfan_secret_key' where name = 'qianfan';
-
-    -- Ollama configuration
-    update adi_model_platform set base_url = 'my_ollama_base_url' where name = 'ollama';
-    ```
-  * Enable model platform models or add new models
-    ```
-    -- Enable model
-    update adi_ai_model set is_enable = true where name = 'deepseek-chat';
-    update adi_ai_model set is_enable = true where name = 'gpt-3.5-turbo';
-    update adi_ai_model set is_enable = true where name = 'dall-e-2';
-    update adi_ai_model set is_enable = true where name = 'qwen-turbo';
-    update adi_ai_model set is_enable = true where name = 'THUDM/GLM-Z1-9B-0414';
-    update adi_ai_model set is_enable = true where name = 'ernie_speed';
-    update adi_ai_model set is_enable = true where name = 'tinydolphin';
-
-    -- Add new model
-    INSERT INTO adi_ai_model (name, type, platform, is_enable) VALUES ('vicuna', 'text', 'ollama', true);
-    ```
+      --siliconflow
+      update adi_model_platform set api_key = 'my_siliconflow_api_key' where name = 'siliconflow_setting';
+  
+      -- Qianfan API key and secret key
+      update adi_model_platform set api_key = 'my_qianfan_api_key',secret_key='my_qianfan_secret_key' where name = 'qianfan';
+  
+      -- Ollama configuration
+      update adi_model_platform set base_url = 'my_ollama_base_url' where name = 'ollama';
+      ```
+    * Enable model platform models or add new models
+      ```
+      -- Enable model
+      update adi_ai_model set is_enable = true where name = 'deepseek-chat';
+      update adi_ai_model set is_enable = true where name = 'gpt-3.5-turbo';
+      update adi_ai_model set is_enable = true where name = 'dall-e-2';
+      update adi_ai_model set is_enable = true where name = 'qwen-turbo';
+      update adi_ai_model set is_enable = true where name = 'THUDM/GLM-Z1-9B-0414';
+      update adi_ai_model set is_enable = true where name = 'ernie_speed';
+      update adi_ai_model set is_enable = true where name = 'tinydolphin';
+  
+      -- Add new model
+      INSERT INTO adi_ai_model (name, type, platform, is_enable) VALUES ('vicuna', 'text', 'ollama', true);
+      ```
 * Fill in the search engine configuration
 
-  * Google configuration
-    ```
-    update adi_sys_config set value = '{"url":"https://www.googleapis.com/customsearch/v1","key":"my key from cloud.google.com","cx":"my cx from programmablesearchengine.google.com"}' where name = 'google_setting';
-    ```
+    * Google configuration
+      ```
+      update adi_sys_config set value = '{"url":"https://www.googleapis.com/customsearch/v1","key":"my key from cloud.google.com","cx":"my cx from programmablesearchengine.google.com"}' where name = 'google_setting';
+      ```
 
 **b. Modify the configuration file**
 
@@ -162,14 +162,14 @@ Frontend tech stack:
   ```
 * Run
 
-  * Start with jar:
+    * Start with jar:
 
   ```plaintext
   cd adi-bootstrap/target
   nohup java -jar -Xms768m -Xmx1024m -XX:+HeapDumpOnOutOfMemoryError adi-bootstrap-0.0.1-SNAPSHOT.jar --spring.profiles.active=[dev|prod] dev/null 2>&1 &
   ```
 
-  * Start with docker
+    * Start with docker
 
   ```plaintext
   cd adi-bootstrap

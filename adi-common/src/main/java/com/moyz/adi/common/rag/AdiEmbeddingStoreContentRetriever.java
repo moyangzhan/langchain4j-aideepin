@@ -119,7 +119,7 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
         Collection<EmbeddingModelFactory> factories = loadFactories(EmbeddingModelFactory.class);
         if (factories.size() > 1) {
             throw new RuntimeException("Conflict: multiple embedding models have been found in the classpath. " +
-                                       "Please explicitly specify the one you wish to use.");
+                    "Please explicitly specify the one you wish to use.");
         }
 
         for (EmbeddingModelFactory factory : factories) {
@@ -264,7 +264,7 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
     @Override
     public String toString() {
         return "AdiEmbeddingStoreContentRetriever{" +
-               "displayName='" + displayName + '\'' +
-               '}';
+                "displayName='" + displayName + '\'' +
+                '}';
     }
 }

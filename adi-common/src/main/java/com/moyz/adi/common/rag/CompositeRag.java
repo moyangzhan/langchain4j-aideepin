@@ -8,7 +8,7 @@ import com.moyz.adi.common.interfaces.IStreamingChatAssistant;
 import com.moyz.adi.common.interfaces.ITempStreamingChatAssistant;
 import com.moyz.adi.common.interfaces.TriConsumer;
 import com.moyz.adi.common.memory.shortterm.MapDBChatMemoryStore;
-import com.moyz.adi.common.service.languagemodel.AbstractLLMService;
+import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.vo.*;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;

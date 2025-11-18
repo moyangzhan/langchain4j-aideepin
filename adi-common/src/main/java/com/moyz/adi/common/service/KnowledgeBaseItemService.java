@@ -18,7 +18,7 @@ import com.moyz.adi.common.mapper.KnowledgeBaseItemMapper;
 import com.moyz.adi.common.rag.EmbeddingRagContext;
 import com.moyz.adi.common.rag.GraphRagContext;
 import com.moyz.adi.common.service.embedding.IEmbeddingService;
-import com.moyz.adi.common.service.languagemodel.AbstractLLMService;
+import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.ChatModelBuilderProperties;
 import com.moyz.adi.common.vo.GraphIngestParams;

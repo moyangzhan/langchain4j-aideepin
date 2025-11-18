@@ -6,7 +6,7 @@ import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.memory.vo.ActionMemories;
 import com.moyz.adi.common.memory.vo.ExtractedFact;
 import com.moyz.adi.common.rag.EmbeddingRagContext;
-import com.moyz.adi.common.service.languagemodel.AbstractLLMService;
+import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.util.AdiStringUtil;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.UuidUtil;

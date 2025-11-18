@@ -1071,13 +1071,23 @@ values ('openai-compatible-platform-test', '兼容openai的平台', 'https://api
 -- 大语言模型
 -- https://api-docs.deepseek.com/zh-cn/quick_start/pricing
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
-VALUES ('deepseek-chat', 'DeepSeek-V3', 'text', 'deepseek', 65536, 61440, 4096, false);
+VALUES ('deepseek-chat', 'DeepSeek-V3', 'text', 'deepseek', 131072, 126976, 8192, false);
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_reasoner,
                           is_thinking_closable, is_enable)
-VALUES ('deepseek-reasoner', 'DeepSeek-R1', 'text', 'deepseek', 65536, 61440, 4096, true, false, false);
+VALUES ('deepseek-reasoner', 'DeepSeek-R1', 'text', 'deepseek', 131072, 65536, 65536, true, false, false);
+
+-- https://platform.openai.com/docs/models/gpt-5-mini
+INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, remark,
+                          is_enable)
+VALUES ('gpt-5-mini', 'gpt-5-mini', 'text', 'openai', 400000, 272000, 128000,
+        'GPT-5 mini is a faster, more cost-efficient version of GPT-5. It''s great for well-defined tasks and precise prompts.',
+        false);
+
+-- use gpt-5-mini in place of GPT-3.5 Turbo
 -- https://platform.openai.com/docs/models/gpt-3-5-turbo
-INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
-VALUES ('gpt-3.5-turbo', 'gpt3.5', 'text', 'openai', 16385, 12385, 4096, false);
+-- INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
+-- VALUES ('gpt-3.5-turbo', 'gpt3.5', 'text', 'openai', 16385, 12385, 4096, false);
+
 INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
 VALUES ('dall-e-2', 'DALL-E-2', 'image', 'openai', false);
 INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
@@ -1093,7 +1103,7 @@ VALUES ('text-embedding-3-large', 'openai-embedding-large', 'embedding', 'openai
 -- https://help.aliyun.com/zh/dashscope/developer-reference/model-introduction?spm=a2c4g.11186623.0.i39
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_reasoner,
                           is_thinking_closable, is_enable)
-VALUES ('qwen-turbo', '通义千问turbo', 'text', 'dashscope', 8192, 6144, 1536, true, true, false);
+VALUES ('qwen-turbo', '通义千问turbo', 'text', 'dashscope', 131072, 98304, 16384, true, true, false);
 -- 图片识别
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, input_types,
                           is_enable)
@@ -1552,8 +1562,40 @@ VALUES ('ERNIE-Speed-128K', 'ernie_speed', 'text', 'qianfan', 131072, 126976, 40
         '{"endpoint":"ernie-speed-128k"}');
 INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
 VALUES ('tinydolphin', 'ollama-tinydolphin', 'text', 'ollama', false);
-INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
-VALUES ('THUDM/GLM-Z1-9B-0414', '硅基流动-GLM-Z1-9B', 'text', 'siliconflow', false);
+INSERT INTO adi_ai_model (name, title, type, platform, remark, is_free, is_enable)
+VALUES ('THUDM/GLM-Z1-9B-0414', '硅基流动-GLM-Z1-9B', 'text', 'siliconflow',
+        'GLM-Z1-9B-0414 是 GLM 系列的小型模型，仅有 90 亿参数，但保持了开源传统的同时展现出惊人的能力。', true, false);
+INSERT INTO adi_ai_model (name, title, type, platform, input_types, remark, is_free, is_enable)
+VALUES ('THUDM/GLM-4.1V-9B-Thinking', '硅基流动-识图', 'vision', 'siliconflow', 'text,image',
+        'GLM-4.1V-9B-Thinking 是由智谱 AI 和清华大学 KEG 实验室联合发布的一款开源视觉语言模型（VLM），专为处理复杂的多模态认知任务而设计。该模型基于 GLM-4-9B-0414 基础模型，通过引入“思维链”（Chain-of-Thought）推理机制和采用强化学习策略，显著提升了其跨模态的推理能力和稳定性。作为一个 9B 参数规模的轻量级模型，它在部署效率和性能之间取得了平衡，在 28 项权威评测基准中，有 18 项的表现持平甚至超越了 72B 参数规模的 Qwen-2.5-VL-72B。该模型不仅在图文理解、数学科学推理、视频理解等任务上表现卓越，还支持高达 4K 分辨率的图像和任意宽高比输入',
+        true, false);
+
+INSERT INTO adi_ai_model (name, title, type, platform, properties, remark, is_free, is_enable)
+VALUES ('Kwai-Kolors/Kolors', '硅基流动-文生图', 'image', 'siliconflow', '{
+  "image_sizes": [
+    "1024*1024",
+    "960x1280",
+    "768x1024",
+    "720x1440",
+    "720x1280"
+  ]
+}',
+        'Kolors 是由快手 Kolors 团队开发的基于潜在扩散的大规模文本到图像生成模型。该模型通过数十亿文本-图像对的训练，在视觉质量、复杂语义准确性以及中英文字符渲染方面展现出显著优势。它不仅支持中英文输入，在理解和生成中文特定内容方面也表现出色。', true, false);
+
+-- Qwen/Qwen-Image 为收费模型，详细评估后再判断是否要启用
+-- INSERT INTO adi_ai_model (name, title, type, platform, properties, remark, is_free, is_enable)
+-- VALUES ('Qwen/Qwen-Image', '硅基流动-文生图（qwen）', 'image', 'siliconflow', '{
+--   "image_size": [
+--     "1328x1328",
+--     "1664x928",
+--     "928x1664",
+--     "1472x1140",
+--     "1140x1472",
+--     "1584x1056",
+--     "1056x1584"
+--   ]
+-- }',
+--         'Qwen-Image 是由阿里巴巴通义千问团队发布的图像生成基础模型，拥有 200 亿参数。该模型在复杂的文本渲染和精确的图像编辑方面取得了显著进展，尤其擅长生成包含高保真度中英文文字的图像。', false, false);
 
 -- test data
 INSERT INTO adi_ai_model (name, title, type, platform, is_enable)

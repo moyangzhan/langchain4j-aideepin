@@ -206,6 +206,7 @@ public class AdiConstant {
 
         public static final String TEXT = "text";
         public static final String IMAGE = "image";
+        public static final String VISION = "vision";
         public static final String EMBEDDING = "embedding";
         public static final String RERANK = "rerank";
         public static final String ASR = "asr";

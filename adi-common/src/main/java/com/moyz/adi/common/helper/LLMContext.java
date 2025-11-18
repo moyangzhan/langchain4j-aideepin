@@ -4,7 +4,7 @@ import com.aliyun.core.utils.StringUtils;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.service.languagemodel.AbstractLLMService;
+import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -31,9 +31,9 @@ public class LLMContext {
      *
      * @param modelPlatform 模型所属的平台
      */
-    public static void clearByPlatform(String modelPlatform) {
+    public static void clearByPlatform(String modelPlatform, String modelType) {
         List<AbstractLLMService> readyToDelete = LLM_SERVICES.stream()
-                .filter(item -> item.getAiModel().getPlatform().equalsIgnoreCase(modelPlatform))
+                .filter(item -> item.getAiModel().getPlatform().equalsIgnoreCase(modelPlatform) && item.getAiModel().getType().equalsIgnoreCase(modelType))
                 .toList();
         for (AbstractLLMService key : readyToDelete) {
             log.info("delete llm model service,modelName:{}", key.getAiModel().getName());

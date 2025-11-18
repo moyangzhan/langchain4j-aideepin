@@ -1,6 +1,6 @@
 package com.moyz.adi.common.util;
 
-import com.moyz.adi.common.vo.LLMException;
+import com.moyz.adi.common.languagemodel.data.LLMException;
 import com.theokanning.openai.OpenAiError;
 import com.theokanning.openai.OpenAiHttpException;
 

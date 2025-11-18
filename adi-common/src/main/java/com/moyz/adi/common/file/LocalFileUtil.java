@@ -118,17 +118,27 @@ public class LocalFileUtil {
     }
 
     public static String getFileExtension(String fileName) {
-        int dotIndex = fileName.lastIndexOf(".");
-        if (dotIndex == -1 || dotIndex == fileName.length() - 1) {
-            // 文件名中没有后缀或者后缀位于文件名的末尾
-            return "";
-        } else {
-            int endIndex = fileName.indexOf("?");
-            if (endIndex == -1) {
-                endIndex = fileName.length();
+        try {
+            int dotIndex = fileName.lastIndexOf(".");
+            if (dotIndex == -1 || dotIndex == fileName.length() - 1) {
+                // 文件名中没有后缀或者 . 位于文件名的末尾
+                return "";
+            } else {
+                // 处理场景1： xxx.com/xxx
+                int endIndex = fileName.indexOf("?");
+                if (endIndex == -1) {
+                    endIndex = fileName.length();
+                } else {
+                    // 处理场景2： xxx.com/xxx.png?xxx.xxx.xxx
+                    String tmpUrl = fileName.substring(0, endIndex);
+                    dotIndex = tmpUrl.lastIndexOf(".");
+                }
+                return fileName.substring(dotIndex + 1, endIndex);
             }
-            return fileName.substring(dotIndex + 1, endIndex);
+        } catch (Exception e) {
+            log.error("getFileExtension error", e);
         }
+        return "";
     }
 
     public static Pair<String, String> getNameAndExt(String pathOrUrl) {

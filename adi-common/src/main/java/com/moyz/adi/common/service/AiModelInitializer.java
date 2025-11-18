@@ -5,13 +5,15 @@ import com.moyz.adi.common.config.AdiProperties;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.ModelPlatform;
+import com.moyz.adi.common.enums.ErrorEnum;
+import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.AsrModelContext;
 import com.moyz.adi.common.helper.ImageModelContext;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.TtsModelContext;
+import com.moyz.adi.common.languagemodel.*;
 import com.moyz.adi.common.searchengine.GoogleSearchEngineService;
 import com.moyz.adi.common.searchengine.SearchEngineServiceContext;
-import com.moyz.adi.common.service.languagemodel.*;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -26,6 +28,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static com.moyz.adi.common.cosntant.AdiConstant.ModelType.*;
 import static com.moyz.adi.common.util.LocalCache.MODEL_ID_TO_OBJ;
 
 @Slf4j
@@ -63,7 +66,8 @@ public class AiModelInitializer {
         }
 
         Map<String, ModelPlatform> nameToPlatform = modelPlatformService.listAll().stream().collect(Collectors.toMap(ModelPlatform::getName, Function.identity(), (v1, v2) -> v1));
-        initLLMServiceList(nameToPlatform);
+        initLLMServiceList(nameToPlatform, TEXT);
+        initLLMServiceList(nameToPlatform, VISION);
         initImageModelServiceList(nameToPlatform);
         initAsrModelServiceList(nameToPlatform);
         initTtsModelServiceList(nameToPlatform);
@@ -71,60 +75,74 @@ public class AiModelInitializer {
 
     /**
      * 初始化大语言模型列表
+     *
+     * @param nameToPlatform 模型平台名称与模型平台详情映射
+     * @param modelType      模型类型：text | vision
      */
-    private synchronized void initLLMServiceList(Map<String, ModelPlatform> nameToPlatform) {
+    private synchronized void initLLMServiceList(Map<String, ModelPlatform> nameToPlatform, String modelType) {
 
         // OpenAi api 兼容模型
         initOpenAiCompatibleService(nameToPlatform, (model, modelPlatformName) -> new OpenAiCompatibleLLMService(model, nameToPlatform.get(modelPlatformName)).setProxyAddress(proxyAddress));
 
         //deepseek
-        initLLMService(AdiConstant.ModelPlatform.DEEPSEEK, model -> new DeepSeekLLMService(model, nameToPlatform.get(AdiConstant.ModelPlatform.DEEPSEEK)).setProxyAddress(proxyAddress));
+        initLLMService(AdiConstant.ModelPlatform.DEEPSEEK, modelType, model -> new DeepSeekLLMService(model, nameToPlatform.get(AdiConstant.ModelPlatform.DEEPSEEK)).setProxyAddress(proxyAddress));
 
         //openai
-        initLLMService(AdiConstant.ModelPlatform.OPENAI, model -> new OpenAiLLMService(model, nameToPlatform.get(AdiConstant.ModelPlatform.OPENAI)).setProxyAddress(proxyAddress));
+        initLLMService(AdiConstant.ModelPlatform.OPENAI, modelType, model -> new OpenAiLLMService(model, nameToPlatform.get(AdiConstant.ModelPlatform.OPENAI)).setProxyAddress(proxyAddress));
 
         //dashscope
-        initLLMService(AdiConstant.ModelPlatform.DASHSCOPE, model -> new DashScopeLLMService(model, nameToPlatform.get(AdiConstant.ModelPlatform.DASHSCOPE)).setProxyAddress(proxyAddress));
+        initLLMService(AdiConstant.ModelPlatform.DASHSCOPE, modelType, model -> new DashScopeLLMService(model, nameToPlatform.get(AdiConstant.ModelPlatform.DASHSCOPE)).setProxyAddress(proxyAddress));
 
         //qianfan
-        initLLMService(AdiConstant.ModelPlatform.QIANFAN, model -> new QianFanLLMService(model, nameToPlatform.get(AdiConstant.ModelPlatform.QIANFAN)).setProxyAddress(proxyAddress));
+        initLLMService(AdiConstant.ModelPlatform.QIANFAN, modelType, model -> new QianFanLLMService(model, nameToPlatform.get(AdiConstant.ModelPlatform.QIANFAN)).setProxyAddress(proxyAddress));
 
         //ollama
-        initLLMService(AdiConstant.ModelPlatform.OLLAMA, model -> new OllamaLLMService(model, nameToPlatform.get(AdiConstant.ModelPlatform.OLLAMA)));
+        initLLMService(AdiConstant.ModelPlatform.OLLAMA, modelType, model -> new OllamaLLMService(model, nameToPlatform.get(AdiConstant.ModelPlatform.OLLAMA)));
 
         // 硅基流动
-        initLLMService(AdiConstant.ModelPlatform.SILICONFLOW, model -> new SiliconflowLLMService(model, nameToPlatform.get(AdiConstant.ModelPlatform.SILICONFLOW)));
+        initLLMService(AdiConstant.ModelPlatform.SILICONFLOW, modelType, model -> new SiliconflowLLMService(model, nameToPlatform.get(AdiConstant.ModelPlatform.SILICONFLOW)));
     }
 
     /**
-     * 初始化文生图模型、搜索服务
+     * 初始化图片服务、搜索服务
+     *
+     * @param nameToPlatform 模型平台名称与模型平台详情映射
      */
     private synchronized void initImageModelServiceList(Map<String, ModelPlatform> nameToPlatform) {
-        //openai image model
+
         initImageModelService(AdiConstant.ModelPlatform.OPENAI, model -> new OpenAiDalleService(model, nameToPlatform.get(AdiConstant.ModelPlatform.OPENAI)).setProxyAddress(proxyAddress));
-
-
         initImageModelService(AdiConstant.ModelPlatform.DASHSCOPE, model -> new DashScopeWanxService(model, nameToPlatform.get(AdiConstant.ModelPlatform.DASHSCOPE)));
+        initImageModelService(AdiConstant.ModelPlatform.SILICONFLOW, model -> new SiliconflowImageModelService(model, nameToPlatform.get(AdiConstant.ModelPlatform.SILICONFLOW)));
 
         //search engine
         SearchEngineServiceContext.addWebSearcher(AdiConstant.SearchEngineName.GOOGLE, new GoogleSearchEngineService(proxyAddress));
     }
 
+    /**
+     * 初始化语音识别服务
+     *
+     * @param nameToPlatform 模型平台名称与模型平台详情映射
+     */
     private synchronized void initAsrModelServiceList(Map<String, ModelPlatform> nameToPlatform) {
         initAsrModelService(AdiConstant.ModelPlatform.DASHSCOPE, model -> new DashScopeAsrService(model, nameToPlatform.get(AdiConstant.ModelPlatform.DASHSCOPE)));
         initAsrModelService(AdiConstant.ModelPlatform.SILICONFLOW, model -> new SiliconflowAsrService(model, nameToPlatform.get(AdiConstant.ModelPlatform.SILICONFLOW)));
     }
 
+    /**
+     * 初始化语音合成服务
+     *
+     * @param nameToPlatform 模型平台名称与模型平台详情映射
+     */
     private synchronized void initTtsModelServiceList(Map<String, ModelPlatform> nameToPlatform) {
         initTtsModelService(AdiConstant.ModelPlatform.DASHSCOPE, model -> new DashScopeTtsService(model, nameToPlatform.get(AdiConstant.ModelPlatform.DASHSCOPE)));
     }
 
-    private void initLLMService(String platform, Function<AiModel, AbstractLLMService> function) {
-        List<AiModel> models = all.stream().filter(item -> item.getType().equals(AdiConstant.ModelType.TEXT) && item.getPlatform().equals(platform)).toList();
+    private void initLLMService(String platform, String modelType, Function<AiModel, AbstractLLMService> function) {
+        List<AiModel> models = all.stream().filter(item -> item.getType().equals(modelType) && item.getPlatform().equals(platform)).toList();
         if (CollectionUtils.isEmpty(models)) {
             log.warn("{} service is disabled", platform);
         }
-        LLMContext.clearByPlatform(platform);
+        LLMContext.clearByPlatform(platform, modelType);
         for (AiModel model : models) {
             log.info("add llm model,model:{}", model);
             LLMContext.addLLMService(function.apply(model));
@@ -135,7 +153,7 @@ public class AiModelInitializer {
         log.info("init openai api compatible llm model");
         List<String> compatiblePlatforms = nameToPlatform.values().stream().filter(ModelPlatform::getIsOpenaiApiCompatible).map(ModelPlatform::getName).toList();
         for (String platform : compatiblePlatforms) {
-            List<AiModel> models = all.stream().filter(item -> item.getType().equals(AdiConstant.ModelType.TEXT) && item.getPlatform().equals(platform)).toList();
+            List<AiModel> models = all.stream().filter(item -> item.getType().equals(TEXT) && item.getPlatform().equals(platform)).toList();
             if (CollectionUtils.isEmpty(models)) {
                 log.warn("{} service is disabled", Joiner.on(",").join(compatiblePlatforms));
             }
@@ -147,7 +165,7 @@ public class AiModelInitializer {
     }
 
     private void initImageModelService(String platform, Function<AiModel, AbstractImageModelService> function) {
-        List<AiModel> models = all.stream().filter(item -> item.getType().equals(AdiConstant.ModelType.IMAGE) && item.getPlatform().equals(platform)).toList();
+        List<AiModel> models = all.stream().filter(item -> item.getType().equals(IMAGE) && item.getPlatform().equals(platform)).toList();
         if (CollectionUtils.isEmpty(models)) {
             log.warn("{} service is disabled", platform);
         }
@@ -198,10 +216,15 @@ public class AiModelInitializer {
             BeanUtils.copyProperties(aiModel, existOne);
         }
         Map<String, ModelPlatform> nameToPlatform = modelPlatformService.listAll().stream().collect(Collectors.toMap(ModelPlatform::getName, Function.identity(), (v1, v2) -> v1));
-        if (AdiConstant.ModelType.TEXT.equalsIgnoreCase(aiModel.getType())) {
-            initLLMServiceList(nameToPlatform);
-        } else {
+        String modelType = aiModel.getType();
+        if (TEXT.equalsIgnoreCase(modelType) || VISION.equalsIgnoreCase(modelType)) {
+            initLLMServiceList(nameToPlatform, aiModel.getType());
+        } else if (IMAGE.equalsIgnoreCase(modelType)) {
             initImageModelServiceList(nameToPlatform);
+        } else if (ASR.equalsIgnoreCase(modelType)) {
+            initAsrModelServiceList(nameToPlatform);
+        } else {
+            throw new BaseException(ErrorEnum.A_MODEL_NOT_FOUND);
         }
         MODEL_ID_TO_OBJ.put(aiModel.getId(), aiModel);
     }

@@ -4,7 +4,7 @@ import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.entity.Draw;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.file.FileOperatorContext;
-import com.moyz.adi.common.service.languagemodel.AbstractImageModelService;
+import com.moyz.adi.common.languagemodel.AbstractImageModelService;
 import com.moyz.adi.common.service.FileService;
 import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.workflow.NodeProcessResult;

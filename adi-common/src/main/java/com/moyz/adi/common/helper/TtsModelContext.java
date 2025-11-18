@@ -5,7 +5,7 @@ import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.service.SysConfigService;
-import com.moyz.adi.common.service.languagemodel.AbstractTtsModelService;
+import com.moyz.adi.common.languagemodel.AbstractTtsModelService;
 import com.moyz.adi.common.util.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
 

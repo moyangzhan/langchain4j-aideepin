@@ -17,13 +17,14 @@ import com.moyz.adi.common.helper.AsrModelContext;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.QuotaHelper;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
+import com.moyz.adi.common.languagemodel.data.LLMResponseContent;
 import com.moyz.adi.common.mapper.ConversationMessageMapper;
 import com.moyz.adi.common.memory.longterm.LongTermMemoryService;
 import com.moyz.adi.common.memory.shortterm.MapDBChatMemoryStore;
 import com.moyz.adi.common.rag.AdiEmbeddingStoreContentRetriever;
 import com.moyz.adi.common.rag.CompositeRag;
 import com.moyz.adi.common.rag.GraphStoreContentRetriever;
-import com.moyz.adi.common.service.languagemodel.AbstractLLMService;
+import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.vo.*;
 import dev.langchain4j.data.message.AiMessage;
@@ -31,7 +32,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsIn;
@@ -430,10 +430,14 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             newMessages.add(AiMessage.aiMessage(response.getContent()));
             mapDBChatMemoryStore.updateMessages(askReq.getConversationUuid(), newMessages);
         }
-        //Long-term memory
-        longTermMemoryService.asyncAdd(conversation.getId(), modelPlatform, modelName, askReq.getPrompt(), response.getContent());
-        //TODO async calculate token cost and update user day cost (include long-term memory analyze cost)
-        // Pair<Integer, Integer> inputOutputTokenCost = LLMTokenUtil.calAllTokenCostByUuid(stringRedisTemplate, updateQaParams.getSseAskParams().getUuid());
+
+        // TODO... 部分视觉模型如 qwen2-vl-7b-instruct 不支持 json 结构返回内容，待处理
+        if (!aiModel.getType().equalsIgnoreCase(ModelType.VISION)) {
+            //Long-term memory
+            longTermMemoryService.asyncAdd(conversation.getId(), modelPlatform, modelName, askReq.getPrompt(), response.getContent());
+            //TODO async calculate token cost and update user day cost (include long-term memory analyze cost)
+            // Pair<Integer, Integer> inputOutputTokenCost = LLMTokenUtil.calAllTokenCostByUuid(stringRedisTemplate, updateQaParams.getSseAskParams().getUuid());
+        }
     }
 
     private void calcTodayCost(User user, Conversation conversation, PromptMeta questionMeta, AnswerMeta answerMeta, boolean isFreeToken) {

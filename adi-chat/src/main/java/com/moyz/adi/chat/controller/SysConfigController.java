@@ -9,7 +9,7 @@ import com.moyz.adi.common.service.AiModelService;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.vo.AsrSetting;
-import com.moyz.adi.common.vo.ModelVoice;
+import com.moyz.adi.common.languagemodel.data.ModelVoice;
 import com.moyz.adi.common.vo.SysConfigResp;
 import com.moyz.adi.common.vo.TtsSetting;
 import jakarta.annotation.Resource;

@@ -97,6 +97,7 @@ public enum ErrorEnum {
     B_TTS_SETTING_NOT_FOUND("B0029", "语音合成设置未找到"),
     B_TTS_MODEL_NOT_FOUND("B0030", "语音合成模型未找到"),
     B_VOICE_NOT_FOUND("B0031", "声音不存在"),
+    B_NOT_SUPPORT_FUNCTION("B0032", "不支持的功能"),
     C_DRAW_FAIL("C0001", "大模型生成图片失败,原因:{0}"),
     C_ALI_OSS_CONFIG_ERROR("C0002", "阿里云OSS初始化失败,原因:{0}"),
     C_LLM_RESPONSE_INVALID("C0003", "大模型生成结果内容无效"),

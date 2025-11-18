@@ -3,7 +3,7 @@ package com.moyz.adi.common.rag;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.helper.LLMContext;
-import com.moyz.adi.common.service.languagemodel.AbstractLLMService;
+import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.embedding.onnx.HuggingFaceTokenCountEstimator;
 import dev.langchain4j.model.openai.OpenAiChatModelName;

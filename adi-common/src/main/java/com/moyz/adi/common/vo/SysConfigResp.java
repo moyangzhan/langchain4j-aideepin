@@ -1,5 +1,6 @@
 package com.moyz.adi.common.vo;
 
+import com.moyz.adi.common.languagemodel.data.ModelVoice;
 import lombok.Data;
 
 import java.util.List;
