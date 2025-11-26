@@ -91,6 +91,7 @@ public class Neo4jEmbeddingStoreConfig {
                 .indexName(indexName)
                 .withBasicAuth("neo4j://" + neo4j.getHost() + ":" + neo4j.getPort(), neo4j.getUsername(), neo4j.getPassword())
                 .dimension(dimension)
+                .awaitIndexTimeout(120)
                 .label(tableName)
 //                .metadataPrefix("meta_")
                 .build();

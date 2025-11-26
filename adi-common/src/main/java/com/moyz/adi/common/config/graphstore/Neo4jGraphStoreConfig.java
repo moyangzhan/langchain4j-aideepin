@@ -21,6 +21,7 @@ public class Neo4jGraphStoreConfig {
     @Bean(name = "kbGraphStore")
     @Primary
     public GraphStore initGraphStore() {
+        log.info("neo4j graph store init");
         AdiProperties.Neo4j neo4j = adiProperties.getDatasource().getNeo4j();
         return Neo4jGraphStore
                 .builder()

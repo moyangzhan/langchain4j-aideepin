@@ -58,10 +58,10 @@ Frontend projects:
 ## Integrated Platform Features
 
 | Model Platform | Chat | Image Generation | Image Edit | Image variation | Background Generation | Image Recognition | Text-to-Speech | Speech Recognition |
-|----------------|:-----|:-----------------| ----- |-----------------| ---------- | ---------- |---------|-------------------------------|
+|----------------|:-----|:-----------------| ----- |-----------------| ---------- | --------- |---------|-------------------------------|
 | OpenAI         | ✓    | ✓                | ✓  | ✓               |          |          |         |                               |
 | Dashscope      | ✓    | ✓                |     |                 | ✓       | ✓       | ✓       | ✓                             |
-| SiliconFlow    | ✓    | ✓                |     |                 |          |          |         | ✓                             |
+| SiliconFlow    | ✓    | ✓                |     |                 |          |      ✓   |         | ✓                             |
 | Ollama         | ✓    |                  |    |                 |          |          |         |                               |
 | DeepSeek       | ✓    |                  |     |                 |          |          |         |                               |
 | Qianfan        | ✓    |                  |     |                 |          |          |         |                               |
