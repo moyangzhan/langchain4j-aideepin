@@ -217,15 +217,12 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             sseAskParams.setVoice(conversation.getAudioConfig().getVoice().getParamName());
         }
 
-        ChatModelRequestProperties chatModelRequestProperties = buildChatModelParams(conversation, askReq);
-        sseAskParams.setChatModelRequestProperties(chatModelRequestProperties);
+        ChatModelRequestParams chatRequestParams = buildChatRequestParams(conversation, askReq);
+        sseAskParams.setHttpRequestParams(chatRequestParams);
 
-        AiModel aiModel = LLMContext.getServiceOrDefault(askReq.getModelPlatform(), askReq.getModelName()).getAiModel();
-        Boolean returnThinking = checkIfReturnThinking(aiModel, conversation);
-        sseAskParams.setChatModelBuilderProperties(
+        sseAskParams.setModelProperties(
                 ChatModelBuilderProperties.builder()
                         .temperature(conversation.getLlmTemperature())
-                        .returnThinking(returnThinking)
                         .build()
         );
         sseEmitterHelper.call(sseAskParams, (response, questionMeta, answerMeta) -> {
@@ -548,8 +545,8 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         conversationMessageRefGraphService.save(refGraph);
     }
 
-    private ChatModelRequestProperties buildChatModelParams(Conversation conversation, AskReq askReq) {
-        ChatModelRequestProperties.ChatModelRequestPropertiesBuilder builder = ChatModelRequestProperties.builder();
+    private ChatModelRequestParams buildChatRequestParams(Conversation conversation, AskReq askReq) {
+        ChatModelRequestParams.ChatModelRequestParamsBuilder builder = ChatModelRequestParams.builder();
         if (StringUtils.isNotBlank(conversation.getAiSystemMessage())) {
             builder.systemMessage(conversation.getAiSystemMessage());
         }
@@ -572,6 +569,12 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             mcpClients = userMcpService.createMcpClients(conversation.getUserId(), mcpIds);
         }
         builder.mcpClients(mcpClients);
+
+        //Enable thinking
+        AiModel aiModel = LLMContext.getServiceOrDefault(askReq.getModelPlatform(), askReq.getModelName()).getAiModel();
+        Boolean returnThinking = checkIfReturnThinking(aiModel, conversation);
+        builder.returnThinking(returnThinking);
+
         return builder.build();
     }
 

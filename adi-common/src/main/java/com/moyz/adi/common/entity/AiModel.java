@@ -63,6 +63,10 @@ public class AiModel extends BaseEntity {
     @TableField("input_types")
     private String inputTypes;
 
+    @Schema(title = "支持的输出格式: text,json_object")
+    @TableField("response_format_types")
+    private String responseFormatTypes;
+
     @Schema(title = "属性")
     @TableField(value = "properties", jdbcType = JdbcType.JAVA_OBJECT, typeHandler = ObjectNodeTypeHandler.class)
     private ObjectNode properties;

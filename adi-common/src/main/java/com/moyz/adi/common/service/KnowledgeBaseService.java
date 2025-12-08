@@ -388,14 +388,14 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setUuid(qaRecord.getUuid());
-        sseAskParams.setChatModelRequestProperties(
-                ChatModelRequestProperties.builder()
+        sseAskParams.setHttpRequestParams(
+                ChatModelRequestParams.builder()
                         .memoryId(qaRecord.getKbUuid() + "_" + user.getUuid())
                         .systemMessage(knowledgeBase.getQuerySystemMessage())
                         .userMessage(qaRecord.getQuestion())
                         .build()
         );
-        sseAskParams.setChatModelBuilderProperties(
+        sseAskParams.setModelProperties(
                 ChatModelBuilderProperties.builder()
                         .temperature(knowledgeBase.getQueryLlmTemperature())
                         .build()
@@ -466,7 +466,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
         KnowledgeBaseQa updateRecord = new KnowledgeBaseQa();
         updateRecord.setId(qaRecord.getId());
-        updateRecord.setPrompt(updateQaParams.getSseAskParams().getChatModelRequestProperties().getUserMessage());
+        updateRecord.setPrompt(updateQaParams.getSseAskParams().getHttpRequestParams().getUserMessage());
         updateRecord.setPromptTokens(inputOutputTokenCost.getLeft());
         updateRecord.setAnswer(updateQaParams.getResponse());
         updateRecord.setAnswerTokens(inputOutputTokenCost.getRight());

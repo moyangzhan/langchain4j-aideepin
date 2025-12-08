@@ -6,7 +6,7 @@ import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.util.LLMTokenUtil;
 import com.moyz.adi.common.vo.ChatModelBuilderProperties;
-import com.moyz.adi.common.vo.ChatModelRequestProperties;
+import com.moyz.adi.common.vo.ChatModelRequestParams;
 import com.moyz.adi.common.vo.SseAskParams;
 import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.data.NodeIODataContent;
@@ -88,7 +88,7 @@ public class WorkflowUtil {
         AbstractLLMService llmService = LLMContext.getServiceOrDefault(modelPlatform, modelName);
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setUuid(wfState.getUuid());
-        sseAskParams.setChatModelRequestProperties(ChatModelRequestProperties.builder().systemMessage(StringUtils.EMPTY).userMessage(prompt).build());
+        sseAskParams.setHttpRequestParams(ChatModelRequestParams.builder().systemMessage(StringUtils.EMPTY).userMessage(prompt).build());
         sseAskParams.setModelName(llmService.getAiModel().getName());
         sseAskParams.setUser(wfState.getUser());
         ChatResponse response = llmService.chat(sseAskParams);

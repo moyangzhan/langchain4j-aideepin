@@ -29,10 +29,10 @@ public class SseAskParams {
     /**
      * 创建LLM时用到的属性，非必填
      */
-    private ChatModelBuilderProperties chatModelBuilderProperties;
+    private ChatModelBuilderProperties modelProperties;
 
     /**
      * 进行http请求时最终提交给LLM的信息，必填
      */
-    private ChatModelRequestProperties chatModelRequestProperties;
+    private ChatModelRequestParams httpRequestParams;
 }

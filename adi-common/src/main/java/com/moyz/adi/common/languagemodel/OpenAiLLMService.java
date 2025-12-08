@@ -78,7 +78,6 @@ public class OpenAiLLMService extends AbstractLLMService {
                 .modelName(aiModel.getName())
                 .temperature(temperature)
                 .apiKey(platform.getApiKey())
-                .returnThinking(properties.getReturnThinking())
                 .timeout(Duration.of(60, ChronoUnit.SECONDS));
         if (null != proxyAddress && platform.getIsProxyEnable()) {
             HttpClient.Builder httpClientBuilder = HttpClient.newBuilder().proxy(ProxySelector.of(proxyAddress));

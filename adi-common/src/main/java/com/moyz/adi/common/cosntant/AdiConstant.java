@@ -373,7 +373,7 @@ public class AdiConstant {
 
     public static final String RESPONSE_FORMAT_TYPE_TEXT = "text";
 
-    public static final String RESPONSE_FORMAT_TYPE_JSON = "json";
+    public static final String RESPONSE_FORMAT_TYPE_JSON_OBJECT = "json_object";
 
     public static class WorkflowConstant {
         public static final String DEFAULT_INPUT_PARAM_NAME = "input";

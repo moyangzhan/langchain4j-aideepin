@@ -51,7 +51,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.CustomChatRequestParameterKeys.ENABLE_THINKING;
 import static com.moyz.adi.common.cosntant.AdiConstant.LLM_MAX_INPUT_TOKENS_DEFAULT;
-import static com.moyz.adi.common.cosntant.AdiConstant.RESPONSE_FORMAT_TYPE_JSON;
+import static com.moyz.adi.common.cosntant.AdiConstant.RESPONSE_FORMAT_TYPE_JSON_OBJECT;
 import static com.moyz.adi.common.enums.ErrorEnum.A_PARAMS_ERROR;
 import static com.moyz.adi.common.enums.ErrorEnum.B_LLM_SERVICE_DISABLED;
 
@@ -145,18 +145,19 @@ public abstract class AbstractLLMService extends CommonModelService {
             log.error("对话参数校验不通过");
             throw new BaseException(A_PARAMS_ERROR);
         }
-        ChatModelRequestProperties chatModelRequestProperties = params.getChatModelRequestProperties();
-        log.info("sseChat,messageId:{}", chatModelRequestProperties.getMemoryId());
-        StreamingChatModel streamingChatModel = buildStreamingChatModel(params.getChatModelBuilderProperties());
+        ChatModelRequestParams httpRequestParams = params.getHttpRequestParams();
+        ChatModelBuilderProperties modelProperties = params.getModelProperties();
+        log.info("sseChat,messageId:{}", httpRequestParams.getMemoryId());
+        StreamingChatModel streamingChatModel = buildStreamingChatModel(modelProperties);
 
-        ChatRequest chatRequest = createChatRequest(chatModelRequestProperties, params.getChatModelBuilderProperties().getReturnThinking());
+        ChatRequest chatRequest = createChatRequest(httpRequestParams, modelProperties);
         InnerStreamChatParams innerStreamChatParams = InnerStreamChatParams.builder()
                 .uuid(params.getUuid())
                 .user(params.getUser())
                 .streamingChatModel(streamingChatModel)
                 .chatRequest(chatRequest)
                 .sseEmitter(params.getSseEmitter())
-                .mcpClients(chatModelRequestProperties.getMcpClients())
+                .mcpClients(httpRequestParams.getMcpClients())
                 .answerContentType(params.getAnswerContentType())
                 .consumer(consumer)
                 .build();
@@ -182,7 +183,7 @@ public abstract class AbstractLLMService extends CommonModelService {
             innerStreamingChat(innerStreamChatParams);
         } catch (Exception e) {
             ttsJobCache.invalidate(params.getUser().getUuid());
-            closeMcpClients(params.getChatModelRequestProperties().getMcpClients());
+            closeMcpClients(params.getHttpRequestParams().getMcpClients());
             throw e;
         }
 
@@ -253,14 +254,14 @@ public abstract class AbstractLLMService extends CommonModelService {
             throw new BaseException(A_PARAMS_ERROR);
         }
 
-        ChatModelRequestProperties chatModelRequestProperties = params.getChatModelRequestProperties();
-        ChatModelBuilderProperties chatModelBuilderProperties = params.getChatModelBuilderProperties();
-        ChatModel chatModel = buildChatLLM(chatModelBuilderProperties);
-        ChatRequest chatRequest = createChatRequest(chatModelRequestProperties, null != chatModelBuilderProperties ? chatModelBuilderProperties.getReturnThinking() : null);
+        ChatModelRequestParams chatModelRequestParams = params.getHttpRequestParams();
+        ChatModelBuilderProperties modelProperties = params.getModelProperties();
+        ChatModel chatModel = buildChatLLM(modelProperties);
+        ChatRequest chatRequest = createChatRequest(chatModelRequestParams, modelProperties);
 
         ChatResponse chatResponse = chatModel.chat(chatRequest);
         if (chatResponse.aiMessage().hasToolExecutionRequests()) {
-            return innerChat(params.getUuid(), chatModel, chatModelRequestProperties, chatRequest);
+            return innerChat(params.getUuid(), chatModel, chatModelRequestParams, chatRequest);
         }
 
         cacheTokenUsage(params.getUuid(), chatResponse);
@@ -270,18 +271,18 @@ public abstract class AbstractLLMService extends CommonModelService {
     /**
      * 程序内部调用的聊天方法，通常用于处理工具调用等复杂逻辑
      *
-     * @param uuid                       唯一标识
-     * @param chatModel                  聊天模型
-     * @param chatModelRequestProperties 聊天模型参数
-     * @param chatRequest                聊天请求
+     * @param uuid                   唯一标识
+     * @param chatModel              聊天模型
+     * @param chatModelRequestParams 聊天模型参数
+     * @param chatRequest            聊天请求
      * @return ChatResponse 聊天响应
      */
-    private ChatResponse innerChat(String uuid, ChatModel chatModel, ChatModelRequestProperties chatModelRequestProperties, ChatRequest chatRequest) {
+    private ChatResponse innerChat(String uuid, ChatModel chatModel, ChatModelRequestParams chatModelRequestParams, ChatRequest chatRequest) {
         try {
             ChatResponse chatResponse = chatModel.chat(chatRequest);
             AiMessage responseAiMessage = chatResponse.aiMessage();
             if (responseAiMessage.hasToolExecutionRequests()) {
-                Map<ToolSpecification, McpClient> toolSpecificationMcpClientMap = getRequestTools(chatModelRequestProperties.getMcpClients());
+                Map<ToolSpecification, McpClient> toolSpecificationMcpClientMap = getRequestTools(chatModelRequestParams.getMcpClients());
                 List<ToolExecutionResultMessage> toolExecutionMessages = createToolExecutionMessages(responseAiMessage, toolSpecificationMcpClientMap);
 
                 AiMessage aiMessage = AiMessage.aiMessage(responseAiMessage.toolExecutionRequests());
@@ -292,7 +293,7 @@ public abstract class AbstractLLMService extends CommonModelService {
                 cacheTokenUsage(uuid, chatResponse);
 
                 // recursive call now with tool calling results
-                return innerChat(uuid, chatModel, chatModelRequestProperties, ChatRequest.builder()
+                return innerChat(uuid, chatModel, chatModelRequestParams, ChatRequest.builder()
                         .messages(messages)
                         .parameters(chatRequest.parameters())
                         .build());
@@ -300,7 +301,7 @@ public abstract class AbstractLLMService extends CommonModelService {
             cacheTokenUsage(uuid, chatResponse);
             return chatResponse;
         } finally {
-            closeMcpClients(chatModelRequestProperties.getMcpClients());
+            closeMcpClients(chatModelRequestParams.getMcpClients());
         }
     }
 
@@ -318,10 +319,10 @@ public abstract class AbstractLLMService extends CommonModelService {
     }
 
 
-    private List<ChatMessage> createChatMessages(ChatModelRequestProperties chatModelRequestProperties) {
-        String memoryId = chatModelRequestProperties.getMemoryId();
+    private List<ChatMessage> createChatMessages(ChatModelRequestParams chatModelRequestParams) {
+        String memoryId = chatModelRequestParams.getMemoryId();
         List<Content> userContents = new ArrayList<>();
-        userContents.add(TextContent.from(chatModelRequestProperties.getUserMessage()));
+        userContents.add(TextContent.from(chatModelRequestParams.getUserMessage()));
         List<ChatMessage> chatMessages = new ArrayList<>();
         if (StringUtils.isNotBlank(memoryId)) {
 
@@ -339,8 +340,8 @@ public abstract class AbstractLLMService extends CommonModelService {
                     .id(memoryId)
                     .maxTokens(aiModel.getMaxInputTokens(), tokenCountEstimator)
                     .build();
-            if (StringUtils.isNotBlank(chatModelRequestProperties.getSystemMessage())) {
-                memory.add(SystemMessage.from(chatModelRequestProperties.getSystemMessage()));
+            if (StringUtils.isNotBlank(chatModelRequestParams.getSystemMessage())) {
+                memory.add(SystemMessage.from(chatModelRequestParams.getSystemMessage()));
             }
 
             //处理重复的UserMessage
@@ -360,7 +361,7 @@ public abstract class AbstractLLMService extends CommonModelService {
 
             //AI services currently do not support multimodality, use the low-level API for this. https://docs.langchain4j.dev/tutorials/ai-services#multimodality
             //重新组装用户消息及追加图片消息到chatMessage
-            List<Content> imageContents = ImageUtil.urlsToImageContent(chatModelRequestProperties.getImageUrls());
+            List<Content> imageContents = ImageUtil.urlsToImageContent(chatModelRequestParams.getImageUrls());
             if (CollectionUtils.isNotEmpty(imageContents)) {
                 int lastIndex = chatMessages.size() - 1;
                 UserMessage lastMessage = (UserMessage) chatMessages.get(lastIndex);
@@ -372,10 +373,10 @@ public abstract class AbstractLLMService extends CommonModelService {
             }
             return chatMessages;
         } else {
-            if (StringUtils.isNotBlank(chatModelRequestProperties.getSystemMessage())) {
-                chatMessages.add(SystemMessage.from(chatModelRequestProperties.getSystemMessage()));
+            if (StringUtils.isNotBlank(chatModelRequestParams.getSystemMessage())) {
+                chatMessages.add(SystemMessage.from(chatModelRequestParams.getSystemMessage()));
             }
-            List<Content> imageContents = ImageUtil.urlsToImageContent(chatModelRequestProperties.getImageUrls());
+            List<Content> imageContents = ImageUtil.urlsToImageContent(chatModelRequestParams.getImageUrls());
             if (CollectionUtils.isNotEmpty(imageContents)) {
                 userContents.addAll(imageContents);
             }
@@ -401,16 +402,18 @@ public abstract class AbstractLLMService extends CommonModelService {
         return tools;
     }
 
-    private ChatRequest createChatRequest(ChatModelRequestProperties chatModelRequestProperties, Boolean returnThinking) {
+    private ChatRequest createChatRequest(ChatModelRequestParams httpRequestParams, ChatModelBuilderProperties modelProperties) {
 
-        log.info("sseChat,messageId:{}", chatModelRequestProperties.getMemoryId());
-        List<ChatMessage> chatMessages = createChatMessages(chatModelRequestProperties);
+        log.info("sseChat,messageId:{}", httpRequestParams.getMemoryId());
+        List<ChatMessage> chatMessages = createChatMessages(httpRequestParams);
 
+        // Mcp
         List<ToolSpecification> toolSpecifications = new ArrayList<>();
-        if (!CollectionUtils.isEmpty(chatModelRequestProperties.getMcpClients())) {
+        List<McpClient> mcpClients = httpRequestParams.getMcpClients();
+        if (!CollectionUtils.isEmpty(mcpClients)) {
             log.info("no mcp clients configured, skip tool spec creation");
             ToolProvider toolProvider = McpToolProvider.builder()
-                    .mcpClients(chatModelRequestProperties.getMcpClients())
+                    .mcpClients(mcpClients)
                     .build();
             ToolService toolService = new ToolService();
             toolService.toolProvider(toolProvider);
@@ -421,13 +424,22 @@ public abstract class AbstractLLMService extends CommonModelService {
 
         DefaultChatRequestParameters.Builder<?> builder = ChatRequestParameters.builder();
         builder.toolSpecifications(toolSpecifications);
-        if (null != chatModelRequestProperties.getResponseFormat()) {
-            builder.responseFormat(RESPONSE_FORMAT_TYPE_JSON.equals(chatModelRequestProperties.getResponseFormat()) ? ResponseFormat.JSON : ResponseFormat.TEXT);
+
+        // Response format
+        String responseFormat = httpRequestParams.getResponseFormat();
+        log.info("Response format:{}", responseFormat);
+        if (StringUtils.isNotBlank(responseFormat)) {
+            if (aiModel.getResponseFormatTypes().contains(responseFormat)) {
+                builder.responseFormat(RESPONSE_FORMAT_TYPE_JSON_OBJECT.equals(responseFormat) ? ResponseFormat.JSON : ResponseFormat.TEXT);
+            } else {
+                log.warn("当前模型不支持返回json格式（常用的LLM基本都支持返回json格式，请检查对应的模型表 ai_model.response_format_types 是否包含了 json_object），模型名称：{}, 当前支持的格式：{}", aiModel.getName(), aiModel.getResponseFormatTypes());
+            }
         }
 
+        // Enable thinking
         Map<String, Object> customParameters = new HashMap<>();
-        if (null != returnThinking) {
-            customParameters.put(ENABLE_THINKING, returnThinking);
+        if (null != httpRequestParams.getReturnThinking()) {
+            customParameters.put(ENABLE_THINKING, httpRequestParams.getReturnThinking());
         }
         ChatRequestParameters parameters = doCreateChatRequestParameters(builder.build(), customParameters);
 

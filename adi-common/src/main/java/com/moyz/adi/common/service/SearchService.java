@@ -17,7 +17,7 @@ import com.moyz.adi.common.rag.EmbeddingRagContext;
 import com.moyz.adi.common.searchengine.SearchEngineServiceContext;
 import com.moyz.adi.common.util.PromptUtil;
 import com.moyz.adi.common.util.UuidUtil;
-import com.moyz.adi.common.vo.ChatModelRequestProperties;
+import com.moyz.adi.common.vo.ChatModelRequestParams;
 import com.moyz.adi.common.vo.RetrieverCreateParam;
 import com.moyz.adi.common.vo.SseAskParams;
 import dev.langchain4j.data.document.DefaultDocument;
@@ -136,7 +136,7 @@ public class SearchService {
 
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setUuid(UuidUtil.createShort());
-        sseAskParams.setChatModelRequestProperties(ChatModelRequestProperties.builder().systemMessage(StringUtils.EMPTY).userMessage(prompt).build());
+        sseAskParams.setHttpRequestParams(ChatModelRequestParams.builder().systemMessage(StringUtils.EMPTY).userMessage(prompt).build());
         sseAskParams.setSseEmitter(sseEmitter);
         sseAskParams.setModelName(modelName);
         sseAskParams.setUser(user);
@@ -243,8 +243,8 @@ public class SearchService {
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setUuid(searchUuid);
         sseAskParams.setUser(user);
-        sseAskParams.setChatModelRequestProperties(
-                ChatModelRequestProperties.builder()
+        sseAskParams.setHttpRequestParams(
+                ChatModelRequestParams.builder()
                         .memoryId(user.getUuid() + "-search")
                         .systemMessage(StringUtils.EMPTY)
                         .userMessage(searchText)

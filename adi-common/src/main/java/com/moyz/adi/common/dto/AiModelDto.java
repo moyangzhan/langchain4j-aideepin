@@ -42,6 +42,8 @@ public class AiModelDto {
 
     private String inputTypes;
 
+    private String responseFormatTypes;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;

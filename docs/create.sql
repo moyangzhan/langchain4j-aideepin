@@ -148,25 +148,27 @@ EXECUTE PROCEDURE update_modified_column();
 
 CREATE TABLE adi_ai_model
 (
-    id                   bigserial primary key,
-    name                 varchar(45)   default ''                not null,
-    title                varchar(45)   default ''                not null,
-    type                 varchar(45)   default 'text'            not null,
-    setting              varchar(500)  default ''                not null,
-    remark               varchar(1000) default '',
-    platform             varchar(45)   default ''                not null,
-    context_window       int           default 0                 not null,
-    max_input_tokens     int           default 0                 not null,
-    max_output_tokens    int           default 0                 not null,
-    input_types          varchar(100)  default 'text'            not null,
-    properties           jsonb         default '{}'              not null,
-    is_reasoner          boolean       default false             not null,
-    is_thinking_closable boolean       default false             not null,
-    is_free              boolean       default false             not null,
-    is_enable            boolean       default false             not null,
-    create_time          timestamp     default CURRENT_TIMESTAMP not null,
-    update_time          timestamp     default CURRENT_TIMESTAMP not null,
-    is_deleted           boolean       default false             not null
+    id                      bigserial primary key,
+    name                    varchar(45)   default ''                not null,
+    title                   varchar(45)   default ''                not null,
+    type                    varchar(45)   default 'text'            not null,
+    setting                 varchar(500)  default ''                not null,
+    remark                  varchar(1000) default '',
+    platform                varchar(45)   default ''                not null,
+    context_window          int           default 0                 not null,
+    max_input_tokens        int           default 0                 not null,
+    max_output_tokens       int           default 0                 not null,
+    input_types             varchar(100)  default 'text'            not null,
+    properties              jsonb         default '{}'              not null,
+    response_format_types   varchar(200)  default 'text'            not null,
+    is_web_search_supported boolean       default false             not null,
+    is_reasoner             boolean       default false             not null,
+    is_thinking_closable    boolean       default false             not null,
+    is_free                 boolean       default false             not null,
+    is_enable               boolean       default false             not null,
+    create_time             timestamp     default CURRENT_TIMESTAMP not null,
+    update_time             timestamp     default CURRENT_TIMESTAMP not null,
+    is_deleted              boolean       default false             not null
 );
 
 COMMENT ON TABLE adi_ai_model IS 'AI模型 | AI model';
@@ -179,6 +181,8 @@ COMMENT ON COLUMN adi_ai_model.remark IS '备注 | Additional remarks about the 
 COMMENT ON COLUMN adi_ai_model.platform IS '平台，对应了 adi_model_platform.name | Model platform (as model provider): openai, dashscope, qianfan, ollama';
 COMMENT ON COLUMN adi_ai_model.context_window IS '上下文窗口 | LLM context window';
 COMMENT ON COLUMN adi_ai_model.input_types IS '输入类型 | Input types: text, image, audio, video';
+COMMENT ON COLUMN adi_ai_model.response_format_types IS '回复格式: text, json_object, json_schema | Response format: text, json_object, json_schema';
+COMMENT ON COLUMN adi_ai_model.is_web_search_supported IS '是否支持网络搜索 | Whether web search is supported';
 COMMENT ON COLUMN adi_ai_model.is_reasoner IS 'true: 推理模型如deepseek-r1, false: 非推理模型如deepseek-v3 | true: Reasoning model, false: Non-reasoning model';
 COMMENT ON COLUMN adi_ai_model.is_thinking_closable IS '思考过程是否可以关闭，Qwen3可以开启或关闭思考过程，而deepseek-r1无法关闭 | Whether the thinking process can be closed, Qwen3 can enable or disable the thinking process, while deepseek-r1 cannot disable it';
 COMMENT ON COLUMN adi_ai_model.is_enable IS '是否启用 | True: Normal usage, false: Not available';
@@ -1070,16 +1074,20 @@ values ('openai-compatible-platform-test', '兼容openai的平台', 'https://api
 
 -- 大语言模型
 -- https://api-docs.deepseek.com/zh-cn/quick_start/pricing
-INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
-VALUES ('deepseek-chat', 'DeepSeek-V3', 'text', 'deepseek', 131072, 126976, 8192, false);
-INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_reasoner,
+INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens,
+                          response_format_types, is_enable)
+VALUES ('deepseek-chat', 'DeepSeek-V3', 'text', 'deepseek', 131072, 126976, 8192, 'text,json_object', false);
+INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens,
+                          response_format_types, is_reasoner,
                           is_thinking_closable, is_enable)
-VALUES ('deepseek-reasoner', 'DeepSeek-R1', 'text', 'deepseek', 131072, 65536, 65536, true, false, false);
+VALUES ('deepseek-reasoner', 'DeepSeek-R1', 'text', 'deepseek', 131072, 65536, 65536, 'text,json_object', true, false,
+        false);
 
 -- https://platform.openai.com/docs/models/gpt-5-mini
-INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, remark,
+INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens,
+                          response_format_types, remark,
                           is_enable)
-VALUES ('gpt-5-mini', 'gpt-5-mini', 'text', 'openai', 400000, 272000, 128000,
+VALUES ('gpt-5-mini', 'gpt-5-mini', 'text', 'openai', 400000, 272000, 128000, 'text,json_object',
         'GPT-5 mini is a faster, more cost-efficient version of GPT-5. It''s great for well-defined tasks and precise prompts.',
         false);
 
@@ -1101,9 +1109,11 @@ VALUES ('text-embedding-3-large', 'openai-embedding-large', 'embedding', 'openai
   "dimension": 3072
 }', false);
 -- https://help.aliyun.com/zh/dashscope/developer-reference/model-introduction?spm=a2c4g.11186623.0.i39
-INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_reasoner,
+INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens,
+                          response_format_types, is_web_search_supported, is_reasoner,
                           is_thinking_closable, is_enable)
-VALUES ('qwen-turbo', '通义千问turbo', 'text', 'dashscope', 131072, 98304, 16384, true, true, false);
+VALUES ('qwen-turbo', '通义千问turbo', 'text', 'dashscope', 131072, 98304, 16384, 'text,json_object', true, true, true,
+        false);
 -- 图片识别
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, input_types,
                           is_enable)
@@ -1562,8 +1572,8 @@ VALUES ('ERNIE-Speed-128K', 'ernie_speed', 'text', 'qianfan', 131072, 126976, 40
         '{"endpoint":"ernie-speed-128k"}');
 INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
 VALUES ('tinydolphin', 'ollama-tinydolphin', 'text', 'ollama', false);
-INSERT INTO adi_ai_model (name, title, type, platform, remark, is_free, is_enable)
-VALUES ('THUDM/GLM-Z1-9B-0414', '硅基流动-GLM-Z1-9B', 'text', 'siliconflow',
+INSERT INTO adi_ai_model (name, title, type, platform, response_format_types, remark, is_free, is_enable)
+VALUES ('THUDM/GLM-Z1-9B-0414', '硅基流动-GLM-Z1-9B', 'text', 'siliconflow', 'text,json_object',
         'GLM-Z1-9B-0414 是 GLM 系列的小型模型，仅有 90 亿参数，但保持了开源传统的同时展现出惊人的能力。', true, false);
 INSERT INTO adi_ai_model (name, title, type, platform, input_types, remark, is_free, is_enable)
 VALUES ('THUDM/GLM-4.1V-9B-Thinking', '硅基流动-识图', 'vision', 'siliconflow', 'text,image',
@@ -1580,7 +1590,8 @@ VALUES ('Kwai-Kolors/Kolors', '硅基流动-文生图', 'image', 'siliconflow', 
     "720x1280"
   ]
 }',
-        'Kolors 是由快手 Kolors 团队开发的基于潜在扩散的大规模文本到图像生成模型。该模型通过数十亿文本-图像对的训练，在视觉质量、复杂语义准确性以及中英文字符渲染方面展现出显著优势。它不仅支持中英文输入，在理解和生成中文特定内容方面也表现出色。', true, false);
+        'Kolors 是由快手 Kolors 团队开发的基于潜在扩散的大规模文本到图像生成模型。该模型通过数十亿文本-图像对的训练，在视觉质量、复杂语义准确性以及中英文字符渲染方面展现出显著优势。它不仅支持中英文输入，在理解和生成中文特定内容方面也表现出色。',
+        true, false);
 
 -- Qwen/Qwen-Image 为收费模型，详细评估后再判断是否要启用
 -- INSERT INTO adi_ai_model (name, title, type, platform, properties, remark, is_free, is_enable)
@@ -1598,14 +1609,16 @@ VALUES ('Kwai-Kolors/Kolors', '硅基流动-文生图', 'image', 'siliconflow', 
 --         'Qwen-Image 是由阿里巴巴通义千问团队发布的图像生成基础模型，拥有 200 亿参数。该模型在复杂的文本渲染和精确的图像编辑方面取得了显著进展，尤其擅长生成包含高保真度中英文文字的图像。', false, false);
 
 -- test data
-INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
-VALUES ('THUDM/GLM-Z1-9B-0414', 'openai-compatible-model-test', 'text', 'openai-compatible-platform-test', false);
+INSERT INTO adi_ai_model (name, title, type, platform, response_format_types, is_enable)
+VALUES ('THUDM/GLM-Z1-9B-0414', 'openai-compatible-model-test', 'text', 'openai-compatible-platform-test',
+        'text,json_object', false);
 -- test data end
 
 
 -- 语音识别
-INSERT INTO adi_ai_model (name, title, type, platform, input_types, is_free, is_enable)
-VALUES ('FunAudioLLM/SenseVoiceSmall', '硅基流动-语音识别', 'asr', 'siliconflow', 'audio', true, false);
+INSERT INTO adi_ai_model (name, title, type, platform, input_types, response_format_types, is_free, is_enable)
+VALUES ('FunAudioLLM/SenseVoiceSmall', '硅基流动-语音识别', 'asr', 'siliconflow', 'audio', 'text,json_object', true,
+        false);
 -- 预设角色
 INSERT INTO adi_conversation_preset (uuid, title, remark, ai_system_message)
 VALUES ('26a8f54c560948d6b2d4969f08f3f2fb', '开发工程师', '技术好', '你是一个经验丰富的开发工程师,开发技能极其熟练');

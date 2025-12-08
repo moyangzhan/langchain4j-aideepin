@@ -19,8 +19,6 @@ public class ChatModelBuilderProperties {
      */
     private Double temperature;
 
-    private Boolean returnThinking;
-
     /**
      * 获取采样温度，如果温度不合法则获取默认温度
      */

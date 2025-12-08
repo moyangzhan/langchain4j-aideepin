@@ -10,7 +10,7 @@ import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.util.AdiStringUtil;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.UuidUtil;
-import com.moyz.adi.common.vo.ChatModelRequestProperties;
+import com.moyz.adi.common.vo.ChatModelRequestParams;
 import com.moyz.adi.common.vo.SseAskParams;
 import dev.langchain4j.data.document.DefaultDocument;
 import dev.langchain4j.data.document.Document;
@@ -37,7 +37,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CONVERSATION_ID;
-import static com.moyz.adi.common.cosntant.AdiConstant.RESPONSE_FORMAT_TYPE_JSON;
+import static com.moyz.adi.common.cosntant.AdiConstant.RESPONSE_FORMAT_TYPE_JSON_OBJECT;
 
 /**
  * 长期记忆<br/>
@@ -60,15 +60,16 @@ public class LongTermMemoryService {
         AbstractLLMService llmService = LLMContext.getServiceOrDefault(modelPlatform, modelName);
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setUuid(UuidUtil.createShort());
-        sseAskParams.setChatModelRequestProperties(
-                ChatModelRequestProperties.builder()
+        sseAskParams.setHttpRequestParams(
+                ChatModelRequestParams.builder()
                         .systemMessage(LongTermMemoryPrompt.FACT_RETRIEVAL_PROMPT)
                         .userMessage(inputMessage)
-                        .responseFormat(RESPONSE_FORMAT_TYPE_JSON)
+                        .responseFormat(RESPONSE_FORMAT_TYPE_JSON_OBJECT)
                         .build()
         );
         sseAskParams.setModelName(modelName);
         sseAskParams.setUser(ThreadContext.getCurrentUser());
+        log.info("request:{}", sseAskParams);
         ChatResponse response = llmService.chat(sseAskParams);
         log.info("Fact extraction response: {}", response.aiMessage().text());
         String factResponse = AdiStringUtil.removeCodeBlock(response.aiMessage().text());
@@ -123,10 +124,10 @@ public class LongTermMemoryService {
             String analyzePrompt = getUpdateMemoryMessages(retrievedOldMemory, facts);
             String resp = llmService.chat(SseAskParams.builder()
                     .uuid(UuidUtil.createShort())
-                    .chatModelRequestProperties(
-                            ChatModelRequestProperties.builder()
+                    .httpRequestParams(
+                            ChatModelRequestParams.builder()
                                     .userMessage(analyzePrompt)
-                                    .responseFormat(RESPONSE_FORMAT_TYPE_JSON)
+                                    .responseFormat(RESPONSE_FORMAT_TYPE_JSON_OBJECT)
                                     .build()
                     )
                     .modelName(modelName)

@@ -120,37 +120,37 @@ public class CompositeRag {
 
         QueryRouter queryRouter = new DefaultQueryRouter(retrievers);
         TokenStream tokenStream;
-        ChatModelRequestProperties chatModelRequestProperties = params.getChatModelRequestProperties();
-        if (StringUtils.isNotBlank(chatModelRequestProperties.getMemoryId())) {
+        ChatModelRequestParams chatModelRequestParams = params.getHttpRequestParams();
+        if (StringUtils.isNotBlank(chatModelRequestParams.getMemoryId())) {
             ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.builder()
                     .id(memoryId)
                     .maxMessages(2)
                     .chatMemoryStore(MapDBChatMemoryStore.getSingleton())
                     .build();
-            QueryTransformer queryTransformer = new CompressingQueryTransformer(llmService.buildChatLLM(params.getChatModelBuilderProperties()));
+            QueryTransformer queryTransformer = new CompressingQueryTransformer(llmService.buildChatLLM(params.getModelProperties()));
             RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
                     .queryTransformer(queryTransformer)
                     .queryRouter(queryRouter)
                     .build();
             IStreamingChatAssistant assistant = AiServices.builder(IStreamingChatAssistant.class)
-                    .streamingChatModel(llmService.buildStreamingChatModel(params.getChatModelBuilderProperties()))
+                    .streamingChatModel(llmService.buildStreamingChatModel(params.getModelProperties()))
                     .retrievalAugmentor(retrievalAugmentor)
                     .chatMemoryProvider(chatMemoryProvider)
                     .build();
-            if (StringUtils.isNotBlank(chatModelRequestProperties.getSystemMessage())) {
-                tokenStream = assistant.chatWithSystem(chatModelRequestProperties.getMemoryId(), chatModelRequestProperties.getSystemMessage(), chatModelRequestProperties.getUserMessage(), new ArrayList<>());
+            if (StringUtils.isNotBlank(chatModelRequestParams.getSystemMessage())) {
+                tokenStream = assistant.chatWithSystem(chatModelRequestParams.getMemoryId(), chatModelRequestParams.getSystemMessage(), chatModelRequestParams.getUserMessage(), new ArrayList<>());
             } else {
-                tokenStream = assistant.chat(chatModelRequestProperties.getMemoryId(), chatModelRequestProperties.getUserMessage(), new ArrayList<>());
+                tokenStream = assistant.chat(chatModelRequestParams.getMemoryId(), chatModelRequestParams.getUserMessage(), new ArrayList<>());
             }
         } else {
             ITempStreamingChatAssistant assistant = AiServices.builder(ITempStreamingChatAssistant.class)
-                    .streamingChatModel(llmService.buildStreamingChatModel(params.getChatModelBuilderProperties()))
+                    .streamingChatModel(llmService.buildStreamingChatModel(params.getModelProperties()))
                     .retrievalAugmentor(DefaultRetrievalAugmentor.builder().queryRouter(queryRouter).build())
                     .build();
-            if (StringUtils.isNotBlank(chatModelRequestProperties.getSystemMessage())) {
-                tokenStream = assistant.chatWithSystem(chatModelRequestProperties.getSystemMessage(), chatModelRequestProperties.getUserMessage(), new ArrayList<>());
+            if (StringUtils.isNotBlank(chatModelRequestParams.getSystemMessage())) {
+                tokenStream = assistant.chatWithSystem(chatModelRequestParams.getSystemMessage(), chatModelRequestParams.getUserMessage(), new ArrayList<>());
             } else {
-                tokenStream = assistant.chatSimple(chatModelRequestProperties.getUserMessage(), new ArrayList<>());
+                tokenStream = assistant.chatSimple(chatModelRequestParams.getUserMessage(), new ArrayList<>());
             }
         }
         tokenStream
