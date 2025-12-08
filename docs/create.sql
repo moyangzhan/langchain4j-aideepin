@@ -993,18 +993,6 @@ VALUES ('catkeeper', '$2a$10$z44gncmQk6xCBCeDx55gMe1Zc8uYtOKcoT4/HE2F92VcF7wP2iq
 -- 配置信息
 -- https://api-docs.deepseek.com/zh-cn/
 INSERT INTO adi_sys_config (name, value)
-VALUES ('deepseek_setting', '{"base_url":"https://api.deepseek.com","api_key":""}');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('openai_setting', '{"api_key":""}');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('dashscope_setting', '{"api_key":""}');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('qianfan_setting', '{"api_key":"","secret_key":""}');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('ollama_setting', '{"base_url":""}');
-INSERT INTO adi_sys_config (name, value)
-VALUES ('siliconflow_setting', '{"base_url":"https://api.siliconflow.cn/v1","api_key":""}');
-INSERT INTO adi_sys_config (name, value)
 VALUES ('google_setting',
         '{"url":"https://www.googleapis.com/customsearch/v1","key":"","cx":""}');
 INSERT INTO adi_sys_config (name, value)
@@ -1060,7 +1048,7 @@ values ('openai', 'OpenAi', 'https://api.openai.com/v1');
 insert into adi_model_platform (name, title, base_url)
 values ('deepseek', 'DeepSeek深度求索', 'https://api.deepseek.com/v1');
 insert into adi_model_platform (name, title, base_url)
-values ('dashscope', 'DashScope', 'https://dashscope.aliyuncs.com/compatible-mode/v1');
+values ('dashscope', 'DashScope', 'https://dashscope.aliyuncs.com/api/v1');
 insert into adi_model_platform (name, title, base_url)
 values ('siliconflow', '硅基流动', 'https://api.siliconflow.cn/v1');
 insert into adi_model_platform (name, title, base_url)
