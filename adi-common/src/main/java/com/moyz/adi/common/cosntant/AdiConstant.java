@@ -348,12 +348,12 @@ public class AdiConstant {
     /**
      * 文件存储在本地
      */
-    public static final int STORAGE_LOCATION_LOCAL = 1;
+    public static final int STORAGE_LOCATION_VALUE_LOCAL = 1;
 
     /**
      * 文件存储到阿里云OSS
      */
-    public static final int STORAGE_LOCATION_ALI_OSS = 2;
+    public static final int STORAGE_LOCATION_VALUE_ALI_OSS = 2;
 
     public static final String URL_PREFIX_FILE = "/file/";
     public static final String URL_PREFIX_IMAGE = "/image/";

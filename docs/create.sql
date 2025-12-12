@@ -148,27 +148,28 @@ EXECUTE PROCEDURE update_modified_column();
 
 CREATE TABLE adi_ai_model
 (
-    id                      bigserial primary key,
-    name                    varchar(45)   default ''                not null,
-    title                   varchar(45)   default ''                not null,
-    type                    varchar(45)   default 'text'            not null,
-    setting                 varchar(500)  default ''                not null,
-    remark                  varchar(1000) default '',
-    platform                varchar(45)   default ''                not null,
-    context_window          int           default 0                 not null,
-    max_input_tokens        int           default 0                 not null,
-    max_output_tokens       int           default 0                 not null,
-    input_types             varchar(100)  default 'text'            not null,
-    properties              jsonb         default '{}'              not null,
-    response_format_types   varchar(200)  default 'text'            not null,
-    is_web_search_supported boolean       default false             not null,
-    is_reasoner             boolean       default false             not null,
-    is_thinking_closable    boolean       default false             not null,
-    is_free                 boolean       default false             not null,
-    is_enable               boolean       default false             not null,
-    create_time             timestamp     default CURRENT_TIMESTAMP not null,
-    update_time             timestamp     default CURRENT_TIMESTAMP not null,
-    is_deleted              boolean       default false             not null
+    id                    bigserial primary key,
+    name                  varchar(45)   default ''                not null,
+    title                 varchar(45)   default ''                not null,
+    type                  varchar(45)   default 'text'            not null,
+    setting               varchar(500)  default ''                not null,
+    remark                varchar(1000) default '',
+    platform              varchar(45)   default ''                not null,
+    context_window        int           default 0                 not null,
+    max_input_tokens      int           default 0                 not null,
+    max_output_tokens     int           default 0                 not null,
+    input_types           varchar(100)  default 'text'            not null,
+    properties            jsonb         default '{}'              not null,
+    response_format_types varchar(200)  default 'text'            not null,
+    -- TODO web search
+    is_support_web_search boolean       default false             not null,
+    is_reasoner           boolean       default false             not null,
+    is_thinking_closable  boolean       default false             not null,
+    is_free               boolean       default false             not null,
+    is_enable             boolean       default false             not null,
+    create_time           timestamp     default CURRENT_TIMESTAMP not null,
+    update_time           timestamp     default CURRENT_TIMESTAMP not null,
+    is_deleted            boolean       default false             not null
 );
 
 COMMENT ON TABLE adi_ai_model IS 'AI模型 | AI model';
@@ -182,7 +183,7 @@ COMMENT ON COLUMN adi_ai_model.platform IS '平台，对应了 adi_model_platfor
 COMMENT ON COLUMN adi_ai_model.context_window IS '上下文窗口 | LLM context window';
 COMMENT ON COLUMN adi_ai_model.input_types IS '输入类型 | Input types: text, image, audio, video';
 COMMENT ON COLUMN adi_ai_model.response_format_types IS '回复格式: text, json_object, json_schema | Response format: text, json_object, json_schema';
-COMMENT ON COLUMN adi_ai_model.is_web_search_supported IS '是否支持网络搜索 | Whether web search is supported';
+COMMENT ON COLUMN adi_ai_model.is_support_web_search IS '是否支持网络搜索 | Whether web search is supported';
 COMMENT ON COLUMN adi_ai_model.is_reasoner IS 'true: 推理模型如deepseek-r1, false: 非推理模型如deepseek-v3 | true: Reasoning model, false: Non-reasoning model';
 COMMENT ON COLUMN adi_ai_model.is_thinking_closable IS '思考过程是否可以关闭，Qwen3可以开启或关闭思考过程，而deepseek-r1无法关闭 | Whether the thinking process can be closed, Qwen3 can enable or disable the thinking process, while deepseek-r1 cannot disable it';
 COMMENT ON COLUMN adi_ai_model.is_enable IS '是否启用 | True: Normal usage, false: Not available';
@@ -1571,7 +1572,7 @@ VALUES ('THUDM/GLM-4.1V-9B-Thinking', '硅基流动-识图', 'vision', 'siliconf
 INSERT INTO adi_ai_model (name, title, type, platform, properties, remark, is_free, is_enable)
 VALUES ('Kwai-Kolors/Kolors', '硅基流动-文生图', 'image', 'siliconflow', '{
   "image_sizes": [
-    "1024*1024",
+    "1024x1024",
     "960x1280",
     "768x1024",
     "720x1440",

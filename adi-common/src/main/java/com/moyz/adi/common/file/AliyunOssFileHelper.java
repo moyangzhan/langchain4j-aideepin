@@ -20,7 +20,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.List;
 
-import static com.moyz.adi.common.cosntant.AdiConstant.STORAGE_LOCATION_ALI_OSS;
+import static com.moyz.adi.common.cosntant.AdiConstant.STORAGE_LOCATION_VALUE_ALI_OSS;
 
 @Slf4j
 @Service
@@ -32,24 +32,26 @@ public class AliyunOssFileHelper {
     private String configStr = "";
 
     public void init() {
-        String newConfigStr = LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.STORAGE_LOCATION_ALI_OSS);
+        String aliStorageConfigKey = AdiConstant.SysConfigKey.STORAGE_LOCATION_ALI_OSS;
+        String newConfigStr = LocalCache.CONFIGS.get(aliStorageConfigKey);
         if (StringUtils.isBlank(newConfigStr)) {
-            throw new BaseException(ErrorEnum.C_ALI_OSS_CONFIG_ERROR, "阿里云OSS配置异常：数据表adi_system_config中找不到对应的配置行file_store_location_ali_oss");
+            throw new BaseException(ErrorEnum.C_ALI_OSS_CONFIG_ERROR, "阿里云OSS配置异常：数据表adi_sys_config中找不到对应的配置行" + aliStorageConfigKey);
         }
+        //配置没有变化，无需重新加载
         if (configStr.equals(newConfigStr)) {
             return;
         }
         //配置有变化，重新加载
         AliOssConfig newConfigObj = JsonUtil.fromJson(newConfigStr, AliOssConfig.class);
         if (null == newConfigObj) {
-            throw new BaseException(ErrorEnum.C_ALI_OSS_CONFIG_ERROR, "阿里云OSS配置异常：没有正确填写配置项file_store_location_ali_oss的内容");
+            throw new BaseException(ErrorEnum.C_ALI_OSS_CONFIG_ERROR, "阿里云OSS配置异常：没有正确填写配置项" + aliStorageConfigKey + "的内容");
         }
         if (null != client) {
             client.shutdown();
         }
         if (StringUtils.isAnyBlank(newConfigObj.getEndpoint(), newConfigObj.getAccessKeyId(), newConfigObj.getAccessKeySecret(), newConfigObj.getBucketName())) {
             log.warn("阿里云OSS配置信息没有填写完整，不初始化OSSClient");
-            if (STORAGE_LOCATION_ALI_OSS == Integer.parseInt(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.STORAGE_LOCATION))) {
+            if (STORAGE_LOCATION_VALUE_ALI_OSS == Integer.parseInt(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.STORAGE_LOCATION))) {
                 log.error("^^^ 阿里云OSS不可用，需将存储位置切换回本地存储 ^^^");
             }
             return;

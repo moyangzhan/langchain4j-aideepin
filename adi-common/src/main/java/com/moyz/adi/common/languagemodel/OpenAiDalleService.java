@@ -1,11 +1,10 @@
 package com.moyz.adi.common.languagemodel;
 
-import com.moyz.adi.common.entity.AiModel;
-import com.moyz.adi.common.entity.Draw;
+import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.entity.ModelPlatform;
-import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.file.LocalFileUtil;
 import com.moyz.adi.common.util.ImageUtil;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.OpenAiUtil;
@@ -176,7 +175,16 @@ public class OpenAiDalleService extends AbstractImageModelService {
 
     @Override
     public List<String> createImageVariation(User user, Draw draw) {
-        File imagePath = new File(getFileService().getImagePath(draw.getOriginalImage()));
+        AdiFile file = getFileService().getFile(draw.getOriginalImage());
+        if (null == file) {
+            log.error("image not found, uuid:{}", draw.getOriginalImage());
+            throw new BaseException(ErrorEnum.A_AI_IMAGE_NOT_FOUND);
+        }
+        String path = file.getPath();
+        if (file.getStorageLocation() != STORAGE_LOCATION_VALUE_LOCAL && file.getPath().indexOf("http") == 0) {
+            path = LocalFileUtil.saveFromUrl(file.getPath(), file.getUuid(), file.getExt());
+        }
+        File imagePath = new File(path);
         OpenAiService service = getOpenAiService();
         CreateImageVariationRequest request = new CreateImageVariationRequest();
         request.setN(draw.getGenerateNumber());

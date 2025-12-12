@@ -11,16 +11,16 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.moyz.adi.common.cosntant.AdiConstant.STORAGE_LOCATION_ALI_OSS;
-import static com.moyz.adi.common.cosntant.AdiConstant.STORAGE_LOCATION_LOCAL;
+import static com.moyz.adi.common.cosntant.AdiConstant.STORAGE_LOCATION_VALUE_ALI_OSS;
+import static com.moyz.adi.common.cosntant.AdiConstant.STORAGE_LOCATION_VALUE_LOCAL;
 
 public class FileOperatorContext {
 
     private static final Map<Integer, IFileOperator> CONCRETE_OPT = new HashMap<>();
 
     static {
-        CONCRETE_OPT.put(STORAGE_LOCATION_LOCAL, new LocalFileOperator());
-        CONCRETE_OPT.put(STORAGE_LOCATION_ALI_OSS, new AliyunOssFileOperator());
+        CONCRETE_OPT.put(STORAGE_LOCATION_VALUE_LOCAL, new LocalFileOperator());
+        CONCRETE_OPT.put(STORAGE_LOCATION_VALUE_ALI_OSS, new AliyunOssFileOperator());
     }
 
     private final IFileOperator currentOpt;

@@ -218,7 +218,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
             });
             String imageUuidsJoin = String.join(",", imageUuids);
             if (StringUtils.isBlank(imageUuidsJoin)) {
-                self.lambdaUpdate().eq(Draw::getId, draw.getId()).set(Draw::getProcessStatus, STATUS_FAIL).update();
+                updateDrawFail(draw.getId(), "No image generated");
                 return;
             }
             String respImagesPath = String.join(",", images);
@@ -238,7 +238,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
             }
             saveOrUpdateInst.setIsFree(modelIsFree);
             userDayCostService.saveOrUpdate(saveOrUpdateInst);
-        } catch (BaseException e) {
+        } catch (Exception e) {
             log.error("createFromRemote error", e);
             updateDrawFail(draw.getId(), e.getMessage());
         } finally {
