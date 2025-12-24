@@ -1099,7 +1099,7 @@ VALUES ('text-embedding-3-large', 'openai-embedding-large', 'embedding', 'openai
 }', false);
 -- https://help.aliyun.com/zh/dashscope/developer-reference/model-introduction?spm=a2c4g.11186623.0.i39
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens,
-                          response_format_types, is_web_search_supported, is_reasoner,
+                          response_format_types, is_support_web_search, is_reasoner,
                           is_thinking_closable, is_enable)
 VALUES ('qwen-turbo', '通义千问turbo', 'text', 'dashscope', 131072, 98304, 16384, 'text,json_object', true, true, true,
         false);
