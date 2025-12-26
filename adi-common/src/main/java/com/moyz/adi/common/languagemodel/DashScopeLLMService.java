@@ -24,6 +24,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.Map;
 
+import static com.moyz.adi.common.cosntant.AdiConstant.CustomChatRequestParameterKeys.ENABLE_WEB_SEARCH;
 import static com.moyz.adi.common.cosntant.AdiConstant.CustomChatRequestParameterKeys.ENABLE_THINKING;
 import static com.moyz.adi.common.enums.ErrorEnum.B_LLM_SECRET_KEY_NOT_SET;
 
@@ -96,10 +97,15 @@ public class DashScopeLLMService extends AbstractLLMService {
             return defaultParameters;
         }
         Boolean enableThinking = (Boolean) customParameters.get(ENABLE_THINKING);
-        QwenChatRequestParameters parameters = QwenChatRequestParameters.builder()
-                .enableThinking(null != enableThinking ? enableThinking : false)
-                .build();
-        return parameters.overrideWith(defaultParameters);
+        Boolean enableSearch = (Boolean) customParameters.get(ENABLE_WEB_SEARCH);
+        QwenChatRequestParameters.Builder builder = QwenChatRequestParameters.builder();
+        if (null != enableThinking) {
+            builder.enableThinking(enableThinking);
+        }
+        if (null != enableSearch) {
+            builder.enableSearch(enableSearch);
+        }
+        return builder.build().overrideWith(defaultParameters);
     }
 
     @Override

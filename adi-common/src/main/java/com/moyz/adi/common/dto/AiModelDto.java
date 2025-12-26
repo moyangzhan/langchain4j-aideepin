@@ -44,6 +44,8 @@ public class AiModelDto {
 
     private String responseFormatTypes;
 
+    private Boolean isSupportWebSearch;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;

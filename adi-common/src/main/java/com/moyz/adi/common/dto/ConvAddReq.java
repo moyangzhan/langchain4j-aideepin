@@ -29,4 +29,8 @@ public class ConvAddReq {
     private List<Long> kbIds;
 
     private AudioConfig audioConfig;
+
+    private Boolean isEnableThinking;
+
+    private Boolean isEnableWebSearch;
 }

@@ -24,4 +24,5 @@ public class ChatModelRequestParams {
     private List<McpClient> mcpClients;
     private String responseFormat;
     private Boolean returnThinking;
+    private Boolean enableWebSearch;
 }

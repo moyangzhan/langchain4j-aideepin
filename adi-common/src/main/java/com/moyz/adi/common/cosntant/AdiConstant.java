@@ -448,6 +448,10 @@ public class AdiConstant {
          * 是否开启思考模式，默认不开启
          */
         public static final String ENABLE_THINKING = "enable_thinking";
+        /**
+         * 是否启用联网搜索功能
+         */
+        public static final String ENABLE_WEB_SEARCH = "enable_web_search";
     }
 
     public static class MemoryEvent {

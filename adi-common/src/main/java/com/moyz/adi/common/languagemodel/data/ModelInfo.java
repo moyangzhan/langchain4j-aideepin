@@ -15,5 +15,6 @@ public class ModelInfo {
     private Boolean isFree;
     private Boolean isReasoner;
     private Boolean isThinkingClosable;
+    private Boolean isSupportWebSearch;
     private ObjectNode properties;
 }

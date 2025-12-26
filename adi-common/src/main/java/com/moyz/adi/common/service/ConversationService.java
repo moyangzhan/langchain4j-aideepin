@@ -205,11 +205,9 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
 
         String uuid = UuidUtil.createShort();
         Conversation one = new Conversation();
+        BeanUtils.copyProperties(convAddReq, one);
         one.setUuid(uuid);
-        one.setTitle(convAddReq.getTitle());
-        one.setAiSystemMessage(convAddReq.getAiSystemMessage());
         one.setUserId(ThreadContext.getCurrentUserId());
-        one.setRemark(convAddReq.getRemark());
         one.setMcpIds(StringUtils.join(filteredMcpIds, ","));
         one.setKbIds(StringUtils.join(filteredKbIds, ","));
         if (null != convAddReq.getAudioConfig()) {

@@ -161,7 +161,6 @@ CREATE TABLE adi_ai_model
     input_types           varchar(100)  default 'text'            not null,
     properties            jsonb         default '{}'              not null,
     response_format_types varchar(200)  default 'text'            not null,
-    -- TODO web search
     is_support_web_search boolean       default false             not null,
     is_reasoner           boolean       default false             not null,
     is_thinking_closable  boolean       default false             not null,
@@ -235,6 +234,7 @@ CREATE TABLE adi_conversation
     answer_content_type       smallint      default 1                 not null,
     is_autoplay_answer        boolean       default true              not null,
     is_enable_thinking        boolean       default false             not null,
+    is_enable_web_search      boolean       default false             not null,
     audio_config              jsonb         default '{}'              not null,
     create_time               timestamp     default CURRENT_TIMESTAMP not null,
     update_time               timestamp     default CURRENT_TIMESTAMP not null,
@@ -252,6 +252,7 @@ COMMENT ON COLUMN adi_conversation.kb_ids IS '关联使用的知识库id列表,�
 COMMENT ON COLUMN adi_conversation.answer_content_type IS '设置响应内容类型：1：自动（跟随用户的输入类型，如果用户输入是音频，则响应内容也同样是音频，如果用户输入是文本，则响应内容显示文本），2：文本，3：音频 | Response content display type: 1: Auto (if user input is audio, response content is also audio; if user input is text, response content displays text), 2: Text, 3: Audio';
 COMMENT ON COLUMN adi_conversation.is_autoplay_answer IS '设置聊天时音频类型的响应内容是否自动播放，true: 自动播放，false: 不自动播放 | Whether audio-type response content automatically plays, true: Auto play, false: Do not auto play';
 COMMENT ON COLUMN adi_conversation.is_enable_thinking IS '当前使用的模型如果是推理模式并且支持对思考过程的开关，则本字段生效 | Whether the current model supports reasoning mode and thinking process toggle, if so, this field takes effect';
+COMMENT ON COLUMN adi_conversation.is_enable_web_search IS '是否启用web搜索 | Whether to enable web search';
 COMMENT ON COLUMN adi_conversation.audio_config IS '音频配置，json格式存储，如 {"voice":{"param_name":"longyingda","model":"cosyvoice-v2","platform":"dashscope"}} | Audio configuration, stored in JSON format, e.g., {"voice":{"param_name":"longyingda","model":"cosyvoice-v2","platform":"dashscope"}}';
 
 

@@ -575,6 +575,9 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         Boolean returnThinking = checkIfReturnThinking(aiModel, conversation);
         builder.returnThinking(returnThinking);
 
+        //Enable web search
+        builder.enableWebSearch(Boolean.TRUE.equals(conversation.getIsEnableWebSearch()));
+
         return builder.build();
     }
 

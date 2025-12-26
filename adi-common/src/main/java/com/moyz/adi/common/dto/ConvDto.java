@@ -33,6 +33,7 @@ public class ConvDto {
     private Integer answerContentType;
     private Boolean isAutoplayAnswer;
     private Boolean isEnableThinking;
+    private Boolean isEnableWebSearch;
     private AudioConfig audioConfig;
 
     private LocalDateTime createTime;

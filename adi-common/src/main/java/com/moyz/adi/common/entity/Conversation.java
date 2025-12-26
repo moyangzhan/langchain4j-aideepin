@@ -75,6 +75,10 @@ public class Conversation extends BaseEntity {
     @TableField("is_enable_thinking")
     private Boolean isEnableThinking;
 
+    @Schema(title = "是否启用网络搜索功能")
+    @TableField("is_enable_web_search")
+    private Boolean isEnableWebSearch;
+
     @TableField(value = "audio_config", jdbcType = JdbcType.JAVA_OBJECT, typeHandler = AudioConfigTypeHandler.class)
     private AudioConfig audioConfig;
 }

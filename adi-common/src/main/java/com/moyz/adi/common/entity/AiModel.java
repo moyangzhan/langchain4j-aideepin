@@ -78,4 +78,8 @@ public class AiModel extends BaseEntity {
     @Schema(title = "思考过程是否可以关闭")
     @TableField("is_thinking_closable")
     private Boolean isThinkingClosable;
+    
+    @Schema(title = "是否支持web搜索")
+    @TableField("is_support_web_search")
+    private Boolean isSupportWebSearch;
 }

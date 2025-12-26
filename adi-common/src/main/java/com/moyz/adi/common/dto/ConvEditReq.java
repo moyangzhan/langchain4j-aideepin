@@ -28,5 +28,7 @@ public class ConvEditReq {
 
     private Boolean isEnableThinking;
 
+    private Boolean isEnableWebSearch;
+
     private AudioConfig audioConfig;
 }

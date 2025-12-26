@@ -49,6 +49,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+import static com.moyz.adi.common.cosntant.AdiConstant.CustomChatRequestParameterKeys.ENABLE_WEB_SEARCH;
 import static com.moyz.adi.common.cosntant.AdiConstant.CustomChatRequestParameterKeys.ENABLE_THINKING;
 import static com.moyz.adi.common.cosntant.AdiConstant.LLM_MAX_INPUT_TOKENS_DEFAULT;
 import static com.moyz.adi.common.cosntant.AdiConstant.RESPONSE_FORMAT_TYPE_JSON_OBJECT;
@@ -150,7 +151,7 @@ public abstract class AbstractLLMService extends CommonModelService {
         log.info("sseChat,messageId:{}", httpRequestParams.getMemoryId());
         StreamingChatModel streamingChatModel = buildStreamingChatModel(modelProperties);
 
-        ChatRequest chatRequest = createChatRequest(httpRequestParams, modelProperties);
+        ChatRequest chatRequest = createChatRequest(httpRequestParams);
         InnerStreamChatParams innerStreamChatParams = InnerStreamChatParams.builder()
                 .uuid(params.getUuid())
                 .user(params.getUser())
@@ -257,7 +258,7 @@ public abstract class AbstractLLMService extends CommonModelService {
         ChatModelRequestParams chatModelRequestParams = params.getHttpRequestParams();
         ChatModelBuilderProperties modelProperties = params.getModelProperties();
         ChatModel chatModel = buildChatLLM(modelProperties);
-        ChatRequest chatRequest = createChatRequest(chatModelRequestParams, modelProperties);
+        ChatRequest chatRequest = createChatRequest(chatModelRequestParams);
 
         ChatResponse chatResponse = chatModel.chat(chatRequest);
         if (chatResponse.aiMessage().hasToolExecutionRequests()) {
@@ -402,7 +403,7 @@ public abstract class AbstractLLMService extends CommonModelService {
         return tools;
     }
 
-    private ChatRequest createChatRequest(ChatModelRequestParams httpRequestParams, ChatModelBuilderProperties modelProperties) {
+    private ChatRequest createChatRequest(ChatModelRequestParams httpRequestParams) {
 
         log.info("sseChat,messageId:{}", httpRequestParams.getMemoryId());
         List<ChatMessage> chatMessages = createChatMessages(httpRequestParams);
@@ -440,6 +441,9 @@ public abstract class AbstractLLMService extends CommonModelService {
         Map<String, Object> customParameters = new HashMap<>();
         if (null != httpRequestParams.getReturnThinking()) {
             customParameters.put(ENABLE_THINKING, httpRequestParams.getReturnThinking());
+        }
+        if (null != httpRequestParams.getEnableWebSearch()) {
+            customParameters.put(ENABLE_WEB_SEARCH, httpRequestParams.getEnableWebSearch());
         }
         ChatRequestParameters parameters = doCreateChatRequestParameters(builder.build(), customParameters);
 
