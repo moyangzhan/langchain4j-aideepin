@@ -197,22 +197,18 @@ ps: neo4j 与 pgvector + apache age 二选一即可
 ![1691583184761](image/README/1691583184761.png)
 
 **AI画图：**
-
 ![draw_001](image/README/draw_001.png "AI绘图")
 
 **知识库：**
 ![kbindex](image/README/kbidx.png)
 
 **向量化：**
-
 ![kb03](image/README/kb03.png)
 
 **知识图谱：**
-
 ![kb_graph_01](image/README/kb_graph_01.png)
 
 **工作流：**
-
 ![workflow_01](image/README/workflow.png)
 
 ## 技术交流
@@ -222,3 +218,10 @@ ps: neo4j 与 pgvector + apache age 二选一即可
 * 业余时间维护本项目，时间有限，所以群里提问不保证即时回复，请见谅
 
 ![qq](image/README/qq.png)
+
+## 推荐项目
+[Mango Desk](https://github.com/moyangzhan/mango-desk) 
+
+Mango Desk 是一款使用自然语言搜索本地文档的桌面应用。
+
+帮助您根据记忆中的内容查找信息，而不需要记住文件名或文件夹结构。

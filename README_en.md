@@ -187,28 +187,23 @@ Frontend tech stack:
 ![1691583184761](image/README/1691583184761.png)
 
 **AI Drawing:**
-
-![draw_001](image/README/draw_001.png "AI Drawing")
-
 ![draw_002](image/README/draw_002.png "AI Drawing")
 
 **Knowledge Base:**
-![kbindex](image/README/kbidx.png)
-
 ![kb01](image/README/kb01.png)
 
 **Vectorization:**
-
-![kb02](image/README/kb02.png)
-
 ![kb03](image/README/kb03.png)
 
 **Knowledge Graph:**
-
 ![kb_graph_01](image/README/kb_graph_01.png)
 
-![kb_graph_02](image/README/kb_graph_02.png)
+**Workflow：**
+![workflow_01](image/README/workflow.png)
 
-**Quota Statistics:**
+## Recommended Projects
+[Mango Desk](https://github.com/moyangzhan/mango-desk) 
 
-![1691583329105.png](image%2FREADME%2F1691583329105.png)
+Mango Desk is a local-first desktop app for searching your local documents with natural language.
+
+It helps you find information based on what you remember, not file names or folder structures.
