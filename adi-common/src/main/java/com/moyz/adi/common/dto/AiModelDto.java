@@ -42,6 +42,10 @@ public class AiModelDto {
 
     private String inputTypes;
 
+    private Boolean isReasoner;
+
+    private Boolean isThinkingClosable;
+
     private String responseFormatTypes;
 
     private Boolean isSupportWebSearch;
