@@ -72,8 +72,8 @@ This repository is for the backend service
 
 Tech stack:
 
-* jdk17
-* springboot3.0.5
+* JDK 17
+* Spring Boot 3.0.5
 * [langchain4j(Java version of LangChain)](https://github.com/langchain4j/langchain4j)
 * [langgraph4j](https://github.com/bsorrentino/langgraph4j)
 * Postgresql
@@ -112,7 +112,7 @@ Frontend tech stack:
       -- Dashscope
       update adi_model_platform set api_key = 'my_dashcope_api_key' where name = 'dashscope';
 
-      --siliconflow
+      -- Siliconflow
       update adi_model_platform set api_key = 'my_siliconflow_api_key' where name = 'siliconflow_setting';
   
       -- Qianfan API key and secret key
@@ -198,7 +198,7 @@ Frontend tech stack:
 **Knowledge Graph:**
 ![kb_graph_01](image/README/kb_graph_01.png)
 
-**Workflow：**
+**Workflow:**
 ![workflow_01](image/README/workflow.png)
 
 ## Recommended Projects
