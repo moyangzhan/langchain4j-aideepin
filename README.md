@@ -74,8 +74,8 @@ AIDEEPIN
 
 技术栈：
 
-* jdk17
-* springboot 3.0.5
+* JDK 17
+* Spring Boot 3.0.5
 * [langchain4j(Java version of LangChain)](https://github.com/langchain4j/langchain4j)
 * [langgraph4j](https://github.com/bsorrentino/langgraph4j)
 * Postgresql
@@ -110,10 +110,10 @@ ps: neo4j 与 pgvector + apache age 二选一即可
     -- DeepSeek
     update adi_model_platform set api_key = 'my_deepseek_secret_key' where name = 'deepseek';
 
-    -- openai的secretKey
+    -- openai的SecretKey
     update adi_model_platform set api_key = 'my_openai_secret_key' where name = 'openai';
 
-    -- 灵积大模型平台的apiKey
+    -- 灵积大模型平台的ApiKey
     update adi_model_platform set api_key = 'my_dashcope_api_key' where name = 'dashscope';
 
     -- 硅基流动的配置
