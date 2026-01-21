@@ -180,7 +180,20 @@ Frontend tech stack:
     -v="/data/aideepin/logs:/data/logs" \
     aideepin:0.0.1
   ```
+## Contributing Guidelines
+All forms of contributions are welcome, including but not limited to:
+* Submitting Bug Reports
+* Proposing New Features
+* Improving Documentation
+* Submitting Code (PR)
 
+Code Submission Process:
+1. Fork this repository
+1. Create a feature branch (git checkout -b feature/xxx)
+1. Commit changes (git commit -m 'feat: xxx')
+1. Push the branch (git push origin feature/xxx)
+1. Submit a Pull Request
+   
 ## Screenshots
 
 **AI Chat:**
