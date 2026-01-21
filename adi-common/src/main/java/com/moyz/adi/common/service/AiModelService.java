@@ -134,11 +134,19 @@ public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
     }
 
     public void edit(AiModelDto aiModelDto) {
-        aiModelDto.setName(aiModelDto.getName().strip());
-        aiModelDto.setTitle(aiModelDto.getTitle().strip());
+        // 增加非空判断，防止部分更新（字段为null）时调用 strip() 报空指针异常
+        if (StringUtils.isNotBlank(aiModelDto.getName())) {
+            aiModelDto.setName(aiModelDto.getName().strip());
+        }
+        if (StringUtils.isNotBlank(aiModelDto.getTitle())) {
+            aiModelDto.setTitle(aiModelDto.getTitle().strip());
+        }
+
         AiModel oldAiModel = getByIdOrThrow(aiModelDto.getId());
 
         AiModel aiModel = new AiModel();
+        // 复制属性，null 值也会被复制，但 MyBatis-Plus updateById 默认策略通常忽略 null 值（SELECTIVE）
+        // 从而实现只更新 isFree 字段的效果
         BeanUtils.copyProperties(aiModelDto, aiModel, "createTime", "updateTime");
         baseMapper.updateById(aiModel);
 
