@@ -438,6 +438,7 @@ public class AdiConstant {
          * 通义默认语音音色-龙应严(义正严辞女声)
          */
         public static final String DASHSCOPE_DEFAULT_VOICE = "longyingyan";
+        public static final String SILICONFLOW_DEFAULT_VOICE = "FunAudioLLM/CosyVoice2-0.5B:alex";
     }
 
     public static class CustomChatRequestParameterKeys {

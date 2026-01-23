@@ -101,7 +101,8 @@ public enum ErrorEnum {
     C_DRAW_FAIL("C0001", "大模型生成图片失败,原因:{0}"),
     C_ALI_OSS_CONFIG_ERROR("C0002", "阿里云OSS初始化失败,原因:{0}"),
     C_LLM_RESPONSE_INVALID("C0003", "大模型生成结果内容无效"),
-    C_WF_COMPONENT_DELETED_FAIL_BY_USED("C0004", "工作流组件已经被使用，无法被删除，可先停用");
+    C_WF_COMPONENT_DELETED_FAIL_BY_USED("C0004", "工作流组件已经被使用，无法被删除，可先停用"),
+    C_TTS_FAIL("C0005", "大模型生成语音失败,原因:{0}");
 
     private final String code;
     private final String info;

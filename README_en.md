@@ -61,7 +61,7 @@ Frontend projects:
 |----------------|:-----|:-----------------| ----- |-----------------| ---------- | --------- |---------|-------------------------------|
 | OpenAI         | ✓    | ✓                | ✓  | ✓               |          |          |         |                               |
 | Dashscope      | ✓    | ✓                |     |                 | ✓       | ✓       | ✓       | ✓                             |
-| SiliconFlow    | ✓    | ✓                |     |                 |          |      ✓   |         | ✓                             |
+| SiliconFlow    | ✓    | ✓                |     |                 |          |      ✓   |     ✓   | ✓                             |
 | Ollama         | ✓    |                  |    |                 |          |          |         |                               |
 | DeepSeek       | ✓    |                  |     |                 |          |          |         |                               |
 | Qianfan        | ✓    |                  |     |                 |          |          |         |                               |
@@ -176,6 +176,7 @@ Frontend tech stack:
   docker build . -t aideepin:0.0.1
   docker run -d \
     --name=aideepin \
+    -p 8888:9999 \
     -e APP_PROFILE=[dev|prod] \
     -v="/data/aideepin/logs:/data/logs" \
     aideepin:0.0.1

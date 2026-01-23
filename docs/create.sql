@@ -1608,7 +1608,37 @@ VALUES ('THUDM/GLM-Z1-9B-0414', 'openai-compatible-model-test', 'text', 'openai-
 -- 语音识别
 INSERT INTO adi_ai_model (name, title, type, platform, input_types, response_format_types, is_free, is_enable)
 VALUES ('FunAudioLLM/SenseVoiceSmall', '硅基流动-语音识别', 'asr', 'siliconflow', 'audio', 'text,json_object', true,
-        false);
+        true);
+-- 语音合成
+INSERT INTO adi_ai_model (name, title, type, platform, input_types, properties, is_enable)
+values ('FunAudioLLM/CosyVoice2-0.5B', '硅基流动-语音合成', 'tts', 'siliconflow', 'text', '{
+  "voices": [
+    {
+      "name": "fnlp/MOSS-TTSD-v0.5:alex"
+    },
+    {
+      "name": "fnlp/MOSS-TTSD-v0.5:anna"
+    },
+    {
+      "name": "fnlp/MOSS-TTSD-v0.5:bella"
+    },
+    {
+      "name": "fnlp/MOSS-TTSD-v0.5:benjamin"
+    },
+    {
+      "name": "fnlp/MOSS-TTSD-v0.5:charles"
+    },
+    {
+      "name": "fnlp/MOSS-TTSD-v0.5:claire"
+    },
+    {
+      "name": "fnlp/MOSS-TTSD-v0.5:david"
+    },
+    {
+      "name": "fnlp/MOSS-TTSD-v0.5:diana"
+    }
+  ]
+}', true);
 -- 预设角色
 INSERT INTO adi_conversation_preset (uuid, title, remark, ai_system_message)
 VALUES ('26a8f54c560948d6b2d4969f08f3f2fb', '开发工程师', '技术好', '你是一个经验丰富的开发工程师,开发技能极其熟练');

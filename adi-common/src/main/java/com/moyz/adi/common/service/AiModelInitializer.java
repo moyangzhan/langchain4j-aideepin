@@ -135,6 +135,7 @@ public class AiModelInitializer {
      */
     private synchronized void initTtsModelServiceList(Map<String, ModelPlatform> nameToPlatform) {
         initTtsModelService(AdiConstant.ModelPlatform.DASHSCOPE, model -> new DashScopeTtsService(model, nameToPlatform.get(AdiConstant.ModelPlatform.DASHSCOPE)));
+        initTtsModelService(AdiConstant.ModelPlatform.SILICONFLOW, model -> new SiliconflowTtsService(model, nameToPlatform.get(AdiConstant.ModelPlatform.SILICONFLOW)));
     }
 
     private void initLLMService(String platform, String modelType, Function<AiModel, AbstractLLMService> function) {

@@ -494,7 +494,9 @@ public abstract class AbstractLLMService extends CommonModelService {
      */
     private void ttsOnPartialMessage(InnerStreamChatParams params, String partialResponse) {
         TtsJobInfo jobInfo = ttsJobCache.getIfPresent(params.getUser().getUuid());
-        if (null != jobInfo && null != jobInfo.getTtsModelContext() && AdiConstant.TtsConstant.SYNTHESIZER_SERVER.equals(ttsSetting.getSynthesizerSide()) && params.getAnswerContentType() == AdiConstant.ConversationConstant.ANSWER_CONTENT_TYPE_AUDIO) {
+        if (null != jobInfo && null != jobInfo.getTtsModelContext()
+            && AdiConstant.TtsConstant.SYNTHESIZER_SERVER.equals(ttsSetting.getSynthesizerSide())
+            && params.getAnswerContentType() == AdiConstant.ConversationConstant.ANSWER_CONTENT_TYPE_AUDIO) {
             jobInfo.getTtsModelContext().processPartialText(jobInfo.getJobId(), partialResponse);
         }
     }

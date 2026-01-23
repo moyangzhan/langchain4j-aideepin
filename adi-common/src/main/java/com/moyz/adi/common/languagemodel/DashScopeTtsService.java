@@ -5,6 +5,9 @@ import com.alibaba.dashscope.audio.ttsv2.SpeechSynthesisAudioFormat;
 import com.alibaba.dashscope.audio.ttsv2.SpeechSynthesisParam;
 import com.alibaba.dashscope.audio.ttsv2.SpeechSynthesizer;
 import com.alibaba.dashscope.common.ResultCallback;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.file.FileOperatorContext;
@@ -37,6 +40,26 @@ public class DashScopeTtsService extends AbstractTtsModelService {
 
     @Override
     public void start(String jobId, String voice, Consumer<ByteBuffer> onProcess, Consumer<String> onComplete, Consumer<String> onError) {
+        // Check or set default
+        if (StringUtils.isBlank(voice)) {
+            voice = DASHSCOPE_DEFAULT_VOICE;
+        } else {
+            // 音色相关参数：https://bailian.console.aliyun.com/cn-beijing/?spm=5176.28197632.console-base_help.2.58192e369wELx6&tab=api#/api/?type=model&url=2997333
+            boolean match = false;
+            ObjectNode node = aiModel.getProperties();
+            if (node.has("voices") && node.get("voices").isArray()) {
+                ArrayNode voices = node.withArray("voices");
+                for (JsonNode voiceNode : voices) {
+                    if (voice.equals(voiceNode.get("param_name").asText())) {
+                        match = true;
+                        break;
+                    }
+                }
+            }
+            if (!match) {
+                voice = DASHSCOPE_DEFAULT_VOICE;
+            }
+        }
         log.info("开始语音合成，jobId: {}, voice: {}", jobId, voice);
         // 配置回调函数
         ResultCallback<SpeechSynthesisResult> callback = new ResultCallback<>() {

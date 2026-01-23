@@ -63,7 +63,7 @@ AIDEEPIN
 |----------| :----- | :------- | ------ | -------- | ---------- | ---------- |---------| ------------- |
 | 灵积       | ✓   | ✓     |      |        | ✓       | ✓       | ✓       | ✓          |
 | OpenAI   | ✓   | ✓     | ✓   | ✓     |          |          |         |             |
-| 硅基流动     | ✓   | ✓       |      |        |          |        ✓  |         | ✓          |
+| 硅基流动     | ✓   | ✓       |      |        |          |        ✓  |   ✓     | ✓          |
 | Ollama   | ✓   |        |      |        |          |          |         |             |
 | DeepSeek | ✓   |        |      |        |          |          |         |             |
 | 千帆       | ✓   |        |      |        |          |          |         |             |
@@ -186,6 +186,7 @@ ps: neo4j 与 pgvector + apache age 二选一即可
   docker build . -t aideepin:0.0.1
   docker run -d \
     --name=aideepin \
+    -p 8888:9999 \
     -e APP_PROFILE=[dev|prod] \
     -v="/data/aideepin/logs:/data/logs" \
     aideepin:0.0.1

@@ -223,54 +223,6 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
     }
 
     /**
-     * 检查音频配置是否正确
-     *
-     * @param audioConfig 音频配置
-     * @return AudioConfig
-     */
-    private boolean checkAudioConfig(AudioConfig audioConfig) {
-        if (null == audioConfig) {
-            return false;
-        }
-        String ttsSetting = LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.TTS_SETTING);
-        TtsSetting setting = JsonUtil.fromJson(ttsSetting, TtsSetting.class);
-        if (null == setting) {
-            log.error("TTS setting not found or invalid json: {}", ttsSetting);
-            return false;
-        }
-        String modelName = setting.getModelName();
-        AiModel aiModel = aiModelService.getByNameOrThrow(modelName);
-        if (null == aiModel) {
-            log.error("Model {} not found in db", modelName);
-            return false;
-        }
-        AudioConfig.Voice configVoice = audioConfig.getVoice();
-        if (!aiModel.getPlatform().equals(configVoice.getPlatform())) {
-            log.error("Model {} platform {} not match voice {} platform {}", modelName, aiModel.getPlatform(), configVoice.getParamName(), configVoice.getPlatform());
-            return false;
-        }
-        JsonNode modelVoices = aiModel.getProperties().get("voices");
-        if (null == modelVoices || !modelVoices.isArray()) {
-            log.error("Voices not found or not array in model {}, properties: {}", modelName, aiModel.getProperties());
-            return false;
-        }
-        boolean found = false;
-        for (int i = 0; i < modelVoices.size(); i++) {
-            JsonNode modelVoice = modelVoices.get(i);
-            if (modelVoice.get("name").asText().equals(configVoice.getParamName())) {
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            log.error("Voice {} not support in model {}, available voices: {}", configVoice.getParamName(), modelName, modelVoices);
-            return false;
-        }
-        return true;
-    }
-
-
-    /**
      * 组装MCP信息
      *
      * @param conversation 对话信息
