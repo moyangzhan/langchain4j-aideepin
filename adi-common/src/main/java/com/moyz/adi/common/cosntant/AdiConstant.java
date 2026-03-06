@@ -131,6 +131,7 @@ public class AdiConstant {
         public static final String ENGINE_NAME = "engine_name";
         public static final String SEARCH_UUID = "search_uuid";
         public static final String CONVERSATION_ID = "conv_id";
+        public static final String CONVERSATION_MSG_ID = "conv_msg_id";
 
         public static final String TEXT = "text";
     }

@@ -5,6 +5,7 @@ import com.moyz.adi.common.dto.RefEmbeddingDto;
 import com.moyz.adi.common.dto.RefGraphDto;
 import com.moyz.adi.common.service.ConversationMessageRefEmbeddingService;
 import com.moyz.adi.common.service.ConversationMessageRefGraphService;
+import com.moyz.adi.common.service.ConversationMessageRefMemoryEmbeddingService;
 import com.moyz.adi.common.service.ConversationMessageService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.Resource;
@@ -27,6 +28,9 @@ public class ConversationMessageController {
     private ConversationMessageRefEmbeddingService conversationMessageRefEmbeddingService;
 
     @Resource
+    private ConversationMessageRefMemoryEmbeddingService conversationMessageRefMemoryEmbeddingService;
+
+    @Resource
     private ConversationMessageRefGraphService conversationMessageRefGraphService;
 
     @Operation(summary = "发送一个prompt给模型")
@@ -41,9 +45,14 @@ public class ConversationMessageController {
         return conversationMessageService.getTextByAudioUuid(audioUuid);
     }
 
-    @GetMapping("/embedding-ref/{uuid}")
+    @GetMapping("/knowledge-embedding-ref/{uuid}")
     public List<RefEmbeddingDto> embeddingRef(@PathVariable String uuid) {
         return conversationMessageRefEmbeddingService.listRefEmbeddings(uuid);
+    }
+
+    @GetMapping("/memory-embedding-ref/{msgUuid}")
+    public List<RefEmbeddingDto> memoryEmbeddingRef(@PathVariable String msgUuid) {
+        return conversationMessageRefMemoryEmbeddingService.listRefEmbeddings(msgUuid);
     }
 
     @GetMapping("/graph-ref/{uuid}")

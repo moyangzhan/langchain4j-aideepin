@@ -17,7 +17,7 @@ import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.rag.*;
-import com.moyz.adi.common.service.embedding.IEmbeddingService;
+import com.moyz.adi.common.service.embedding.IKnowledgeEmbeddingService;
 import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.vo.*;
 import dev.langchain4j.data.document.Document;
@@ -89,7 +89,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     private AiModelService aiModelService;
 
     @Resource
-    private IEmbeddingService embeddingService;
+    private IKnowledgeEmbeddingService embeddingService;
 
     public KnowledgeBase saveOrUpdate(KbEditReq kbEditReq) {
         KnowledgeBase knowledgeBase = new KnowledgeBase();

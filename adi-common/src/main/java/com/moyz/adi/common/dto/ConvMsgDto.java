@@ -63,4 +63,7 @@ public class ConvMsgDto {
 
     @Schema(title = "是否引用了图谱库知识")
     private Boolean isRefGraph;
+
+    @Schema(title = "是否引用了记忆")
+    private Boolean isRefMemoryEmbedding;
 }

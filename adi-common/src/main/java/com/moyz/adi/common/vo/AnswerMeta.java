@@ -10,6 +10,10 @@ import lombok.Data;
 public class AnswerMeta {
     private Integer tokens;
     private String uuid;
-    private Boolean isRefEmbedding;
-    private Boolean isRefGraph;
+    @Builder.Default
+    private Boolean isRefEmbedding = false;
+    @Builder.Default
+    private Boolean isRefGraph = false;
+    @Builder.Default
+    private Boolean isRefMemoryEmbedding = false;
 }

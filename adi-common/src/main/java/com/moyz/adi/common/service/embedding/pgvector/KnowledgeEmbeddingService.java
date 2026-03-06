@@ -1,4 +1,4 @@
-package com.moyz.adi.common.service.embedding;
+package com.moyz.adi.common.service.embedding.pgvector;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.moyz.adi.common.dto.KbItemEmbeddingDto;
 import com.moyz.adi.common.entity.KnowledgeBaseEmbedding;
 import com.moyz.adi.common.mapper.KnowledgeBaseEmbeddingMapper;
+import com.moyz.adi.common.service.embedding.IKnowledgeEmbeddingService;
 import com.moyz.adi.common.util.AdiPropertiesUtil;
 import com.moyz.adi.common.util.MPPageUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +19,7 @@ import java.util.UUID;
 @Slf4j
 @Service
 @ConditionalOnProperty(value = "adi.vector-database", havingValue = "pgvector")
-public class KnowledgeBaseEmbeddingService extends ServiceImpl<KnowledgeBaseEmbeddingMapper, KnowledgeBaseEmbedding> implements IEmbeddingService {
+public class KnowledgeEmbeddingService extends ServiceImpl<KnowledgeBaseEmbeddingMapper, KnowledgeBaseEmbedding> implements IKnowledgeEmbeddingService {
 
     @Override
     public List<KbItemEmbeddingDto> listByEmbeddingIds(List<String> embeddingIds) {

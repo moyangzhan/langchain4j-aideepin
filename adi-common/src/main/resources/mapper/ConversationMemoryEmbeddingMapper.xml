@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.moyz.adi.common.mapper.KnowledgeBaseEmbeddingMapper">
+<mapper namespace="com.moyz.adi.common.mapper.ConversationMemoryEmbeddingMapper">
 
-    <select id="selectByItemUuid" resultType="com.moyz.adi.common.entity.KnowledgeBaseEmbedding">
+    <select id="countByConvId" resultType="java.lang.Integer">
+        select count(1)
+        from
+        <include refid="getTableName"/>
+        where metadata ->> 'conv_id' = #{convId}
+    </select>
+
+    <select id="selectByMsgId" resultType="com.moyz.adi.common.entity.ConversationMemoryEmbedding">
         select *
         from <include refid="getTableName"/>
-        where metadata ->> 'kb_item_uuid' = #{kbItemUuid}
+        where metadata ->> 'conv_msg_id' = #{msgId}
     </select>
 
     <delete id="deleteByIds">
@@ -17,19 +24,17 @@
         </foreach>
     </delete>
 
-    <delete id="deleteByItemUuid">
-        delete
-        from
-        <include refid="getTableName"/>
-        where metadata ->> 'kb_item_uuid' = #{kbItemUuid}
+    <delete id="deleteByMsgId">
+        delete from <include refid="getTableName"/>
+        where metadata ->> 'conv_msg_id' = #{msgId}
     </delete>
 
     <sql id="getTableName">
         <if test="tableSuffix != null and tableSuffix != ''">
-            adi_knowledge_base_embedding_${tableSuffix}
+            adi_conversation_embedding_${tableSuffix}
         </if>
         <if test="tableSuffix == null or tableSuffix == ''">
-            adi_knowledge_base_embedding
+            adi_conversation_embedding
         </if>
     </sql>
 </mapper>

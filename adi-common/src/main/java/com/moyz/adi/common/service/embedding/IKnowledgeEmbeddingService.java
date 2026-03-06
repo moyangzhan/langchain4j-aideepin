@@ -2,11 +2,10 @@ package com.moyz.adi.common.service.embedding;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.dto.KbItemEmbeddingDto;
-import com.moyz.adi.common.dto.RefEmbeddingDto;
 
 import java.util.List;
 
-public interface IEmbeddingService {
+public interface IKnowledgeEmbeddingService {
     List<KbItemEmbeddingDto> listByEmbeddingIds(List<String> embeddingIds);
 
     Page<KbItemEmbeddingDto> listByItemUuid(String kbItemUuid, int currentPage, int pageSize);

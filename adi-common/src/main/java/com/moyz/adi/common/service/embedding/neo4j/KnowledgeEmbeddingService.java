@@ -1,9 +1,10 @@
-package com.moyz.adi.common.service.embedding;
+package com.moyz.adi.common.service.embedding.neo4j;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.KbItemEmbeddingDto;
 import com.moyz.adi.common.rag.neo4j.AdiNeo4jEmbeddingStore;
+import com.moyz.adi.common.service.embedding.IKnowledgeEmbeddingService;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
@@ -11,6 +12,7 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
@@ -21,9 +23,10 @@ import java.util.List;
 @Slf4j
 @Service
 @ConditionalOnProperty(value = "adi.vector-database", havingValue = "neo4j")
-public class Neo4jKnowledgeEmbeddingService implements IEmbeddingService {
+public class KnowledgeEmbeddingService implements IKnowledgeEmbeddingService {
 
     @Resource
+    @Qualifier("kbEmbeddingStore")
     private EmbeddingStore<TextSegment> embeddingStore;
 
     @Override

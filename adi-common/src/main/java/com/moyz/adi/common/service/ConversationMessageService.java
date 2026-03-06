@@ -84,6 +84,9 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
     private ConversationMessageRefGraphService conversationMessageRefGraphService;
 
     @Resource
+    private ConversationMessageRefMemoryEmbeddingService conversationMessageRefMemoryEmbeddingService;
+
+    @Resource
     private UserMcpService userMcpService;
 
     @Resource
@@ -243,20 +246,25 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             }
             boolean isRefEmbedding = false;
             boolean isRefGraph = false;
+            boolean isRefMemoryEmbedding = false;
             for (RetrieverWrapper wrapper : retrieverWrappers) {
-                //TODO... 记忆相关的引用也要存储到数据库
-                if (!RetrieveContentFrom.KNOWLEDGE_BASE.equals(wrapper.getContentFrom())) {
-                    continue;
-                }
-                if (wrapper.getRetriever() instanceof AdiEmbeddingStoreContentRetriever embeddingStoreContentRetriever) {
-                    isRefEmbedding = !embeddingStoreContentRetriever.getRetrievedEmbeddingToScore().isEmpty();
-                } else if (wrapper.getRetriever() instanceof GraphStoreContentRetriever graphStoreContentRetriever) {
-                    RefGraphDto graphDto = graphStoreContentRetriever.getGraphRef();
-                    isRefGraph = !graphDto.getVertices().isEmpty() || !graphDto.getEdges().isEmpty();
+                if (RetrieveContentFrom.KNOWLEDGE_BASE.equals(wrapper.getContentFrom())) {
+                    if (wrapper.getRetriever() instanceof AdiEmbeddingStoreContentRetriever embeddingStoreContentRetriever) {
+                        isRefEmbedding = !embeddingStoreContentRetriever.getRetrievedEmbeddingToScore().isEmpty();
+                    } else if (wrapper.getRetriever() instanceof GraphStoreContentRetriever graphStoreContentRetriever) {
+                        RefGraphDto graphDto = graphStoreContentRetriever.getGraphRef();
+                        isRefGraph = !graphDto.getVertices().isEmpty() || !graphDto.getEdges().isEmpty();
+                    }
+                } else if (RetrieveContentFrom.CONV_MEMORY.equals(wrapper.getContentFrom())) {
+                    //目前记忆相关内容只使用向量存储，后续如果增加了其他类型的记忆存储，也可以在这里增加判断
+                    if (wrapper.getRetriever() instanceof AdiEmbeddingStoreContentRetriever embeddingStoreContentRetriever) {
+                        isRefMemoryEmbedding = !embeddingStoreContentRetriever.getRetrievedEmbeddingToScore().isEmpty();
+                    }
                 }
             }
             answerMeta.setIsRefEmbedding(isRefEmbedding);
             answerMeta.setIsRefGraph(isRefGraph);
+            answerMeta.setIsRefMemoryEmbedding(isRefMemoryEmbedding);
             sseEmitterHelper.sendComplete(user.getId(), sseEmitter, questionMeta, answerMeta, audioInfo);
             self.saveAfterAiResponse(user, askReq, retrieverWrappers, response, questionMeta, answerMeta, audioInfo);
         });
@@ -368,6 +376,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                 .oneOpt()
                 .orElseGet(() -> conversationService.createByFirstMessage(user.getId(), convUuid, prompt));
         AiModel aiModel = LLMContext.getAiModel(modelPlatform, modelName);
+
         //Check if regenerate question
         ConversationMessage promptMsg;
         if (StringUtils.isNotBlank(askReq.getRegenerateQuestionUuid())) {
@@ -391,6 +400,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             baseMapper.insert(question);
 
             promptMsg = this.lambdaQuery().eq(ConversationMessage::getUuid, questionMeta.getUuid()).one();
+
         }
 
         //save response message
@@ -411,6 +421,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         aiAnswer.setAiModelId(aiModel.getId());
         aiAnswer.setIsRefEmbedding(answerMeta.getIsRefEmbedding());
         aiAnswer.setIsRefGraph(answerMeta.getIsRefGraph());
+        aiAnswer.setIsRefMemoryEmbedding(answerMeta.getIsRefMemoryEmbedding());
         int answerContentType = getAnswerContentType(conversation, askReq);
         aiAnswer.setContentType(answerContentType);
         baseMapper.insert(aiAnswer);
@@ -487,16 +498,19 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         if (CollectionUtils.isEmpty(wrappers)) {
             return;
         }
-        //TODO... 记忆相关的引用也要存储到数据库
         for (RetrieverWrapper wrapper : wrappers) {
-            if (!RetrieveContentFrom.KNOWLEDGE_BASE.equals(wrapper.getContentFrom())) {
-                continue;
+            if (RetrieveContentFrom.KNOWLEDGE_BASE.equals(wrapper.getContentFrom())) {
+                if (wrapper.getRetriever() instanceof AdiEmbeddingStoreContentRetriever embeddingRetriever) {
+                    self.createEmbeddingRefs(user, msgId, embeddingRetriever.getRetrievedEmbeddingToScore());
+                } else if (wrapper.getRetriever() instanceof GraphStoreContentRetriever graphRetriever) {
+                    self.createGraphRefs(user, msgId, graphRetriever.getGraphRef());
+                }
+            } else if (RetrieveContentFrom.CONV_MEMORY.equals(wrapper.getContentFrom())) {
+                if (wrapper.getRetriever() instanceof AdiEmbeddingStoreContentRetriever knowledgeBaseRetriever) {
+                    self.createMemoryRefs(user, msgId, knowledgeBaseRetriever.getRetrievedEmbeddingToScore());
+                }
             }
-            if (wrapper.getRetriever() instanceof AdiEmbeddingStoreContentRetriever embeddingRetriever) {
-                self.createEmbeddingRefs(user, msgId, embeddingRetriever.getRetrievedEmbeddingToScore());
-            } else if (wrapper.getRetriever() instanceof GraphStoreContentRetriever graphRetriever) {
-                self.createGraphRefs(user, msgId, graphRetriever.getGraphRef());
-            }
+
         }
     }
 
@@ -517,6 +531,19 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             recordReference.setScore(embeddingToScore.get(embeddingId));
             recordReference.setUserId(user.getId());
             conversationMessageRefEmbeddingService.save(recordReference);
+        }
+    }
+
+    public void createMemoryRefs(User user, Long messageId, Map<String, Double> embeddingToScore) {
+        log.info("创建记忆向量引用,userId:{},qaRecordId:{},embeddingToScore.size:{}", user.getId(), messageId, embeddingToScore.size());
+        for (Map.Entry<String, Double> entry : embeddingToScore.entrySet()) {
+            String embeddingId = entry.getKey();
+            ConversationMessageRefMemoryEmbedding refEmb = new ConversationMessageRefMemoryEmbedding();
+            refEmb.setMessageId(messageId);
+            refEmb.setEmbeddingId(embeddingId);
+            refEmb.setScore(embeddingToScore.get(embeddingId));
+            refEmb.setUserId(user.getId());
+            conversationMessageRefMemoryEmbeddingService.save(refEmb);
         }
     }
 

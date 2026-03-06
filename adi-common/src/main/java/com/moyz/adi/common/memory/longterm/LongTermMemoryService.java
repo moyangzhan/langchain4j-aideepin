@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CONVERSATION_ID;
+import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CONVERSATION_MSG_ID;
 import static com.moyz.adi.common.cosntant.AdiConstant.RESPONSE_FORMAT_TYPE_JSON_OBJECT;
 
 /**

@@ -284,7 +284,7 @@ public class SSEEmitterHelper {
         LLMTokenUtil.cacheTokenUsage(SpringUtil.getBean(StringRedisTemplate.class), uuid, response.metadata().tokenUsage());
 
         PromptMeta questionMeta = new PromptMeta(inputTokenCount, uuid);
-        AnswerMeta answerMeta = new AnswerMeta(outputTokenCount, UuidUtil.createShort(), false, false);
+        AnswerMeta answerMeta = AnswerMeta.builder().tokens(outputTokenCount).uuid(UuidUtil.createShort()).build();
         return Pair.of(questionMeta, answerMeta);
     }
 

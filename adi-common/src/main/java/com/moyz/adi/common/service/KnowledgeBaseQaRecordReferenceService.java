@@ -5,7 +5,7 @@ import com.moyz.adi.common.dto.KbItemEmbeddingDto;
 import com.moyz.adi.common.dto.RefEmbeddingDto;
 import com.moyz.adi.common.entity.KnowledgeBaseQaRefEmbedding;
 import com.moyz.adi.common.mapper.KnowledgeBaseQaRecordReferenceMapper;
-import com.moyz.adi.common.service.embedding.IEmbeddingService;
+import com.moyz.adi.common.service.embedding.IKnowledgeEmbeddingService;
 import com.moyz.adi.common.util.EmbeddingUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +20,7 @@ import java.util.List;
 public class KnowledgeBaseQaRecordReferenceService extends ServiceImpl<KnowledgeBaseQaRecordReferenceMapper, KnowledgeBaseQaRefEmbedding> {
 
     @Resource
-    private IEmbeddingService iEmbeddingService;
+    private IKnowledgeEmbeddingService iKnowledgeEmbeddingService;
 
     public List<RefEmbeddingDto> listRefEmbeddings(String aqRecordUuid) {
         List<KnowledgeBaseQaRefEmbedding> recordReferences = this.getBaseMapper().listByQaUuid(aqRecordUuid);
@@ -31,7 +31,7 @@ public class KnowledgeBaseQaRecordReferenceService extends ServiceImpl<Knowledge
         if (CollectionUtils.isEmpty(embeddingIds)) {
             return Collections.emptyList();
         }
-        List<KbItemEmbeddingDto> embeddings = iEmbeddingService.listByEmbeddingIds(embeddingIds);
+        List<KbItemEmbeddingDto> embeddings = iKnowledgeEmbeddingService.listByEmbeddingIds(embeddingIds);
         return EmbeddingUtil.itemToRefEmbeddingDto(embeddings);
     }
 }

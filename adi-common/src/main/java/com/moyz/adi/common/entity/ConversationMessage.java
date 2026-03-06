@@ -92,4 +92,8 @@ public class ConversationMessage extends BaseEntity {
     @TableField(value = "is_ref_graph")
     private Boolean isRefGraph;
 
+    @Schema(title = "是否引用记忆向量库")
+    @TableField(value = "is_ref_memory_embedding")
+    private Boolean isRefMemoryEmbedding;
+
 }

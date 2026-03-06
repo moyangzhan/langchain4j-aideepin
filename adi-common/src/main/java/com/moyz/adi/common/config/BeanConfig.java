@@ -114,7 +114,7 @@ public class BeanConfig {
         // 动态表名
         DynamicTableNameInnerInterceptor dynamicTableNameInnerInterceptor = new DynamicTableNameInnerInterceptor();
         dynamicTableNameInnerInterceptor.setTableNameHandler(
-                new EmbeddingTableNameHandler("adi_knowledge_base_embedding", "adi_ai_search_embedding")
+                new EmbeddingTableNameHandler("adi_knowledge_base_embedding", "adi_ai_search_embedding", "adi_conversation_memory_embedding")
         );
         interceptor.addInnerInterceptor(dynamicTableNameInnerInterceptor);
 
