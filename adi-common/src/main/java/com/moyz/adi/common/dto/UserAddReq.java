@@ -14,4 +14,18 @@ public class UserAddReq {
 
     @NotBlank
     String password;
+
+    private Integer quotaByTokenDaily;
+
+    private Integer quotaByTokenMonthly;
+
+    private Integer quotaByRequestDaily;
+
+    private Integer quotaByRequestMonthly;
+
+    private Integer quotaByImageDaily;
+
+    private Integer quotaByImageMonthly;
+
+    private Boolean isAdmin;
 }

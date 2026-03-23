@@ -547,6 +547,28 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         newOne.setPassword(hashed);
         newOne.setUserStatus(UserStatusEnum.NORMAL);
         newOne.setActiveTime(LocalDateTime.now());
+        // 设置配额字段
+        if (addUserReq.getQuotaByTokenDaily() != null) {
+            newOne.setQuotaByTokenDaily(addUserReq.getQuotaByTokenDaily());
+        }
+        if (addUserReq.getQuotaByTokenMonthly() != null) {
+            newOne.setQuotaByTokenMonthly(addUserReq.getQuotaByTokenMonthly());
+        }
+        if (addUserReq.getQuotaByRequestDaily() != null) {
+            newOne.setQuotaByRequestDaily(addUserReq.getQuotaByRequestDaily());
+        }
+        if (addUserReq.getQuotaByRequestMonthly() != null) {
+            newOne.setQuotaByRequestMonthly(addUserReq.getQuotaByRequestMonthly());
+        }
+        if (addUserReq.getQuotaByImageDaily() != null) {
+            newOne.setQuotaByImageDaily(addUserReq.getQuotaByImageDaily());
+        }
+        if (addUserReq.getQuotaByImageMonthly() != null) {
+            newOne.setQuotaByImageMonthly(addUserReq.getQuotaByImageMonthly());
+        }
+        if (addUserReq.getIsAdmin() != null) {
+            newOne.setIsAdmin(addUserReq.getIsAdmin());
+        }
         baseMapper.insert(newOne);
 
         UserInfoDto result = new UserInfoDto();

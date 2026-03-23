@@ -1,5 +1,6 @@
 package com.moyz.adi.common.dto;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.interfaces.AiModelAddGroup;
 import com.moyz.adi.common.interfaces.AiModelEditGroup;
 import jakarta.validation.constraints.NotBlank;
@@ -49,6 +50,8 @@ public class AiModelDto {
     private String responseFormatTypes;
 
     private Boolean isSupportWebSearch;
+
+    private ObjectNode properties;
 
     private LocalDateTime createTime;
 

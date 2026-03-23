@@ -46,6 +46,8 @@ public class McpAddOrEditReq {
 
     private String repoUrl;
 
+    private String website;
+
     private String remark;
 
     private Boolean isEnable;
