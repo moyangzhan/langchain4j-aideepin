@@ -65,6 +65,7 @@ Frontend projects:
 | Ollama         | ✓    |                  |    |                 |          |          |         |                               |
 | DeepSeek       | ✓    |                  |     |                 |          |          |         |                               |
 | Qianfan        | ✓    |                  |     |                 |          |          |         |                               |
+| MiniMax        | ✓    |                  |     |                 |          |          |         |                               |
 
 ## Tech Stack
 
@@ -120,6 +121,9 @@ Frontend tech stack:
   
       -- Ollama configuration
       update adi_model_platform set base_url = 'my_ollama_base_url' where name = 'ollama';
+
+      -- MiniMax configuration
+      update adi_model_platform set api_key = 'my_minimax_api_key' where name = 'minimax';
       ```
     * Enable model platform models or add new models
       ```
@@ -131,6 +135,7 @@ Frontend tech stack:
       update adi_ai_model set is_enable = true where name = 'THUDM/GLM-Z1-9B-0414';
       update adi_ai_model set is_enable = true where name = 'ernie_speed';
       update adi_ai_model set is_enable = true where name = 'tinydolphin';
+      update adi_ai_model set is_enable = true where name = 'MiniMax-M2.7';
   
       -- Add new model
       INSERT INTO adi_ai_model (name, type, platform, is_enable) VALUES ('vicuna', 'text', 'ollama', true);

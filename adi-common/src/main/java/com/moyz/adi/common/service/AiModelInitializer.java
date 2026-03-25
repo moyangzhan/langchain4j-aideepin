@@ -101,6 +101,9 @@ public class AiModelInitializer {
 
         // 硅基流动
         initLLMService(AdiConstant.ModelPlatform.SILICONFLOW, modelType, model -> new SiliconflowLLMService(model, nameToPlatform.get(AdiConstant.ModelPlatform.SILICONFLOW)));
+
+        // MiniMax
+        initLLMService(AdiConstant.ModelPlatform.MINIMAX, modelType, model -> new MinimaxLLMService(model, nameToPlatform.get(AdiConstant.ModelPlatform.MINIMAX)).setProxyAddress(proxyAddress));
     }
 
     /**
