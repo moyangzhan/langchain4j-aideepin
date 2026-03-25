@@ -1057,6 +1057,8 @@ insert into adi_model_platform (name, title, base_url)
 values ('ollama', 'ollama', 'http://localhost:11434');
 insert into adi_model_platform (name, title, base_url)
 values ('qianfan', '千帆', '');
+insert into adi_model_platform (name, title, base_url)
+values ('minimax', 'MiniMax', 'https://api.minimax.io/v1');
 
 -- 硅基流动的文本模型的api兼容 openai api，本行数据用来测试动态创建的模型平台及模型是否正常使用了 OpenAiCompatibleLLMService 进行请求
 insert into adi_model_platform (name, title, base_url, is_openai_api_compatible)
@@ -1560,6 +1562,17 @@ INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input
                           setting)
 VALUES ('ERNIE-Speed-128K', 'ernie_speed', 'text', 'qianfan', 131072, 126976, 4096, true, false,
         '{"endpoint":"ernie-speed-128k"}');
+-- https://platform.minimaxi.com/document/models
+INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens,
+                          response_format_types, is_enable)
+VALUES ('MiniMax-M2.7', 'MiniMax-M2.7', 'text', 'minimax', 1000000, 900000, 100000, 'text,json_object', false);
+INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens,
+                          response_format_types, is_enable)
+VALUES ('MiniMax-M2.5', 'MiniMax-M2.5', 'text', 'minimax', 1000000, 900000, 100000, 'text,json_object', false);
+INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens,
+                          response_format_types, remark, is_enable)
+VALUES ('MiniMax-M2.5-highspeed', 'MiniMax-M2.5-highspeed', 'text', 'minimax', 204000, 180000, 24000, 'text,json_object',
+        '高速版本，适合低延迟场景 | High-speed version, suitable for low-latency scenarios', false);
 INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
 VALUES ('tinydolphin', 'ollama-tinydolphin', 'text', 'ollama', false);
 INSERT INTO adi_ai_model (name, title, type, platform, response_format_types, remark, is_free, is_enable)
