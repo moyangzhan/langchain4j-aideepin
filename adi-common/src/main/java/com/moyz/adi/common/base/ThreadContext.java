@@ -36,7 +36,7 @@ public class ThreadContext {
         return StringUtils.isNotBlank(currentToken.get());
     }
 
-    public void unload() {
+    public static void unload() {
         currentUser.remove();
         currentToken.remove();
     }

@@ -1,8 +1,9 @@
 server:
   port: 9999
   context-path: /
-  session:
-    timeout: 28800
+  servlet:
+    session:
+      timeout: 28800s
   tomcat:
     uri-encoding: UTF-8
 
@@ -48,12 +49,11 @@ mybatis-plus:
   # 支持统配符 * 或者 ; 分割
   mapper-locations: classpath*:/mapper/*.xml
   configuration:
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
     map-underscore-to-camel-case: true
 
 logging:
   file:
-    name: /data/aideepin/logs
+    name: /data/aideepin/logs/app.log
 
 adi:
   host: aideepin.com

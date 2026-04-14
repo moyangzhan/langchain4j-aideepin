@@ -391,7 +391,7 @@ public class Neo4jGraphStore implements GraphStore {
             String cypherQuery = Renderer.getDefaultRenderer().render(statement);
             log.info("updateEdge prepareSql:{}", cypherQuery);
             Map<String, Object> params = new HashMap<>();
-            params.put("weight", newData.getTextSegmentId());
+            params.put("weight", newData.getWeight());
             params.put("text_segment_id", newData.getTextSegmentId());
             params.put("description", newData.getDescription());
             List<Record> records = session.executeWrite(tx -> tx.run(cypherQuery, params).list());
@@ -422,12 +422,12 @@ public class Neo4jGraphStore implements GraphStore {
             if (includeEdges) {
                 statement = match(sourceNode)
                         .where(sourceCondition)
-                        .delete(sourceNode)
+                        .detachDelete(sourceNode)
                         .build();
             } else {
                 statement = match(sourceNode)
                         .where(sourceCondition)
-                        .detachDelete(sourceNode)
+                        .delete(sourceNode)
                         .build();
             }
             String cypherQuery = Renderer.getDefaultRenderer().render(statement);

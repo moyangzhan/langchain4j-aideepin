@@ -168,8 +168,6 @@ public class AdiConstant {
         public static final String TTS_SETTING = "tts_setting";
     }
 
-    public static final int tts_ = 1;
-
     public static final String[] POI_DOC_TYPES = {"doc", "docx", "ppt", "pptx", "xls", "xlsx"};
 
 

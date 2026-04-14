@@ -107,7 +107,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         if (StringUtils.isBlank(captchaInCache) || !captchaInCache.equalsIgnoreCase(captcha)) {
             throw new BaseException(A_LOGIN_CAPTCHA_ERROR);
         }
-        stringRedisTemplate.delete(captchaInCache);
+        stringRedisTemplate.delete(captchaIdKey);
 
         User user = ChainWrappers.lambdaQueryChain(baseMapper).eq(User::getIsDeleted, false).eq(User::getEmail, email).one();
         if (null != user && user.getUserStatus() == UserStatusEnum.NORMAL) {
