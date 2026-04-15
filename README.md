@@ -225,14 +225,6 @@ ps: neo4j 与 pgvector + apache age 二选一即可
 **工作流：**
 ![workflow_01](image/README/workflow.png)
 
-## 技术交流
-
-* 先点赞🌟再加群，谢谢
-* 有问题尽量在issue提，容易描述及跟踪处理
-* 业余时间维护本项目，时间有限，所以群里提问不保证即时回复，请见谅
-
-![qq](image/README/qq.png)
-
 ## 推荐项目
 [Mango Desk](https://github.com/moyangzhan/mango-desk) 
 
