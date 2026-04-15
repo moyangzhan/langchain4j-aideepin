@@ -39,9 +39,10 @@ public class DrawCommentService extends ServiceImpl<DrawCommentMapper, DrawComme
     public DrawCommentDto add(User user, Draw draw, String remark) {
 
         String redisKey = MessageFormat.format(DRAW_COMMENT_LIMIT_KEY, user.getId());
-        if (!redisTemplateUtil.lock(redisKey, UuidUtil.createShort(), 5)) {
+        if (!redisTemplateUtil.lock(redisKey, "", 5)) {
             throw new BaseException(A_OPT_TOO_FREQUENTLY);
         }
+        // 不主动解锁，依赖 Redis TTL 自然过期实现 5 秒限流
         String uuid = UuidUtil.createShort();
         DrawComment newObj = new DrawComment();
         newObj.setUuid(uuid);

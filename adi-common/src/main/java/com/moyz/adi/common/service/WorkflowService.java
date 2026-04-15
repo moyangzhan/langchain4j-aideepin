@@ -81,10 +81,18 @@ public class WorkflowService extends ServiceImpl<WorkflowMapper, Workflow> {
     @Transactional
     public WorkflowResp copy(String wfUuid) {
         String redisKey = MessageFormat.format(RedisKeyConstant.WORKFLOW_COPY_DOING, ThreadContext.getCurrentUserId());
-        if (!redisTemplateUtil.lock(redisKey, UuidUtil.createShort(), 10)) {
+        String clientId = UuidUtil.createShort();
+        if (!redisTemplateUtil.lock(redisKey, clientId, 10)) {
             throw new BaseException(A_OPT_TOO_FREQUENTLY);
         }
+        try {
+            return doCopy(wfUuid);
+        } finally {
+            redisTemplateUtil.unlock(redisKey, clientId);
+        }
+    }
 
+    private WorkflowResp doCopy(String wfUuid) {
         Workflow sourceWorkflow = getOrThrow(wfUuid);
         Workflow newWorkflow = new Workflow();
         newWorkflow.setUuid(UuidUtil.createShort());
