@@ -32,7 +32,7 @@ public class McpController {
     }
 
     @Operation(summary = "MCP列表")
-    @GetMapping(value = "/public/list")
+    @PostMapping(value = "/public/list")
     public List<Mcp> list(@RequestBody McpListReq mcpListReq) {
         if (CollectionUtils.isEmpty(mcpListReq.getIds())) {
             return List.of();

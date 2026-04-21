@@ -280,6 +280,14 @@ public class SearchService {
             if (StringUtils.isBlank(url) || !url.startsWith("http")) {
                 return result;
             }
+            java.net.URL parsedUrl = new java.net.URL(url);
+            String host = parsedUrl.getHost();
+            java.net.InetAddress address = java.net.InetAddress.getByName(host);
+            if (address.isLoopbackAddress() || address.isSiteLocalAddress()
+                    || address.isLinkLocalAddress() || address.isAnyLocalAddress()) {
+                log.warn("Blocked SSRF attempt to internal address: {}", url);
+                return result;
+            }
             org.jsoup.nodes.Document doc = Jsoup.connect(url).ignoreContentType(true).get();
             if (!doc.getElementsByTag("main").isEmpty()) {
                 result = doc.getElementsByTag("main").get(0).html();

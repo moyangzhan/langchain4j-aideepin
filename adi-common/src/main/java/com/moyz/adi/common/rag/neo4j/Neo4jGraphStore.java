@@ -1,6 +1,5 @@
 package com.moyz.adi.common.rag.neo4j;
 
-import com.google.common.base.Joiner;
 import com.moyz.adi.common.rag.GraphStore;
 import com.moyz.adi.common.util.AdiStringUtil;
 import com.moyz.adi.common.vo.*;
@@ -66,6 +65,9 @@ public class Neo4jGraphStore implements GraphStore {
         this.port = ensureGreaterThanZero(port, "port");
         this.user = ensureNotBlank(user, "user");
         this.password = ensureNotBlank(password, "password");
+        if (!graphName.matches("^[a-zA-Z0-9_]+$")) {
+            throw new IllegalArgumentException("graphName must contain only alphanumeric characters and underscores");
+        }
         this.graphName = graphName;
         driver = GraphDatabase.driver("neo4j://" + this.host + ":" + this.port, AuthTokens.basic(this.user, this.password));
         neo4jGraph = new Neo4jGraph(driver, null, null);
@@ -175,14 +177,16 @@ public class Neo4jGraphStore implements GraphStore {
 
     @Override
     public List<GraphVertex> getVertices(List<String> ids) {
-        String query = """
+        try (Session session = driver.session()) {
+            String query = """
                     match (v:%s)
-                    where elementId(v) in [%s]
+                    where elementId(v) in $ids
                     return v
-                """.formatted(graphName, Joiner.on(",").join(ids));
-        List<Record> records = neo4jGraph.executeRead(query);
-        log.info("getVertices query:{}", query);
-        return getVerticesFromResultSet(records);
+                    """.formatted(graphName);
+            log.info("getVertices query:{}", query);
+            List<Record> records = session.executeRead(tx -> tx.run(query, Map.of("ids", ids)).list());
+            return getVerticesFromResultSet(records);
+        }
     }
 
     @Override
@@ -215,14 +219,16 @@ public class Neo4jGraphStore implements GraphStore {
 
     @Override
     public List<Triple<GraphVertex, GraphEdge, GraphVertex>> getEdges(List<String> ids) {
-        String query = """
+        try (Session session = driver.session()) {
+            String query = """
                     match (v1)-[e:%s]->(v2)
-                    where elementId(e) in [%s]
+                    where elementId(e) in $ids
                     return v1,e,v2
-                """.formatted(graphName, Joiner.on(",").join(ids));
-        log.info("getEdges query:{}", query);
-        List<Record> records = neo4jGraph.executeRead(query);
-        return getEdgesFromResultSet(records);
+                    """.formatted(graphName);
+            log.info("getEdges query:{}", query);
+            List<Record> records = session.executeRead(tx -> tx.run(query, Map.of("ids", ids)).list());
+            return getEdgesFromResultSet(records);
+        }
     }
 
     @Override
@@ -407,6 +413,7 @@ public class Neo4jGraphStore implements GraphStore {
      */
     public void deleteVertices(GraphSearchCondition filter, boolean includeEdges) {
         ensureNotNull(filter, "Data filter");
+        ensureNotEmpty(filter.getNames(), "Names");
         ensureNotNull(filter.getMetadataFilter(), "Metadata filter");
         try (Session session = driver.session()) {
 //            String prepareSql = """

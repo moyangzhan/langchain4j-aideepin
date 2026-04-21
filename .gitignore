@@ -32,3 +32,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Environment config ###
+application-dev.yml
+
+.claude

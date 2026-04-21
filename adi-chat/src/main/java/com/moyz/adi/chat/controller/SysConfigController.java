@@ -60,7 +60,11 @@ public class SysConfigController {
                 log.error("Synthesizer side is server, but model {} not found", tts.getModelName());
                 throw new BaseException(B_TTS_MODEL_NOT_FOUND);
             }
-            JsonNode modelVoices = aiModel.getProperties().get("voices");
+            JsonNode modelVoices = aiModel.getProperties() == null ? null : aiModel.getProperties().get("voices");
+            if (modelVoices == null || !modelVoices.isArray()) {
+                log.error("Synthesizer side is server, but voices not found in model {} properties", tts.getModelName());
+                throw new BaseException(B_TTS_MODEL_NOT_FOUND);
+            }
             for (JsonNode voice : modelVoices) {
                 voices.add(JsonUtil.fromJson(voice, ModelVoice.class));
             }

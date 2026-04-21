@@ -1,9 +1,9 @@
 spring:
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://127.0.0.1:5432/aideepin?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&tinyInt1isBit=false&allowMultiQueries=true
-    username: postgres
-    password: 123456
+    url: jdbc:postgresql://localhost:5432/postgres?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&tinyInt1isBit=false&allowMultiQueries=true
+    username: your-username
+    password: your-password
     hikari:
       connection-timeout: 10000
       validation-timeout: 3000
@@ -21,18 +21,14 @@ spring:
       database: 0
       lettuce:
         pool:
-          #连接池最大连接数
           max-active: 20
-          #连接池最大阻塞等待时间
           max-wait: -1
-          #连接池中的最大空闲连接
           max-idle: 5
-          #连接池中的最小空闲连接
           min-idle: 1
 
 logging:
   file:
-    path: D:/data/aideepin/logs
+    path: ./data/aideepin/logs
   level:
     com.baomidou.mybatisplus: DEBUG
 
@@ -63,10 +59,10 @@ adi:
       database: neo4j
 
 local:
-  files: D:/data/aideepin/files/
-  images: D:/data/aideepin/images/
-  watermark-images: D:/data/aideepin/mark-images/
-  thumbnails: D:/data/aideepin/thumbnails/
-  watermark-thumbnails: D:/data/aideepin/watermark-thumbnails/
-  tmp-images: D:/data/aideepin/tmp-images/
-  chat-memory: D:/data/aideepin/chat-memory/
+  files: ./data/aideepin/files/
+  images: ./data/aideepin/images/
+  watermark-images: ./data/aideepin/mark-images/
+  thumbnails: ./data/aideepin/thumbnails/
+  watermark-thumbnails: ./data/aideepin/watermark-thumbnails/
+  tmp-images: ./data/aideepin/tmp-images/
+  chat-memory: ./data/aideepin/chat-memory/

@@ -379,81 +379,86 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
         TokenEstimatorThreadLocal.setTokenEstimator(knowledgeBase.getIngestTokenEstimator());
 
-        int maxInputTokens = aiModel.getMaxInputTokens();
-        int maxResults = knowledgeBase.getRetrieveMaxResults();
-        //maxResults < 1 表示由系统根据设置的模型maxInputTokens自动计算大小
-        if (maxResults < 1) {
-            maxResults = EmbeddingRag.getRetrieveMaxResults(qaRecord.getQuestion(), maxInputTokens);
-        }
+        try {
+            int maxInputTokens = aiModel.getMaxInputTokens();
+            int maxResults = knowledgeBase.getRetrieveMaxResults();
+            //maxResults < 1 表示由系统根据设置的模型maxInputTokens自动计算大小
+            if (maxResults < 1) {
+                maxResults = EmbeddingRag.getRetrieveMaxResults(qaRecord.getQuestion(), maxInputTokens);
+            }
 
-        SseAskParams sseAskParams = new SseAskParams();
-        sseAskParams.setUuid(qaRecord.getUuid());
-        sseAskParams.setHttpRequestParams(
-                ChatModelRequestParams.builder()
-                        .memoryId(qaRecord.getKbUuid() + "_" + user.getUuid())
-                        .systemMessage(knowledgeBase.getQuerySystemMessage())
-                        .userMessage(qaRecord.getQuestion())
-                        .build()
-        );
-        sseAskParams.setModelProperties(
-                ChatModelBuilderProperties.builder()
-                        .temperature(knowledgeBase.getQueryLlmTemperature())
-                        .build()
-        );
-        sseAskParams.setSseEmitter(sseEmitter);
-        sseAskParams.setModelName(aiModel.getName());
-        sseAskParams.setUser(user);
-        if (maxResults == 0) {
-            log.info("用户问题过长，无需再召回文档，严格模式下直接返回异常提示,宽松模式下接着请求LLM");
-            if (Boolean.TRUE.equals(knowledgeBase.getIsStrict())) {
-                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "提问内容过长，最多不超过 " + maxInputTokens + " tokens");
-                TokenEstimatorThreadLocal.clearTokenEstimator();
+            SseAskParams sseAskParams = new SseAskParams();
+            sseAskParams.setUuid(qaRecord.getUuid());
+            sseAskParams.setHttpRequestParams(
+                    ChatModelRequestParams.builder()
+                            .memoryId(qaRecord.getKbUuid() + "_" + user.getUuid())
+                            .systemMessage(knowledgeBase.getQuerySystemMessage())
+                            .userMessage(qaRecord.getQuestion())
+                            .build()
+            );
+            sseAskParams.setModelProperties(
+                    ChatModelBuilderProperties.builder()
+                            .temperature(knowledgeBase.getQueryLlmTemperature())
+                            .build()
+            );
+            sseAskParams.setSseEmitter(sseEmitter);
+            sseAskParams.setModelName(aiModel.getName());
+            sseAskParams.setUser(user);
+            if (maxResults == 0) {
+                log.info("用户问题过长，无需再召回文档，严格模式下直接返回异常提示,宽松模式下接着请求LLM");
+                if (Boolean.TRUE.equals(knowledgeBase.getIsStrict())) {
+                    sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "提问内容过长，最多不超过 " + maxInputTokens + " tokens");
+                    TokenEstimatorThreadLocal.clearTokenEstimator();
+                } else {
+                    sseEmitterHelper.call(sseAskParams, (response, questionMeta, answerMeta) -> {
+                                sseEmitterHelper.sendComplete(user.getId(), sseEmitter);
+                                updateQaRecord(
+                                        UpdateQaParams.builder()
+                                                .user(user)
+                                                .qaRecord(qaRecord)
+                                                .retrievers(null)
+                                                .sseAskParams(sseAskParams)
+                                                .response(response.getContent())
+                                                .isTokenFree(aiModel.getIsFree())
+                                                .build());
+                                TokenEstimatorThreadLocal.clearTokenEstimator();
+                            }
+                    );
+                }
             } else {
-                sseEmitterHelper.call(sseAskParams, (response, questionMeta, answerMeta) -> {
-                            sseEmitterHelper.sendComplete(user.getId(), sseEmitter);
+                log.info("进行RAG请求,maxResults:{}", maxResults);
+                ChatModel chatModel = LLMContext.getServiceById(knowledgeBase.getIngestModelId(), true).buildChatLLM(
+                        ChatModelBuilderProperties.builder()
+                                .temperature(knowledgeBase.getQueryLlmTemperature())
+                                .build());
+                RetrieverCreateParam createParam = RetrieverCreateParam.builder()
+                        .chatModel(chatModel)
+                        .filter(new IsEqualTo(AdiConstant.MetadataKey.KB_UUID, qaRecord.getKbUuid()))
+                        .maxResults(maxResults)
+                        .minScore(knowledgeBase.getRetrieveMinScore())
+                        .breakIfSearchMissed(knowledgeBase.getIsStrict())
+                        .build();
+                CompositeRag compositeRag = new CompositeRag(KNOWLEDGE_BASE);
+                List<RetrieverWrapper> retrieverWrappers = compositeRag.createRetriever(createParam);
+                List<ContentRetriever> retrievers = retrieverWrappers.stream().map(RetrieverWrapper::getRetriever).toList();
+                compositeRag.ragChat(retrievers, sseAskParams, (response, promptMeta, answerMeta) -> {
+                            sseEmitterHelper.sendComplete(user.getId(), sseAskParams.getSseEmitter());
                             updateQaRecord(
                                     UpdateQaParams.builder()
                                             .user(user)
                                             .qaRecord(qaRecord)
-                                            .retrievers(null)
+                                            .retrievers(retrievers)
                                             .sseAskParams(sseAskParams)
-                                            .response(response.getContent())
+                                            .response(response)
                                             .isTokenFree(aiModel.getIsFree())
                                             .build());
                             TokenEstimatorThreadLocal.clearTokenEstimator();
                         }
                 );
             }
-        } else {
-            log.info("进行RAG请求,maxResults:{}", maxResults);
-            ChatModel chatModel = LLMContext.getServiceById(knowledgeBase.getIngestModelId(), true).buildChatLLM(
-                    ChatModelBuilderProperties.builder()
-                            .temperature(knowledgeBase.getQueryLlmTemperature())
-                            .build());
-            RetrieverCreateParam createParam = RetrieverCreateParam.builder()
-                    .chatModel(chatModel)
-                    .filter(new IsEqualTo(AdiConstant.MetadataKey.KB_UUID, qaRecord.getKbUuid()))
-                    .maxResults(maxResults)
-                    .minScore(knowledgeBase.getRetrieveMinScore())
-                    .breakIfSearchMissed(knowledgeBase.getIsStrict())
-                    .build();
-            CompositeRag compositeRag = new CompositeRag(KNOWLEDGE_BASE);
-            List<RetrieverWrapper> retrieverWrappers = compositeRag.createRetriever(createParam);
-            List<ContentRetriever> retrievers = retrieverWrappers.stream().map(RetrieverWrapper::getRetriever).toList();
-            compositeRag.ragChat(retrievers, sseAskParams, (response, promptMeta, answerMeta) -> {
-                        sseEmitterHelper.sendComplete(user.getId(), sseAskParams.getSseEmitter());
-                        updateQaRecord(
-                                UpdateQaParams.builder()
-                                        .user(user)
-                                        .qaRecord(qaRecord)
-                                        .retrievers(retrievers)
-                                        .sseAskParams(sseAskParams)
-                                        .response(response)
-                                        .isTokenFree(aiModel.getIsFree())
-                                        .build());
-                        TokenEstimatorThreadLocal.clearTokenEstimator();
-                    }
-            );
+        } catch (Exception e) {
+            TokenEstimatorThreadLocal.clearTokenEstimator();
+            throw e;
         }
     }
 

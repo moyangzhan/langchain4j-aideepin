@@ -97,7 +97,7 @@ public class UserController {
         }
     }
 
-    private synchronized void writeToResponse(Long userId, Integer width, Integer height, HttpServletResponse response) throws IOException {
+    private void writeToResponse(Long userId, Integer width, Integer height, HttpServletResponse response) throws IOException {
         response.setHeader("Cache-Control", "max-age=" + 3600 * 24 * 365);
         Avatar avatar = CatAvatar.newAvatarBuilder().size(width, height).build();
         BufferedImage bufferedImage = avatar.create(userId);

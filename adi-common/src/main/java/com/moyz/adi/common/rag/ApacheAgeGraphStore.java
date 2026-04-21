@@ -50,7 +50,10 @@ public class ApacheAgeGraphStore implements GraphStore {
         this.user = ensureNotBlank(user, "user");
         this.password = ensureNotBlank(password, "password");
         this.database = ensureNotBlank(database, "database");
-        this.graph = ensureNotBlank(graphName, "graph");
+        if (!graphName.matches("^[a-zA-Z0-9_]+$")) {
+            throw new IllegalArgumentException("graphName must contain only alphanumeric characters and underscores");
+        }
+        this.graph = graphName;
 
         createGraph = getOrDefault(createGraph, true);
         dropGraphFirst = getOrDefault(dropGraphFirst, false);
@@ -139,19 +142,19 @@ public class ApacheAgeGraphStore implements GraphStore {
                     $$, ?) as (v agtype);
                     """.formatted(graph, whereClause, setClause);
             log.info("updateVertex prepareSql:{}", prepareSql);
-            PreparedStatement stmt = connection.prepareStatement(prepareSql);
+            try (PreparedStatement stmt = connection.prepareStatement(prepareSql)) {
+                Map<String, Object> whereArgs = GraphStoreUtil.buildWhereArgs(whereCondition, "v");
+                Map<String, Object> setArgs = GraphStoreUtil.buildSetArgs(updateInfo.getNewData().getMetadata());
+                whereArgs.putAll(setArgs);
+                whereArgs.putAll(Map.of("new_text_segment_id", newData.getTextSegmentId(), "new_description", newData.getDescription()));
+                log.info("updateVertex args:{}", whereArgs);
 
-            Map<String, Object> whereArgs = GraphStoreUtil.buildWhereArgs(whereCondition, "v");
-            Map<String, Object> setArgs = GraphStoreUtil.buildSetArgs(updateInfo.getNewData().getMetadata());
-            whereArgs.putAll(setArgs);
-            whereArgs.putAll(Map.of("new_text_segment_id", newData.getTextSegmentId(), "new_description", newData.getDescription()));
-            log.info("updateVertex args:{}", whereArgs);
-
-            Agtype agtype = new Agtype();
-            agtype.setValue(JsonUtil.toJson(whereArgs));
-            stmt.setObject(1, agtype);
-            stmt.execute();
-            return getVertexFromResultSet(stmt.getResultSet());
+                Agtype agtype = new Agtype();
+                agtype.setValue(JsonUtil.toJson(whereArgs));
+                stmt.setObject(1, agtype);
+                stmt.execute();
+                return getVertexFromResultSet(stmt.getResultSet());
+            }
         } catch (SQLException e) {
             log.error("updateVertex error", e);
             throw new BaseException(B_DB_ERROR);
@@ -226,6 +229,7 @@ public class ApacheAgeGraphStore implements GraphStore {
 
     @Override
     public List<Triple<GraphVertex, GraphEdge, GraphVertex>> getEdges(List<String> ids) {
+        List<Long> longIds = ids.stream().map(Long::parseLong).toList();
         try (Connection connection = setupConnection()) {
             String query = """
                     select * from cypher('%s', $$
@@ -233,7 +237,7 @@ public class ApacheAgeGraphStore implements GraphStore {
                         where id(e) in [%s]
                         return v1,e,v2
                     $$) as (e agtype);
-                    """.formatted(graph, Joiner.on(",").join(ids));
+                    """.formatted(graph, Joiner.on(",").join(longIds));
             log.info("getEdges query:{}", query);
             try (Statement stmt = connection.createStatement()) {
                 ResultSet resultSet = stmt.executeQuery(query);

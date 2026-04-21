@@ -42,7 +42,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     private BaseResponse handleException(final Exception exception) {
         log.error("拦截全局异常:", exception);
-        return new BaseResponse(ErrorEnum.B_GLOBAL_ERROR.getCode(), ErrorEnum.B_GLOBAL_ERROR.getInfo(), exception.getMessage());
+        return new BaseResponse(ErrorEnum.B_GLOBAL_ERROR.getCode(), ErrorEnum.B_GLOBAL_ERROR.getInfo(), null);
     }
 
     private Map<Object, Object> wrapperError(BindingResult result) {
