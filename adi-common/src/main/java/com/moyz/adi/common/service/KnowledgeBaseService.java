@@ -213,22 +213,22 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
      * @return 成功或失败
      */
     public boolean indexItems(List<String> itemUuids, List<String> indexTypes) {
-        try {
-            if (CollectionUtils.isEmpty(itemUuids)) {
-                return false;
-            }
-            KnowledgeBase knowledgeBase = baseMapper.getByItemUuid(itemUuids.get(0));
-            String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
-            Boolean exist = stringRedisTemplate.hasKey(userIndexKey);
-            if (Boolean.TRUE.equals(exist)) {
-                log.warn("文档正在索引中,请忽频繁操作,userId:{}", knowledgeBase.getOwnerId());
-                throw new BaseException(A_DOC_INDEX_DOING);
-            }
-            return knowledgeBaseItemService.checkAndIndexing(knowledgeBase, itemUuids, indexTypes);
-        } catch (BaseException e) {
-            log.error("indexAfterUpload error", e);
+        if (CollectionUtils.isEmpty(itemUuids)) {
+            return false;
         }
-        return false;
+        KnowledgeBase knowledgeBase = baseMapper.getByItemUuid(itemUuids.get(0));
+        String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
+        Boolean exist = stringRedisTemplate.hasKey(userIndexKey);
+        if (Boolean.TRUE.equals(exist)) {
+            log.warn("文档正在索引中,请忽频繁操作,userId:{}", knowledgeBase.getOwnerId());
+            throw new BaseException(A_DOC_INDEX_DOING);
+        }
+        try {
+            return knowledgeBaseItemService.checkAndIndexing(knowledgeBase, itemUuids, indexTypes);
+        } catch (Exception e) {
+            log.error("indexItems error", e);
+            throw e;
+        }
     }
 
     /**

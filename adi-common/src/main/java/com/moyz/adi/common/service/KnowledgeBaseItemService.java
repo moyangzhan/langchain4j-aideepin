@@ -114,10 +114,18 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
      * @return 成功或失败
      */
     public boolean checkAndIndexing(KnowledgeBase knowledgeBase, List<String> kbItemUuids, List<String> indexTypes) {
+        String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
+        boolean hasTask = false;
         for (String kbItemUuid : kbItemUuids) {
             if (checkPrivilege(kbItemUuid)) {
                 KnowledgeBaseItem item = getEnable(kbItemUuid);
-                self.asyncIndex(ThreadContext.getCurrentUser(), knowledgeBase, item, indexTypes);
+                if (item != null) {
+                    if (!hasTask) {
+                        stringRedisTemplate.opsForValue().set(userIndexKey, "0", 10, TimeUnit.MINUTES);
+                        hasTask = true;
+                    }
+                    self.asyncIndex(ThreadContext.getCurrentUser(), knowledgeBase, item, indexTypes);
+                }
             }
         }
         return true;
@@ -133,7 +141,9 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
      */
     @Async
     public void asyncIndex(User user, KnowledgeBase knowledgeBase, KnowledgeBaseItem kbItem, List<String> indexTypes) {
-        stringRedisTemplate.opsForValue().set(MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId()), "", 10, TimeUnit.MINUTES);
+        String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
+        stringRedisTemplate.opsForValue().increment(userIndexKey);
+        stringRedisTemplate.expire(userIndexKey, 10, TimeUnit.MINUTES);
         try {
             if (indexTypes.contains(DOC_INDEX_TYPE_EMBEDDING) && kbItem.getEmbeddingStatus() != EmbeddingStatusEnum.DOING) {
                 Metadata metadata = new Metadata();
@@ -152,7 +162,10 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
             }
         } finally {
             stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, kbItem.getKbUuid());
-            stringRedisTemplate.delete(MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId()));
+            Long remaining = stringRedisTemplate.opsForValue().decrement(userIndexKey);
+            if (remaining != null && remaining <= 0) {
+                stringRedisTemplate.delete(userIndexKey);
+            }
         }
 
     }
