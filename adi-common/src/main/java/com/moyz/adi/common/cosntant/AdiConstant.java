@@ -181,6 +181,7 @@ public class AdiConstant {
         public static final String QIANFAN = "qianfan";
         public static final String OLLAMA = "ollama";
         public static final String SILICONFLOW = "siliconflow";
+        public static final String MINIMAX = "minimax";
 
         // 获取所有公共静态常量（String类型的值）的列表
         public static List<String> getModelConstants() {

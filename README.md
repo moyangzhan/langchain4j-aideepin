@@ -67,6 +67,7 @@ AIDEEPIN
 | Ollama   | ✓   |        |      |        |          |          |         |             |
 | DeepSeek | ✓   |        |      |        |          |          |         |             |
 | 千帆       | ✓   |        |      |        |          |          |         |             |
+| MiniMax  | ✓   |        |      |        |          |          |         |             |
 
 ## 技术栈
 
@@ -124,6 +125,9 @@ ps: neo4j 与 pgvector + apache age 二选一即可
 
     -- ollama的配置
     update adi_model_platform set base_url = 'my_ollama_base_url' where name = 'ollama';
+
+    -- MiniMax的配置
+    update adi_model_platform set api_key = 'my_minimax_api_key' where name = 'minimax';
     ```
   + 启用模型平台下的模型或新增模型
 
@@ -136,6 +140,7 @@ ps: neo4j 与 pgvector + apache age 二选一即可
     update adi_ai_model set is_enable = true where name = 'THUDM/GLM-Z1-9B-0414';
     update adi_ai_model set is_enable = true where name = 'ernie_speed';
     update adi_ai_model set is_enable = true where name = 'tinydolphin';
+    update adi_ai_model set is_enable = true where name = 'MiniMax-M2.7';
 
     -- Add new model
     INSERT INTO adi_ai_model (name, type, platform, is_enable) VALUES ('vicuna', 'text', 'ollama', true);
