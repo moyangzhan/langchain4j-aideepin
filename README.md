@@ -8,7 +8,7 @@
 
 ## 系统组成及文档
 
-[中文文档](README.md) | [English](README_en.md)
+[中文文档](README.md) | [English](README_EN.md)
 
 AIDEEPIN
 
@@ -38,11 +38,10 @@ AIDEEPIN
 ## 功能点
 
 * 多会话（多角色）
-* 图片生成（文生图、修图、图生图）
+* 图片生成
 * 基于大模型的知识库（RAG）
   * 向量搜索
   * 图搜索
-* 基于大模型的网络搜索（RAG）
 * AI工作流
 * MCP服务市场
 * ASR & TTS
@@ -59,13 +58,14 @@ AIDEEPIN
 
 ## 已集成的模型平台的功能
 
-| 模型平台     | 对话 | 文生图 | 修图 | 图生图 | 背景生成 | 图像识别 | 语音合成TTS | 语音识别ASR |
-|----------| :----- | :------- | ------ | -------- | ---------- | ---------- |---------| ------------- |
-| 灵积       | ✓   | ✓     |      |        | ✓       | ✓       | ✓       | ✓          |
-| OpenAI   | ✓   | ✓     | ✓   | ✓     |          |          |         |             |
-| 硅基流动     | ✓   | ✓       |      |        |          |        ✓  |   ✓     | ✓          |
-| Ollama   | ✓   |        |      |        |          |          |         |             |
-| DeepSeek | ✓   |        |      |        |          |          |         |             |
+| 模型平台     | 对话 | 文生图 | 背景生成 | 图像识别 | 语音合成TTS | 语音识别ASR |
+|----------| :----- | :-------  | ---------- | ---------- |---------| ------------- |
+| 硅基流动     | ✓   | ✓       |      |        ✓  |   ✓     | ✓          |
+| 灵积       | ✓   | ✓     | ✓       | ✓   | ✓          |✓
+| DeepSeek | ✓   |        |      |          |         |             |
+| OpenAI   | ✓   | ✓     |    |      |          |          |         |             |
+| Ollama   | ✓   |        |      |          |         |             |
+
 ## 技术栈
 
 该仓库为后端服务
@@ -124,7 +124,7 @@ ps: neo4j 与 pgvector + apache age 二选一即可
 
     ```plain
     -- Enable model
-    update adi_ai_model set is_enable = true where name = 'deepseek-chat';
+    update adi_ai_model set is_enable = true where name = 'deepseek-v4-flash';
     update adi_ai_model set is_enable = true where name = 'gpt-3.5-turbo';
     update adi_ai_model set is_enable = true where name = 'gpt-image-2';
     update adi_ai_model set is_enable = true where name = 'qwen-turbo';
@@ -220,8 +220,8 @@ ps: neo4j 与 pgvector + apache age 二选一即可
 ![workflow_01](image/README/workflow.png)
 
 ## 推荐项目
-[Mango Desk](https://github.com/moyangzhan/mango-desk) 
+[Mango Finder](https://github.com/moyangzhan/mango-finder) 
 
-Mango Desk 是一款使用自然语言搜索本地文档的桌面应用。
+Mango Finder 是一款用自然语言搜索本地文件的桌面应用，支持跨设备搜索功能。
 
 帮助您根据记忆中的内容查找信息，而不需要记住文件名或文件夹结构。

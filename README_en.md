@@ -42,7 +42,6 @@ Frontend projects:
 * Knowledge base based on large models (RAG)
   * Vector search
   * Graph search
-* Network search based on large models (RAG)
 * AI workflow
 * MCP service marketplace
 * ASR & TTS
@@ -58,12 +57,12 @@ Frontend projects:
 ## Integrated Platform Features
 
 | Model Platform | Chat | Image Generation | Background Generation | Image Recognition | Text-to-Speech | Speech Recognition |
-|----------------|:-----|:-----------------| ---------- | --------- |---------|-------------------------------|
-| OpenAI         | ✓    | ✓                |          |          |         |                               |
-| Dashscope      | ✓    | ✓                | ✓       | ✓       | ✓       | ✓                             |
-| SiliconFlow    | ✓    | ✓                |          |      ✓   |     ✓   | ✓                             |
-| Ollama         | ✓    |                  |    |                 |          |          |         |                               |
-| DeepSeek       | ✓    |                  |     |                 |          |          |         |                               |
+|----------------|:-----| ----------       | ------------------    |------------------ | -------------- |  -------------- |
+| OpenAI         | ✓    | ✓               | ✓                     |                    |               |                 |
+| Dashscope      | ✓    | ✓               |                       | ✓                  | ✓            | ✓              | 
+| SiliconFlow    | ✓    | ✓               |                       |   ✓                |      ✓       |     ✓          | 
+| Ollama         | ✓    |                 |                        |                   |               |                 | 
+| DeepSeek       | ✓    |                 |                        |                   |               |                  | 
 ## Tech Stack
 
 This repository is for the backend service
@@ -119,7 +118,7 @@ Frontend tech stack:
     * Enable model platform models or add new models
       ```
       -- Enable model
-      update adi_ai_model set is_enable = true where name = 'deepseek-chat';
+      update adi_ai_model set is_enable = true where name = 'deepseek-v4-flash';
       update adi_ai_model set is_enable = true where name = 'gpt-3.5-turbo';
       update adi_ai_model set is_enable = true where name = 'gpt-image-2';
       update adi_ai_model set is_enable = true where name = 'qwen-turbo';
@@ -210,8 +209,8 @@ Code Submission Process:
 ![workflow_01](image/README/workflow.png)
 
 ## Recommended Projects
-[Mango Desk](https://github.com/moyangzhan/mango-desk) 
+[Mango Finder](https://github.com/moyangzhan/mango-finder) 
 
-Mango Desk is a local-first desktop app for searching your local documents with natural language.
+Mango Finder is a local-first desktop app for searching your local documents with natural language.
 
 It helps you find information based on what you remember, not file names or folder structures.
