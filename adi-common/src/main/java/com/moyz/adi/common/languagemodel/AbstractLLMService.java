@@ -408,11 +408,19 @@ public abstract class AbstractLLMService extends CommonModelService {
         log.info("sseChat,messageId:{}", httpRequestParams.getMemoryId());
         List<ChatMessage> chatMessages = createChatMessages(httpRequestParams);
 
-        // Mcp
+        // DeepSeek 深度思考模式与工具调用不兼容（langchain4j #3461: partialArguments cannot be null）
+        // TODO: 升级 langchain4j 后移除此 workaround
         List<ToolSpecification> toolSpecifications = new ArrayList<>();
         List<McpClient> mcpClients = httpRequestParams.getMcpClients();
+        boolean isDeepSeekThinking = Boolean.TRUE.equals(httpRequestParams.getReturnThinking())
+                && aiModel.getName().toLowerCase().contains("deepseek");
+        if (isDeepSeekThinking && !CollectionUtils.isEmpty(mcpClients)) {
+            log.warn("DeepSeek 深度思考模式下跳过 MCP 工具（langchain4j #3461 workaround，升级后移除）");
+            mcpClients = Collections.emptyList();
+            httpRequestParams.setMcpClients(mcpClients);
+        }
         if (!CollectionUtils.isEmpty(mcpClients)) {
-            log.info("no mcp clients configured, skip tool spec creation");
+            log.info("mcp clients configured, creating tool specs");
             ToolProvider toolProvider = McpToolProvider.builder()
                     .mcpClients(mcpClients)
                     .build();
@@ -443,7 +451,11 @@ public abstract class AbstractLLMService extends CommonModelService {
             customParameters.put(ENABLE_THINKING, httpRequestParams.getReturnThinking());
         }
         if (null != httpRequestParams.getEnableWebSearch()) {
-            customParameters.put(ENABLE_WEB_SEARCH, httpRequestParams.getEnableWebSearch());
+            if (isDeepSeekThinking) {
+                log.warn("DeepSeek 深度思考模式下跳过联网搜索（langchain4j #3461 workaround，升级后移除）");
+            } else {
+                customParameters.put(ENABLE_WEB_SEARCH, httpRequestParams.getEnableWebSearch());
+            }
         }
         ChatRequestParameters parameters = doCreateChatRequestParameters(builder.build(), customParameters);
 

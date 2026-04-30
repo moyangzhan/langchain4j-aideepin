@@ -410,24 +410,36 @@ public class UserService extends ServiceImpl<UserMapper, User> {
      * @param user 要设置登录令牌的用户|the user for whom the login token is being set
      * @return 生成的登录令牌|the generated login token
      */
+    private int parseIntConfig(String key) {
+        String value = LocalCache.CONFIGS.get(key);
+        if (value == null) {
+            throw new IllegalStateException("系统配置缺失: " + key);
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            throw new IllegalStateException("系统配置格式错误: " + key + "=" + value, e);
+        }
+    }
+
     private String setLoginToken(User user) {
         if (user.getQuotaByTokenDaily() == 0) {
-            user.setQuotaByTokenDaily(Integer.parseInt(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.QUOTA_BY_TOKEN_DAILY)));
+            user.setQuotaByTokenDaily(parseIntConfig(AdiConstant.SysConfigKey.QUOTA_BY_TOKEN_DAILY));
         }
         if (user.getQuotaByTokenMonthly() == 0) {
-            user.setQuotaByTokenMonthly(Integer.parseInt(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.QUOTA_BY_TOKEN_MONTHLY)));
+            user.setQuotaByTokenMonthly(parseIntConfig(AdiConstant.SysConfigKey.QUOTA_BY_TOKEN_MONTHLY));
         }
         if (user.getQuotaByRequestDaily() == 0) {
-            user.setQuotaByRequestDaily(Integer.parseInt(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.QUOTA_BY_REQUEST_DAILY)));
+            user.setQuotaByRequestDaily(parseIntConfig(AdiConstant.SysConfigKey.QUOTA_BY_REQUEST_DAILY));
         }
         if (user.getQuotaByRequestMonthly() == 0) {
-            user.setQuotaByRequestMonthly(Integer.parseInt(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.QUOTA_BY_REQUEST_MONTHLY)));
+            user.setQuotaByRequestMonthly(parseIntConfig(AdiConstant.SysConfigKey.QUOTA_BY_REQUEST_MONTHLY));
         }
         if (user.getQuotaByImageDaily() == 0) {
-            user.setQuotaByImageDaily(Integer.parseInt(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.QUOTA_BY_IMAGE_DAILY)));
+            user.setQuotaByImageDaily(parseIntConfig(AdiConstant.SysConfigKey.QUOTA_BY_IMAGE_DAILY));
         }
         if (user.getQuotaByImageMonthly() == 0) {
-            user.setQuotaByImageMonthly(Integer.parseInt(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.QUOTA_BY_IMAGE_MONTHLY)));
+            user.setQuotaByImageMonthly(parseIntConfig(AdiConstant.SysConfigKey.QUOTA_BY_IMAGE_MONTHLY));
         }
         String token = UuidUtil.createShort();
         String tokenKey = MessageFormat.format(USER_TOKEN, token);

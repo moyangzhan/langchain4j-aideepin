@@ -37,3 +37,4 @@ build/
 application-dev.yml
 
 .claude
+tmp

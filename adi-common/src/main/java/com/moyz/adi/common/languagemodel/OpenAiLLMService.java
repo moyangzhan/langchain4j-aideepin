@@ -6,7 +6,6 @@ import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.util.OpenAiUtil;
 import com.moyz.adi.common.vo.ChatModelBuilderProperties;
 import com.moyz.adi.common.languagemodel.data.LLMException;
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
@@ -108,7 +107,12 @@ public class OpenAiLLMService extends AbstractLLMService {
 
     @Override
     protected LLMException parseError(Object error) {
-        return OpenAiUtil.parseError(error);
+        if (error instanceof Exception e) {
+            LLMException llmException = new LLMException();
+            llmException.setMessage(e.getMessage());
+            return llmException;
+        }
+        return null;
     }
 
 }

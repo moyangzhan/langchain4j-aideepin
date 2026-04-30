@@ -93,9 +93,6 @@ public class AiModelInitializer {
         //dashscope
         initLLMService(AdiConstant.ModelPlatform.DASHSCOPE, modelType, model -> new DashScopeLLMService(model, nameToPlatform.get(AdiConstant.ModelPlatform.DASHSCOPE)).setProxyAddress(proxyAddress));
 
-        //qianfan
-        initLLMService(AdiConstant.ModelPlatform.QIANFAN, modelType, model -> new QianFanLLMService(model, nameToPlatform.get(AdiConstant.ModelPlatform.QIANFAN)).setProxyAddress(proxyAddress));
-
         //ollama
         initLLMService(AdiConstant.ModelPlatform.OLLAMA, modelType, model -> new OllamaLLMService(model, nameToPlatform.get(AdiConstant.ModelPlatform.OLLAMA)));
 
@@ -110,7 +107,7 @@ public class AiModelInitializer {
      */
     private synchronized void initImageModelServiceList(Map<String, ModelPlatform> nameToPlatform) {
 
-        initImageModelService(AdiConstant.ModelPlatform.OPENAI, model -> new OpenAiDalleService(model, nameToPlatform.get(AdiConstant.ModelPlatform.OPENAI)).setProxyAddress(proxyAddress));
+        initImageModelService(AdiConstant.ModelPlatform.OPENAI, model -> new OpenAiImageService(model, nameToPlatform.get(AdiConstant.ModelPlatform.OPENAI)).setProxyAddress(proxyAddress));
         initImageModelService(AdiConstant.ModelPlatform.DASHSCOPE, model -> new DashScopeWanxService(model, nameToPlatform.get(AdiConstant.ModelPlatform.DASHSCOPE)));
         initImageModelService(AdiConstant.ModelPlatform.SILICONFLOW, model -> new SiliconflowImageModelService(model, nameToPlatform.get(AdiConstant.ModelPlatform.SILICONFLOW)));
 

@@ -8,6 +8,7 @@ import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.file.FileOperatorContext;
 import com.moyz.adi.common.file.LocalFileUtil;
+import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.mapper.FileMapper;
 import com.moyz.adi.common.util.HashUtil;
 import com.moyz.adi.common.util.UuidUtil;
@@ -28,6 +29,8 @@ import java.util.Optional;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_AI_IMAGE_NO_AUTH;
 import static com.moyz.adi.common.enums.ErrorEnum.A_FILE_NOT_EXIST;
+import static com.moyz.adi.common.enums.ErrorEnum.A_UPLOAD_FILE_TYPE_NOT_ALLOWED;
+import static com.moyz.adi.common.enums.ErrorEnum.A_UPLOAD_IMAGE_TYPE_NOT_ALLOWED;
 
 @Slf4j
 @Service
@@ -51,7 +54,29 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
     @Value("${local.tmp-images}")
     private String tmpImagesPath;
 
+    private static final List<String> BINARY_EXTENSIONS = List.of(
+            // 可执行/二进制
+            "exe", "dll", "so", "dylib", "com", "msi",
+            "jar", "war", "ear", "class",
+            "iso", "dmg", "bin", "apk", "ipa", "deb", "rpm",
+            // 压缩包
+            "zip", "rar", "7z", "tar", "gz", "bz2",
+            // 视频
+            "mp4", "avi", "mov", "wmv", "flv", "mkv", "webm", "m4v", "mpeg", "3gp"
+    );
+
     public AdiFile saveFile(MultipartFile file, boolean image) {
+        String originalFilename = file.getOriginalFilename();
+        if (StringUtils.isBlank(originalFilename) || !originalFilename.contains(".")) {
+            throw new BaseException(A_UPLOAD_FILE_TYPE_NOT_ALLOWED);
+        }
+        String ext = originalFilename.substring(originalFilename.lastIndexOf('.') + 1).toLowerCase();
+        if (BINARY_EXTENSIONS.contains(ext)) {
+            throw new BaseException(A_UPLOAD_FILE_TYPE_NOT_ALLOWED);
+        }
+        if (image && !AdiConstant.IMAGE_EXTENSIONS.contains(ext)) {
+            throw new BaseException(A_UPLOAD_IMAGE_TYPE_NOT_ALLOWED);
+        }
         String sha256 = HashUtil.sha256(file);
         Optional<AdiFile> existFile = this.lambdaQuery()
                 .eq(AdiFile::getSha256, sha256)

@@ -9,8 +9,6 @@ import com.moyz.adi.common.interfaces.TriConsumer;
 import com.moyz.adi.common.languagemodel.data.LLMResponseContent;
 import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.vo.*;
-import com.theokanning.openai.OpenAiError;
-import com.theokanning.openai.OpenAiHttpException;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -295,14 +293,7 @@ public class SSEEmitterHelper {
         }
         log.error("stream error", error);
         try {
-            String errorMsg = error.getMessage();
-            if (error instanceof OpenAiHttpException openAiHttpException) {
-                OpenAiError openAiError = JsonUtil.fromJson(openAiHttpException.getMessage(), OpenAiError.class);
-                if (null != openAiError) {
-                    errorMsg = openAiError.getError().getMessage();
-                }
-            }
-            sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.ERROR).data(errorMsg));
+            sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.ERROR).data(error.getMessage()));
         } catch (IOException e) {
             log.error("sse error", e);
         } finally {

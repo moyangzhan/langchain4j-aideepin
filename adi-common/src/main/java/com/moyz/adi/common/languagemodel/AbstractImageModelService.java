@@ -61,28 +61,6 @@ public abstract class AbstractImageModelService extends CommonModelService {
         }
     }
 
-    /**
-     * DALL·E 2 only
-     *
-     * @param user
-     * @param draw
-     * @return
-     */
-    public List<String> editImage(User user, Draw draw){
-        throw new IllegalArgumentException("Operation is not supported");
-    }
-
-    /**
-     * DALL·E 2 only
-     *
-     * @param user
-     * @param draw
-     * @return
-     */
-    public List<String> createImageVariation(User user, Draw draw){
-        throw new IllegalArgumentException("Operation is not supported");
-    }
-
     protected abstract LLMException parseError(Object error);
 
     public FileService getFileService() {

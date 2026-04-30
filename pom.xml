@@ -86,26 +86,11 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>31.1-jre</version>
+            <version>33.4.8-jre</version>
         </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.theokanning.openai-gpt3-java</groupId>
-            <artifactId>client</artifactId>
-            <version>0.12.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.theokanning.openai-gpt3-java</groupId>
-            <artifactId>service</artifactId>
-            <version>0.12.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.didalgo</groupId>
-            <artifactId>gpt3-tokenizer</artifactId>
-            <version>0.1.2</version>
         </dependency>
         <dependency>
             <groupId>org.springdoc</groupId>
@@ -214,12 +199,7 @@
             <artifactId>langchain4j-community-dashscope</artifactId>
             <version>${tmp-langchain4j.version}</version>
         </dependency>
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-community-qianfan</artifactId>
-            <version>${tmp-langchain4j.version}</version>
-        </dependency>
-        <dependency>
+<dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-ollama</artifactId>
         </dependency>

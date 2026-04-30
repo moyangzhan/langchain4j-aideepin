@@ -12,7 +12,7 @@ public enum WfComponentNameEnum {
 
     LLM_ANSWER("Answer"),
 
-    DALLE3("Dalle3"),
+    OPENAI_IMAGE("OpenAiImage"),
 
     TONGYI_WANX("Tongyiwanx"),
 

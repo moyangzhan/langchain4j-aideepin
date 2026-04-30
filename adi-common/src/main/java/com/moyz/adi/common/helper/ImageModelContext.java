@@ -6,8 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_2;
-
 /**
  * image model service上下文类（策略模式）
  */
@@ -53,13 +51,11 @@ public class ImageModelContext {
     public static AbstractImageModelService getBy(String modelName, boolean useDefault) {
         AbstractImageModelService service = LLM_SERVICES.stream().filter(item -> item.getAiModel().getName().equalsIgnoreCase(modelName)).findFirst().orElse(null);
         if (null == service && useDefault) {
-            log.warn("︿︿︿ Can not find {}, use the default model DALL_E_2 ︿︿︿", modelName);
-            return getByModelName(DALL_E_2.toString());
+            log.warn("︿︿︿ Can not find {}, fallback to first enabled image model ︿︿︿", modelName);
+            return LLM_SERVICES.stream()
+                    .filter(item -> Boolean.TRUE.equals(item.getAiModel().getIsEnable()))
+                    .findFirst().orElse(null);
         }
         return service;
-    }
-
-    private static AbstractImageModelService getByModelName(String modelName) {
-        return LLM_SERVICES.stream().filter(item -> item.getAiModel().getName().equalsIgnoreCase(modelName)).findFirst().orElse(null);
     }
 }

@@ -67,7 +67,7 @@ public class UserController {
     }
 
     @Operation(summary = "当前用户头像")
-    @GetMapping(value = "/myAvatar", produces = MediaType.IMAGE_JPEG_VALUE)
+    @GetMapping(value = "/myAvatar", produces = MediaType.IMAGE_PNG_VALUE)
     public void myAvatar(HttpServletResponse response) {
         User user = ThreadContext.getCurrentUser();
         Avatar avatar = CatAvatar.newAvatarBuilder().build();
@@ -82,7 +82,7 @@ public class UserController {
     }
 
     @Operation(summary = "用户头像")
-    @GetMapping(value = "/avatar/{uuid}", produces = MediaType.IMAGE_JPEG_VALUE)
+    @GetMapping(value = "/avatar/{uuid}", produces = MediaType.IMAGE_PNG_VALUE)
     public void avatar(@Validated @PathVariable String uuid, @RequestParam(defaultValue = "64") @Min(32) @Max(128) Integer width, @RequestParam(defaultValue = "64") @Min(32) @Max(128) Integer height, HttpServletResponse response) {
         User user = userService.getByUuid(uuid);
         long userId = 0;

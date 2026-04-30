@@ -38,7 +38,7 @@ Frontend projects:
 ## Features
 
 * Multi-conversation (multi-role)
-* Image generation (text-to-image, image editing, image-to-image)
+* Image generation (text-to-image)
 * Knowledge base based on large models (RAG)
   * Vector search
   * Graph search
@@ -57,15 +57,13 @@ Frontend projects:
 
 ## Integrated Platform Features
 
-| Model Platform | Chat | Image Generation | Image Edit | Image variation | Background Generation | Image Recognition | Text-to-Speech | Speech Recognition |
-|----------------|:-----|:-----------------| ----- |-----------------| ---------- | --------- |---------|-------------------------------|
-| OpenAI         | ✓    | ✓                | ✓  | ✓               |          |          |         |                               |
-| Dashscope      | ✓    | ✓                |     |                 | ✓       | ✓       | ✓       | ✓                             |
-| SiliconFlow    | ✓    | ✓                |     |                 |          |      ✓   |     ✓   | ✓                             |
+| Model Platform | Chat | Image Generation | Background Generation | Image Recognition | Text-to-Speech | Speech Recognition |
+|----------------|:-----|:-----------------| ---------- | --------- |---------|-------------------------------|
+| OpenAI         | ✓    | ✓                |          |          |         |                               |
+| Dashscope      | ✓    | ✓                | ✓       | ✓       | ✓       | ✓                             |
+| SiliconFlow    | ✓    | ✓                |          |      ✓   |     ✓   | ✓                             |
 | Ollama         | ✓    |                  |    |                 |          |          |         |                               |
 | DeepSeek       | ✓    |                  |     |                 |          |          |         |                               |
-| Qianfan        | ✓    |                  |     |                 |          |          |         |                               |
-
 ## Tech Stack
 
 This repository is for the backend service
@@ -115,9 +113,6 @@ Frontend tech stack:
       -- Siliconflow
       update adi_model_platform set api_key = 'my_siliconflow_api_key' where name = 'siliconflow_setting';
   
-      -- Qianfan API key and secret key
-      update adi_model_platform set api_key = 'my_qianfan_api_key',secret_key='my_qianfan_secret_key' where name = 'qianfan';
-  
       -- Ollama configuration
       update adi_model_platform set base_url = 'my_ollama_base_url' where name = 'ollama';
       ```
@@ -126,10 +121,9 @@ Frontend tech stack:
       -- Enable model
       update adi_ai_model set is_enable = true where name = 'deepseek-chat';
       update adi_ai_model set is_enable = true where name = 'gpt-3.5-turbo';
-      update adi_ai_model set is_enable = true where name = 'dall-e-2';
+      update adi_ai_model set is_enable = true where name = 'gpt-image-2';
       update adi_ai_model set is_enable = true where name = 'qwen-turbo';
       update adi_ai_model set is_enable = true where name = 'THUDM/GLM-Z1-9B-0414';
-      update adi_ai_model set is_enable = true where name = 'ernie_speed';
       update adi_ai_model set is_enable = true where name = 'tinydolphin';
   
       -- Add new model

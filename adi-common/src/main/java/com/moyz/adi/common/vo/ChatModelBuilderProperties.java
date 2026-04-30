@@ -14,10 +14,12 @@ import java.util.Objects;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ChatModelBuilderProperties {
-    /**
-     *
-     */
     private Double temperature;
+
+    /**
+     * 是否捕获并返回模型的思考内容（如 DeepSeek 的 reasoning_content）
+     */
+    private Boolean returnThinking;
 
     /**
      * 获取采样温度，如果温度不合法则获取默认温度

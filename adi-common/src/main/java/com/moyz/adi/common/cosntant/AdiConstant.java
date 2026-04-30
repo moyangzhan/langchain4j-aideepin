@@ -60,10 +60,6 @@ public class AdiConstant {
 
     public static final String OPENAI_CREATE_IMAGE_RESP_FORMATS_URL = "url";
 
-    public static final List<String> DALLE2_CREATE_IMAGE_SIZES = List.of("256x256", "512x512", "1024x1024");
-
-    public static final List<String> DALLE3_CREATE_IMAGE_SIZES = List.of("1024x1024", "1024x1792", "1792x1024");
-
     /**
      * 可能的 extraInfo 如适用转音频的要求： 3. 回答的内容要尽量口语化，以方便将内容转成语音
      */
@@ -146,7 +142,7 @@ public class AdiConstant {
         public static final String DEEPSEEK_SETTING = "deepseek_setting";
         public static final String OPENAI_SETTING = "openai_setting";
         public static final String DASHSCOPE_SETTING = "dashscope_setting";
-        public static final String QIANFAN_SETTING = "qianfan_setting";
+
         public static final String OLLAMA_SETTING = "ollama_setting";
         public static final String SILICONFLOW_SETTING = "siliconflow_setting";
         public static final String GOOGLE_SETTING = "google_setting";
@@ -178,7 +174,7 @@ public class AdiConstant {
         public static final String DEEPSEEK = "deepseek";
         public static final String OPENAI = "openai";
         public static final String DASHSCOPE = "dashscope";
-        public static final String QIANFAN = "qianfan";
+
         public static final String OLLAMA = "ollama";
         public static final String SILICONFLOW = "siliconflow";
 

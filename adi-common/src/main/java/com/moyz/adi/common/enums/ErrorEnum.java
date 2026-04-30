@@ -23,6 +23,8 @@ public enum ErrorEnum {
     A_USER_NOT_AUTH("A0016", "用户无权限"),
     A_DATA_NOT_FOUND("A0017", "数据不存在"),
     A_UPLOAD_FAIL("A0018", "上传失败"),
+    A_UPLOAD_FILE_TYPE_NOT_ALLOWED("A0058", "不支持的文件类型"),
+    A_UPLOAD_IMAGE_TYPE_NOT_ALLOWED("A0059", "不支持的图片类型"),
     A_QA_ASK_LIMIT("A0019", "请求次数太多"),
     A_QA_ITEM_LIMIT("A0020", "知识点生成已超额度"),
     A_CONVERSATION_EXIST("A0021", "会话(角色)已存在"),

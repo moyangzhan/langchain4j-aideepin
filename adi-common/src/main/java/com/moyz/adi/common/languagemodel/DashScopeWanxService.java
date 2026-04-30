@@ -85,18 +85,6 @@ public class DashScopeWanxService extends AbstractImageModelService {
     }
 
     @Override
-    public List<String> editImage(User user, Draw draw) {
-        //待实现
-        throw new IllegalArgumentException("Operation is not supported");
-    }
-
-    @Override
-    public List<String> createImageVariation(User user, Draw draw) {
-        //待实现
-        throw new IllegalArgumentException("Operation is not supported");
-    }
-
-    @Override
     protected LLMException parseError(Object error) {
         if (error instanceof ApiException apiException) {
             LLMException llmException = new LLMException();

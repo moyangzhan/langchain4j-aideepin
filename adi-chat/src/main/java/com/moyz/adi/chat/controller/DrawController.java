@@ -48,20 +48,6 @@ public class DrawController {
         drawService.regenerate(uuid);
     }
 
-    @Operation(summary = "Edit image")
-    @PostMapping("/edit")
-    public Map<String, String> edit(@RequestBody EditImageReq editImageReq) {
-        String uuid = drawService.editByOriginalImage(editImageReq);
-        return Map.of("uuid", uuid);
-    }
-
-    @Operation(summary = "Image variation")
-    @PostMapping("/variation")
-    public Map<String, String> variation(@RequestBody VariationImageReq variationImageReq) {
-        String uuid = drawService.variationImage(variationImageReq);
-        return Map.of("uuid", uuid);
-    }
-
     @GetMapping("/list")
     public DrawListResp list(@RequestParam Long maxId, @RequestParam int pageSize) {
         return drawService.listByCurrentUser(maxId, pageSize);

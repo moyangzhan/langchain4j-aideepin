@@ -6,7 +6,7 @@ import com.moyz.adi.common.workflow.node.AbstractWfNode;
 import com.moyz.adi.common.workflow.node.EndNode;
 import com.moyz.adi.common.workflow.node.answer.LLMAnswerNode;
 import com.moyz.adi.common.workflow.node.classifier.ClassifierNode;
-import com.moyz.adi.common.workflow.node.dalle3.Dalle3Node;
+import com.moyz.adi.common.workflow.node.openaiimage.OpenAiImageNode;
 import com.moyz.adi.common.workflow.node.documentextractor.DocumentExtractorNode;
 import com.moyz.adi.common.workflow.node.faqextractor.FaqExtractorNode;
 import com.moyz.adi.common.workflow.node.google.GoogleNode;
@@ -54,8 +54,8 @@ public class WfNodeFactory {
             case GOOGLE_SEARCH:
                 wfNode = new GoogleNode(wfComponent, nodeDefinition, wfState, nodeState);
                 break;
-            case DALLE3:
-                wfNode = new Dalle3Node(wfComponent, nodeDefinition, wfState, nodeState);
+            case OPENAI_IMAGE:
+                wfNode = new OpenAiImageNode(wfComponent, nodeDefinition, wfState, nodeState);
                 break;
             case TONGYI_WANX:
                 wfNode = new TongyiwanxNode(wfComponent, nodeDefinition, wfState, nodeState);

@@ -226,6 +226,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         sseAskParams.setModelProperties(
                 ChatModelBuilderProperties.builder()
                         .temperature(conversation.getLlmTemperature())
+                        .returnThinking(chatRequestParams.getReturnThinking())
                         .build()
         );
         sseEmitterHelper.call(sseAskParams, (response, questionMeta, answerMeta) -> {
@@ -435,7 +436,8 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             MapDBChatMemoryStore mapDBChatMemoryStore = MapDBChatMemoryStore.getSingleton();
             List<ChatMessage> messages = mapDBChatMemoryStore.getMessages(askReq.getConversationUuid());
             List<ChatMessage> newMessages = new ArrayList<>(messages);
-            newMessages.add(AiMessage.aiMessage(response.getContent()));
+            // TODO: DeepSeek 要求 reasoning_content 传回 API，升级 langchain4j 后确认是否仍需手动处理
+            newMessages.add(AiMessage.builder().text(response.getContent()).thinking(response.getThinkingContent()).build());
             mapDBChatMemoryStore.updateMessages(askReq.getConversationUuid(), newMessages);
         }
 

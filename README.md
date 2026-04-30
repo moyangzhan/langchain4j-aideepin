@@ -66,8 +66,6 @@ AIDEEPIN
 | 硅基流动     | ✓   | ✓       |      |        |          |        ✓  |   ✓     | ✓          |
 | Ollama   | ✓   |        |      |        |          |          |         |             |
 | DeepSeek | ✓   |        |      |        |          |          |         |             |
-| 千帆       | ✓   |        |      |        |          |          |         |             |
-
 ## 技术栈
 
 该仓库为后端服务
@@ -119,9 +117,6 @@ ps: neo4j 与 pgvector + apache age 二选一即可
     -- 硅基流动的配置
     update adi_model_platform set api_key = 'my_siliconflow_api_key' where name = 'siliconflow_setting';
 
-    -- 千帆大模型平台的配置
-    update adi_model_platform set api_key = 'my_qianfan_api_key',secret_key='my_qianfan_secret_key' where name = 'qianfan';
-
     -- ollama的配置
     update adi_model_platform set base_url = 'my_ollama_base_url' where name = 'ollama';
     ```
@@ -131,10 +126,9 @@ ps: neo4j 与 pgvector + apache age 二选一即可
     -- Enable model
     update adi_ai_model set is_enable = true where name = 'deepseek-chat';
     update adi_ai_model set is_enable = true where name = 'gpt-3.5-turbo';
-    update adi_ai_model set is_enable = true where name = 'dall-e-2';
+    update adi_ai_model set is_enable = true where name = 'gpt-image-2';
     update adi_ai_model set is_enable = true where name = 'qwen-turbo';
     update adi_ai_model set is_enable = true where name = 'THUDM/GLM-Z1-9B-0414';
-    update adi_ai_model set is_enable = true where name = 'ernie_speed';
     update adi_ai_model set is_enable = true where name = 'tinydolphin';
 
     -- Add new model

@@ -115,28 +115,6 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
     }
 
     /**
-     * Interacting method 2:  Creates an edited or extended image given an original image and a prompt.
-     */
-    public String editByOriginalImage(EditImageReq editImageReq) {
-        self.check();
-        CreateImageDto createImageDto = new CreateImageDto();
-        BeanUtils.copyProperties(editImageReq, createImageDto);
-        createImageDto.setInteractingMethod(INTERACTING_METHOD_EDIT_IMAGE);
-        return self.generate(createImageDto);
-    }
-
-    /**
-     * interacting method 3: Creates a variation of a given image.
-     */
-    public String variationImage(VariationImageReq variationImageReq) {
-        self.check();
-        CreateImageDto createImageDto = new CreateImageDto();
-        BeanUtils.copyProperties(variationImageReq, createImageDto);
-        createImageDto.setInteractingMethod(INTERACTING_METHOD_VARIATION);
-        return self.generate(createImageDto);
-    }
-
-    /**
      * 根据提示词生成图片
      *
      * @param createImageDto
@@ -203,14 +181,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
             rateLimitHelper.increaseRequestTimes(requestTimesKey, LocalCache.IMAGE_RATE_LIMIT_CONFIG);
 
             AbstractImageModelService imageModelService = ImageModelContext.getOrDefault(draw.getAiModelName());
-            List<String> images;
-            if (draw.getInteractingMethod() == INTERACTING_METHOD_EDIT_IMAGE) {
-                images = imageModelService.editImage(user, draw);
-            } else if (draw.getInteractingMethod() == INTERACTING_METHOD_VARIATION) {
-                images = imageModelService.createImageVariation(user, draw);
-            } else {
-                images = imageModelService.generateImage(user, draw);
-            }
+            List<String> images = imageModelService.generateImage(user, draw);
             List<String> imageUuids = new ArrayList<>();
             images.forEach(imageUrl -> {
                 AdiFile adiFile = fileService.saveImageFromUrl(user, imageUrl);

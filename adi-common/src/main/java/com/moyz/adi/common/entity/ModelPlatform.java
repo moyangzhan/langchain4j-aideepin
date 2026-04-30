@@ -32,7 +32,7 @@ public class ModelPlatform extends BaseEntity {
     @TableField("api_key")
     private String apiKey;
 
-    @Schema(title = "secret key, 可选，目前只有百度的千帆在用，其他模型平台的key直接放到 api_key 即可")
+    @Schema(title = "secret key, 可选")
     @TableField("secret_key")
     private String secretKey;
 
