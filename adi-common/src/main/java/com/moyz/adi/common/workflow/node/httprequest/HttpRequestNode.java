@@ -49,9 +49,11 @@ public class HttpRequestNode extends AbstractWfNode {
         List<NodeIOData> outputData = new ArrayList<>();
 
         HttpRequestNodeConfig nodeConfig = checkAndGetConfig(HttpRequestNodeConfig.class);
+        int timeoutMs = nodeConfig.getTimeout() * 1000;
         RequestConfig requestConfig = RequestConfig.custom()
-                .setConnectionRequestTimeout(nodeConfig.getTimeout() * 1000)
-                .setConnectTimeout(nodeConfig.getTimeout() * 1000)
+                .setConnectionRequestTimeout(timeoutMs)
+                .setConnectTimeout(timeoutMs)
+                .setSocketTimeout(timeoutMs)
                 .build();
         try (CloseableHttpClient httpClient = HttpClients.custom()
                 .setDefaultRequestConfig(requestConfig)

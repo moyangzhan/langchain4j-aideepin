@@ -263,6 +263,8 @@ public class SSEEmitterHelper {
             }
         } catch (IOException ioException) {
             log.error("stream onNext error", ioException);
+            COMPLETED_SSE.put(sseEmitter, Boolean.TRUE);
+            throw new RuntimeException(ioException);
         }
     }
 

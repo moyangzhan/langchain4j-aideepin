@@ -87,6 +87,10 @@ public class BeanConfig {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(processorsNum * 2);
         executor.setMaxPoolSize(100);
+        executor.setQueueCapacity(500);
+        executor.setKeepAliveSeconds(60);
+        executor.setAllowCoreThreadTimeOut(true);
+        executor.setRejectedExecutionHandler(new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy());
         return executor;
     }
 
@@ -97,6 +101,10 @@ public class BeanConfig {
         log.info("imagesExecutor corePoolSize:{},maxPoolSize:{}", processorsNum, processorsNum * 2);
         executor.setCorePoolSize(processorsNum);
         executor.setMaxPoolSize(processorsNum * 2);
+        executor.setQueueCapacity(200);
+        executor.setKeepAliveSeconds(60);
+        executor.setAllowCoreThreadTimeOut(true);
+        executor.setRejectedExecutionHandler(new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy());
         return executor;
     }
 

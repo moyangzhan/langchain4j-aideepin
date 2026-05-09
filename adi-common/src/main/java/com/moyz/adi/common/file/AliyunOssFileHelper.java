@@ -31,7 +31,7 @@ public class AliyunOssFileHelper {
     private AliOssConfig configObj = null;
     private String configStr = "";
 
-    public void init() {
+    public synchronized void init() {
         String aliStorageConfigKey = AdiConstant.SysConfigKey.STORAGE_LOCATION_ALI_OSS;
         String newConfigStr = LocalCache.CONFIGS.get(aliStorageConfigKey);
         if (StringUtils.isBlank(newConfigStr)) {

@@ -99,8 +99,9 @@ public class WorkflowEngine {
             CompileNode rootCompileNode = new CompileNode();
             rootCompileNode.setId(startNode.getUuid());
 
-            //构建整棵树
-            buildCompileNode(rootCompileNode, startNode);
+            //构建整棵树（检测节点重复访问防止无限循环）
+            Map<String, Integer> nodeVisitCount = new HashMap<>();
+            buildCompileNode(rootCompileNode, startNode, nodeVisitCount);
 
             //主状态图
             StateGraph<WfNodeState> mainStateGraph = new StateGraph<>(stateSerializer);
@@ -117,8 +118,8 @@ public class WorkflowEngine {
             RunnableConfig invokeConfig = RunnableConfig.builder()
                     .build();
             exe(invokeConfig, false);
-        } catch (Exception e) {
-            errorWhenExe(e);
+        } catch (Throwable e) {
+            errorWhenExe(e instanceof Exception ? (Exception) e : new RuntimeException(e));
         }
     }
 
@@ -134,14 +135,14 @@ public class WorkflowEngine {
             String intTip = WorkflowUtil.getHumanFeedbackTip(nextNode, wfNodes);
             //将等待输入信息[事件与提示词]发送到到客户端
             SSEEmitterHelper.parseAndSendPartialMsg(sseEmitter, "[NODE_WAIT_FEEDBACK_BY_" + nextNode + "]", intTip);
-            InterruptedFlow.RUNTIME_TO_GRAPH.put(wfState.getUuid(), this);
+            InterruptedFlow.put(wfState.getUuid(), this);
             //更新状态
             wfState.setProcessStatus(WORKFLOW_PROCESS_STATUS_WAITING_INPUT);
             workflowRuntimeService.updateOutput(wfRuntimeResp.getId(), wfState);
         } else {
             WorkflowRuntime updatedRuntime = workflowRuntimeService.updateOutput(wfRuntimeResp.getId(), wfState);
             sseEmitterHelper.sendComplete(user.getId(), sseEmitter, JsonUtil.toJson(updatedRuntime.getOutput()));
-            InterruptedFlow.RUNTIME_TO_GRAPH.remove(wfState.getUuid());
+            InterruptedFlow.remove(wfState.getUuid());
         }
     }
 
@@ -155,12 +156,12 @@ public class WorkflowEngine {
         try {
             app.updateState(invokeConfig, Map.of(HUMAN_FEEDBACK_KEY, userInput), null);
             exe(invokeConfig, true);
-        } catch (Exception e) {
-            errorWhenExe(e);
+        } catch (Throwable e) {
+            errorWhenExe(e instanceof Exception ? (Exception) e : new RuntimeException(e));
         } finally {
             //有可能多次接收人机交互，待整个流程完全执行后才能删除
             if (wfState.getProcessStatus() != WORKFLOW_PROCESS_STATUS_WAITING_INPUT) {
-                InterruptedFlow.RUNTIME_TO_GRAPH.remove(wfState.getUuid());
+                InterruptedFlow.remove(wfState.getUuid());
             }
         }
     }
@@ -336,9 +337,17 @@ public class WorkflowEngine {
         return Pair.of(startNode, endNodes);
     }
 
+    private static final int MAX_NODE_VISITS = 10;
+
     private void buildCompileNode(
             CompileNode parentNode,
-            WorkflowNode node) {
+            WorkflowNode node,
+            Map<String, Integer> nodeVisitCount) {
+        int visits = nodeVisitCount.merge(node.getUuid(), 1, Integer::sum);
+        if (visits > MAX_NODE_VISITS) {
+            log.error("节点{}被访问超过{}次，工作流图中可能存在无限循环", node.getUuid(), MAX_NODE_VISITS);
+            throw new BaseException(ErrorEnum.B_WF_RUN_ERROR);
+        }
         log.info("buildByNode, parentNode:{}, node:{},title:{}", parentNode.getId(), node.getUuid(), node.getTitle());
         CompileNode newNode;
         List<String> upstreamNodeUuids = getUpstreamNodeUuids(node.getUuid());
@@ -373,7 +382,7 @@ public class WorkflowEngine {
         List<String> downstreamUuids = getDownstreamNodeUuids(node.getUuid());
         for (String downstream : downstreamUuids) {
             Optional<WorkflowNode> n = wfNodes.stream().filter(item -> item.getUuid().equals(downstream)).findFirst();
-            n.ifPresent(workflowNode -> buildCompileNode(newNode, workflowNode));
+            n.ifPresent(workflowNode -> buildCompileNode(newNode, workflowNode, nodeVisitCount));
         }
     }
 

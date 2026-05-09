@@ -7,14 +7,14 @@ springdoc:
 spring:
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:5432/aideepin?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&tinyInt1isBit=false&allowMultiQueries=true
-    username: your-db-account
-    password: your-db-password
+    url: jdbc:postgresql://${ADI_DB_HOST:localhost}:${ADI_DB_PORT:5432}/${ADI_DB_NAME:aideepin}?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&tinyInt1isBit=false&allowMultiQueries=true
+    username: ${ADI_DB_USERNAME:your-db-account}
+    password: ${ADI_DB_PASSWORD:your-db-password}
   data:
     redis:
-      host: localhost
-      port: 6379
-      password:
+      host: ${ADI_REDIS_HOST:localhost}
+      port: ${ADI_REDIS_PORT:6379}
+      password: ${ADI_REDIS_PASSWORD:}
       database: 0
       lettuce:
         pool:
@@ -41,8 +41,8 @@ adi:
   graph-database: apache-age
   datasource:
     neo4j:
-      host: localhost
-      port: 7687
-      username: your-db-account
-      password: your-db-password
-      database: your-db-name
+      host: ${ADI_NEO4J_HOST:localhost}
+      port: ${ADI_NEO4J_PORT:7687}
+      username: ${ADI_NEO4J_USERNAME:your-db-account}
+      password: ${ADI_NEO4J_PASSWORD:your-db-password}
+      database: ${ADI_NEO4J_DATABASE:your-db-name}

@@ -67,33 +67,42 @@ public class WorkflowStarter {
     @Async
     public void asyncRun(User user, Workflow workflow, List<ObjectNode> userInputs, SseEmitter sseEmitter) {
         log.info("WorkflowEngine run,userId:{},workflowUuid:{},userInputs:{}", user.getId(), workflow.getUuid(), userInputs);
-        List<WorkflowComponent> components = workflowComponentService.getAllEnable();
-        List<WorkflowNode> nodes = workflowNodeService.lambdaQuery()
-                .eq(WorkflowNode::getWorkflowId, workflow.getId())
-                .eq(WorkflowNode::getIsDeleted, false)
-                .list();
-        List<WorkflowEdge> edges = workflowEdgeService.lambdaQuery()
-                .eq(WorkflowEdge::getWorkflowId, workflow.getId())
-                .eq(WorkflowEdge::getIsDeleted, false)
-                .list();
-        WorkflowEngine workflowEngine = new WorkflowEngine(workflow,
-                sseEmitterHelper,
-                components,
-                nodes,
-                edges,
-                workflowRuntimeService,
-                workflowRuntimeNodeService);
-        workflowEngine.run(user, userInputs, sseEmitter);
+        try {
+            List<WorkflowComponent> components = workflowComponentService.getAllEnable();
+            List<WorkflowNode> nodes = workflowNodeService.lambdaQuery()
+                    .eq(WorkflowNode::getWorkflowId, workflow.getId())
+                    .eq(WorkflowNode::getIsDeleted, false)
+                    .list();
+            List<WorkflowEdge> edges = workflowEdgeService.lambdaQuery()
+                    .eq(WorkflowEdge::getWorkflowId, workflow.getId())
+                    .eq(WorkflowEdge::getIsDeleted, false)
+                    .list();
+            WorkflowEngine workflowEngine = new WorkflowEngine(workflow,
+                    sseEmitterHelper,
+                    components,
+                    nodes,
+                    edges,
+                    workflowRuntimeService,
+                    workflowRuntimeNodeService);
+            workflowEngine.run(user, userInputs, sseEmitter);
+        } catch (Throwable e) {
+            log.error("asyncRun执行异常,workflowUuid:{}", workflow.getUuid(), e);
+            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "工作流执行异常:" + e.getMessage());
+        }
     }
 
     @Async
     public void resumeFlow(String runtimeUuid, String userInput) {
-        WorkflowEngine workflowEngine = InterruptedFlow.RUNTIME_TO_GRAPH.get(runtimeUuid);
+        WorkflowEngine workflowEngine = InterruptedFlow.get(runtimeUuid);
         if (null == workflowEngine) {
             log.error("工作流恢复执行时失败,runtime:{}", runtimeUuid);
             throw new BaseException(A_WF_RESUME_FAIL);
         }
-        workflowEngine.resume(userInput);
+        try {
+            workflowEngine.resume(userInput);
+        } catch (Throwable e) {
+            log.error("resumeFlow执行异常,runtimeUuid:{}", runtimeUuid, e);
+        }
     }
 
 }

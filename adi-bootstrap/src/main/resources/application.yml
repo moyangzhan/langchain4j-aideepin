@@ -27,9 +27,9 @@ spring:
   mail:
     default-encoding: UTF-8
     protocol: smtps
-    host: your-email-host  # smtp.exmail.qq.com
-    username: your-email-username # xxx@qq.com
-    password: your-email-password
+    host: ${ADI_MAIL_HOST:your-email-host}
+    username: ${ADI_MAIL_USERNAME:your-email-username}
+    password: ${ADI_MAIL_PASSWORD:your-email-password}
     port: 465
     properties:
       mail:
@@ -53,10 +53,10 @@ mybatis-plus:
 
 logging:
   file:
-    name: /data/aideepin/logs/app.log
+    name: ${local.base-data-path}/logs/app.log
 
 adi:
-  host: aideepin.com
+  host: ${ADI_HOST:aideepin.com}
   frontend-url: http://www.${adi.host}
   backend-url: http://www.${adi.host}/api
   proxy:
@@ -65,14 +65,15 @@ adi:
     http-port: 1087
   encrypt:
     # 数据库敏感字段加密的密钥，不要泄露
-    # 项目首次编译时改成自己的密钥(长度为16的字符串如: Ap9da0CopbjiKGc1)
+    # 使用默认密钥启动会失败，请先替换为自己的密钥(长度为16的字符串)，或通过环境变量 ADI_ENCRYPT_AES_KEY 传入
     aes-key: ${ADI_ENCRYPT_AES_KEY:Ap9da0CopbjiKGc1}
 
 local:
-  files: /data/aideepin/files/
-  images: /data/aideepin/images/
-  watermark-images: /data/aideepin/mark-images/
-  thumbnails: /data/aideepin/thumbnails/
-  watermark-thumbnails: /data/aideepin/watermark-thumbnails/
-  tmp-images: /data/aideepin/tmp-images/
-  chat-memory: /data/aideepin/chat-memory/
+  base-data-path: ${ADI_LOCAL_BASE_DATA_PATH:/data/aideepin}
+  files: ${local.base-data-path}/files/
+  images: ${local.base-data-path}/images/
+  watermark-images: ${local.base-data-path}/mark-images/
+  thumbnails: ${local.base-data-path}/thumbnails/
+  watermark-thumbnails: ${local.base-data-path}/watermark-thumbnails/
+  tmp-images: ${local.base-data-path}/tmp-images/
+  chat-memory: ${local.base-data-path}/chat-memory/

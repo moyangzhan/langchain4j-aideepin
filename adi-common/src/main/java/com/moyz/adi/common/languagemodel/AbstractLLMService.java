@@ -195,7 +195,15 @@ public abstract class AbstractLLMService extends CommonModelService {
      *
      * @param params 参数对象，包含流式聊天所需的所有信息
      */
+    private static final int MAX_TOOL_CALL_DEPTH = 5;
+
     private void innerStreamingChat(InnerStreamChatParams params) {
+        if (params.getToolCallDepth() >= MAX_TOOL_CALL_DEPTH) {
+            log.error("工具调用递归深度超过{}次，终止执行", MAX_TOOL_CALL_DEPTH);
+            SSEEmitterHelper.errorAndShutdown(new RuntimeException("工具调用次数超过限制"), params.getSseEmitter());
+            closeMcpClients(params.getMcpClients());
+            return;
+        }
         Map<ToolSpecification, McpClient> toolSpecificationMcpClientMap = getRequestTools(params.getMcpClients());
         params.getStreamingChatModel().chat(params.getChatRequest(), new StreamingChatResponseHandler() {
             @Override
@@ -225,6 +233,7 @@ public abstract class AbstractLLMService extends CommonModelService {
                             .messages(messages)
                             .parameters(params.getChatRequest().parameters())
                             .build());
+                    params.setToolCallDepth(params.getToolCallDepth() + 1);
                     // recursive call now with tool calling results
                     innerStreamingChat(params);
                 } else {
@@ -279,6 +288,14 @@ public abstract class AbstractLLMService extends CommonModelService {
      * @return ChatResponse 聊天响应
      */
     private ChatResponse innerChat(String uuid, ChatModel chatModel, ChatModelRequestParams chatModelRequestParams, ChatRequest chatRequest) {
+        return innerChatWithDepth(uuid, chatModel, chatModelRequestParams, chatRequest, 0);
+    }
+
+    private ChatResponse innerChatWithDepth(String uuid, ChatModel chatModel, ChatModelRequestParams chatModelRequestParams, ChatRequest chatRequest, int depth) {
+        if (depth >= MAX_TOOL_CALL_DEPTH) {
+            log.error("工具调用递归深度超过{}次，终止执行", MAX_TOOL_CALL_DEPTH);
+            throw new BaseException(ErrorEnum.B_LLM_SERVICE_DISABLED);
+        }
         try {
             ChatResponse chatResponse = chatModel.chat(chatRequest);
             AiMessage responseAiMessage = chatResponse.aiMessage();
@@ -293,16 +310,17 @@ public abstract class AbstractLLMService extends CommonModelService {
 
                 cacheTokenUsage(uuid, chatResponse);
 
-                // recursive call now with tool calling results
-                return innerChat(uuid, chatModel, chatModelRequestParams, ChatRequest.builder()
+                return innerChatWithDepth(uuid, chatModel, chatModelRequestParams, ChatRequest.builder()
                         .messages(messages)
                         .parameters(chatRequest.parameters())
-                        .build());
+                        .build(), depth + 1);
             }
             cacheTokenUsage(uuid, chatResponse);
             return chatResponse;
         } finally {
-            closeMcpClients(chatModelRequestParams.getMcpClients());
+            if (depth == 0) {
+                closeMcpClients(chatModelRequestParams.getMcpClients());
+            }
         }
     }
 

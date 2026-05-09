@@ -1,23 +1,27 @@
+# 复制本文件为 application-dev.yml，并填入真实的数据库、Redis 等连接信息
+# 注意：application-dev.yml 已在 .gitignore 中，不会被提交到代码仓库
+# 敏感信息通过环境变量注入，格式为 ${ADI_XXX:默认值}
+
 spring:
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:5432/postgres?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&tinyInt1isBit=false&allowMultiQueries=true
-    username: your-username
-    password: your-password
+    url: jdbc:postgresql://${ADI_DB_HOST:localhost}:${ADI_DB_PORT:5432}/${ADI_DB_NAME:postgres}?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&tinyInt1isBit=false&allowMultiQueries=true
+    username: ${ADI_DB_USERNAME:your-username}
+    password: ${ADI_DB_PASSWORD:your-password}
     hikari:
       connection-timeout: 10000
       validation-timeout: 3000
       idle-timeout: 60000
       login-timeout: 5
-      max-lifetime: 60000
+      max-lifetime: 300000
       maximum-pool-size: 10
       minimum-idle: 5
       read-only: false
   data:
     redis:
-      host: localhost
-      port: 6379
-      password:
+      host: ${ADI_REDIS_HOST:localhost}
+      port: ${ADI_REDIS_PORT:6379}
+      password: ${ADI_REDIS_PASSWORD:}
       database: 0
       lettuce:
         pool:
@@ -52,17 +56,18 @@ adi:
   graph-database: apache-age
   datasource:
     neo4j:
-      host: localhost
-      port: 7687
-      username: neo4j
-      password: your-db-password
-      database: neo4j
+      host: ${ADI_NEO4J_HOST:localhost}
+      port: ${ADI_NEO4J_PORT:7687}
+      username: ${ADI_NEO4J_USERNAME:neo4j}
+      password: ${ADI_NEO4J_PASSWORD:your-db-password}
+      database: ${ADI_NEO4J_DATABASE:neo4j}
 
 local:
-  files: ./data/aideepin/files/
-  images: ./data/aideepin/images/
-  watermark-images: ./data/aideepin/mark-images/
-  thumbnails: ./data/aideepin/thumbnails/
-  watermark-thumbnails: ./data/aideepin/watermark-thumbnails/
-  tmp-images: ./data/aideepin/tmp-images/
-  chat-memory: ./data/aideepin/chat-memory/
+  base-data-path: ${ADI_LOCAL_BASE_DATA_PATH:./data/aideepin}
+  files: ${local.base-data-path}/files/
+  images: ${local.base-data-path}/images/
+  watermark-images: ${local.base-data-path}/mark-images/
+  thumbnails: ${local.base-data-path}/thumbnails/
+  watermark-thumbnails: ${local.base-data-path}/watermark-thumbnails/
+  tmp-images: ${local.base-data-path}/tmp-images/
+  chat-memory: ${local.base-data-path}/chat-memory/

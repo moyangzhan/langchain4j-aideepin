@@ -224,7 +224,10 @@ public class SearchService {
             });
         }
         try {
-            countDownLatch.await();
+            boolean completed = countDownLatch.await(5, java.util.concurrent.TimeUnit.MINUTES);
+            if (!completed) {
+                log.warn("Search detail fetch timeout,uuid:{},some results may be incomplete", searchUuid);
+            }
         } catch (InterruptedException e) {
             log.error("CountDownLatch await error,uuid:{}", searchUuid, e);
             Thread.currentThread().interrupt();

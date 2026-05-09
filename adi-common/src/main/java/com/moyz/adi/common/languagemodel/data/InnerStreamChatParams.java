@@ -25,4 +25,6 @@ public class InnerStreamChatParams {
     private Integer answerContentType;
     private TriConsumer<LLMResponseContent, PromptMeta, AnswerMeta> consumer;
     private User user;
+    @Builder.Default
+    private int toolCallDepth = 0;
 }

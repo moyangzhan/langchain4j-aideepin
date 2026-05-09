@@ -408,7 +408,6 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 log.info("用户问题过长，无需再召回文档，严格模式下直接返回异常提示,宽松模式下接着请求LLM");
                 if (Boolean.TRUE.equals(knowledgeBase.getIsStrict())) {
                     sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "提问内容过长，最多不超过 " + maxInputTokens + " tokens");
-                    TokenEstimatorThreadLocal.clearTokenEstimator();
                 } else {
                     sseEmitterHelper.call(sseAskParams, (response, questionMeta, answerMeta) -> {
                                 sseEmitterHelper.sendComplete(user.getId(), sseEmitter);
@@ -421,7 +420,6 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                                                 .response(response.getContent())
                                                 .isTokenFree(aiModel.getIsFree())
                                                 .build());
-                                TokenEstimatorThreadLocal.clearTokenEstimator();
                             }
                     );
                 }
@@ -452,13 +450,11 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                                             .response(response)
                                             .isTokenFree(aiModel.getIsFree())
                                             .build());
-                            TokenEstimatorThreadLocal.clearTokenEstimator();
                         }
                 );
             }
-        } catch (Exception e) {
+        } finally {
             TokenEstimatorThreadLocal.clearTokenEstimator();
-            throw e;
         }
     }
 
@@ -538,14 +534,23 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
      */
     @Scheduled(fixedDelay = 60 * 1000)
     public void asyncUpdateStatistic() {
-        Set<String> kbUuidList = stringRedisTemplate.opsForSet().members(KB_STATISTIC_RECALCULATE_SIGNAL);
-        if (CollectionUtils.isEmpty(kbUuidList)) {
-            return;
-        }
-        for (String kbUuid : kbUuidList) {
-            int embeddingCount = embeddingService.countByKbUuid(kbUuid);
-            baseMapper.updateStatByUuid(kbUuid, embeddingCount);
-            stringRedisTemplate.opsForSet().remove(KB_STATISTIC_RECALCULATE_SIGNAL, kbUuid);
+        try {
+            Set<String> kbUuidList = stringRedisTemplate.opsForSet().members(KB_STATISTIC_RECALCULATE_SIGNAL);
+            if (CollectionUtils.isEmpty(kbUuidList)) {
+                return;
+            }
+            for (String kbUuid : kbUuidList) {
+                try {
+                    int embeddingCount = embeddingService.countByKbUuid(kbUuid);
+                    baseMapper.updateStatByUuid(kbUuid, embeddingCount);
+                } catch (Exception e) {
+                    log.error("更新知识库统计失败,kbUuid:{}", kbUuid, e);
+                } finally {
+                    stringRedisTemplate.opsForSet().remove(KB_STATISTIC_RECALCULATE_SIGNAL, kbUuid);
+                }
+            }
+        } catch (Exception e) {
+            log.error("asyncUpdateStatistic执行异常", e);
         }
     }
 
