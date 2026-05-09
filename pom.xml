@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.2</version>
+        <version>3.5.14</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.moyz</groupId>
@@ -25,9 +25,9 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <langchain4j.version>1.2.0</langchain4j.version>
-        <tmp-langchain4j.version>1.2.0-beta8</tmp-langchain4j.version>
-        <langgraph4j.version>1.5.3</langgraph4j.version>
+        <langchain4j.version>1.14.1</langchain4j.version>
+        <tmp-langchain4j.version>1.14.1-beta24</tmp-langchain4j.version>
+        <langgraph4j.version>1.8.15</langgraph4j.version>
     </properties>
 
     <dependencyManagement>

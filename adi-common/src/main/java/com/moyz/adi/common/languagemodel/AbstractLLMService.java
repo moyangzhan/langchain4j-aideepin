@@ -34,6 +34,8 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
@@ -444,7 +446,11 @@ public abstract class AbstractLLMService extends CommonModelService {
                     .build();
             ToolService toolService = new ToolService();
             toolService.toolProvider(toolProvider);
-            ToolServiceContext toolServiceContext = toolService.createContext(UuidUtil.createShort(), ((UserMessage) chatMessages.get(chatMessages.size() - 1)));
+            InvocationContext invocationContext = InvocationContext.builder()
+                    .chatMemoryId(UuidUtil.createShort())
+                    .timestampNow()
+                    .build();
+            ToolServiceContext toolServiceContext = toolService.createContext(invocationContext, (UserMessage) chatMessages.get(chatMessages.size() - 1), chatMessages);
             log.info("tool specs:{}", toolServiceContext.toolSpecifications());
             toolSpecifications = toolServiceContext.toolSpecifications();
         }
@@ -504,7 +510,8 @@ public abstract class AbstractLLMService extends CommonModelService {
                 return;
             }
             try {
-                final String result = selectedMcpClient.executeTool(req);
+                final ToolExecutionResult toolResult = selectedMcpClient.executeTool(req);
+                final String result = toolResult.resultText();
                 log.info("tool execute result:{}", result);
                 toolExecutionMessages.add(ToolExecutionResultMessage.from(req, result));
             } catch (Exception e) {
