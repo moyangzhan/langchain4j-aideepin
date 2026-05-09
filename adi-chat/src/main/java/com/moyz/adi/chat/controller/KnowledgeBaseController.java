@@ -18,7 +18,9 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/knowledge-base")
@@ -38,7 +40,8 @@ public class KnowledgeBaseController {
                               @RequestParam(value = "indexAfterUpload", defaultValue = "true") Boolean indexAfterUpload,
                               @RequestParam(defaultValue = "") String indexTypes,
                               @RequestParam("files") MultipartFile[] docs) {
-        knowledgeBaseService.uploadDocs(uuid, indexAfterUpload, docs, List.of(indexTypes.split(",")));
+        List<String> indexTypeList = Arrays.stream(indexTypes.split(",")).map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.toList());
+        knowledgeBaseService.uploadDocs(uuid, indexAfterUpload, docs, indexTypeList);
         return true;
     }
 
@@ -55,7 +58,8 @@ public class KnowledgeBaseController {
                           @RequestParam(value = "indexAfterUpload", defaultValue = "true") Boolean indexAfterUpload,
                           @RequestParam(defaultValue = "") String indexTypes,
                           @RequestParam("file") MultipartFile doc) {
-        return knowledgeBaseService.uploadDoc(uuid, indexAfterUpload, doc, List.of(indexTypes.split(",")));
+        List<String> indexTypeList = Arrays.stream(indexTypes.split(",")).map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.toList());
+        return knowledgeBaseService.uploadDoc(uuid, indexAfterUpload, doc, indexTypeList);
     }
 
     /**
@@ -123,7 +127,8 @@ public class KnowledgeBaseController {
      */
     @PostMapping("/indexing/{uuid}")
     public boolean indexing(@PathVariable String uuid, @RequestParam(defaultValue = "") String indexTypes) {
-        return knowledgeBaseService.indexing(uuid, List.of(indexTypes.split(",")));
+        List<String> indexTypeList = Arrays.stream(indexTypes.split(",")).map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.toList());
+        return knowledgeBaseService.indexing(uuid, indexTypeList);
     }
 
     /**

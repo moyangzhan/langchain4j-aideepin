@@ -70,32 +70,32 @@ public class DrawController {
     }
 
     @GetMapping("/detail/newer-public/{uuid}")
-    public DrawDto prevPublic(@PathVariable String uuid) {
+    public DrawDto newerPublic(@PathVariable String uuid) {
         return drawService.newerPublicOne(uuid);
     }
 
     @GetMapping("/detail/older-public/{uuid}")
-    public DrawDto nextPublic(@PathVariable String uuid) {
+    public DrawDto olderPublic(@PathVariable String uuid) {
         return drawService.olderPublicOne(uuid);
     }
 
     @GetMapping("/detail/newer-starred/{uuid}")
-    public DrawDto prevStarred(@PathVariable String uuid) {
+    public DrawDto newerStarred(@PathVariable String uuid) {
         return drawService.newerStarredOne(uuid);
     }
 
     @GetMapping("/detail/older-starred/{uuid}")
-    public DrawDto nextStarred(@PathVariable String uuid) {
+    public DrawDto olderStarred(@PathVariable String uuid) {
         return drawService.olderStarredOne(uuid);
     }
 
     @GetMapping("/detail/newer-mine/{uuid}")
-    public DrawDto prevMine(@PathVariable String uuid) {
+    public DrawDto newerMine(@PathVariable String uuid) {
         return drawService.newerMine(uuid);
     }
 
     @GetMapping("/detail/older-mine/{uuid}")
-    public DrawDto nextMine(@PathVariable String uuid) {
+    public DrawDto olderMine(@PathVariable String uuid) {
         return drawService.olderMine(uuid);
     }
 
