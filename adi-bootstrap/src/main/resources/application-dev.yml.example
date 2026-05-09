@@ -63,7 +63,7 @@ adi:
       database: ${ADI_NEO4J_DATABASE:neo4j}
 
 local:
-  base-data-path: ${ADI_LOCAL_BASE_DATA_PATH:./data/aideepin}
+  base-data-path: ${ADI_LOCAL_BASE_DATA_PATH:/data/aideepin}
   files: ${local.base-data-path}/files/
   images: ${local.base-data-path}/images/
   watermark-images: ${local.base-data-path}/mark-images/

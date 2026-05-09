@@ -31,6 +31,8 @@ public class LocalFileOperator implements IFileOperator {
 
     public static String imagePath;
 
+    public static String tmpImagePath;
+
     public static String filePath;
 
     @Override
@@ -102,8 +104,9 @@ public class LocalFileOperator implements IFileOperator {
         return result;
     }
 
-    public static void init(String imagePath, String filePath) {
+    public static void init(String imagePath, String tmpImagePath, String filePath) {
         LocalFileOperator.imagePath = imagePath;
+        LocalFileOperator.tmpImagePath = tmpImagePath;
         LocalFileOperator.filePath = filePath;
     }
 

@@ -46,7 +46,7 @@ public class LocalFileUtil {
         String filePath = dir + newName + "." + fileExt;
         try {
             // 将文件保存到目标路径
-            file.transferTo(new File(filePath));
+            file.transferTo(new File(filePath).getAbsoluteFile());
         } catch (IOException e) {
             log.error("save to local error", e);
             throw new BaseException(B_SAVE_FILE_ERROR);

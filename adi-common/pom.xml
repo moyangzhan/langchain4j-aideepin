@@ -12,13 +12,10 @@
     <artifactId>adi-common</artifactId>
 
     <dependencies>
-        <!-- 引入本地lib包 -->
         <dependency>
             <groupId>org.apache</groupId>
             <artifactId>age-jdbc</artifactId>
-            <scope>system</scope>
             <version>1.0.0</version>
-            <systemPath>${project.basedir}/src/lib/adi-age-jdbc.jar</systemPath>
         </dependency>
     </dependencies>
 </project>

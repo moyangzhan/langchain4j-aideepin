@@ -94,7 +94,7 @@ public class Initializer {
         LocalFileOperator.checkAndCreateDir(thumbnailsPath);
         LocalFileOperator.checkAndCreateDir(filePath);
         LocalFileOperator.checkAndCreateDir(chatMemoryPath);
-        LocalFileOperator.init(imagePath, filePath);
+        LocalFileOperator.init(imagePath, tmpImagePath, filePath);
         AliyunOssFileOperator.init(aliyunOssFileHelper);
     }
 }

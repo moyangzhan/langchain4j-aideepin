@@ -18,13 +18,10 @@
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
 
-        <!-- 引入本地lib包 -->
         <dependency>
             <groupId>com.ramostear</groupId>
             <artifactId>Happy-Captcha</artifactId>
-            <scope>system</scope>
-            <version>1.0.1</version>
-            <systemPath>${project.basedir}/src/lib/adi-Happy-Captcha-1.0.1.jar</systemPath>
+            <version>1.0.1-jakarta</version>
         </dependency>
 
     </dependencies>

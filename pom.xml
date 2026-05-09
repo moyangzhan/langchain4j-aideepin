@@ -20,6 +20,13 @@
         <module>adi-bootstrap</module>
         <module>adi-admin</module>
     </modules>
+
+    <repositories>
+        <repository>
+            <id>project-local-repo</id>
+            <url>file://${maven.multiModuleProjectDirectory}/local-repo</url>
+        </repository>
+    </repositories>
     <properties>
         <java.version>17</java.version>
         <maven.compiler.source>17</maven.compiler.source>

@@ -41,7 +41,6 @@ public class OpenAiImageService extends AbstractImageModelService {
                 .modelName(aiModel.getName())
                 .apiKey(platform.getApiKey())
                 .user(user.getUuid())
-                .responseFormat(OPENAI_CREATE_IMAGE_RESP_FORMATS_URL)
                 .size(Objects.toString(draw.getGenerateSize(), "1024x1024"))
                 .quality(Objects.toString(draw.getGenerateQuality(), "medium"))
                 .logRequests(true)

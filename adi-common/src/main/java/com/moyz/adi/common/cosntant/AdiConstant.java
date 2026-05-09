@@ -56,10 +56,6 @@ public class AdiConstant {
 
     public static final String DEFAULT_MODEL = "gpt-3.5-turbo";
 
-    public static final String CREATE_IMAGE_RESP_FORMATS_B64JSON = "b64_json";
-
-    public static final String OPENAI_CREATE_IMAGE_RESP_FORMATS_URL = "url";
-
     /**
      * 可能的 extraInfo 如适用转音频的要求： 3. 回答的内容要尽量口语化，以方便将内容转成语音
      */
