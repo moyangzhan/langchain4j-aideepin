@@ -5,7 +5,7 @@ import com.moyz.adi.common.dto.KbItemEmbeddingDto;
 import com.moyz.adi.common.dto.RefEmbeddingDto;
 import com.moyz.adi.common.entity.ConversationMessageRefEmbedding;
 import com.moyz.adi.common.mapper.ConversationMessageRefEmbeddingMapper;
-import com.moyz.adi.common.service.embedding.pgvector.ConvMemoryEmbeddingService;
+import com.moyz.adi.common.service.embedding.IConvMemoryEmbeddingService;
 import com.moyz.adi.common.util.EmbeddingUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +20,7 @@ import java.util.List;
 public class ConversationMessageRefEmbeddingService extends ServiceImpl<ConversationMessageRefEmbeddingMapper, ConversationMessageRefEmbedding> {
 
     @Resource
-    private ConvMemoryEmbeddingService convMemoryEmbeddingService;
+    private IConvMemoryEmbeddingService convMemoryEmbeddingService;
 
     public List<RefEmbeddingDto> listRefEmbeddings(String msgUuid) {
         List<ConversationMessageRefEmbedding> recordReferences = this.getBaseMapper().listByMsgUuid(msgUuid);

@@ -110,7 +110,7 @@ public class DashScopeLLMService extends AbstractLLMService {
 
     @Override
     public TokenCountEstimator getTokenEstimator() {
-        if (aiModel.getName().contains("qwen-turbo") || aiModel.getName().contains("qwen-plus")) {
+        if (isEnabled() && (aiModel.getName().contains("qwen-turbo") || aiModel.getName().contains("qwen-plus"))) {
             return new QwenTokenCountEstimator(platform.getApiKey(), aiModel.getName());
         } else {
             return new OpenAiTokenCountEstimator(OpenAiChatModelName.GPT_3_5_TURBO);
