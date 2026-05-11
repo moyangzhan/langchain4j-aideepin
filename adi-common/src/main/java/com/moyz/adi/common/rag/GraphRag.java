@@ -79,7 +79,7 @@ public class GraphRag {
                             if (!graphIngestParams.isFreeToken()) {
                                 ErrorEnum errorMsg = SpringUtil.getBean(QuotaHelper.class).checkTextQuota(user);
                                 if (null != errorMsg) {
-                                    log.warn("Quota exceeded during knowledge graph extraction, user:{}, errorInfo:{}", user.getName(), errorMsg.getInfo());
+                                    log.warn("Quota exceeded during knowledge graph extraction, user:{}, errorInfo:{}", user.getName(), SpringUtil.getMessage(errorMsg.getInfo()));
                                     continue;
                                 }
                             }

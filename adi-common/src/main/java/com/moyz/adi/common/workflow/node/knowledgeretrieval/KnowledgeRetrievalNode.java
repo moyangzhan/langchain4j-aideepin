@@ -82,7 +82,7 @@ public class KnowledgeRetrievalNode extends AbstractWfNode {
             }
         } catch (BaseException e) {
             if (B_BREAK_SEARCH.getCode().equals(e.getCode())) {
-                log.warn(B_BREAK_SEARCH.getInfo());
+                log.warn("Search interrupted by user");
             } else {
                 log.error("KnowledgeRetrievalNode retrieve error", e);
                 throw e;
