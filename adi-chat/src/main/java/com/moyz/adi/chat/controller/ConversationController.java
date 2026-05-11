@@ -41,7 +41,7 @@ public class ConversationController {
     @Operation(summary = "查询某个对话的信息列表 | List Conversation Messages")
     @GetMapping("/{uuid}")
     public ConvMsgListResp detail(
-            @Parameter(name = "对话uuid | Conversation UUID") @PathVariable @NotBlank(message = "对话uuid不能为空") String uuid
+            @Parameter(name = "对话uuid | Conversation UUID") @PathVariable @NotBlank(message = "Conversation UUID cannot be empty") String uuid
             , @Parameter(name = "最大uuid | Max Message UUID") @RequestParam String maxMsgUuid
             , @Parameter(name = "每页数量 | Page Size") @RequestParam @Min(1) @Max(100) int pageSize) {
         return conversationService.detail(uuid, maxMsgUuid, pageSize);

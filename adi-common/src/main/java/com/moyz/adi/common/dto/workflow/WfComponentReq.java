@@ -8,9 +8,9 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class WfComponentReq {
     private String uuid;
-    @NotBlank(message = "标题不能为空")
+    @NotBlank(message = "Name cannot be empty")
     private String name;
-    @NotBlank(message = "标题不能为空")
+    @NotBlank(message = "Title cannot be empty")
     private String title;
     private String remark;
     private Boolean isEnable;

@@ -8,10 +8,10 @@ import lombok.Data;
 @Data
 public class LoginReq {
 
-    @NotBlank(message = "邮箱不能为空")
+    @NotBlank(message = "Email cannot be empty")
     String email;
 
-    @NotBlank(message = "密码不能为空")
+    @NotBlank(message = "Password cannot be empty")
     String password;
 
     String captchaId;

@@ -416,12 +416,12 @@ public class UserService extends ServiceImpl<UserMapper, User> {
     private int parseIntConfig(String key) {
         String value = LocalCache.CONFIGS.get(key);
         if (value == null) {
-            throw new IllegalStateException("系统配置缺失: " + key);
+            throw new IllegalStateException("System config missing: " + key);
         }
         try {
             return Integer.parseInt(value);
         } catch (NumberFormatException e) {
-            throw new IllegalStateException("系统配置格式错误: " + key + "=" + value, e);
+            throw new IllegalStateException("System config format error: " + key + "=" + value, e);
         }
     }
 

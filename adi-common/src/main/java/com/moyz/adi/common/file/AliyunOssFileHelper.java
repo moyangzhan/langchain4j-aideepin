@@ -35,7 +35,7 @@ public class AliyunOssFileHelper {
         String aliStorageConfigKey = AdiConstant.SysConfigKey.STORAGE_LOCATION_ALI_OSS;
         String newConfigStr = LocalCache.CONFIGS.get(aliStorageConfigKey);
         if (StringUtils.isBlank(newConfigStr)) {
-            throw new BaseException(ErrorEnum.C_ALI_OSS_CONFIG_ERROR, "阿里云OSS配置异常：数据表adi_sys_config中找不到对应的配置行" + aliStorageConfigKey);
+            throw new BaseException(ErrorEnum.C_ALI_OSS_CONFIG_ERROR, "Aliyun OSS config error: no config row found in adi_sys_config for key " + aliStorageConfigKey);
         }
         //配置没有变化，无需重新加载
         // Config unchanged, no need to reload
@@ -46,7 +46,7 @@ public class AliyunOssFileHelper {
         // Config changed, reload
         AliOssConfig newConfigObj = JsonUtil.fromJson(newConfigStr, AliOssConfig.class);
         if (null == newConfigObj) {
-            throw new BaseException(ErrorEnum.C_ALI_OSS_CONFIG_ERROR, "阿里云OSS配置异常：没有正确填写配置项" + aliStorageConfigKey + "的内容");
+            throw new BaseException(ErrorEnum.C_ALI_OSS_CONFIG_ERROR, "Aliyun OSS config error: invalid config value for key " + aliStorageConfigKey);
         }
         if (null != client) {
             client.shutdown();

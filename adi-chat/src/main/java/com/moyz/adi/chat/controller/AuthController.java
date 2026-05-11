@@ -53,7 +53,7 @@ public class AuthController {
     @PostMapping(value = "/register", produces = MediaType.TEXT_PLAIN_VALUE)
     public String register(@RequestBody RegisterReq registerReq) {
         userService.register(registerReq.getEmail(), registerReq.getPassword(), registerReq.getCaptchaId(), registerReq.getCaptchaCode());
-        return "激活链接已经发送到邮箱，请登录邮箱进行激活";
+        return "Activation link sent to your email, please check and activate";
     }
 
     @Operation(summary = "注册的验证码 | Registration Captcha")
@@ -73,11 +73,11 @@ public class AuthController {
 
         try {
             userService.active(activeCode);
-            response.sendRedirect(adiProperties.getFrontendUrl() + "/#/active?active=success&msg=" + URLEncoder.encode("激活成功，请登录", Charset.defaultCharset()));
+            response.sendRedirect(adiProperties.getFrontendUrl() + "/#/active?active=success&msg=" + URLEncoder.encode("Activation successful, please login", Charset.defaultCharset()));
         } catch (IOException e) {
             log.error("auth.active1:", e);
             try {
-                response.sendRedirect(adiProperties.getFrontendUrl() + "/#/active?active=fail&msg=" + URLEncoder.encode("激活失败：系统错误，请重新注册或者登录", Charset.defaultCharset()));
+                response.sendRedirect(adiProperties.getFrontendUrl() + "/#/active?active=fail&msg=" + URLEncoder.encode("Activation failed: system error, please register or login again", Charset.defaultCharset()));
             } catch (IOException ex) {
                 log.error("auth.active2:", ex);
                 throw new BaseException(B_ACTIVE_USER_ERROR);
@@ -97,7 +97,7 @@ public class AuthController {
     @PostMapping("password/forgot")
     public String forgotPassword(@RequestParam @NotBlank String email) {
         userService.forgotPassword(email);
-        return "重置密码链接已发送";
+        return "Reset password link sent to your email";
     }
 
 
@@ -106,7 +106,7 @@ public class AuthController {
     public void resetPassword(@RequestParam @NotBlank String code, HttpServletResponse response) {
         userService.resetPassword(code);
         try {
-            response.sendRedirect(adiProperties.getFrontendUrl() + "/#/active?active=success&msg=" + URLEncoder.encode("密码已经重置", Charset.defaultCharset()));
+            response.sendRedirect(adiProperties.getFrontendUrl() + "/#/active?active=success&msg=" + URLEncoder.encode("Password has been reset", Charset.defaultCharset()));
         } catch (IOException e) {
             log.error("resetPassword:", e);
             throw new BaseException(B_RESET_PASSWORD_ERROR);

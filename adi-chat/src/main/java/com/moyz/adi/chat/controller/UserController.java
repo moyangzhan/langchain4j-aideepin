@@ -57,7 +57,7 @@ public class UserController {
     @PostMapping("/password/modify")
     public String modifyPassword(@RequestBody ModifyPasswordReq modifyPasswordReq) {
         userService.modifyPassword(modifyPasswordReq.getOldPassword(), modifyPasswordReq.getNewPassword());
-        return "修改成功";
+        return "Password changed successfully";
     }
 
     @Operation(summary = "退出 | Logout")

@@ -38,7 +38,7 @@ public class McpController {
             return List.of();
         }
         if (mcpListReq.getIds().size() > 1000) {
-            throw new BaseException(ErrorEnum.A_PARAMS_INVALID_BY_, "最多只能查询1000条数据");
+            throw new BaseException(ErrorEnum.A_PARAMS_INVALID_BY_, "Maximum 1000 records allowed");
         }
         return mcpService.listByIds(mcpListReq.getIds(), false);
     }

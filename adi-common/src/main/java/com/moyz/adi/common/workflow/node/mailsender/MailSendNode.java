@@ -72,7 +72,7 @@ public class MailSendNode extends AbstractWfNode {
             AdiMailSender adiMailSender = SpringUtil.getBean(AdiMailSender.class);
             adiMailSender.send(subject, content, toMails, ccMails);
         }
-        NodeIOData output = NodeIOData.createByText(DEFAULT_OUTPUT_PARAM_NAME, "", "邮件发送成功");
+        NodeIOData output = NodeIOData.createByText(DEFAULT_OUTPUT_PARAM_NAME, "", "Email sent successfully");
         return NodeProcessResult.builder().content(List.of(output)).build();
     }
 
