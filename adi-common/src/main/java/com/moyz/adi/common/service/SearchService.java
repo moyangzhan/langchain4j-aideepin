@@ -16,6 +16,7 @@ import com.moyz.adi.common.rag.EmbeddingRag;
 import com.moyz.adi.common.rag.EmbeddingRagContext;
 import com.moyz.adi.common.searchengine.SearchEngineServiceContext;
 import com.moyz.adi.common.util.PromptUtil;
+import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.ChatModelRequestParams;
 import com.moyz.adi.common.vo.RetrieverCreateParam;
@@ -91,7 +92,7 @@ public class SearchService {
             return;
         }
         if (CollectionUtils.isEmpty(searchResult.getItems())) {
-            sseEmitterHelper.sendStartAndComplete(user.getId(), sseEmitter, B_NO_ANSWER.getInfo());
+            sseEmitterHelper.sendStartAndComplete(user.getId(), sseEmitter, SpringUtil.getMessage(B_NO_ANSWER.getInfo()));
             return;
         }
         boolean sendFail = false;

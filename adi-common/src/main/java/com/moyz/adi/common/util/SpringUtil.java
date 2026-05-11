@@ -31,6 +31,11 @@ public class SpringUtil implements ApplicationContextAware {
         return applicationContext.getEnvironment().getProperty(key);
     }
 
+    public static String getMessage(String key) {
+        MessageSource messageSource = applicationContext.getBean(MessageSource.class);
+        return messageSource.getMessage(key, null, Locale.getDefault());
+    }
+
     public static String getMessage(String key, String... args) {
         MessageSource messageSource = applicationContext.getBean(MessageSource.class);
         return messageSource.getMessage(key, args, Locale.getDefault());

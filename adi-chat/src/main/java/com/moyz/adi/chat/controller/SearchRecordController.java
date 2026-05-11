@@ -7,7 +7,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Ai search record controller")
+@Tag(name = "AI搜索记录controller | AI Search Record Controller")
 @RequestMapping("/ai-search-record/")
 @RestController
 public class SearchRecordController {
@@ -15,7 +15,7 @@ public class SearchRecordController {
     @Resource
     private AiSearchRecordService aiSearchRecordService;
 
-    @Operation(summary = "List by max id")
+    @Operation(summary = "按最大ID查询 | List by Max ID")
     @GetMapping(value = "/list")
     public AiSearchResp list(@RequestParam(defaultValue = "0") Long maxId, String keyword) {
         return aiSearchRecordService.listByMaxId(maxId, keyword);

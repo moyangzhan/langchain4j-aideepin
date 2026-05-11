@@ -39,7 +39,7 @@ public class SSEEmitterHelper {
         //Check: rate limit
         String requestTimesKey = MessageFormat.format(RedisKeyConstant.USER_REQUEST_TEXT_TIMES, user.getId());
         if (!rateLimitHelper.checkRequestTimes(requestTimesKey, LocalCache.TEXT_RATE_LIMIT_CONFIG)) {
-            sendErrorAndComplete(user.getId(), sseEmitter, "访问太过频繁");
+            sendErrorAndComplete(user.getId(), sseEmitter, SpringUtil.getMessage(ErrorEnum.A_REQUEST_TOO_MUCH.getInfo()));
             return false;
         }
 
@@ -47,7 +47,7 @@ public class SSEEmitterHelper {
         String askingKey = MessageFormat.format(RedisKeyConstant.USER_ASKING, user.getId());
         String askingVal = stringRedisTemplate.opsForValue().get(askingKey);
         if (StringUtils.isNotBlank(askingVal)) {
-            sendErrorAndComplete(user.getId(), sseEmitter, "正在回复中...");
+            sendErrorAndComplete(user.getId(), sseEmitter, SpringUtil.getMessage("SSE_RESPONDING"));
             return false;
         }
         return true;

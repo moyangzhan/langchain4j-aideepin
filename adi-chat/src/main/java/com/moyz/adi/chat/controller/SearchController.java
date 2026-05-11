@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-@Tag(name = "AI search controller")
+@Tag(name = "AI搜索controller | AI Search Controller")
 @RequestMapping("/ai-search/")
 @RestController
 public class SearchController {
@@ -21,7 +21,7 @@ public class SearchController {
     @Resource
     private SearchService searchService;
 
-    @Operation(summary = "sse process")
+    @Operation(summary = "流式响应 | SSE Process")
     @PostMapping(value = "/process", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter sseAsk(@RequestBody @Validated AiSearchReq req) {
         return searchService.search(req);

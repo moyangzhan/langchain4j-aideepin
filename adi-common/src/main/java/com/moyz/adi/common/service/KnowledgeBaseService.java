@@ -410,7 +410,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             if (maxResults == 0) {
                 log.info("User question too long, no need to retrieve docs; strict mode returns error, relaxed mode continues to LLM");
                 if (Boolean.TRUE.equals(knowledgeBase.getIsStrict())) {
-                    sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "提问内容过长，最多不超过 " + maxInputTokens + " tokens");
+                    sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "Question too long, max " + maxInputTokens + " tokens");
                 } else {
                     sseEmitterHelper.call(sseAskParams, (response, questionMeta, answerMeta) -> {
                                 sseEmitterHelper.sendComplete(user.getId(), sseEmitter);

@@ -65,7 +65,7 @@ public class PromptController {
         return promptService.edit(id, promptEditReq.getTitle(), promptEditReq.getRemark());
     }
 
-    @Operation(summary = "search")
+    @Operation(summary = "搜索 | Search")
     @GetMapping(value = "/search")
     public List<PromptDto> search(@Validated SearchReq searchReq) {
         return promptService.search(searchReq.getKeyword());

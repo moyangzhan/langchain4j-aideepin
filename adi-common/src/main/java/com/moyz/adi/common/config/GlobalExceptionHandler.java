@@ -25,13 +25,13 @@ public class GlobalExceptionHandler {
     private BaseResponse handleMethodArgumentNotValidException(
             final MethodArgumentNotValidException exception) {
         Map<Object, Object> error = wrapperError(exception.getBindingResult());
-        log.error("参数校验异常:{}", error);
+        log.error("Parameter validation error:{}", error);
         return new BaseResponse(ErrorEnum.A_PARAMS_ERROR.getCode(), SpringUtil.getMessage(ErrorEnum.A_PARAMS_ERROR.getInfo()), error);
     }
 
     @ExceptionHandler(BaseException.class)
     private BaseResponse handleBaseException(final BaseException exception) {
-        log.error("拦截业务异常:{}", exception);
+        log.error("Business exception intercepted:{}", exception);
         return new BaseResponse(exception.getCode(), exception.getInfo(), exception.getData());
     }
 
@@ -42,7 +42,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     private BaseResponse handleException(final Exception exception) {
-        log.error("拦截全局异常:", exception);
+        log.error("Global exception intercepted:", exception);
         return new BaseResponse(ErrorEnum.B_GLOBAL_ERROR.getCode(), SpringUtil.getMessage(ErrorEnum.B_GLOBAL_ERROR.getInfo()), null);
     }
 

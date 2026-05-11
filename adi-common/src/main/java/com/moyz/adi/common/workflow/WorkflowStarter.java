@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
+import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.service.*;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -54,10 +55,10 @@ public class WorkflowStarter {
         }
         Workflow workflow = workflowService.getByUuid(workflowUuid);
         if (null == workflow) {
-            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, A_WF_NOT_FOUND.getInfo());
+            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, SpringUtil.getMessage(A_WF_NOT_FOUND.getInfo()));
             return sseEmitter;
         } else if (Boolean.FALSE.equals(workflow.getIsEnable())) {
-            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, A_WF_DISABLED.getInfo());
+            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, SpringUtil.getMessage(A_WF_DISABLED.getInfo()));
             return sseEmitter;
         }
         self.asyncRun(user, workflow, userInputs, sseEmitter);
@@ -87,7 +88,7 @@ public class WorkflowStarter {
             workflowEngine.run(user, userInputs, sseEmitter);
         } catch (Throwable e) {
             log.error("asyncRun execution exception, workflowUuid:{}", workflow.getUuid(), e);
-            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "工作流执行异常:" + e.getMessage());
+            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "Workflow execution error:" + e.getMessage());
         }
     }
 

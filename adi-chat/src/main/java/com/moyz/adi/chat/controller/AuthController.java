@@ -132,7 +132,7 @@ public class AuthController {
         happyCaptcha.output();
     }
 
-    @Operation(summary = "Search engine list")
+    @Operation(summary = "搜索引擎列表 | Search Engine List")
     @GetMapping(value = "/search-engine/list")
     public List<SearchEngineInfo> engines() {
         return SearchEngineServiceContext.getAllService().values().stream().map(item -> {

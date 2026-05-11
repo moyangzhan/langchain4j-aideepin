@@ -121,7 +121,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                     .eq(Conversation::getIsDeleted, true)
                     .one();
             if (null != delConv) {
-                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "该对话已经删除");
+                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, SpringUtil.getMessage("A_CONVERSATION_DELETED"));
                 return false;
             }
 
@@ -132,7 +132,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                     .count();
             long convsMax = Integer.parseInt(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.CONVERSATION_MAX_NUM));
             if (convsCount >= convsMax) {
-                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "对话数量已经达到上限，当前对话上限为：" + convsMax);
+                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, SpringUtil.getMessage("A_CONVERSATION_MAX_LIMIT", convsMax));
                 return false;
             }
 
@@ -141,7 +141,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             if (null != aiModel && !aiModel.getIsFree()) {
                 ErrorEnum errorMsg = quotaHelper.checkTextQuota(user);
                 if (null != errorMsg) {
-                    sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, errorMsg.getInfo());
+                    sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, SpringUtil.getMessage(errorMsg.getInfo()));
                     return false;
                 }
             }
@@ -167,7 +167,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                 .oneOpt()
                 .orElse(null);
         if (null == conversation) {
-            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, A_CONVERSATION_NOT_FOUND.getInfo());
+            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, SpringUtil.getMessage(A_CONVERSATION_NOT_FOUND.getInfo()));
             return;
         }
 
@@ -179,7 +179,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             String path = fileService.getImagePath(askReq.getAudioUuid());
             String audioText = new AsrModelContext().audioToText(path);
             if (StringUtils.isBlank(audioText)) {
-                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "音频解析失败，请检查音频文件是否正确");
+                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, SpringUtil.getMessage("B_ASR_PARSE_FAIL"));
                 return;
             }
             askReq.setPrompt(audioText);

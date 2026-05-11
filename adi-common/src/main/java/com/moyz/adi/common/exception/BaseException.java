@@ -46,7 +46,7 @@ public class BaseException extends RuntimeException {
     }
 
     private static String resolveMessage(String key, String... infoValues) {
-        String message = SpringUtil.getMessage(key, infoValues);
+        String message = SpringUtil.getMessage(key);
         if (infoValues.length > 0) {
             return MessageFormat.format(message, (Object[]) infoValues);
         }

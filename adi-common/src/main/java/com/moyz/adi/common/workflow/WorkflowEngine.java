@@ -10,6 +10,7 @@ import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.service.WorkflowRuntimeNodeService;
 import com.moyz.adi.common.service.WorkflowRuntimeService;
 import com.moyz.adi.common.util.JsonUtil;
+import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.def.WfNodeIO;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
@@ -80,7 +81,7 @@ public class WorkflowEngine {
         this.sseEmitter = sseEmitter;
         log.info("WorkflowEngine run,userId:{},workflowUuid:{},userInputs:{}", user.getId(), workflow.getUuid(), userInputs);
         if (!this.workflow.getIsEnable()) {
-            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, ErrorEnum.A_WF_DISABLED.getInfo());
+            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, SpringUtil.getMessage(ErrorEnum.A_WF_DISABLED.getInfo()));
             throw new BaseException(ErrorEnum.A_WF_DISABLED);
         }
 
@@ -172,7 +173,7 @@ public class WorkflowEngine {
         log.error("error", e);
         String errorMsg = e.getMessage();
         if (errorMsg.contains("parallel node doesn't support conditional branch")) {
-            errorMsg = "并行节点中不能包含条件分支";
+            errorMsg = "Parallel nodes cannot contain conditional branches";
         }
         sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, errorMsg);
         workflowRuntimeService.updateStatus(wfRuntimeResp.getId(), WORKFLOW_PROCESS_STATUS_FAIL, errorMsg);
