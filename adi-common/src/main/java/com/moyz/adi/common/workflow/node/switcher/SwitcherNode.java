@@ -38,7 +38,7 @@ public class SwitcherNode extends AbstractWfNode {
         }
         SwitcherNodeConfig nodeConfig = JsonUtil.fromJson(nodeConfigObj, SwitcherNodeConfig.class);
         if (null == nodeConfig || CollectionUtils.isEmpty(nodeConfig.getCases())) {
-            log.warn("找不到条件分支节点的配置,uuid:{},title:{}", node.getUuid(), node.getTitle());
+            log.warn("Switcher node configuration not found, uuid:{}, title:{}", node.getUuid(), node.getTitle());
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
         String nextNode = nodeConfig.getDefaultTargetNodeUuid();
@@ -46,6 +46,7 @@ public class SwitcherNode extends AbstractWfNode {
             log.error("Switcher default downstream is empty,node:{},title:{}", node.getUuid(), node.getTitle());
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
+//Various cases for initializing configuration
         //初始化配置的各种case
         for (SwitcherCase switcherCase : nodeConfig.getCases()) {
             List<SwitcherCase.Condition> conditions = switcherCase.getConditions();
@@ -59,7 +60,7 @@ public class SwitcherNode extends AbstractWfNode {
             for (SwitcherCase.Condition condition : switcherCase.getConditions()) {
                 NodeIOData ioData = createByReferParam(condition.getNodeUuid(), condition.getNodeParamName());
                 if (null == ioData || null == ioData.getContent()) {
-                    log.warn("Switcher找不到引用的节点参数,nodeUuid:{},paramName:{}", condition.getNodeUuid(), condition.getNodeParamName());
+                    log.warn("Switcher cannot find referenced node parameter, nodeUuid:{}, paramName:{}", condition.getNodeUuid(), condition.getNodeParamName());
                     continue;
                 }
                 String inputValue = ioData.valueToString().toLowerCase();

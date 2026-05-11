@@ -79,11 +79,11 @@ public class GraphRag {
                             if (!graphIngestParams.isFreeToken()) {
                                 ErrorEnum errorMsg = SpringUtil.getBean(QuotaHelper.class).checkTextQuota(user);
                                 if (null != errorMsg) {
-                                    log.warn("抽取知识图谱时发现额度已超过限制,user:{},errorInfo:{}", user.getName(), errorMsg.getInfo());
+                                    log.warn("Quota exceeded during knowledge graph extraction, user:{}, errorInfo:{}", user.getName(), errorMsg.getInfo());
                                     continue;
                                 }
                             }
-                            log.info("请求LLM从文本中抽取实体及关系,segmentId:{}", segmentId);
+                            log.info("Requesting LLM to extract entities and relations from text, segmentId:{}", segmentId);
                             ChatResponse aiMessageResponse = graphIngestParams.getChatModel().chat(UserMessage.from(GraphExtractPrompt.GRAPH_EXTRACTION_PROMPT.replace("{input_text}", segment.text())));
                             response = aiMessageResponse.aiMessage().text();
 

@@ -38,10 +38,12 @@ public class AliyunOssFileHelper {
             throw new BaseException(ErrorEnum.C_ALI_OSS_CONFIG_ERROR, "阿里云OSS配置异常：数据表adi_sys_config中找不到对应的配置行" + aliStorageConfigKey);
         }
         //配置没有变化，无需重新加载
+        // Config unchanged, no need to reload
         if (configStr.equals(newConfigStr)) {
             return;
         }
         //配置有变化，重新加载
+        // Config changed, reload
         AliOssConfig newConfigObj = JsonUtil.fromJson(newConfigStr, AliOssConfig.class);
         if (null == newConfigObj) {
             throw new BaseException(ErrorEnum.C_ALI_OSS_CONFIG_ERROR, "阿里云OSS配置异常：没有正确填写配置项" + aliStorageConfigKey + "的内容");
@@ -50,9 +52,9 @@ public class AliyunOssFileHelper {
             client.shutdown();
         }
         if (StringUtils.isAnyBlank(newConfigObj.getEndpoint(), newConfigObj.getAccessKeyId(), newConfigObj.getAccessKeySecret(), newConfigObj.getBucketName())) {
-            log.warn("阿里云OSS配置信息没有填写完整，不初始化OSSClient");
+            log.warn("Aliyun OSS config is incomplete, skip initializing OSSClient");
             if (STORAGE_LOCATION_VALUE_ALI_OSS == Integer.parseInt(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.STORAGE_LOCATION))) {
-                log.error("^^^ 阿里云OSS不可用，需将存储位置切换回本地存储 ^^^");
+                log.error("^^^ Aliyun OSS is unavailable, please switch storage location to local ^^^");
             }
             return;
         }

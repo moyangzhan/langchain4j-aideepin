@@ -39,12 +39,12 @@ public class MailSendNode extends AbstractWfNode {
         String content = WorkflowUtil.renderTemplate(nodeConfig.getContent(), state.getInputs());
         String toMails = WorkflowUtil.renderTemplate(nodeConfig.getToMails(), state.getInputs());
         if (StringUtils.isBlank(toMails)) {
-            log.warn("邮件发送节点的配置错误1,{}", state.getUuid());
+            log.warn("Mail send node configuration error 1, {}", state.getUuid());
             throw new BaseException(A_MAIL_RECEIVER_EMPTY);
         }
         toMails = String.join(",", filterValidMails(toMails));
         if (StringUtils.isBlank(toMails)) {
-            log.warn("邮件发送节点的配置错误2,{}", state.getUuid());
+            log.warn("Mail send node configuration error 2, {}", state.getUuid());
             throw new BaseException(A_MAIL_RECEIVER_EMPTY);
         }
         String ccMails = StringUtils.defaultString(nodeConfig.getCcMails(), "");
@@ -55,11 +55,11 @@ public class MailSendNode extends AbstractWfNode {
         if (senderType == MAIL_SENDER_TYPE_CUSTOM) {
             MailSendNodeConfig.SenderInfo senderInfo = nodeConfig.getSender();
             if (senderInfo == null) {
-                log.warn("邮件发送节点的配置错误3,{}", state.getUuid());
+                log.warn("Mail send node configuration error 3, {}", state.getUuid());
                 throw new BaseException(A_MAIL_SENDER_EMPTY);
             }
             if (StringUtils.isAnyBlank(senderInfo.getName(), senderInfo.getMail(), senderInfo.getPassword())) {
-                log.warn("邮件发送节点的配置错误4,{}", state.getUuid());
+                log.warn("Mail send node configuration error 4, {}", state.getUuid());
                 throw new BaseException(A_MAIL_SENDER_CONFIG_ERROR);
             }
             AdiMailSender adiMailSender = SpringUtil.getBean(AdiMailSender.class);
@@ -103,7 +103,7 @@ public class MailSendNode extends AbstractWfNode {
             if (checkMail(mail)) {
                 validMails.add(mail);
             } else {
-                log.warn("邮箱地址无效，忽略,{}", mail);
+                log.warn("Invalid email address, ignored, {}", mail);
             }
         }
         return validMails;

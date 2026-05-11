@@ -112,13 +112,13 @@ public class WorkflowNodeService extends ServiceImpl<WorkflowNodeMapper, Workflo
             WorkflowNode old = self.getByUuid(workflowId, node.getUuid());
             if (null != old) {
                 if (!old.getWorkflowId().equals(node.getWorkflowId())) {
-                    log.error("节点不属于指定的工作流,保存失败,workflowId:{},old workflowId:{},new workflowId:{},node uuid:{},title:{}",
+                    log.error("Node does not belong to specified workflow, save failed, workflowId:{}, old workflowId:{}, new workflowId:{}, node uuid:{}, title:{}",
                             workflowId, old.getWorkflowId(), node.getWorkflowId(), node.getUuid(), node.getTitle());
                     throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
                 }
-                log.info("更新节点,uuid:{},title:{}", node.getUuid(), node.getTitle());
+                log.info("Updating node, uuid:{}, title:{}", node.getUuid(), node.getTitle());
             } else {
-                log.info("新增节点,uuid:{},title:{}", node.getUuid(), node.getTitle());
+                log.info("Adding node, uuid:{}, title:{}", node.getUuid(), node.getTitle());
                 newOrUpdate.setId(null);
             }
             self.saveOrUpdate(newOrUpdate);
@@ -132,11 +132,12 @@ public class WorkflowNodeService extends ServiceImpl<WorkflowNodeMapper, Workflo
                 .findFirst()
                 .orElse(null);
         if (null == component) {
-            log.error("节点不存在,uuid:{},title:{}", workflowNode.getUuid(), workflowNode.getTitle());
+            log.error("Node not found, uuid:{}, title:{}", workflowNode.getUuid(), workflowNode.getTitle());
             throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
         }
         if (component.getName().equals(WfComponentNameEnum.MAIL_SEND.getName())) {
 
+//Encryption (currently only at database layer, frontend-backend encryption TBD)
             //加密（目前暂时只在数据库层做加密，前后端交互时数据加解密待定）
             MailSendNodeConfig mailSendNodeConfig = JsonUtil.fromJson(workflowNode.getNodeConfig(), MailSendNodeConfig.class);
             if (null != mailSendNodeConfig && null != mailSendNodeConfig.getSender() && null != mailSendNodeConfig.getSender().getPassword()) {
@@ -150,7 +151,7 @@ public class WorkflowNodeService extends ServiceImpl<WorkflowNodeMapper, Workflo
 
     private void checkAndDecrypt(WorkflowNode workflowNode) {
         if (null == workflowNode) {
-            log.warn("节点不存在");
+            log.warn("Node does not exist");
             return;
         }
         WorkflowComponent component = workflowComponentService.getAllEnable()
@@ -159,7 +160,7 @@ public class WorkflowNodeService extends ServiceImpl<WorkflowNodeMapper, Workflo
                 .findFirst()
                 .orElse(null);
         if (null == component) {
-            log.error("节点不存在,uuid:{},title:{}", workflowNode.getUuid(), workflowNode.getTitle());
+            log.error("Node not found, uuid:{}, title:{}", workflowNode.getUuid(), workflowNode.getTitle());
             throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
         }
         if (component.getName().equals(WfComponentNameEnum.MAIL_SEND.getName())) {
@@ -186,11 +187,11 @@ public class WorkflowNodeService extends ServiceImpl<WorkflowNodeMapper, Workflo
                 continue;
             }
             if (!old.getWorkflowId().equals(workflowId)) {
-                log.error("节点不属于指定的工作流,删除失败,workflowId:{},node workflowId:{}", workflowId, workflowId);
+                log.error("Node does not belong to specified workflow, delete failed, workflowId:{}, node workflowId:{}", workflowId, workflowId);
                 throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
             }
             if (workflowComponentService.getStartComponent().getId().equals(old.getWorkflowComponentId())) {
-                log.warn("开始节点不能删除,uuid:{}", old.getUuid());
+                log.warn("Start node cannot be deleted, uuid:{}", old.getUuid());
                 continue;
             }
             ChainWrappers.lambdaUpdateChain(baseMapper)

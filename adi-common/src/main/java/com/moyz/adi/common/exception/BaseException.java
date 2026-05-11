@@ -2,8 +2,10 @@ package com.moyz.adi.common.exception;
 
 
 import com.moyz.adi.common.enums.ErrorEnum;
+import com.moyz.adi.common.util.SpringUtil;
 
 import java.text.MessageFormat;
+import java.util.Locale;
 
 public class BaseException extends RuntimeException {
     private final String code;
@@ -18,13 +20,9 @@ public class BaseException extends RuntimeException {
     }
 
     public BaseException(ErrorEnum errorEnum, String... infoValues) {
-        super(errorEnum.getCode() + ":" + MessageFormat.format(errorEnum.getInfo(), infoValues));
+        super(errorEnum.getCode() + ":" + resolveMessage(errorEnum.getInfo(), infoValues));
         this.code = errorEnum.getCode();
-        if (infoValues.length > 0) {
-            this.info = MessageFormat.format(errorEnum.getInfo(), infoValues);
-        } else {
-            this.info = errorEnum.getInfo();
-        }
+        this.info = resolveMessage(errorEnum.getInfo(), infoValues);
     }
 
     public String getCode() {
@@ -45,5 +43,13 @@ public class BaseException extends RuntimeException {
     public BaseException setData(Object data) {
         this.data = data;
         return this;
+    }
+
+    private static String resolveMessage(String key, String... infoValues) {
+        String message = SpringUtil.getMessage(key, infoValues);
+        if (infoValues.length > 0) {
+            return MessageFormat.format(message, (Object[]) infoValues);
+        }
+        return message;
     }
 }

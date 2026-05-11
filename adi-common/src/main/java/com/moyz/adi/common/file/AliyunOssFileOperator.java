@@ -67,11 +67,13 @@ public class AliyunOssFileOperator implements IFileOperator {
         aliyunOssFileHelper.saveObj(bytes, objName);
         try {
             //传到oss后把本地临时文件删除
+            // Delete local temp file after uploading to OSS
             Files.deleteIfExists(Paths.get(filePath));
         } catch (IOException e) {
             throw new BaseException(B_DELETE_FILE_ERROR);
         }
         //对于OSS，存储的是对象名称，而不是完整URL
+        // For OSS, store the object name instead of the full URL
         filePath = objName;
         return SaveRemoteImageResult.builder().ext(ext).originalName(fileName).pathOrUrl(filePath).build();
     }

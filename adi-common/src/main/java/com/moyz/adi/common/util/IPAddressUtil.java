@@ -8,20 +8,25 @@ public class IPAddressUtil {
 
     public static String getClientIpAddress(HttpServletRequest request) {
         String ip = null;
+//X-Forwarded-For: Squid server proxy
         //X-Forwarded-For：Squid 服务代理
         String ipAddresses = request.getHeader("X-Forwarded-For");
+//Proxy-Client-IP: Apache server proxy
         //Proxy-Client-IP：apache 服务代理
         if (ipAddresses == null || ipAddresses.length() == 0 || "unknown".equalsIgnoreCase(ipAddresses)) {
             ipAddresses = request.getHeader("Proxy-Client-IP");
         }
+//WL-Proxy-Client-IP: WebLogic server proxy
         //WL-Proxy-Client-IP：weblogic 服务代理
         if (ipAddresses == null || ipAddresses.length() == 0 || "unknown".equalsIgnoreCase(ipAddresses)) {
             ipAddresses = request.getHeader("WL-Proxy-Client-IP");
         }
+//HTTP_CLIENT_IP: some proxy servers
         //HTTP_CLIENT_IP：有些代理服务器
         if (ipAddresses == null || ipAddresses.length() == 0 || "unknown".equalsIgnoreCase(ipAddresses)) {
             ipAddresses = request.getHeader("HTTP_CLIENT_IP");
         }
+//X-Real-IP: Nginx server proxy
         //X-Real-IP：nginx服务代理
         if (ipAddresses == null || ipAddresses.length() == 0 || "unknown".equalsIgnoreCase(ipAddresses)) {
             ipAddresses = request.getHeader("X-Real-IP");

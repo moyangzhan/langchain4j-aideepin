@@ -25,13 +25,13 @@ public class McpController {
     @Resource
     private McpService mcpService;
 
-    @Operation(summary = "搜索列表")
+    @Operation(summary = "搜索列表 | Search List")
     @GetMapping(value = "/public/search")
     public Page<Mcp> search(@RequestParam String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
         return mcpService.search(McpSearchReq.builder().title(keyword).build(), currentPage, pageSize, false);
     }
 
-    @Operation(summary = "MCP列表")
+    @Operation(summary = "MCP列表 | MCP List")
     @PostMapping(value = "/public/list")
     public List<Mcp> list(@RequestBody McpListReq mcpListReq) {
         if (CollectionUtils.isEmpty(mcpListReq.getIds())) {

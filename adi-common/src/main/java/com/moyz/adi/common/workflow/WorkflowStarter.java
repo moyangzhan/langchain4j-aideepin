@@ -86,7 +86,7 @@ public class WorkflowStarter {
                     workflowRuntimeNodeService);
             workflowEngine.run(user, userInputs, sseEmitter);
         } catch (Throwable e) {
-            log.error("asyncRun执行异常,workflowUuid:{}", workflow.getUuid(), e);
+            log.error("asyncRun execution exception, workflowUuid:{}", workflow.getUuid(), e);
             sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "工作流执行异常:" + e.getMessage());
         }
     }
@@ -95,13 +95,13 @@ public class WorkflowStarter {
     public void resumeFlow(String runtimeUuid, String userInput) {
         WorkflowEngine workflowEngine = InterruptedFlow.get(runtimeUuid);
         if (null == workflowEngine) {
-            log.error("工作流恢复执行时失败,runtime:{}", runtimeUuid);
+            log.error("Workflow resume execution failed, runtime:{}", runtimeUuid);
             throw new BaseException(A_WF_RESUME_FAIL);
         }
         try {
             workflowEngine.resume(userInput);
         } catch (Throwable e) {
-            log.error("resumeFlow执行异常,runtimeUuid:{}", runtimeUuid, e);
+            log.error("resumeFlow execution exception, runtimeUuid:{}", runtimeUuid, e);
         }
     }
 

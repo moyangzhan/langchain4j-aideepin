@@ -87,7 +87,7 @@ public class EmbeddingRag implements IRAGService {
         }
         InputAdaptorMsg inputAdaptorMsg = InputAdaptor.isQuestionValid(userQuestion, maxInputTokens);
         if (inputAdaptorMsg.getTokenTooMuch() == TOKEN_TOO_MUCH_QUESTION) {
-            log.warn("用户问题太长了，没有足够的token数量留给召回的内容");
+            log.warn("User question too long, not enough tokens left for retrieved content");
             return 0;
         } else {
             int maxRetrieveDocLength = maxInputTokens - inputAdaptorMsg.getUserQuestionTokenCount();

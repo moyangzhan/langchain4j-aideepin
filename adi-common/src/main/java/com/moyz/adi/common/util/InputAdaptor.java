@@ -32,7 +32,7 @@ public class InputAdaptor {
         int questionLength = tokenizer.estimateTokenCountInText(userQuestion);
         result.setUserQuestionTokenCount(questionLength);
         if (questionLength > maxInputTokens) {
-            log.warn("用户问题过长,已超过{}个token", maxInputTokens);
+            log.warn("User question too long, exceeded {} tokens", maxInputTokens);
             result.setTokenTooMuch(InputAdaptorMsg.TOKEN_TOO_MUCH_QUESTION);
         }
         return result;
@@ -58,7 +58,9 @@ public class InputAdaptor {
 //        if (inputAdaptorMsg.getTokenTooMuch() == InputAdaptorMsg.TOKEN_TOO_MUCH_QUESTION) {
 //            tokenCostConsumer.accept(inputAdaptorMsg);
 //        }
+//        Calculate length of user question and history for enhancement, discard some or all history if exceeded
 //        // 计算准备待增强的用户原始问题及历史记录的长度,如果超额，则丢弃部分或全部历史记录
+//        Enhance user question for better document retrieval
 //        // 对用户问题进行增强是为了更好地召回文档
 //        List<ChatMessage> validMemories = new ArrayList<>();
 //        int allMemoryTokenCount = 0;
@@ -71,9 +73,10 @@ public class InputAdaptor {
 //                validMemories.add(metadata.chatMemory().get(i));
 //            } else {
 //                tokenTooMuch = InputAdaptorMsg.TOKEN_TOO_MUCH_MEMORY;
-//                log.warn("记忆内容过长,丢弃\n>>>>> {} <<<<<", memory.substring(0, Math.min(memory.length(), 30)));
+//                log.warn("Memory content too long, discarding\n>>>>> {} <<<<<", memory.substring(0, Math.min(memory.length(), 30)));
 //            }
 //        }
+//        Reorder and write appropriate amount of memory content
 //        //重新排序及写入内容适量的记忆
 //        Collections.reverse(validMemories);
 //
@@ -97,7 +100,7 @@ public class InputAdaptor {
      */
     public static List<Content> adjustRetrieveDocs(int questionLength, List<Content> contents, int maxInputTokens) {
         if (contents.isEmpty()) {
-            log.info("文档数量为0");
+            log.info("Document count is 0");
             return Collections.emptyList();
         }
         String tokenizerName = TokenEstimatorThreadLocal.getTokenEstimator();
@@ -111,10 +114,10 @@ public class InputAdaptor {
                 allRetrievedDocsTokenCount += currentDocTokenCount;
                 validContents.add(content);
             } else {
-                log.warn("召回文档太长,丢弃\n>>>>> {} <<<<<", content.textSegment().text().substring(0, Math.min(content.textSegment().text().length(), 30)));
+                log.warn("Retrieved document too long, discarding\n>>>>> {} <<<<<", content.textSegment().text().substring(0, Math.min(content.textSegment().text().length(), 30)));
             }
         }
-        log.info("文档token数:{}", allRetrievedDocsTokenCount);
+        log.info("Document token count:{}", allRetrievedDocsTokenCount);
         return validContents;
     }
 
@@ -133,6 +136,7 @@ public class InputAdaptor {
         int messageSize = messages.size();
         ChatMessage latestMessage = messages.get(messageSize - 1);
         List<ChatMessage> result = new ArrayList<>();
+//        The latest message (current user question) must be kept
 //        //最新一条消息（即当前用户的提问）必须留下
 //        result.add(latestMessage);
 //        int allTokenCount = 0;
@@ -142,6 +146,7 @@ public class InputAdaptor {
 //        for (int i = messageSize - 1 - 1; i >= 0; i--) {
 //            log.info("messageSize i:{}", i);
 //            ChatMessage curMsg = messages.get(i);
+//            For multimodal, skip token calculation for now
 //            //多模态时，先不计算token
 //            if (curMsg instanceof UserMessage && ((UserMessage) curMsg).contents().stream().anyMatch(item -> item instanceof ImageContent)) {
 //                result.add(curMsg);
@@ -153,13 +158,14 @@ public class InputAdaptor {
 //                    allTokenCount += currentMessageTokenCount;
 //                    result.add(curMsg);
 //                } else {
-//                    log.warn("消息过长,丢弃\n>>>>> {} <<<<<", curMsg.text().substring(0, Math.min(curMsg.text().length(), 30)));
+//                    log.warn("Message too long, discarding\n>>>>> {} <<<<<", curMsg.text().substring(0, Math.min(curMsg.text().length(), 30)));
+//                    If current is AI reply, also discard the corresponding user question
 //                    //如果当前是AI的回复，把对应的用户提问也丢弃
 //                    if (curMsg instanceof AiMessage) {
 //                        i--;
 //                        curMsg = messages.get(i);
 //                        if (null != curMsg) {
-//                            log.warn("对应的用户问题一并丢弃\n>>>>> {} <<<<<", curMsg.text().substring(0, Math.min(curMsg.text().length(), 30)));
+//                            log.warn("Corresponding user question also discarded\n>>>>> {} <<<<<", curMsg.text().substring(0, Math.min(curMsg.text().length(), 30)));
 //                        }
 //                    }
 //                }

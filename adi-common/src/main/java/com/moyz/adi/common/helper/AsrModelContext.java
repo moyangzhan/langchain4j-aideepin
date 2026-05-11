@@ -26,6 +26,7 @@ public class AsrModelContext {
 
     /**
      * 直接由系统设置来决定使用哪个ASR模型，不需要让用户选择。
+     * The ASR model is determined directly by system settings, no user selection needed.
      */
     public AsrModelContext() {
         String asrSetting = SysConfigService.getByKey(AdiConstant.SysConfigKey.ASR_SETTING);

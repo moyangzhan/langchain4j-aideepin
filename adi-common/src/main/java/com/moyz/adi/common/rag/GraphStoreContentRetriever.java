@@ -90,6 +90,7 @@ public class GraphStoreContentRetriever implements ContentRetriever {
                 entities.add(AdiStringUtil.clearStr(targetName));
             }
         }
+//Determine whether to forcibly interrupt the query, if no match then stop further operations
         //判断是否要强行中断查询，没有命中则不再进行下一步操作（比如说请求LLM），直接抛出异常中断流程
         if (breakIfSearchMissed && entities.isEmpty()) {
             log.warn("Graph search missed");
@@ -97,7 +98,7 @@ public class GraphStoreContentRetriever implements ContentRetriever {
         }
         entities = entities.stream().map(AdiStringUtil::removeSpecialChar).filter(StringUtils::isNotBlank).collect(Collectors.toSet());
         if (entities.isEmpty()) {
-            log.info("从用户查询中没有解析出实体");
+            log.info("No entities parsed from user query");
             return Collections.emptyList();
         }
 

@@ -87,6 +87,7 @@ public class OpenAiLLMService extends AbstractLLMService {
 
     @Override
     protected ChatRequestParameters doCreateChatRequestParameters(ChatRequestParameters defaultParameters, Map<String, Object> customParameters) {
+// Platforms compatible with OpenAI API may need custom parameters
         // 兼容 OpenAi api 的平台可能会需要自定义参数
         if (null != customParameters && !customParameters.isEmpty()) {
             ChatRequestParameters openAiChatRequestParameters = OpenAiChatRequestParameters.builder()

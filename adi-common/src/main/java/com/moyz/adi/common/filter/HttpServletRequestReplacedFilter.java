@@ -16,6 +16,8 @@ import java.io.IOException;
 /**
  * 过滤器
  * 当前主要是配合LogInterceptor使用，已使用ControllerParamsLogAspect代替LogInterceptor
+ * Filter
+ * Currently works with LogInterceptor, replaced by ControllerParamsLogAspect
  */
 @Slf4j
 //@Component

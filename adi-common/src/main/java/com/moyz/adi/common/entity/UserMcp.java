@@ -14,7 +14,7 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @Data
 @TableName(value = "adi_user_mcp", autoResultMap = true)
-@Schema(title = "用户MCP实体")
+@Schema(title = "用户MCP实体 | User MCP Entity")
 public class UserMcp extends BaseEntity {
 
     @Schema(title = "uuid")
@@ -29,11 +29,11 @@ public class UserMcp extends BaseEntity {
     @TableField(value = "mcp_id")
     private Long mcpId;
 
-    @Schema(title = "用户的参数设置")
+    @Schema(title = "用户的参数设置 | User Parameter Settings")
     @TableField(value = "mcp_customized_params", jdbcType = JdbcType.ARRAY, typeHandler = UserMcpSettingTypeHandler.class)
     private List<UserMcpCustomizedParam> mcpCustomizedParams;
 
-    @Schema(title = "是否启用")
+    @Schema(title = "是否启用 | Is Enabled")
     @TableField(value = "is_enable")
     private Boolean isEnable;
 }

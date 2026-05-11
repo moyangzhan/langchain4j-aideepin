@@ -7,6 +7,7 @@ import com.moyz.adi.common.file.AliyunOssFileOperator;
 import com.moyz.adi.common.file.LocalFileOperator;
 import com.moyz.adi.common.rag.*;
 import com.moyz.adi.common.util.AesUtil;
+import com.moyz.adi.common.entity.SysConfig;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -17,6 +18,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+
+import java.util.Locale;
 
 @Slf4j
 @Service
@@ -63,9 +66,10 @@ public class Initializer {
     @PostConstruct
     public void init() {
         if (adiProperties.getEncrypt().getAesKey().equals("Ap9da0CopbjiKGc1")) {
-            throw new RuntimeException("不能使用默认的AES key，请设置属于你自己的Key，AES相关的加解密都会用到该key，设置路径: application.yml => adi.encrypt.aes-key");
+            throw new RuntimeException("Cannot use the default AES key. Please set your own key in application.yml => adi.encrypt.aes-key");
         }
         sysConfigService.loadAndCache();
+        initDefaultLocale();
         aiModelService.init();
         checkAndInitFileOperator();
 
@@ -84,6 +88,26 @@ public class Initializer {
      */
     @Scheduled(initialDelay = 10 * 60 * 1000, fixedDelay = 10 * 60 * 1000)
     public void reloadConfig() {
+        sysConfigService.loadAndCache();
+    }
+
+    /**
+     * Initialize default locale if not exists.
+     * Detect from system locale: zh-CN for Chinese, en-US otherwise.
+     */
+    private void initDefaultLocale() {
+        String key = AdiConstant.SysConfigKey.DEFAULT_LOCALE;
+        String existing = SysConfigService.getByKey(key);
+        if (existing != null) {
+            return;
+        }
+        Locale sysLocale = Locale.getDefault();
+        String defaultLocale = Locale.CHINA.getLanguage().equals(sysLocale.getLanguage()) ? "zh-CN" : "en-US";
+        log.info("Default locale not found in config, initializing with: {}", defaultLocale);
+        SysConfig config = new SysConfig();
+        config.setName(key);
+        config.setValue(defaultLocale);
+        sysConfigService.save(config);
         sysConfigService.loadAndCache();
     }
 

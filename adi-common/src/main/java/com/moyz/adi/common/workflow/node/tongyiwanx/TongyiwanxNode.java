@@ -38,7 +38,7 @@ public class TongyiwanxNode extends AbstractWfNode {
         }
         TongyiwanxNodeConfig nodeConfigObj = JsonUtil.fromJson(objectConfig, TongyiwanxNodeConfig.class);
         if (null == nodeConfigObj || StringUtils.isBlank(nodeConfigObj.getModelName())) {
-            log.warn("通义万相节点的配置不存在或错误");
+            log.warn("Tongyiwanx node configuration missing or incorrect");
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
         log.info("TongyiwanxNode config:{}", nodeConfigObj);
@@ -50,7 +50,7 @@ public class TongyiwanxNode extends AbstractWfNode {
         }
         log.info("TongyiwanxNode prompt:{}", prompt);
         if (StringUtils.isBlank(prompt)) {
-            log.warn("找不到通义万相节点的提示词");
+            log.warn("Tongyiwanx node prompt not found");
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
         AbstractImageModelService imageModelService = ImageModelContext.getOrDefault(nodeConfigObj.getModelName());

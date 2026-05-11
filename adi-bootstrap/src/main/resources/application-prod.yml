@@ -18,26 +18,36 @@ spring:
       database: 0
       lettuce:
         pool:
-          #连接池最大连接数
+          # Max connections in pool
+          # 连接池最大连接数
           max-active: 20
-          #连接池最大阻塞等待时间
+          # Max blocking wait time in pool
+          # 连接池最大阻塞等待时间
           max-wait: -1
-          #连接池中的最大空闲连接
+          # Max idle connections in pool
+          # 连接池中的最大空闲连接
           max-idle: 5
-          #连接池中的最小空闲连接
+          # Min idle connections in pool
+          # 连接池中的最小空闲连接
           min-idle: 1
 
 adi:
-  # embedding model可选值如下（见adi_ai_model中的embedding类型的数据）：
-  # local:all-minilm-l6-v2 (英文效果较好，中文效果较差)
-  # local:bge-small-zh-v1.5 (默认、中文效果较好、相比 all-minilm-l6-v2 占用内存较大)
-  # openai:text-embedding-3-small、openai:text-embedding-3-large (多语言)
-  # dashscope:text-embedding-v1、dashscope:text-embedding-v3  (多语言，中文效果较好)
+  # Embedding model options (see embedding type data in adi_ai_model):
+  # local:all-minilm-l6-v2 (Better for English, weaker for Chinese)
+  # local:bge-small-zh-v1.5 (Default, better for Chinese, uses more memory than all-minilm-l6-v2)
+  # openai:text-embedding-3-small, openai:text-embedding-3-large (Multilingual)
+  # dashscope:text-embedding-v1, dashscope:text-embedding-v3 (Multilingual, better for Chinese)
+  # Note: Different vector models with different dimensions generate incompatible vector spaces that cannot be stored in the same table for mixed search. Recommend deciding on a vector model and its dimensions early in the project. If changed later, vector data must be regenerated.
+  # 向量模型选项（参见 adi_ai_model 中 embedding 类型的数据）：
+  # local:all-minilm-l6-v2（英文效果较好，中文效果较差）
+  # local:bge-small-zh-v1.5（默认、中文效果较好、相比 all-minilm-l6-v2 占用内存较大）
+  # openai:text-embedding-3-small, openai:text-embedding-3-large（多语言）
+  # dashscope:text-embedding-v1, dashscope:text-embedding-v3（多语言，中文效果较好）
   # 注意：由于不同向量模型不同维度参数生成的向量特征空间不一致，无法兼容存储于一张表并进行混合搜索，建议项目初期确定好向量模型及其维度，后期如有修改，需重新生成向量数据
   embedding-model: local:bge-small-zh-v1.5
-  # vector-database: pgvector、neo4j
+  # vector-database: pgvector, neo4j
   vector-database: pgvector
-  # graph-database: apache AGE、neo4j
+  # graph-database: apache-age, neo4j
   graph-database: apache-age
   datasource:
     neo4j:

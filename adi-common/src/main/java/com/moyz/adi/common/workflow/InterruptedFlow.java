@@ -20,7 +20,7 @@ public class InterruptedFlow {
             .expireAfterWrite(10, TimeUnit.MINUTES)
             .maximumSize(1000)
             .removalListener(notification -> {
-                log.info("InterruptedFlow移除条目,key:{},cause:{}", notification.getKey(), notification.getCause());
+                log.info("InterruptedFlow removed entry, key:{}, cause:{}", notification.getKey(), notification.getCause());
             })
             .build();
 

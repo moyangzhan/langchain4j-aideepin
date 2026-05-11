@@ -78,19 +78,19 @@ public class TokenFilter extends OncePerRequestFilter {
                 String tokenKey = MessageFormat.format(RedisKeyConstant.USER_TOKEN, token);
                 String userJson = stringRedisTemplate.opsForValue().get(tokenKey);
                 if (StringUtils.isBlank(userJson)) {
-                    log.warn("未登录:{}", requestUri);
+                    log.warn("Not logged in:{}", requestUri);
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     return;
                 }
 
                 User user = JsonUtil.fromJson(userJson, User.class);
                 if (null == user) {
-                    log.warn("用户不存在:{}", requestUri);
+                    log.warn("User not found:{}", requestUri);
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     return;
                 }
                 if (Boolean.TRUE.equals(!user.getIsAdmin()) && requestUri.startsWith("/admin/")) {
-                    log.warn("无管理权限:{}", requestUri);
+                    log.warn("No admin permission:{}", requestUri);
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     return;
                 }
@@ -98,7 +98,7 @@ public class TokenFilter extends OncePerRequestFilter {
                 ThreadContext.setToken(token);
                 filterChain.doFilter(request, response);
             } else {
-                log.warn("未授权:{}", requestUri);
+                log.warn("Unauthorized:{}", requestUri);
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             }
         } finally {

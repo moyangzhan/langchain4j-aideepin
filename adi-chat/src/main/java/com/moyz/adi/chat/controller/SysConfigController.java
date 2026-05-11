@@ -70,6 +70,7 @@ public class SysConfigController {
             }
         }
         sysConfigResp.setAvailableVoices(voices);
+        sysConfigResp.setDefaultLocale(LocalCache.CONFIGS.getOrDefault(AdiConstant.SysConfigKey.DEFAULT_LOCALE, "zh-CN"));
         return sysConfigResp;
     }
 }

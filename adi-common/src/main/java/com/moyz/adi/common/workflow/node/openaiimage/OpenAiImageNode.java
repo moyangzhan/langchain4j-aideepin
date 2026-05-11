@@ -34,7 +34,7 @@ public class OpenAiImageNode extends AbstractWfNode {
         }
         OpenAiImageNodeConfig nodeConfigObj = JsonUtil.fromJson(objectConfig, OpenAiImageNodeConfig.class);
         if (null == nodeConfigObj || StringUtils.isBlank(nodeConfigObj.getPrompt())) {
-            log.warn("找不到OpenAiImage节点的配置");
+            log.warn("OpenAiImage node configuration not found");
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
         log.info("OpenAiImageNode config:{}", nodeConfigObj);
@@ -46,7 +46,7 @@ public class OpenAiImageNode extends AbstractWfNode {
         }
         log.info("OpenAiImageNode prompt:{}", prompt);
         if (StringUtils.isBlank(prompt)) {
-            log.warn("找不到OpenAiImage节点的提示词");
+            log.warn("OpenAiImage node prompt not found");
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
         AbstractImageModelService imageModelService = ImageModelContext.getFirstModelService("openai");

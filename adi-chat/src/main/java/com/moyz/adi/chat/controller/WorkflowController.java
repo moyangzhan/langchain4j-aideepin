@@ -70,7 +70,7 @@ public class WorkflowController {
         return workflowService.updateBaseInfo(req.getUuid(), req.getTitle(), req.getRemark(), req.getIsPublic());
     }
 
-    @Operation(summary = "流式响应")
+    @Operation(summary = "流式响应 | SSE Response")
     @PostMapping(value = "/run/{wfUuid}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter sseAsk(@PathVariable String wfUuid, @RequestBody WorkflowRunReq runReq) {
         return workflowStarter.streaming(ThreadContext.getCurrentUser(), wfUuid, runReq.getInputs());
@@ -85,11 +85,12 @@ public class WorkflowController {
     }
 
     /**
+* Search public workflows
      * 搜索公开工作流
      *
-     * @param keyword     搜索关键词
-     * @param currentPage 当前页数
-     * @param pageSize    每页数量
+* @param keyword     搜索关键词 / Search keyword
+* @param currentPage 当前页数 / Current page number
+* @param pageSize    每页数量 / Page size
      * @return 工作流列表
      */
     @GetMapping("/public/search")

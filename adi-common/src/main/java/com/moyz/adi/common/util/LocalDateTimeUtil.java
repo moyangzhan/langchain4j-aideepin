@@ -19,6 +19,7 @@ public class LocalDateTimeUtil {
     }
 
     public static SimpleModule getSimpleModule() {
+// Custom serialization and deserialization in Jackson
         // jackson中自定义处理序列化和反序列化
         SimpleModule customModule = new SimpleModule();
         customModule.addSerializer(Long.class, ToStringSerializer.instance);

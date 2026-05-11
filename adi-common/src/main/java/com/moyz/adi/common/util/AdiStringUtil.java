@@ -46,6 +46,7 @@ public class AdiStringUtil {
     }
 
     public static String removeSpecialChar(String input) {
+// Match common special characters (including Chinese and English symbols)
         // 匹配常见特殊符号（包括中英文符号）
         String regEx = "[\\-`~!@#$%^&*()+=|{}':;,.<>/?！￥…（）—【】‘；：”“’。，、？]";
         Pattern p = Pattern.compile(regEx);

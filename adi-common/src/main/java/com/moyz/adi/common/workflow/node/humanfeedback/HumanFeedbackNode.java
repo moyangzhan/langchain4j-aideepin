@@ -39,11 +39,11 @@ public class HumanFeedbackNode extends AbstractWfNode {
         log.info("HumanFeedbackNode config:{}", configObj);
         HumanFeedbackNodeConfig nodeConfig = JsonUtil.fromJson(configObj, HumanFeedbackNodeConfig.class);
         if (null == nodeConfig) {
-            log.warn("找不到人机交互节点的配置,{}", state.getUuid());
+            log.warn("Human feedback node configuration not found, {}", state.getUuid());
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
         String userInput = state.data().get(HUMAN_FEEDBACK_KEY).toString();
-        log.info("用户输入: {}", userInput);
+        log.info("User input: {}", userInput);
         List<NodeIOData> result = List.of(NodeIOData.createByText(DEFAULT_OUTPUT_PARAM_NAME, "default", userInput));
         return NodeProcessResult.builder().content(result).build();
     }

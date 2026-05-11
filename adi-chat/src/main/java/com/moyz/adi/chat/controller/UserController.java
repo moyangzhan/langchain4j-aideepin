@@ -27,7 +27,7 @@ import java.io.IOException;
 import static com.moyz.adi.common.enums.ErrorEnum.B_IMAGE_LOAD_ERROR;
 
 @Slf4j
-@Tag(name = "用户controller")
+@Tag(name = "用户controller | User Controller")
 @RestController
 @RequestMapping("/user")
 public class UserController {
@@ -35,43 +35,44 @@ public class UserController {
     @Resource
     private UserService userService;
 
-    @Operation(summary = "用户信息")
+    @Operation(summary = "用户信息 | User Info")
     @GetMapping("/{uuid}")
     public void info(@Validated @PathVariable String uuid) {
         log.info(uuid);
     }
 
-    @Operation(summary = "配置信息")
+    @Operation(summary = "配置信息 | Config Info")
     @GetMapping("/config")
     public ConfigResp configInfo() {
         return userService.getConfig();
     }
 
-    @Operation(summary = "更新信息")
+    @Operation(summary = "更新信息 | Update Info")
     @PostMapping("/edit")
     public void update(@Validated UserUpdateReq userUpdateReq) {
         userService.updateConfig(userUpdateReq);
     }
 
-    @Operation(summary = "修改密码")
+    @Operation(summary = "修改密码 | Change Password")
     @PostMapping("/password/modify")
     public String modifyPassword(@RequestBody ModifyPasswordReq modifyPasswordReq) {
         userService.modifyPassword(modifyPasswordReq.getOldPassword(), modifyPasswordReq.getNewPassword());
         return "修改成功";
     }
 
-    @Operation(summary = "退出")
+    @Operation(summary = "退出 | Logout")
     @PostMapping("/logout")
     public void logout() {
         userService.logout();
     }
 
-    @Operation(summary = "当前用户头像")
+    @Operation(summary = "当前用户头像 | Current User Avatar")
     @GetMapping(value = "/myAvatar", produces = MediaType.IMAGE_PNG_VALUE)
     public void myAvatar(HttpServletResponse response) {
         User user = ThreadContext.getCurrentUser();
         Avatar avatar = CatAvatar.newAvatarBuilder().build();
         BufferedImage bufferedImage = avatar.create(user.getId());
+//Write image to browser
         //把图片写给浏览器
         try {
             ImageIO.write(bufferedImage, "png", response.getOutputStream());
@@ -81,7 +82,7 @@ public class UserController {
         }
     }
 
-    @Operation(summary = "用户头像")
+    @Operation(summary = "用户头像 | User Avatar")
     @GetMapping(value = "/avatar/{uuid}", produces = MediaType.IMAGE_PNG_VALUE)
     public void avatar(@Validated @PathVariable String uuid, @RequestParam(defaultValue = "64") @Min(32) @Max(128) Integer width, @RequestParam(defaultValue = "64") @Min(32) @Max(128) Integer height, HttpServletResponse response) {
         User user = userService.getByUuid(uuid);

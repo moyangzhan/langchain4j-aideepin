@@ -37,7 +37,7 @@ public class StartNode extends AbstractWfNode {
         List<NodeIOData> result;
         StartNodeConfig nodeConfigObj = JsonUtil.fromJson(objectConfig, StartNodeConfig.class);
         if (null == nodeConfigObj) {
-            log.warn("找不到开始节点的配置");
+            log.warn("Start node configuration not found");
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
         if (StringUtils.isNotBlank(nodeConfigObj.getPrologue())) {

@@ -55,10 +55,12 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
     private String tmpImagesPath;
 
     private static final List<String> BINARY_EXTENSIONS = List.of(
+// Executable/Binary
             // 可执行/二进制
             "exe", "dll", "so", "dylib", "com", "msi",
             "jar", "war", "ear", "class",
             "iso", "dmg", "bin", "apk", "ipa", "deb", "rpm",
+// Archive file
             // 压缩包
             "zip", "rar", "7z", "tar", "gz", "bz2",
             // 视频
@@ -89,7 +91,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
             if (exist) {
                 return adiFile;
             } else {
-                log.warn("文件不存在,删除记录以便后续重新生成,fileId:{},uuid:{},sha256:{}", adiFile.getId(), adiFile.getUuid(), adiFile.getSha256());
+                log.warn("File not found, deleting record for regeneration, fileId:{}, uuid:{}, sha256:{}", adiFile.getId(), adiFile.getUuid(), adiFile.getSha256());
                 this.lambdaUpdate().eq(AdiFile::getId, adiFile.getId()).set(AdiFile::getIsDeleted, true).update();
             }
         }

@@ -280,6 +280,7 @@ public class UserMcpService extends ServiceImpl<UserMcpMapper, UserMcp> {
             environment.put(initParams.getName(), String.valueOf(initParams.getValue()));
         }
         for (McpCustomizedParamDefinition uninitParam : mcp.getCustomizedParamDefinitions()) {
+// Uninitialized parameters defined in MCP need to use user-configured values
             // MCP中定义的未初始化参数，需要使用用户设置的值
             UserMcpCustomizedParam userParam = userMcp.getMcpCustomizedParams().stream()
                     .filter(param -> param.getName().equals(uninitParam.getName()))

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * 打印controller的请求参数
+ * Print controller request parameters
  *
  * @author moyz
  * date:2021-07-15 03:16:59

@@ -33,13 +33,13 @@ public class ConversationMessageController {
     @Resource
     private ConversationMessageRefGraphService conversationMessageRefGraphService;
 
-    @Operation(summary = "发送一个prompt给模型")
+    @Operation(summary = "发送一个prompt给模型 | Send Prompt to Model")
     @PostMapping(value = "/process", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter ask(@RequestBody @Validated AskReq askReq) {
         return conversationMessageService.sseAsk(askReq);
     }
 
-    @Operation(summary = "根据音频uuid获取对应的文本")
+    @Operation(summary = "根据音频uuid获取对应的文本 | Get Text by Audio UUID")
     @GetMapping("/text/{audioUuid}")
     public String getTextByAudioUuid(@PathVariable String audioUuid) {
         return conversationMessageService.getTextByAudioUuid(audioUuid);

@@ -84,7 +84,7 @@ public class KnowledgeBaseQaService extends ServiceImpl<KnowledgeBaseQaRecordMap
      * @param embeddingToScore
      */
     public void createEmbeddingRefs(User user, Long qaRecordId, Map<String, Double> embeddingToScore) {
-        log.info("更新向量引用,userId:{},qaRecordId:{},embeddingToScore.size:{}", user.getId(), qaRecordId, embeddingToScore.size());
+        log.info("Updating vector reference, userId:{}, qaRecordId:{}, embeddingToScore.size:{}", user.getId(), qaRecordId, embeddingToScore.size());
         for (Map.Entry<String, Double> entry : embeddingToScore.entrySet()) {
             String embeddingId = entry.getKey();
             KnowledgeBaseQaRefEmbedding recordReference = new KnowledgeBaseQaRefEmbedding();
@@ -104,7 +104,7 @@ public class KnowledgeBaseQaService extends ServiceImpl<KnowledgeBaseQaRecordMap
      * @param graphDto
      */
     public void createGraphRefs(User user, Long qaRecordId, RefGraphDto graphDto) {
-        log.info("更新图谱引用,userId:{},qaRecordId:{},vertices.Size:{},edges.size:{}", user.getId(), qaRecordId, graphDto.getVertices().size(), graphDto.getEdges().size());
+        log.info("Updating graph reference, userId:{}, qaRecordId:{}, vertices.Size:{}, edges.size:{}", user.getId(), qaRecordId, graphDto.getVertices().size(), graphDto.getEdges().size());
         String entities = null == graphDto.getEntitiesFromQuestion() ? "" : String.join(",", graphDto.getEntitiesFromQuestion());
         Map<String, Object> graphFromStore = new HashMap<>();
         graphFromStore.put("vertices", graphDto.getVertices());

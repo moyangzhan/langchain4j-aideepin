@@ -24,6 +24,7 @@ public class GraphStoreUtil {
             }
             whereClause.append(String.format("(%s.name in [%s])", alias, String.join(",", nameArgs)));
         }
+//Metadata directly concatenated as string
         //Metadata直接拼接字符串
         if (null != search.getMetadataFilter()) {
             if (!whereClause.isEmpty()) {
@@ -52,6 +53,7 @@ public class GraphStoreUtil {
     }
 
     public static String buildSetClause(Map<String, Object> metadata) {
+//Apache AGE does not support updating Map or List in properties directly, must replace entirely
         //Apache AGE不支持直接更新property中的Map或List，只能直接替换，否则会出现异常：ERROR:  SET clause doesn't not support updating maps or lists in a property
         StringBuilder setClause = new StringBuilder();
         if (MapUtils.isNotEmpty(metadata)) {

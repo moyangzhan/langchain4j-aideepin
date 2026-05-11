@@ -19,7 +19,7 @@ public class UserMcpController {
     @Resource
     private UserMcpService userMcpService;
 
-    @Operation(summary = "当前登录用户启用的MCP列表")
+    @Operation(summary = "当前登录用户启用的MCP列表 | Current User's Enabled MCP List")
     @GetMapping(value = "/list")
     public Page<UserMcpDto> listByUserId(@NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
         return userMcpService.searchByUserId(ThreadContext.getCurrentUserId(), currentPage, pageSize);

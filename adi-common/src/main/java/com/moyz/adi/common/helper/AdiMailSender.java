@@ -74,7 +74,7 @@ public class AdiMailSender {
             helper.setText(customMailInfo.getContent());
             mailSender.send(message);
         } catch (Exception e) {
-            log.error("发送邮件时发生异常", e);
+            log.error("Exception occurred while sending email", e);
         }
     }
 }

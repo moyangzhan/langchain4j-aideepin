@@ -25,6 +25,7 @@ public class TtsModelContext {
 
     /**
      * 直接由系统设置来决定使用哪个TTS模型，不需要让用户选择。
+     * The TTS model is determined directly by system settings, no user selection needed.
      */
     public TtsModelContext() {
         String asrSetting = SysConfigService.getByKey(AdiConstant.SysConfigKey.TTS_SETTING);
@@ -60,12 +61,13 @@ public class TtsModelContext {
 
     /**
      * 开启一个TTS任务
+     * Start a TTS job
      *
-     * @param jobId      任务ID
-     * @param voice      声音
-     * @param onProcess  处理回调
-     * @param onComplete 完成回调
-     * @param onError    异常回调
+     * @param jobId      任务ID / Job ID
+     * @param voice      声音 / Voice
+     * @param onProcess  处理回调 / Process callback
+     * @param onComplete 完成回调 / Complete callback
+     * @param onError    异常回调 / Error callback
      */
     public void startTtsJob(String jobId, String voice, Consumer<ByteBuffer> onProcess, Consumer<String> onComplete, Consumer<String> onError) {
         log.info("start tts job,jobId:{},voice:{}", jobId, voice);
@@ -74,9 +76,10 @@ public class TtsModelContext {
 
     /**
      * 处理文本
+     * Process text
      *
-     * @param jobId 任务id
-     * @param text  文本内容
+     * @param jobId 任务id / Job ID
+     * @param text  文本内容 / Text content
      */
     public void processPartialText(String jobId, String text) {
         current.processByStream(jobId, text);
@@ -84,8 +87,9 @@ public class TtsModelContext {
 
     /**
      * 主动完成TTS任务，会触发onComplete回调
+     * Actively complete the TTS job, which triggers the onComplete callback
      *
-     * @param jobId 任务id
+     * @param jobId 任务id / Job ID
      */
     public void complete(String jobId) {
         current.complete(jobId);

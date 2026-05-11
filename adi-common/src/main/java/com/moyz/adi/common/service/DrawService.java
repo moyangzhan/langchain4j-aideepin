@@ -331,6 +331,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
                 .eq(Draw::getIsDeleted, false)
                 .oneOpt()
                 .orElse(null);
+//Public images or own images can be retrieved
         //公开的图片或者自己的图片，都可以获取到
         if (
                 null != draw
@@ -349,6 +350,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
                 .eq(Draw::getIsPublic, true)
                 .oneOpt()
                 .orElse(null);
+//Public images or own images can be retrieved
         //公开的图片或者自己的图片，都可以获取到
         if (null != draw) {
             draw = this.lambdaQuery()
@@ -371,6 +373,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
                 .eq(Draw::getIsPublic, true)
                 .oneOpt()
                 .orElse(null);
+//Public images or own images can be retrieved
         //公开的图片或者自己的图片，都可以获取到
         if (null != draw) {
             draw = this.lambdaQuery()
@@ -392,6 +395,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
                 .eq(Draw::getIsDeleted, false)
                 .oneOpt()
                 .orElse(null);
+//Public images or own images can be retrieved
         //公开的图片或者自己的图片，都可以获取到
         if (null != draw) {
             DrawStar currentDrawStar = drawStarService.lambdaQuery()
@@ -422,6 +426,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
                 .eq(Draw::getIsDeleted, false)
                 .oneOpt()
                 .orElse(null);
+//Public images or own images can be retrieved
         //公开的图片或者自己的图片，都可以获取到
         if (null != draw) {
             DrawStar currentDrawStar = drawStarService.lambdaQuery()
@@ -453,6 +458,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
                 .eq(Draw::getUserId, ThreadContext.getCurrentUserId())
                 .oneOpt()
                 .orElse(null);
+//Public images or own images can be retrieved
         //公开的图片或者自己的图片，都可以获取到
         if (null != draw) {
             draw = this.lambdaQuery()
@@ -476,6 +482,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
                 .eq(Draw::getUserId, ThreadContext.getCurrentUserId())
                 .oneOpt()
                 .orElse(null);
+//Public images or own images can be retrieved
         //公开的图片或者自己的图片，都可以获取到
         if (null != draw) {
             draw = this.lambdaQuery()

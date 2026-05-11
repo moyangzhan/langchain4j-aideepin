@@ -4,7 +4,10 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Component;
+
+import java.util.Locale;
 
 @Component
 public class SpringUtil implements ApplicationContextAware {
@@ -26,5 +29,15 @@ public class SpringUtil implements ApplicationContextAware {
 
     public static String getProperty(String key) {
         return applicationContext.getEnvironment().getProperty(key);
+    }
+
+    public static String getMessage(String key, String... args) {
+        MessageSource messageSource = applicationContext.getBean(MessageSource.class);
+        return messageSource.getMessage(key, args, Locale.getDefault());
+    }
+
+    public static String getMessage(String key, Locale locale, String... args) {
+        MessageSource messageSource = applicationContext.getBean(MessageSource.class);
+        return messageSource.getMessage(key, args, locale);
     }
 }

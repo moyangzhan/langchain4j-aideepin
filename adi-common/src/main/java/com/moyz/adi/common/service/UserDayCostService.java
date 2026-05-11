@@ -30,7 +30,7 @@ public class UserDayCostService extends ServiceImpl<UserDayCostMapper, UserDayCo
      * @param isFree 消耗的是否免费额度
      */
     public void appendCostToUser(User user, int tokens, boolean isFree) {
-        log.info("用户{}增加消耗token数量:{}", user.getName(), tokens);
+        log.info("User {} increased token consumption: {}", user.getName(), tokens);
         if (tokens <= 0) {
             return;
         }

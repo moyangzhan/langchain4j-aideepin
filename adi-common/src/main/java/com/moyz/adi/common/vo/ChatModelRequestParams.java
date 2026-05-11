@@ -19,6 +19,7 @@ public class ChatModelRequestParams {
     private String memoryId;
     private String systemMessage;
     private String userMessage;
+//Image URL, only effective for multimodal LLM
     //图片地址，多模态LLM才生效
     private List<String> imageUrls;
     private List<McpClient> mcpClients;

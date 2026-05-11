@@ -28,9 +28,10 @@ public class ParamsLogAspect {
 
     /**
      * 输出方法参数到日志
+     * Output method parameters to log
      *
      * @param joinPoint joinPoint
-     * @param logger    日志
+     * @param logger    日志 / Logger
      */
     static void paramsLog(JoinPoint joinPoint, Logger logger) {
         String className = joinPoint.getSignature().getDeclaringType().getName();

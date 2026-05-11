@@ -30,9 +30,13 @@ import static com.moyz.adi.common.enums.ErrorEnum.B_LLM_SECRET_KEY_NOT_SET;
 
 /**
  * 灵积模型服务(DashScope LLM service) <br/>
+ * DashScope LLM service <br/>
  * Dashscope 的 OpenAI 兼容api格式为：https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions <br/>
+ * Dashscope OpenAI compatible API format: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions <br/>
  * Dashscope 的 SDK 的 api 格式为：https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation <br/>
+ * Dashscope SDK API format: https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation <br/>
  * 不能使用 https://dashscope.aliyuncs.com/compatible-mode/v1 做为 Dashscope 的 baseUrl <br/>
+ * Cannot use https://dashscope.aliyuncs.com/compatible-mode/v1 as Dashscope's baseUrl <br/>
  */
 @Slf4j
 public class DashScopeLLMService extends AbstractLLMService {
@@ -49,7 +53,7 @@ public class DashScopeLLMService extends AbstractLLMService {
     @Override
     protected boolean checkBeforeChat(SseAskParams params) {
         if (CollectionUtils.isEmpty(params.getHttpRequestParams().getImageUrls()) && DashscopeUtil.vlChatModelNameProvider().anyMatch(item -> item.equalsIgnoreCase(params.getModelName()))) {
-            log.warn("多模态LLM没有接收到图片,modelName:{}", params.getModelName());
+            log.warn("Multimodal LLM did not receive images, modelName:{}", params.getModelName());
         }
         return true;
     }
@@ -61,6 +65,7 @@ public class DashScopeLLMService extends AbstractLLMService {
         }
         String baseUrl = "";
         //OpenAI 兼容api格式不能用在 Dashscope 的 SDK 上
+        // OpenAI compatible API format cannot be used with Dashscope SDK
         if (!platform.getBaseUrl().contains("/compatible-mode")) {
             baseUrl = platform.getBaseUrl();
         }
@@ -80,6 +85,7 @@ public class DashScopeLLMService extends AbstractLLMService {
         Double temperature = properties.getTemperatureWithDefault(0.7);
         String baseUrl = "";
         //OpenAI 兼容api格式不能用在 Dashscope 的 SDK 上
+        // OpenAI compatible API format cannot be used with Dashscope SDK
         if (!platform.getBaseUrl().contains("/compatible-mode")) {
             baseUrl = platform.getBaseUrl();
         }

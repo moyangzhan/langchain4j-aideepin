@@ -328,7 +328,7 @@ public class WorkflowService extends ServiceImpl<WorkflowMapper, Workflow> {
         if (wfComponent.getName().equals(WfComponentNameEnum.CLASSIFIER.getName())) {
             ClassifierNodeConfig classifierNodeConfig = JsonUtil.fromJson(tmpNode.getNodeConfig(), ClassifierNodeConfig.class);
             if (null == classifierNodeConfig || CollectionUtils.isEmpty(classifierNodeConfig.getCategories())) {
-                log.warn("找不到问题分类器的配置,new uuid:{},old uuid:{}", tmpNode.getNewUuid(), tmpNode.getOldUuid());
+                log.warn("Classifier node configuration not found, new uuid:{}, old uuid:{}", tmpNode.getNewUuid(), tmpNode.getOldUuid());
                 return;
             }
             classifierNodeConfig.getCategories().forEach(category -> {
@@ -341,7 +341,7 @@ public class WorkflowService extends ServiceImpl<WorkflowMapper, Workflow> {
         } else if (wfComponent.getName().equals(WfComponentNameEnum.SWITCHER.getName())) {
             SwitcherNodeConfig nodeConfig = JsonUtil.fromJson(tmpNode.getNodeConfig(), SwitcherNodeConfig.class);
             if (null == nodeConfig || CollectionUtils.isEmpty(nodeConfig.getCases())) {
-                log.warn("找不到条件分支节点的配置,new uuid:{},old uuid:{}", tmpNode.getNewUuid(), tmpNode.getOldUuid());
+                log.warn("Switcher node configuration not found, new uuid:{}, old uuid:{}", tmpNode.getNewUuid(), tmpNode.getOldUuid());
                 return;
             }
             nodeConfig.getCases().forEach(switcherCase -> {

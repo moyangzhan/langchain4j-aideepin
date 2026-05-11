@@ -26,7 +26,7 @@ public class WorkflowRuntimeController {
     @Resource
     private WorkflowStarter workflowStarter;
 
-    @Operation(summary = "接收用户输入以继续执行剩余流程")
+    @Operation(summary = "接收用户输入以继续执行剩余流程 | Receive User Input to Resume Workflow")
     @PostMapping(value = "/resume/{runtimeUuid}")
     public void resume(@PathVariable String runtimeUuid, @RequestBody WorkflowResumeReq resumeReq) {
         workflowStarter.resumeFlow(runtimeUuid, resumeReq.getFeedbackContent());

@@ -97,7 +97,7 @@ public class HttpRequestNode extends AbstractWfNode {
                     httpPost.setEntity(jsonEntity);
                 }
             } else {
-                log.error("不支持的请求方式:{}", nodeConfig.getMethod());
+                log.error("Unsupported request method:{}", nodeConfig.getMethod());
                 throw new RuntimeException();
             }
             try (CloseableHttpResponse response = httpClient.execute(httpRequest)) {
@@ -111,14 +111,14 @@ public class HttpRequestNode extends AbstractWfNode {
                     NodeIOData output = NodeIOData.createByText(DEFAULT_OUTPUT_PARAM_NAME, "响应内容", responseBody);
                     outputData.add(output);
                 } else {
-                    log.error("请求失败:{}", response);
+                    log.error("Request failed:{}", response);
                     NodeIOData output = NodeIOData.createByText(DEFAULT_OUTPUT_PARAM_NAME, "错误内容", responseBody);
                     outputData.add(output);
                 }
                 outputData.add(NodeIOData.createByText("status_code", "http状态码", String.valueOf(statusCode)));
             }
         } catch (IOException e) {
-            log.error("请求失败:{}", e.getMessage());
+            log.error("Request failed:{}", e.getMessage());
         }
         return NodeProcessResult.builder().content(outputData).build();
     }

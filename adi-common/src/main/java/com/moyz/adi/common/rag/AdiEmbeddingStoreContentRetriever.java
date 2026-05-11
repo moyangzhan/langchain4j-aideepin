@@ -244,6 +244,7 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
                 .map(Content::from)
                 .collect(toList());
 
+//Determine whether to forcibly interrupt the query, if no match then stop further operations
         //判断是否要强行中断查询，没有命中则不再进行下一步操作（比如说请求LLM），直接抛出异常中断流程
         if (breakIfSearchMissed && CollectionUtils.isEmpty(result)) {
             log.warn("Embedding search missed,query:{}", query.text());

@@ -173,6 +173,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
 
         //Send analysing question event to client
         SSEEmitterHelper.sendPartial(sseEmitter, SSEEventName.STATE_CHANGED, SSEEventData.STATE_QUESTION_ANALYSING);
+//If voice input, convert audio to text
         //如果是语音输入，将音频转成文本
         if (StringUtils.isNotBlank(askReq.getAudioUuid())) {
             String path = fileService.getImagePath(askReq.getAudioUuid());
@@ -186,6 +187,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
 
         AbstractLLMService llmService = LLMContext.getServiceOrDefault(askReq.getModelPlatform(), askReq.getModelName());
 
+//If knowledge bases are associated, filter valid ones for subsequent queries
         //如果关联了知识库，筛选出有效的知识库以待后续查询，同时发送搜索知识库事件给前端用户
         List<KbInfoResp> filteredKb = new ArrayList<>();
         if (StringUtils.isNotBlank(conversation.getKbIds())) {
@@ -201,8 +203,12 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         // Process prompt with retrieved contents and audio settings
         int answerContentType = getAnswerContentType(conversation, askReq);
         boolean answerToAudio = TtsUtil.needTts(llmService.getTtsSetting(), answerContentType);
+        String effectiveLocale = StringUtils.isNotBlank(user.getLocale())
+                ? user.getLocale()
+                : Objects.toString(SysConfigService.getByKey(AdiConstant.SysConfigKey.DEFAULT_LOCALE), "zh-CN");
         Pair<String, String> memoryAndKnowledge = buildMemoryAndKnowledge(retrieverWrappers);
-        String processedPrompt = PromptUtil.createPrompt(askReq.getPrompt(), memoryAndKnowledge.getLeft(), memoryAndKnowledge.getRight(), answerToAudio ? PROMPT_EXTRA_AUDIO : "");
+        String audioExtra = answerToAudio ? (effectiveLocale.startsWith("zh") ? PROMPT_EXTRA_AUDIO : PROMPT_EXTRA_AUDIO_EN) : "";
+        String processedPrompt = PromptUtil.createPrompt(askReq.getPrompt(), memoryAndKnowledge.getLeft(), memoryAndKnowledge.getRight(), audioExtra, effectiveLocale);
         if (!Objects.equals(askReq.getPrompt(), processedPrompt)) {
             askReq.setProcessedPrompt(processedPrompt);
         }
@@ -216,6 +222,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         sseAskParams.setRegenerateQuestionUuid(askReq.getRegenerateQuestionUuid());
         sseAskParams.setAnswerContentType(answerContentType);
         if (null != conversation.getAudioConfig() && null != conversation.getAudioConfig().getVoice()) {
+//If conversation has voice configured, use conversation voice settings
             //如果对话配置了语音，则使用对话的语音配置
             sseAskParams.setVoice(conversation.getAudioConfig().getVoice().getParamName());
         }
@@ -313,7 +320,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         //Create knowledge base retriever
         if (!filteredKb.isEmpty()) {
             List<String> kbUuids = filteredKb.stream().map(KbInfoResp::getUuid).toList();
-            log.info("准备搜索相关联的知识库,kbUuids:{},question:{}", String.join(",", kbUuids), askReq.getPrompt());
+            log.info("Preparing to search related knowledge bases, kbUuids:{}, question:{}", String.join(",", kbUuids), askReq.getPrompt());
             //忽略知识库自身的设置如 [最大召回数量maxResult，最小命中分数minScore，角色设置，是否强行中断搜索] 等
             RetrieverCreateParam kbRetrieveParam = RetrieverCreateParam.builder()
                     .chatModel(chatModel)
@@ -413,6 +420,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         aiAnswer.setMessageRole(ChatMessageRoleEnum.ASSISTANT.getValue());
         aiAnswer.setThinkingContent(Objects.toString(response.getThinkingContent(), ""));
         aiAnswer.setRemark(response.getContent());
+//TODO: Filter or transform AI returned content
         //TODO 过滤或转换AI返回的内容
         //aiAnswer.setProcessedRemark("");
         aiAnswer.setAudioUuid(null == audioInfo ? "" : Objects.toString(audioInfo.getUuid(), ""));
@@ -436,11 +444,13 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
             MapDBChatMemoryStore mapDBChatMemoryStore = MapDBChatMemoryStore.getSingleton();
             List<ChatMessage> messages = mapDBChatMemoryStore.getMessages(askReq.getConversationUuid());
             List<ChatMessage> newMessages = new ArrayList<>(messages);
+// TODO: DeepSeek requires reasoning_content to be passed back to API
             // TODO: DeepSeek 要求 reasoning_content 传回 API，升级 langchain4j 后确认是否仍需手动处理
             newMessages.add(AiMessage.builder().text(response.getContent()).thinking(response.getThinkingContent()).build());
             mapDBChatMemoryStore.updateMessages(askReq.getConversationUuid(), newMessages);
         }
 
+// TODO: Some vision models like qwen2-vl-7b-instruct do not support JSON structured response
         // TODO... 部分视觉模型如 qwen2-vl-7b-instruct 不支持 json 结构返回内容，待处理
         if (!aiModel.getType().equalsIgnoreCase(ModelType.VISION)) {
             //Long-term memory
@@ -524,7 +534,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
      * @param embeddingToScore 嵌入向量id和分数的映射
      */
     public void createEmbeddingRefs(User user, Long messageId, Map<String, Double> embeddingToScore) {
-        log.info("创建向量引用,userId:{},qaRecordId:{},embeddingToScore.size:{}", user.getId(), messageId, embeddingToScore.size());
+        log.info("Creating vector reference, userId:{}, qaRecordId:{}, embeddingToScore.size:{}", user.getId(), messageId, embeddingToScore.size());
         for (Map.Entry<String, Double> entry : embeddingToScore.entrySet()) {
             String embeddingId = entry.getKey();
             ConversationMessageRefEmbedding recordReference = new ConversationMessageRefEmbedding();
@@ -537,7 +547,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
     }
 
     public void createMemoryRefs(User user, Long messageId, Map<String, Double> embeddingToScore) {
-        log.info("创建记忆向量引用,userId:{},qaRecordId:{},embeddingToScore.size:{}", user.getId(), messageId, embeddingToScore.size());
+        log.info("Creating memory vector reference, userId:{}, qaRecordId:{}, embeddingToScore.size:{}", user.getId(), messageId, embeddingToScore.size());
         for (Map.Entry<String, Double> entry : embeddingToScore.entrySet()) {
             String embeddingId = entry.getKey();
             ConversationMessageRefMemoryEmbedding refEmb = new ConversationMessageRefMemoryEmbedding();
@@ -557,9 +567,9 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
      * @param graphDto  图谱引用数据传输对象
      */
     public void createGraphRefs(User user, Long messageId, RefGraphDto graphDto) {
-        log.info("准备创建图谱引用,userId:{},qaRecordId:{},vertices.Size:{},edges.size:{}", user.getId(), messageId, graphDto.getVertices().size(), graphDto.getEdges().size());
+        log.info("Preparing to create graph reference, userId:{}, qaRecordId:{}, vertices.Size:{}, edges.size:{}", user.getId(), messageId, graphDto.getVertices().size(), graphDto.getEdges().size());
         if (graphDto.getVertices().isEmpty() && graphDto.getEdges().isEmpty()) {
-            log.warn("图谱引用数据为空，无法创建图谱引用记录,userId:{},qaRecordId:{}", user.getId(), messageId);
+            log.warn("Graph reference data is empty, cannot create graph reference record, userId:{}, qaRecordId:{}", user.getId(), messageId);
             return;
         }
         String entities = null == graphDto.getEntitiesFromQuestion() ? "" : String.join(",", graphDto.getEntitiesFromQuestion());
@@ -583,6 +593,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         if (Boolean.TRUE.equals(conversation.getUnderstandContextEnable())) {
             builder.memoryId(askReq.getConversationUuid());
         }
+//If user question has been processed (e.g., with retrieved document segments), use the enhanced question
         //如果用户问题已处理过，例如增加了召回的文档文段，则使用该增强的问题，否则使用用户的原始问题
         String prompt = StringUtils.isNotBlank(askReq.getProcessedPrompt()) ? askReq.getProcessedPrompt() : askReq.getPrompt();
         if (StringUtils.isNotBlank(askReq.getRegenerateQuestionUuid())) {
@@ -619,6 +630,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
      */
     private int getAnswerContentType(Conversation conversation, AskReq askReq) {
         int answerContentType = conversation.getAnswerContentType();
+//If response content type is auto and user input is audio, set response content type to audio
         //如果设置了响应内容类型为自动，并且用户输入是音频，则响应内容类型设置为音频
         if (answerContentType == AdiConstant.ConversationConstant.ANSWER_CONTENT_TYPE_AUTO && StringUtils.isNotBlank(askReq.getAudioUuid())) {
             answerContentType = AdiConstant.ConversationConstant.ANSWER_CONTENT_TYPE_AUDIO;

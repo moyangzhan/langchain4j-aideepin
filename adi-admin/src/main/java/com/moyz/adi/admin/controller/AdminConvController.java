@@ -13,6 +13,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 /**
+* Conversation management
  * 聊天会话管理
  */
 @RestController

@@ -46,14 +46,14 @@ public class WorkflowEdgeService extends ServiceImpl<WorkflowEdgeMapper, Workflo
             WorkflowEdge old = self.getByUuid(edge.getUuid());
             if (null != old) {
                 if (!old.getWorkflowId().equals(edge.getWorkflowId())) {
-                    log.error("该边不属于指定的工作流,保存失败,workflowId:{},old workflowId:{},new workflowId:{}", workflowId, old.getWorkflowId(), edge.getWorkflowId());
+                    log.error("Edge does not belong to specified workflow, save failed, workflowId:{}, old workflowId:{}, new workflowId:{}", workflowId, old.getWorkflowId(), edge.getWorkflowId());
                     throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
                 }
-                log.info("更新边,id:{},uuid:{},source:{},sourceHandle:{},target:{}",
+                log.info("Updating edge, id:{}, uuid:{}, source:{}, sourceHandle:{}, target:{}",
                         edge.getId(), edge.getUuid(), edge.getSourceNodeUuid(), edge.getSourceHandle(), edge.getTargetNodeUuid());
             } else {
                 newOne.setId(null);
-                log.info("新增边,uuid:{},source:{},sourceHandle:{},target:{}",
+                log.info("Adding edge, uuid:{}, source:{}, sourceHandle:{}, target:{}",
                         edge.getUuid(), edge.getSourceNodeUuid(), edge.getSourceHandle(), edge.getTargetNodeUuid());
             }
             self.saveOrUpdate(newOne);
@@ -92,7 +92,7 @@ public class WorkflowEdgeService extends ServiceImpl<WorkflowEdgeMapper, Workflo
         for (String uuid : uuids) {
             WorkflowEdge old = self.getByUuid(uuid);
             if (null != old && !old.getWorkflowId().equals(workflowId)) {
-                log.error("该边不属于指定的工作流,删除失败,workflowId:{},node workflowId:{}", workflowId, workflowId);
+                log.error("Edge does not belong to specified workflow, delete failed, workflowId:{}, node workflowId:{}", workflowId, workflowId);
                 throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
             }
             ChainWrappers.lambdaUpdateChain(baseMapper)

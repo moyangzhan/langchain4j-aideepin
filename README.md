@@ -1,227 +1,242 @@
 ## Getting Started
 
-**LangChain4j-AIDeepin（得应AI） 是基于AI的工作效率提升工具。**
+> **[🇨🇳 中文文档](README.zh-CN.md)** | English
 
-*可用于辅助企业/团队进行技术研发、产品设计、人事/财务/IT信息咨询、系统/商品咨询、客服话术支撑等工作*
+**LangChain4j-AIDeepin is an AI-based productivity enhancement tool.**
 
-> **🌟该项目如对您有帮助，欢迎点赞🌟**
+*It can be used to assist enterprises/teams in technical research and development, product design, HR/finance/IT information consulting, system/product consulting, customer service support, etc.*
 
-## 系统组成及文档
+## System Composition and Documentation
 
-[中文文档](README.md) | [English](README_EN.md)
-
+```
 AIDEEPIN
+  |__ Server (langchain4j-aideepin)
+  |__ User Web (langchain4j-aideepin-web)
+  |__ Admin Web (langchain4j-aideepin-admin)
+```
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|__ 服务端(langchain4j-aideepin)
+👉 [Detailed Documentation](https://github.com/moyangzhan/langchain4j-aideepin/wiki)
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|__ 用户端WEB(langchain4j-aideepin-web)
+Backend source repository: [github](https://github.com/moyangzhan/langchain4j-aideepin)
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|__ 管理端WEB(langchain4j-aideepin-admin)
+Frontend projects:
 
-👉[详细文档](https://github.com/moyangzhan/langchain4j-aideepin/wiki)
+- User Web: langchain4j-aideepin-web
+  - [github](https://github.com/moyangzhan/langchain4j-aideepin-web)
+- Admin Web: langchain4j-aideepin-admin
+  - [github](https://github.com/moyangzhan/langchain4j-aideepin-admin)
 
-后端服务代码地址：[github](https://github.com/moyangzhan/langchain4j-aideepin) 或 [gitee](https://gitee.com/moyangzhan/langchain4j-aideepin)
-
-前端项目：
-
-* 用户端WEB：langchain4j-aideepin-web
-  * [github](https://github.com/moyangzhan/langchain4j-aideepin-web)
-  * [gitee](https://gitee.com/moyangzhan/langchain4j-aideepin-web)
-* 管理端WEB：langchain4j-aideepin-admin
-  * [github](https://github.com/moyangzhan/langchain4j-aideepin-admin)
-  * [gitee](https://gitee.com/moyangzhan/langchain4j-aideepin-admin)
-
-## 体验网址
+## Demo URL
 
 [http://www.aideepin.com](http://www.aideepin.com/)
 
-## 功能点
+## Features
 
-* 多会话（多角色）
-* 图片生成
-* 基于大模型的知识库（RAG）
-  * 向量搜索
-  * 图搜索
-* AI工作流
-* MCP服务市场
-* ASR & TTS
-  * 提问及回复的格式可选
-    * 文字提问-文字回复
-    * 文字提问-语音回复
-    * 语音提问-文字回复
-    * 语音提问-语音回复
-  * AI的音色可选
-* 长期记忆
-* 存储
-  * 本地存储
-  * OSS（阿里云）
+### AI Chat
 
-## 已集成的模型平台的功能
+Multi-conversation support with different AI roles. Each conversation can be configured with a specific system prompt, model, and parameters. Supports streaming output with real-time token display.
 
-| 模型平台     | 对话 | 文生图 | 背景生成 | 图像识别 | 语音合成TTS | 语音识别ASR |
-|----------| :----- | :-------  | ---------- | ---------- |---------| ------------- |
-| 硅基流动     | ✓   | ✓       |      |        ✓  |   ✓     | ✓          |
-| 灵积       | ✓   | ✓     | ✓       | ✓   | ✓          |✓
-| DeepSeek | ✓   |        |      |          |         |             |
-| OpenAI   | ✓   | ✓     |    |      |          |          |         |             |
-| Ollama   | ✓   |        |      |          |         |             |
+### Image Generation
 
-## 技术栈
+Generate images from text prompts using models like GPT-Image-2 and DashScope's Wanx. Supports text-to-image, image editing, image variation, and background generation.
 
-该仓库为后端服务
+### Knowledge Base (RAG)
 
-技术栈：
+Build knowledge bases from uploaded documents (PDF, Word, PPT, Excel, etc.) and use them to enhance AI responses with retrieval-augmented generation.
 
-* JDK 17
-* Spring Boot 3.0.5
-* [langchain4j(Java version of LangChain)](https://github.com/langchain4j/langchain4j)
-* [langgraph4j](https://github.com/bsorrentino/langgraph4j)
-* Postgresql
-  * pgvector扩展：https://github.com/pgvector/pgvector
-  * Apache AGE扩展：https://github.com/apache/age
-* [neo4j 5.26.4+](https://neo4j.com/deployment-center/)
+- **Vector Search**: Embed documents into vector space using models like `all-minilm-l6-v2` or `bge-small-zh-v1.5`, then retrieve relevant chunks via similarity search
+- **Graph Search**: Extract entities and relationships from documents to build knowledge graphs using Apache AGE or Neo4j, enabling structured knowledge retrieval
 
-ps: neo4j 与 pgvector + apache age 二选一即可
+### AI Workflow
 
-前端技术栈：
+Visual workflow editor for building complex AI pipelines. Supports conditional branching, parallel execution, and various node types including LLM calls, knowledge base queries, code execution, and human feedback loops.
 
-* vue3
-* vite
-* typescript
-* pnpm
-* pinia
-* naiveui
+### MCP Service Marketplace
 
-## 如何部署
+Discover and integrate MCP (Model Context Protocol) servers to extend AI capabilities with external tools and data sources. Supports SSE and stdio transport types.
 
-### 初始化
+### ASR & TTS
 
-**a. 初始化数据库**
+Full voice interaction support with flexible input/output combinations:
 
-+ 创建数据库aideepin
-+ 执行docs/create.sql
-+ 配置并启用`模型平台`(有些项目也称为`模型提供商`) 或者 使用[管理端](https://github.com/moyangzhan/langchain4j-aideepin-admin)在界面上配置
+- Text question → Text response
+- Text question → Voice response
+- Voice question → Text response
+- Voice question → Voice response
 
-  + 配置模型平台（至少启用一个，可参考`已集成的模型平台的功能`表格进行选择）
+### Long-term Memory
 
-    ```plain
-    -- DeepSeek
-    update adi_model_platform set api_key = 'my_deepseek_secret_key' where name = 'deepseek';
+Automatically extracts and stores key information from conversations as user memories, allowing the AI to personalize responses based on historical context.
 
-    -- openai的SecretKey
-    update adi_model_platform set api_key = 'my_openai_secret_key' where name = 'openai';
+### Storage
 
-    -- 灵积大模型平台的ApiKey
-    update adi_model_platform set api_key = 'my_dashcope_api_key' where name = 'dashscope';
+- Local file storage
+- Alibaba Cloud OSS integration
 
-    -- 硅基流动的配置
-    update adi_model_platform set api_key = 'my_siliconflow_api_key' where name = 'siliconflow_setting';
+## Integrated Platform Features
 
-    -- ollama的配置
-    update adi_model_platform set base_url = 'my_ollama_base_url' where name = 'ollama';
-    ```
-  + 启用模型平台下的模型或新增模型
+| Model Platform | Chat | Image Generation | Background Generation | Image Recognition | Text-to-Speech | Speech Recognition |
+|:---------------|:----:|:----------------:|:---------------------:|:-----------------:|:--------------:|:------------------:|
+| OpenAI         |  ✓   |        ✓         |                       |                   |                |                    |
+| Dashscope      |  ✓   |        ✓         |           ✓           |         ✓         |       ✓        |         ✓          |
+| SiliconFlow    |  ✓   |        ✓         |                       |         ✓         |       ✓        |         ✓          |
+| Ollama         |  ✓   |                  |                       |                   |                |                    |
+| DeepSeek       |  ✓   |                  |                       |                   |                |                    |
 
-    ```plain
-    -- Enable model
-    update adi_ai_model set is_enable = true where name = 'deepseek-v4-flash';
-    update adi_ai_model set is_enable = true where name = 'gpt-3.5-turbo';
-    update adi_ai_model set is_enable = true where name = 'gpt-image-2';
-    update adi_ai_model set is_enable = true where name = 'qwen-turbo';
-    update adi_ai_model set is_enable = true where name = 'THUDM/GLM-Z1-9B-0414';
-    update adi_ai_model set is_enable = true where name = 'tinydolphin';
+## Tech Stack
 
-    -- Add new model
-    INSERT INTO adi_ai_model (name, type, platform, is_enable) VALUES ('vicuna', 'text', 'ollama', true);
-    ```
-+ 填充搜索引擎的配置
+This repository is for the backend service.
 
-  - Google的配置
+Backend:
 
-    ```plain
-    update adi_sys_config set value = '{"url":"https://www.googleapis.com/customsearch/v1","key":"my key from cloud.google.com","cx":"my cx from programmablesearchengine.google.com"}' where name = 'google_setting';
-    ```
+- JDK 17
+- Spring Boot 3.5.14
+- [langchain4j](https://github.com/langchain4j/langchain4j) (Java version of LangChain)
+- [langgraph4j](https://github.com/bsorrentino/langgraph4j)
+- PostgreSQL
+  - [pgvector](https://github.com/pgvector/pgvector) extension (vector database)
+  - [Apache AGE](https://github.com/apache/age) extension (graph database)
+- [neo4j](https://neo4j.com/deployment-center/) (alternative to pgvector + Apache AGE)
 
-**b. 修改配置文件**
+Frontend:
 
-+ postgresql: application-[dev|prod].xml中的spring.datasource
-+ redis: application-[dev|prod].xml中的spring.data.redis
-+ 邮箱: application.xml中的spring.mail
-+ 向量数据库，默认为 pgvector
-  * application-[dev|prod].xml 中的 adi.vector-database=[pgvector|neo4j]
-+ 图数据库，默认为 Apache age
-  * application-[dev|prod].xml 中的 adi.graph-database=[apache-age|neo4j]
+- Vue 3
+- Vite
+- TypeScript
+- pnpm
+- Pinia
+- Naive UI
 
-### 编译及运行
+## How to Deploy
 
-* 进入项目
+### Initialization
 
-  ```plaintext
-  cd langchain4j-aideepin
-  ```
-* 打包：
+**a. Initialize the database**
 
-  ```
-  mvn clean package -Dmaven.test.skip=true
-  ```
-* 运行
+1. Create the database `aideepin`
+2. Execute `db_migration/all_ddl.sql` to create tables
+3. Execute `db_migration/all_dml.sql` to insert base data
+4. Execute `db_migration/all_dml_en.sql` (English) or `db_migration/all_dml_cn.sql` (Chinese) to insert display data
+5. Enable and configure the model platform (also referred to as model provider) or use the [admin web](https://github.com/moyangzhan/langchain4j-aideepin-admin) to configure via the interface
 
-  * jar包启动：
+Configure model platforms:
 
-  ```plaintext
-  cd adi-bootstrap/target
-  nohup java -jar -Xms768m -Xmx1024m -XX:+HeapDumpOnOutOfMemoryError adi-bootstrap-0.0.1-SNAPSHOT.jar --spring.profiles.active=[dev|prod] dev/null 2>&1 &
-  ```
+```sql
+-- DeepSeek
+UPDATE adi_model_platform SET api_key = 'my_deepseek_secret_key' WHERE name = 'deepseek';
 
-  * docker启动
+-- OpenAI
+UPDATE adi_model_platform SET api_key = 'my_openai_secret_key' WHERE name = 'openai';
 
-  ```plaintext
-  cd adi-bootstrap
-  docker build . -t aideepin:0.0.1
-  docker run -d \
-    --name=aideepin \
-    -p 8888:9999 \
-    -e APP_PROFILE=[dev|prod] \
-    -v="/data/aideepin/logs:/data/logs" \
-    aideepin:0.0.1
-  ```
-## 贡献指南
-欢迎任何形式的贡献，包括但不限于：
-* 提交 Bug 报告
-* 提出功能建议
-* 改进文档
-* 提交代码（PR）
+-- Dashscope
+UPDATE adi_model_platform SET api_key = 'my_dashcope_api_key' WHERE name = 'dashscope';
 
-代码提交流程：
-1. Fork 本仓库
-1. 创建特性分支 (git checkout -b feature/xxx)
-1. 提交更改 (git commit -m 'feat: xxx')
-1. 推送分支 (git push origin feature/xxx)
-1. 提交 Pull Request
+-- Siliconflow
+UPDATE adi_model_platform SET api_key = 'my_siliconflow_api_key' WHERE name = 'siliconflow_setting';
 
-## 截图
+-- Ollama
+UPDATE adi_model_platform SET base_url = 'my_ollama_base_url' WHERE name = 'ollama';
+```
 
-**AI聊天：**
-![1691583184761](image/README/1691583184761.png)
+Enable models or add new models:
 
-**AI画图：**
-![draw_001](image/README/draw_001.png "AI绘图")
+```sql
+-- Enable models
+UPDATE adi_ai_model SET is_enable = true WHERE name = 'deepseek-v4-flash';
+UPDATE adi_ai_model SET is_enable = true WHERE name = 'gpt-3.5-turbo';
+UPDATE adi_ai_model SET is_enable = true WHERE name = 'gpt-image-2';
+UPDATE adi_ai_model SET is_enable = true WHERE name = 'qwen-turbo';
+UPDATE adi_ai_model SET is_enable = true WHERE name = 'THUDM/GLM-Z1-9B-0414';
+UPDATE adi_ai_model SET is_enable = true WHERE name = 'tinydolphin';
 
-**知识库：**
-![kbindex](image/README/kbidx.png)
+-- Add new model
+INSERT INTO adi_ai_model (name, type, platform, is_enable) VALUES ('vicuna', 'text', 'ollama', true);
+```
 
-**向量化：**
-![kb03](image/README/kb03.png)
+Configure search engine (Google):
 
-**知识图谱：**
-![kb_graph_01](image/README/kb_graph_01.png)
+```sql
+UPDATE adi_sys_config SET value = '{"url":"https://www.googleapis.com/customsearch/v1","key":"my key from cloud.google.com","cx":"my cx from programmablesearchengine.google.com"}' WHERE name = 'google_setting';
+```
 
-**工作流：**
-![workflow_01](image/README/workflow.png)
+**b. Modify the configuration file**
 
-## 推荐项目
-[Mango Finder](https://github.com/moyangzhan/mango-finder) 
+Copy the example config and rename it:
 
-Mango Finder 是一款用自然语言搜索本地文件的桌面应用，支持跨设备搜索功能。
+```bash
+cp adi-bootstrap/src/main/resources/application-dev.yml.example adi-bootstrap/src/main/resources/application-dev.yml
+```
 
-帮助您根据记忆中的内容查找信息，而不需要记住文件名或文件夹结构。
+Then modify the following entries:
+
+- PostgreSQL: `application-[dev|prod].yml` → `spring.datasource`
+- Redis: `application-[dev|prod].yml` → `spring.data.redis`
+- Mail: `application.yml` → `spring.mail`
+
+### Build and Run
+
+```bash
+cd langchain4j-aideepin
+mvn clean package -Dmaven.test.skip=true
+```
+
+Start with JAR:
+
+```bash
+cd adi-bootstrap/target
+nohup java -jar -Xms768m -Xmx1024m -XX:+HeapDumpOnOutOfMemoryError \
+  adi-bootstrap-0.0.1-SNAPSHOT.jar --spring.profiles.active=[dev|prod] \
+  /dev/null 2>&1 &
+```
+
+Start with Docker:
+
+```bash
+cd adi-bootstrap
+docker build . -t aideepin:0.0.1
+docker run -d \
+  --name=aideepin \
+  -p 8888:9999 \
+  -e APP_PROFILE=[dev|prod] \
+  -v="/data/aideepin/logs:/data/logs" \
+  aideepin:0.0.1
+```
+
+## Contributing Guidelines
+
+All forms of contributions are welcome, including but not limited to:
+
+- Submitting Bug Reports
+- Proposing New Features
+- Improving Documentation
+- Submitting Code (PR)
+
+Code Submission Process:
+
+1. Fork this repository
+2. Create a feature branch (`git checkout -b feature/xxx`)
+3. Commit changes (`git commit -m 'feat: xxx'`)
+4. Push the branch (`git push origin feature/xxx`)
+5. Submit a Pull Request
+
+## ⭐ Support the Project
+
+If you find LangChain4j-AIDeepin useful, please consider:
+
+- Starring the repository on GitHub
+- Recommending it to others
+- Sharing your experience
+
+## ❤️ Thanks to
+
+**Contributors**
+
+<a href="https://github.com/moyangzhan/langchain4j-aideepin/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=moyangzhan/langchain4j-aideepin" />
+</a>
+
+<br/>
+
+## Recommended Projects
+
+[Mango Finder](https://github.com/moyangzhan/mango-finder) — A local-first desktop app for semantic search across documents, images, and audio files using natural language, with cross-device search support. It helps you find information based on what you remember, not file names or folder structures.

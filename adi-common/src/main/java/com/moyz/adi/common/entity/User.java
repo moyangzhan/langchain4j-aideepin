@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @Schema(title = "User对象")
 public class User extends BaseEntity {
 
-    @Schema(name = "用户名称")
+    @Schema(name = "用户名称 | Username")
     @TableField("name")
     private String name;
 
@@ -28,7 +28,7 @@ public class User extends BaseEntity {
     @TableField("uuid")
     private String uuid;
 
-    @Schema(name = "上下文理解中需要携带的消息对数量（提示词及回复）")
+    @Schema(name = "上下文理解中需要携带的消息对数量（提示词及回复） | Message Pair Count for Context Understanding (Prompt and Reply)")
     @TableField("understand_context_msg_pair_num")
     private Integer understandContextMsgPairNum;
 
@@ -60,7 +60,11 @@ public class User extends BaseEntity {
     @TableField("active_time")
     private LocalDateTime activeTime;
 
-    @Schema(title = "是否管理员（0：否，1：是）")
+    @Schema(title = "是否管理员（0：否，1：是） | Is Admin (0: No, 1: Yes)")
     @TableField(value = "is_admin")
     private Boolean isAdmin;
+
+    @Schema(name = "User locale preference, empty string means follow global setting")
+    @TableField(value = "locale")
+    private String locale = "";
 }

@@ -19,7 +19,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
-@Tag(name = "知识库问答controller")
+@Tag(name = "知识库问答controller | Knowledge Base QA Controller")
 @RequestMapping("/knowledge-base/qa/")
 @RestController
 public class KnowledgeBaseQAController {
@@ -42,7 +42,7 @@ public class KnowledgeBaseQAController {
         return knowledgeBaseQaService.add(knowledgeBase, req);
     }
 
-    @Operation(summary = "流式响应")
+    @Operation(summary = "流式响应 | SSE Response")
     @PostMapping(value = "/process/{qaRecordUuid}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter sseAsk(@PathVariable String qaRecordUuid) {
         return knowledgeBaseService.sseAsk(qaRecordUuid);

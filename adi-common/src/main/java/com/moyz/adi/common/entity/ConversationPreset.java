@@ -6,7 +6,7 @@ import lombok.Data;
 
 @Data
 @TableName("adi_conversation_preset")
-@Schema(title = "预设对话实体", description = "预设对话表")
+@Schema(title = "预设对话实体 | Conversation Preset Entity", description = "预设对话表 | Conversation Preset Table")
 public class ConversationPreset extends BaseEntity {
     private String uuid;
     private String title;

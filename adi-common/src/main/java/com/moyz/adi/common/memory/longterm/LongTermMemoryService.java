@@ -55,7 +55,7 @@ public class LongTermMemoryService {
 
     @Async
     public void asyncAdd(Long convId, String modelPlatform, String modelName, String userMessage, String assistantMessage) {
-        log.info("将信息转为记忆，convId: {}", convId);
+        log.info("Converting messages to memory, convId:{}", convId);
         String inputMessage = toInputMessage(userMessage, assistantMessage);
         log.info("inputMessage: {}", inputMessage);
         AbstractLLMService llmService = LLMContext.getServiceOrDefault(modelPlatform, modelName);
@@ -75,7 +75,7 @@ public class LongTermMemoryService {
         log.info("Fact extraction response: {}", response.aiMessage().text());
         String factResponse = AdiStringUtil.removeCodeBlock(response.aiMessage().text());
         if (StringUtils.isBlank(factResponse)) {
-            log.warn("无法针对本次内容整理出事实性信息");
+            log.warn("Unable to extract factual information from this content");
             return;
         }
         //虽然指定了返回的数据结构，有些模型可能还是会返回无法解析的内容，所以这里需要做下容错处理，先兼容直接返回数组的情况
@@ -85,13 +85,13 @@ public class LongTermMemoryService {
         } else {
             ExtractedFact extractedFact = JsonUtil.fromJson(factResponse, ExtractedFact.class);
             if (null == extractedFact || CollectionUtils.isEmpty(extractedFact.getFacts())) {
-                log.warn("内容无法解析为ExtractedFact对象，原始内容：{}", factResponse);
+                log.warn("Content cannot be parsed as ExtractedFact, raw content:{}", factResponse);
                 return;
             }
             facts = new ArrayList<>(extractedFact.getFacts());
         }
         if (null == facts) {
-            log.warn("内容无法解析为事实性信息，原始内容：{}", factResponse);
+            log.warn("Content cannot be parsed as factual information, raw content:{}", factResponse);
             return;
         }
 

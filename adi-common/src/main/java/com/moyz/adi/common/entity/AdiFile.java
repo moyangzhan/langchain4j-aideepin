@@ -9,9 +9,9 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @Data
 @TableName("adi_file")
-@Schema(title = "文件表")
+@Schema(title = "文件表 | File Table")
 public class AdiFile extends BaseEntity {
-    @Schema(title = "用户id")
+    @Schema(title = "用户id | User ID")
     @TableField(value = "user_id")
     private Long userId;
 
@@ -31,15 +31,15 @@ public class AdiFile extends BaseEntity {
     @TableField(value = "ext")
     private String ext;
 
-    @Schema(title = "路径")
+    @Schema(title = "路径 | Path")
     @TableField(value = "path")
     private String path;
 
-    @Schema(title = "存储位置，1：本地存储，2：阿里云OSS")
+    @Schema(title = "存储位置，1：本地存储，2：阿里云OSS | Storage Location (1: Local, 2: Alibaba Cloud OSS)")
     @TableField(value = "storage_location")
     private Integer storageLocation;
 
-    @Schema(title = "引用数量")
+    @Schema(title = "引用数量 | Reference Count")
     @TableField(value = "ref_count")
     private Integer refCount;
 

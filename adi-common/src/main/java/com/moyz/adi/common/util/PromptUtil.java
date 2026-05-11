@@ -24,13 +24,22 @@ import static com.moyz.adi.common.enums.ErrorEnum.A_USER_QUESTION_NOT_FOUND;
 public class PromptUtil {
 
     public static String createPrompt(String question, String memory, String information, String extraInfo) {
+        return createPrompt(question, memory, information, extraInfo, "zh-CN");
+    }
+
+    public static String createPrompt(String question, String memory, String information, String extraInfo, String locale) {
         if (StringUtils.isBlank(question)) {
             throw new BaseException(A_USER_QUESTION_NOT_FOUND);
         }
         if (StringUtils.isAllBlank(memory, information, extraInfo)) {
             return question;
         }
-        return PROMPT_INFO_EXTRA_TEMPLATE.apply(Map.of("question", question, "memory", memory, "information", Matcher.quoteReplacement(information), "extraInfo", extraInfo)).text();
+        var template = isZhLocale(locale) ? PROMPT_INFO_EXTRA_TEMPLATE : PROMPT_INFO_EXTRA_TEMPLATE_EN;
+        return template.apply(Map.of("question", question, "memory", memory, "information", Matcher.quoteReplacement(information), "extraInfo", extraInfo)).text();
+    }
+
+    private static boolean isZhLocale(String locale) {
+        return locale != null && locale.startsWith("zh");
     }
 
     public static List<Content> findImagesContentInParameters(Method method, Object[] args) {

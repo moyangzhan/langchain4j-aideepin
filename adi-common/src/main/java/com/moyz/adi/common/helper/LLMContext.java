@@ -13,6 +13,7 @@ import java.util.Optional;
 
 /**
  * llmService上下文类（策略模式）
+ * LLM service context class (Strategy pattern)
  */
 @Slf4j
 public class LLMContext {
@@ -28,8 +29,9 @@ public class LLMContext {
 
     /**
      * 清除{modelPlatform}下的缓存
+     * Clear cache under {modelPlatform}
      *
-     * @param modelPlatform 模型所属的平台
+     * @param modelPlatform 模型所属的平台 / The platform the model belongs to
      */
     public static void clearByPlatform(String modelPlatform, String modelType) {
         List<AbstractLLMService> readyToDelete = LLM_SERVICES.stream()
@@ -53,15 +55,16 @@ public class LLMContext {
 
     /**
      * 以 {platform} 和 {modelName} 定位一个 AiModel
+     * Locate an AiModel by {platform} and {modelName}
      * 不能只使用 {modelName} 来获取 AiModel，以防不同平台有相同名字的模型
+     * Cannot use only {modelName} to get AiModel, in case different platforms have models with the same name
      *
-     * @param platform  模型平台名称
-     * @param modelName 模型名称
+     * @param platform  模型平台名称 / Model platform name
+     * @param modelName 模型名称 / Model name
      * @return AiModel
      */
     public static AiModel getAiModel(String platform, String modelName) {
         return LLM_SERVICES.stream()
-                //兼容只有 modelName 的情况
                 .filter(item -> (StringUtils.isBlank(platform) || item.getPlatform().getName().equals(platform)) && item.getAiModel().getName().equalsIgnoreCase(modelName))
                 .findFirst()
                 .map(AbstractLLMService::getAiModel)
@@ -84,10 +87,10 @@ public class LLMContext {
         if (null == service && useDefault) {
             Optional<AbstractLLMService> serviceOptional = getFirstEnableAndFree();
             if (serviceOptional.isPresent()) {
-                log.warn("︿︿︿ 找不到 modelId:{},使用第1个可用的免费模型 {} ︿︿︿", modelId, serviceOptional.get().getAiModel().getName());
+                log.warn("^^^^^ modelId:{} not found, using the first available free model {} ^^^^^", modelId, serviceOptional.get().getAiModel().getName());
                 return serviceOptional.get();
             }
-            log.error("︿︿︿ 没有可用的模型,请检查平台及模型的配置 ︿︿︿");
+            log.error("^^^^^ No available models, please check platform and model configuration ^^^^^");
             throw new BaseException(ErrorEnum.A_ENABLE_MODEL_NOT_FOUND);
         }
         return service;
@@ -95,26 +98,30 @@ public class LLMContext {
 
     /**
      * 以 {platform} 和 {modelName} 查找 AbstractLLMService，如果找不到，则返回第1个可用的免费模型
+     * Find AbstractLLMService by {platform} and {modelName}, return the first available free model if not found
      * PS: 不能只使用 {modelName} 来获取 AbstractLLMService，以防不同平台有相同名字的模型
+     * PS: Cannot use only {modelName} to get AbstractLLMService, in case different platforms have models with the same name
      *
-     * @param platform   模型平台名称
-     * @param modelName  模型名称
-     * @param useDefault 如果找不到，是否使用第1个可用的免费模型
+     * @param platform   模型平台名称 / Model platform name
+     * @param modelName  模型名称 / Model name
+     * @param useDefault 如果找不到，是否使用第1个可用的免费模型 / Whether to use the first available free model if not found
      * @return AbstractLLMService
      */
     public static AbstractLLMService getServiceByPlatformAndModel(String platform, String modelName, boolean useDefault) {
         AbstractLLMService service = LLM_SERVICES.stream()
+//Compatible with modelName-only case
                 //兼容只有 modelName 的情况
+                // Compatible with modelName-only case
                 .filter(item -> (StringUtils.isBlank(platform) || item.getPlatform().getName().equals(platform)) && item.getAiModel().getName().equalsIgnoreCase(modelName))
                 .findFirst()
                 .orElse(null);
         if (null == service && useDefault) {
             Optional<AbstractLLMService> serviceOptional = getFirstEnableAndFree();
             if (serviceOptional.isPresent()) {
-                log.warn("︿︿︿ 找不到 {},使用第1个可用的免费模型 {} ︿︿︿", modelName, serviceOptional.get().getAiModel().getName());
+                log.warn("^^^^^ {} not found, using the first available free model {} ^^^^^", modelName, serviceOptional.get().getAiModel().getName());
                 return serviceOptional.get();
             }
-            log.error("︿︿︿ 没有可用的模型,请检查平台及模型的配置 ︿︿︿");
+            log.error("^^^^^ No available models, please check platform and model configuration ^^^^^");
             throw new BaseException(ErrorEnum.A_ENABLE_MODEL_NOT_FOUND);
         }
         return service;
@@ -124,8 +131,11 @@ public class LLMContext {
      * 选择顺序：
      * 一、优先选择免费可用的模型；
      * 二、收费可用的模型
+     * Selection order:
+     * 1. Prefer free and available models;
+     * 2. Paid and available models
      *
-     * @return 返回免费或收费的可用模型
+     * @return 返回免费或收费的可用模型 / Return a free or paid available model
      */
     public static Optional<AbstractLLMService> getFirstEnableAndFree() {
         AbstractLLMService freeObj = null;

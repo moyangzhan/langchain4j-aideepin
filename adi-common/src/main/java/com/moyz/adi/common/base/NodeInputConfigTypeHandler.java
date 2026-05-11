@@ -101,7 +101,7 @@ public class NodeInputConfigTypeHandler extends BaseTypeHandler<WfNodeInputConfi
                     if (null != wfNodeIO) {
                         userInputs.add(wfNodeIO);
                     } else {
-                        log.warn("用户输入格式不正确:{}", userInput);
+                        log.warn("Invalid user input format:{}", userInput);
                     }
                 }
             }
@@ -111,7 +111,7 @@ public class NodeInputConfigTypeHandler extends BaseTypeHandler<WfNodeInputConfi
             if (CollectionUtils.isNotEmpty(list)) {
                 result.setRefInputs(list);
             } else {
-                log.warn("引用输入格式不正确:{}", refInputs);
+                log.warn("Invalid reference input format:{}", refInputs);
             }
         }
         return result;

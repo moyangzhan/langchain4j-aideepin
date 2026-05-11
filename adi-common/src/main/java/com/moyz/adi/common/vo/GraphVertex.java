@@ -15,6 +15,7 @@ import java.util.Map;
 public class GraphVertex {
 
     private String id;
+//Apache AGE does not support multiple labels yet
     //Apache AGE暂时不支持多标签
     private String label;
     private String name;

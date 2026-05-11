@@ -134,6 +134,7 @@ public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
     }
 
     public void edit(AiModelDto aiModelDto) {
+// Add null check to prevent NPE when calling strip() during partial update (null fields)
         // 增加非空判断，防止部分更新（字段为null）时调用 strip() 报空指针异常
         if (StringUtils.isNotBlank(aiModelDto.getName())) {
             aiModelDto.setName(aiModelDto.getName().strip());
@@ -145,7 +146,9 @@ public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
         AiModel oldAiModel = getByIdOrThrow(aiModelDto.getId());
 
         AiModel aiModel = new AiModel();
+// Copy properties, null values are also copied
         // 复制属性，null 值也会被复制，但 MyBatis-Plus updateById 默认策略通常忽略 null 值（SELECTIVE）
+// Thus achieving the effect of updating only the isFree field
         // 从而实现只更新 isFree 字段的效果
         BeanUtils.copyProperties(aiModelDto, aiModel, "createTime", "updateTime");
         baseMapper.updateById(aiModel);

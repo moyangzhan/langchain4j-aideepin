@@ -119,10 +119,12 @@ public class LocalFileOperator implements IFileOperator {
         Path dirPath = Paths.get(dir);
         if (!Files.exists(dirPath)) {
             try {
+// Create directory including all non-existent parent directories
                 // 创建目录，包括所有不存在的父目录
+                // Create directory including all non-existent parent directories
                 Files.createDirectories(dirPath);
             } catch (IOException e) {
-                System.err.println("创建目录时发生错误：" + e.getMessage());
+                System.err.println("Error creating directory: " + e.getMessage());
                 throw new BaseException(B_DIR_CREATE_FAIL);
             }
         }

@@ -9,18 +9,18 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @Data
 @TableName("adi_prompt")
-@Schema(title = "提示词实体")
+@Schema(title = "提示词实体 | Prompt Entity")
 public class Prompt extends BaseEntity {
 
-    @Schema(title = "用户id")
+    @Schema(title = "用户id | User ID")
     @TableField(value = "user_id")
     private Long userId;
 
-    @Schema(title = "标题")
+    @Schema(title = "标题 | Title")
     @TableField(value = "act")
     private String act;
 
-    @Schema(title = "内容")
+    @Schema(title = "内容 | Content")
     @TableField(value = "prompt")
     private String prompt;
 

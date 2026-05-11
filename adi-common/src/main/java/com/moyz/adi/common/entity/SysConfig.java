@@ -7,14 +7,14 @@ import lombok.Data;
 
 @Data
 @TableName("adi_sys_config")
-@Schema(title = "系统配置表")
+@Schema(title = "系统配置表 | System Config Table")
 public class SysConfig extends BaseEntity {
 
-    @Schema(title = "配置名称")
+    @Schema(title = "配置名称 | Config Name")
     @TableField("name")
     private String name;
 
-    @Schema(title = "配置项的值")
+    @Schema(title = "配置项的值 | Config Value")
     private String value;
 
 }

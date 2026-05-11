@@ -33,7 +33,7 @@ public class TokenEstimatorFactory {
             if (null != llmService) {
                 return llmService.getTokenEstimator();
             } else {
-                log.warn("没有找到Qwen模型的tokenizer，使用默认的OpenAiTokenizer");
+                log.warn("Qwen model tokenizer not found, using default OpenAiTokenizer");
                 return new OpenAiTokenCountEstimator(OpenAiChatModelName.GPT_3_5_TURBO);
             }
         }

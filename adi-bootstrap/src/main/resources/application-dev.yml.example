@@ -1,5 +1,8 @@
+# Copy this file to application-dev.yml and fill in the real database, Redis, and other connection information
 # 复制本文件为 application-dev.yml，并填入真实的数据库、Redis 等连接信息
+# Note: application-dev.yml is in .gitignore and will not be committed to the repository
 # 注意：application-dev.yml 已在 .gitignore 中，不会被提交到代码仓库
+# Sensitive information is injected via environment variables in the format ${ADI_XXX:default-value}
 # 敏感信息通过环境变量注入，格式为 ${ADI_XXX:默认值}
 
 spring:
@@ -9,13 +12,29 @@ spring:
     username: ${ADI_DB_USERNAME:your-username}
     password: ${ADI_DB_PASSWORD:your-password}
     hikari:
+      # Connection timeout
+      # 连接超时时间
       connection-timeout: 10000
+      # Validation timeout
+      # 验证超时时间
       validation-timeout: 3000
+      # Idle timeout
+      # 空闲超时时间
       idle-timeout: 60000
+      # Login timeout
+      # 登录超时时间
       login-timeout: 5
+      # Maximum lifetime of a connection in the pool
+      # 连接池中连接的最大生命周期
       max-lifetime: 300000
+      # Maximum pool size
+      # 连接池最大连接数
       maximum-pool-size: 10
+      # Minimum idle connections
+      # 连接池最小空闲连接数
       minimum-idle: 5
+      # Read-only connections
+      # 只读连接
       read-only: false
   data:
     redis:
@@ -25,24 +44,46 @@ spring:
       database: 0
       lettuce:
         pool:
+          # Max connections in pool
+          # 连接池最大连接数
           max-active: 20
+          # Max blocking wait time in pool
+          # 连接池最大阻塞等待时间
           max-wait: -1
+          # Max idle connections in pool
+          # 连接池中的最大空闲连接
           max-idle: 5
+          # Min idle connections in pool
+          # 连接池中的最小空闲连接
           min-idle: 1
 
 logging:
   file:
+    # Log file path
+    # 日志文件路径
     path: ./data/aideepin/logs
   level:
     com.baomidou.mybatisplus: DEBUG
 
 adi:
+  # Frontend URL
+  # 前端地址
   frontend-url: http://localhost:1002
+  # Backend URL
+  # 后端地址
   backend-url: http://localhost:1002/api
   proxy:
+    # Enable proxy
+    # 是否启用代理
     enable: false
     host: 127.0.0.1
     http-port: 1087
+  # Embedding model options (see embedding type data in adi_ai_model):
+  # local:all-minilm-l6-v2 (Better for English, weaker for Chinese)
+  # local:bge-small-zh-v1.5 (Default, better for Chinese, uses more memory than all-minilm-l6-v2)
+  # openai:text-embedding-3-small, openai:text-embedding-3-large (Multilingual)
+  # dashscope:text-embedding-v1, dashscope:text-embedding-v3 (Multilingual, better for Chinese)
+  # Note: Different vector models with different dimensions generate incompatible vector spaces that cannot be stored in the same table for mixed search. Recommend deciding on a vector model and its dimensions early in the project. If changed later, vector data must be regenerated.
   # embedding model可选值如下（见adi_ai_model中的embedding类型的数据）：
   # local:all-minilm-l6-v2 (英文效果较好，中文效果较差)
   # local:bge-small-zh-v1.5 (默认、中文效果较好、相比 all-minilm-l6-v2 占用内存较大)
@@ -50,8 +91,10 @@ adi:
   # dashscope:text-embedding-v1、dashscope:text-embedding-v3  (多语言，中文效果较好)
   # 注意：由于不同向量模型不同维度参数生成的向量特征空间不一致，无法兼容存储于一张表并进行混合搜索，建议项目初期确定好向量模型及其维度，后期如有修改，需重新生成向量数据
   embedding-model: local:bge-small-zh-v1.5
+  # vector-database: pgvector, neo4j
   # vector-database: pgvector、neo4j
   vector-database: pgvector
+  # graph-database: apache-age, neo4j
   # graph-database: apache-age、neo4j
   graph-database: apache-age
   datasource:
@@ -60,9 +103,13 @@ adi:
       port: ${ADI_NEO4J_PORT:7687}
       username: ${ADI_NEO4J_USERNAME:neo4j}
       password: ${ADI_NEO4J_PASSWORD:your-db-password}
+      # Database name
+      # 数据库名称
       database: ${ADI_NEO4J_DATABASE:neo4j}
 
 local:
+  # Base data path for local file storage
+  # 本地文件存储的基础路径
   base-data-path: ${ADI_LOCAL_BASE_DATA_PATH:/data/aideepin}
   files: ${local.base-data-path}/files/
   images: ${local.base-data-path}/images/
@@ -70,4 +117,6 @@ local:
   thumbnails: ${local.base-data-path}/thumbnails/
   watermark-thumbnails: ${local.base-data-path}/watermark-thumbnails/
   tmp-images: ${local.base-data-path}/tmp-images/
+  # Chat memory storage path
+  # 聊天记忆存储路径
   chat-memory: ${local.base-data-path}/chat-memory/

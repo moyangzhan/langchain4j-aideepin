@@ -9,4 +9,5 @@ public class UserUpdateReq {
     private String secretKey;
     private Boolean contextEnable;
     private Integer contextMsgPairNum;
+    private String locale;
 }

@@ -50,7 +50,7 @@ public class KeywordExtractorNode extends AbstractWfNode {
         }
         KeywordExtractorNodeConfig nodeConfigObj = JsonUtil.fromJson(objectConfig, KeywordExtractorNodeConfig.class);
         if (null == nodeConfigObj || StringUtils.isBlank(nodeConfigObj.getModelName())) {
-            log.warn("找不到关键词提取节点的配置");
+            log.warn("Keyword extractor node configuration not found");
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
         log.info("KeywordExtractorNode config:{}", nodeConfigObj);

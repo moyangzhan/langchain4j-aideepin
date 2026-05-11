@@ -30,7 +30,7 @@ public class AdiPropertiesUtil {
             String modelName = aiModel.getName();
             JsonNode jsonNode = aiModel.getProperties().get("dimension");
             if (null == jsonNode) {
-                log.error("向量模型找不到定义的维度属性, model id:{}, model name:{}", aiModel.getId(), modelName);
+                log.error("Embedding model dimension property not found, model id:{}, model name:{}", aiModel.getId(), modelName);
                 throw new RuntimeException("model dimension is not configured, model name:" + modelName);
             }
             dimension = jsonNode.asInt();
@@ -51,8 +51,8 @@ public class AdiPropertiesUtil {
                 .findFirst()
                 .orElse(null);
         if (null == aiModel) {
-            log.error("模型找不到或已被禁用,platform:{},name:{}", platform, modelName);
-            throw new RuntimeException("模型找不到或已被禁用 | vector model not found or is disabled,name:" + modelName);
+            log.error("Model not found or disabled, platform:{}, name:{}", platform, modelName);
+            throw new RuntimeException("Model not found or disabled, name:" + modelName);
         }
         return aiModel;
     }

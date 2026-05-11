@@ -51,6 +51,7 @@ public class ImageUtil {
             // 读取RGB图片
             BufferedImage rgbImage = ImageIO.read(new File(rbgPath));
 
+// Create an RGBA image with the same size as the original RGB image
             // 创建一个RGBA图片，与原始RGB图片大小相同
             BufferedImage rgbaImage = new BufferedImage(rgbImage.getWidth(), rgbImage.getHeight(), BufferedImage.TYPE_INT_ARGB);
 
@@ -59,6 +60,7 @@ public class ImageUtil {
             g.drawImage(rgbImage, 0, 0, null);
             g.dispose();
 
+// Save RGBA image
             // 保存RGBA图片
             ImageIO.write(rgbaImage, "png", new File(argbPath));
 
@@ -74,6 +76,7 @@ public class ImageUtil {
             // 获取图片的颜色模型
             int colorModel = image.getColorModel().getColorSpace().getType();
             if (colorModel != BufferedImage.TYPE_INT_ARGB) {
+// Create an RGBA image with the same size as the original RGB image
                 // 创建一个RGBA图片，与原始RGB图片大小相同
                 BufferedImage rgbaImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
 
@@ -81,6 +84,7 @@ public class ImageUtil {
                 Graphics2D g = rgbaImage.createGraphics();
                 g.drawImage(image, 0, 0, null);
                 g.dispose();
+// Save RGBA image
                 // 保存RGBA图片
                 ImageIO.write(rgbaImage, "png", new File(rgbaPath));
 
@@ -142,11 +146,13 @@ public class ImageUtil {
             thumbWidth = (int) (thumbHeight * imageRatio);
         }
 
+// Create thumbnail
         // 创建缩略图
         Image thumbnail = image.getScaledInstance(thumbWidth, thumbHeight, Image.SCALE_SMOOTH);
         BufferedImage outputImage = new BufferedImage(thumbWidth, thumbHeight, BufferedImage.TYPE_INT_RGB);
         outputImage.getGraphics().drawImage(thumbnail, 0, 0, null);
 
+// Save thumbnail
         // 保存缩略图
         File output = new File(outputFile);
         ImageIO.write(outputImage, "JPEG", output);

@@ -79,11 +79,11 @@ public class SiliconflowAsrService extends AbstractAsrModelService {
                         log.error("ASR response does not contain 'text': {}", responseBody);
                     }
                 } else {
-                    log.error("请求失败:{}", response);
+                    log.error("Request failed:{}", response);
                 }
             }
         } catch (IOException e) {
-            log.error("请求失败:{}", e.getMessage());
+            log.error("Request failed:{}", e.getMessage());
         }
         return null;
     }

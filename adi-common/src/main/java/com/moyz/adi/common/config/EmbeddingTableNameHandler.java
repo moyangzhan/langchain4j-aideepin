@@ -11,11 +11,13 @@ public class EmbeddingTableNameHandler implements TableNameHandler {
 
     private List<String> tableNames;
 
+//Dynamic table name
     //构造函数，构造动态表名处理器的时候，传递tableNames参数
     public EmbeddingTableNameHandler(String... tableNames) {
         this.tableNames = Arrays.asList(tableNames);
     }
 
+//Dynamic table name
     //动态表名接口实现方法
     @Override
     public String dynamicTableName(String sql, String tableName) {

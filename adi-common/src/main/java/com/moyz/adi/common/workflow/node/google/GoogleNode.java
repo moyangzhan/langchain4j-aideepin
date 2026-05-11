@@ -41,7 +41,7 @@ public class GoogleNode extends AbstractWfNode {
         }
         GoogleNodeConfig nodeConfigObj = JsonUtil.fromJson(objectConfig, GoogleNodeConfig.class);
         if (null == nodeConfigObj) {
-            log.warn("找不到Google搜索节点的配置");
+            log.warn("Google search node configuration not found");
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
         log.info("GoogleNode config:{}", nodeConfigObj);
@@ -52,7 +52,7 @@ public class GoogleNode extends AbstractWfNode {
             query = getFirstInputText();
         }
         if (StringUtils.isBlank(query)) {
-            log.error("搜索字不能为空");
+            log.error("Search query cannot be empty");
             throw new BaseException(A_SEARCH_QUERY_IS_EMPTY);
         }
         log.info("GoogleNode query:{}", query);

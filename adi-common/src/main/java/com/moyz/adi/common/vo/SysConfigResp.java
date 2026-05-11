@@ -13,4 +13,8 @@ public class SysConfigResp {
      * ttsSetting中设置的 modelName 对应的可用语音列表
      */
     private List<ModelVoice> availableVoices;
+    /**
+     * Global default locale from system config
+     */
+    private String defaultLocale;
 }

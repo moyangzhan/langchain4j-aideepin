@@ -22,7 +22,7 @@ public class GraphCompileNode extends CompileNode {
         while (!tail.getNextNodes().isEmpty()) {
             tail = tail.getNextNodes().get(0);
             if (!visited.add(tail.getId())) {
-                log.error("appendToLeaf检测到链表环，节点{}", tail.getId());
+                log.error("appendToLeaf detected circular linked list, node{}", tail.getId());
                 throw new BaseException(com.moyz.adi.common.enums.ErrorEnum.B_WF_RUN_ERROR);
             }
             if (tail.getId().equals(node.getId())) {
@@ -46,7 +46,7 @@ public class GraphCompileNode extends CompileNode {
         while (!tail.getNextNodes().isEmpty()) {
             tail = tail.getNextNodes().get(0);
             if (!visited.add(tail.getId())) {
-                log.error("getTail检测到链表环，节点{}", tail.getId());
+                log.error("getTail detected circular linked list, node{}", tail.getId());
                 throw new BaseException(com.moyz.adi.common.enums.ErrorEnum.B_WF_RUN_ERROR);
             }
         }

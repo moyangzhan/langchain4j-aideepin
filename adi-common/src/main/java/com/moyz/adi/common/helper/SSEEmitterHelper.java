@@ -80,9 +80,10 @@ public class SSEEmitterHelper {
 
     /**
      * event_stream请求，完成后关闭sse并执行回调
+     * event_stream request, close SSE and execute callback after completion
      *
-     * @param sseAskParams     请求参数
-     * @param completeCallback 请求结束后的回调
+     * @param sseAskParams     请求参数 / Request parameters
+     * @param completeCallback 请求结束后的回调 / Callback after request completion
      */
     public void call(SseAskParams sseAskParams, TriConsumer<LLMResponseContent, PromptMeta, AnswerMeta> completeCallback) {
         String askingKey = registerEventStreamListener(sseAskParams);
@@ -101,9 +102,10 @@ public class SSEEmitterHelper {
 
     /**
      * 注册event stream的事件
+     * Register event stream listeners
      *
-     * @param sseAskParams 参数
-     * @return 用户请求标识
+     * @param sseAskParams 参数 / Parameters
+     * @return 用户请求标识 / User request identifier
      */
     public String registerEventStreamListener(SseAskParams sseAskParams) {
         User user = sseAskParams.getUser();
@@ -152,8 +154,9 @@ public class SSEEmitterHelper {
 
     /**
      * 关闭sse <br/>
+     * Close SSE <br/>
      *
-     * @param userId     用户id
+     * @param userId     用户id / User ID
      * @param sseEmitter sse
      */
     public void sendComplete(long userId, SseEmitter sseEmitter) {
@@ -270,14 +273,16 @@ public class SSEEmitterHelper {
 
     /**
      * 计算llm返回消费的token
+     * Calculate tokens consumed by LLM response
      *
-     * @param response llm返回的最终内容
-     * @param uuid     标识
-     * @return 请求及答案消息对
+     * @param response llm返回的最终内容 / Final content returned by LLM
+     * @param uuid     标识 / Identifier
+     * @return 请求及答案消息对 / Request and answer message pair
      */
     public static Pair<PromptMeta, AnswerMeta> calculateToken(ChatResponse response, String uuid) {
-        log.info("返回数据结束了:{}", response);
+        log.info("Response data completed:{}", response);
         //缓存以便后续统计此次提问的消耗总token
+        // Cache for later statistics of total token consumption for this query
         int inputTokenCount = response.metadata().tokenUsage().totalTokenCount();
         int outputTokenCount = response.metadata().tokenUsage().outputTokenCount();
         log.info("StreamingChatModel token cost,uuid:{},inputTokenCount:{},outputTokenCount:{}", uuid, inputTokenCount, outputTokenCount);

@@ -32,6 +32,7 @@ public class WfNodeIOOptions extends WfNodeIO {
         if (required && null == value) {
             return false;
         }
+//If single selection is set but multiple values are passed, validation fails
         //如果设置了单选，传过来的值是多项，则检查不通过
         return multiple || null == value || value.size() <= 1;
     }

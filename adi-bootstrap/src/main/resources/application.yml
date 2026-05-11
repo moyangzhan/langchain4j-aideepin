@@ -46,6 +46,7 @@ springdoc:
     path: /swagger-ui.html
 
 mybatis-plus:
+  # Support wildcards * or semicolon separation
   # 支持统配符 * 或者 ; 分割
   mapper-locations: classpath*:/mapper/*.xml
   configuration:
@@ -64,7 +65,9 @@ adi:
     host: 127.0.0.1
     http-port: 1087
   encrypt:
+    # Encryption key for sensitive database fields, do not disclose
     # 数据库敏感字段加密的密钥，不要泄露
+    # Using the default key will fail on startup, please replace with your own key (16-char string) or pass via environment variable ADI_ENCRYPT_AES_KEY
     # 使用默认密钥启动会失败，请先替换为自己的密钥(长度为16的字符串)，或通过环境变量 ADI_ENCRYPT_AES_KEY 传入
     aes-key: ${ADI_ENCRYPT_AES_KEY:Ap9da0CopbjiKGc1}
 

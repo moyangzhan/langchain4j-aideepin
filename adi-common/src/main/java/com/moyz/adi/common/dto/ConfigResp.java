@@ -10,4 +10,5 @@ public class ConfigResp {
     private Integer contextMsgPairNum;
     private UserQuota userQuota;
     private CostStatResp quotaCost;
+    private String locale;
 }

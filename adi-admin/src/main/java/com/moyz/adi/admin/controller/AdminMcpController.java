@@ -14,6 +14,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 /**
+* MCP information can only be maintained by system administrators
  * MCP信息只能由系统管理员进行维护
  */
 @RestController
@@ -24,7 +25,7 @@ public class AdminMcpController {
     @Resource
     private McpService mcpService;
 
-    @Operation(summary = "搜索列表")
+    @Operation(summary = "搜索列表 | Search List")
     @PostMapping(value = "/search")
     public Page<Mcp> search(@RequestBody McpSearchReq req, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
         return mcpService.search(req, currentPage, pageSize, true);

@@ -35,9 +35,10 @@ public class ClassifierNode extends AbstractWfNode {
     protected NodeProcessResult onProcess() {
         ClassifierNodeConfig nodeConfig = checkAndGetConfig(ClassifierNodeConfig.class);
         if (nodeConfig.getCategories().size() < 2) {
-            log.warn("问题分类器设置的分类过少,uuid:{},title:{}", node.getUuid(), node.getTitle());
+            log.warn("Classifier has too few categories, uuid:{}, title:{}", node.getUuid(), node.getTitle());
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
+//Process variables in category description
         //处理类别描述中的变量
         for (ClassifierCategory classifierCategory : nodeConfig.getCategories()) {
             String description = classifierCategory.getCategoryName();

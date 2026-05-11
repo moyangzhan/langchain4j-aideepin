@@ -35,8 +35,8 @@ public class QuotaHelper {
     /**
      * Check the generate image request if it can be accepted
      *
-     * @param user 要检查的用户
-     * @return 错误码
+     * @param user 要检查的用户 / User to check
+     * @return 错误码 / Error code
      */
     public ErrorEnum checkImageQuota(User user, boolean isFree) {
         int userDailyQuota = user.getQuotaByImageDaily();

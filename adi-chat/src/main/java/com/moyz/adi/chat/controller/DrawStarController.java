@@ -22,7 +22,7 @@ public class DrawStarController {
         return drawService.listStarred(maxId, pageSize);
     }
 
-    @Operation(summary = "将绘图任务设置为公开或私有")
+    @Operation(summary = "将绘图任务设置为公开或私有 | Toggle Draw Star")
     @PostMapping("/toggle/{uuid}")
     public DrawDto star(@PathVariable @NotBlank String uuid) {
         return drawService.toggleStar(uuid);

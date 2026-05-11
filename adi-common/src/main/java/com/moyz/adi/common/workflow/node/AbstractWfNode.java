@@ -60,11 +60,11 @@ public abstract class AbstractWfNode {
     public void initInput() {
         WfNodeInputConfig nodeInputConfig = node.getInputConfig();
         if (null == nodeInputConfig) {
-            log.info("节点输入参数没有配置");
+            log.info("Node input parameters not configured");
             return;
         }
         if (wfState.getCompletedNodes().isEmpty()) {
-            log.info("没有上游节点，当前节点为开始节点");
+            log.info("No upstream node, current node is start node");
             state.getInputs().addAll(wfState.getInput());
             return;
         }
@@ -78,6 +78,7 @@ public abstract class AbstractWfNode {
         } else {
             log.warn("upstream output params is empty");
         }
+//Process reference-type input parameters, non-start nodes only have reference-type inputs
         //处理引用类型的输入参数，非开始节点只有引用类型输入参数
         List<WfNodeParamRef> refInputDefs = nodeInputConfig.getRefInputs();
         inputs.addAll(changeRefersToNodeIODatas(refInputDefs));
@@ -88,6 +89,7 @@ public abstract class AbstractWfNode {
         defInputNames.addAll(inputConfig.getUserInputs().stream().map(WfNodeIO::getName).toList());
         List<NodeIOData> needInputs = inputs.stream().filter(item -> {
             String needInputName = item.getName();
+//Upstream node default output parameter (output), change to input
             //上流节点的默认输出参数(output)，改成input即可
             if (DEFAULT_OUTPUT_PARAM_NAME.equals(needInputName)) {
                 item.setName(DEFAULT_INPUT_PARAM_NAME);
@@ -131,6 +133,7 @@ public abstract class AbstractWfNode {
         log.info("↓↓↓↓↓ node process start,name:{},uuid:{}", node.getTitle(), node.getUuid());
         state.setProcessStatus(NODE_PROCESS_STATUS_DOING);
         initInput();
+//HumanFeedback case
         //HumanFeedback的情况
         Object humanFeedbackState = state.data().get(HUMAN_FEEDBACK_KEY);
         if (null != humanFeedbackState) {
@@ -161,6 +164,7 @@ public abstract class AbstractWfNode {
             state.setOutputs(processResult.getContent());
         }
         state.setProcessStatus(NODE_PROCESS_STATUS_SUCCESS);
+//Let langgraph4j execute the next node
         //交由langgraph4j执行下一个节点
 //        if (nextNode != null) {
 //            nextNode.getWfNodeState().setInput(output);
@@ -204,7 +208,7 @@ public abstract class AbstractWfNode {
         log.info("node config:{}", configObj);
         T nodeConfig = JsonUtil.fromJson(configObj, clazz);
         if (null == nodeConfig) {
-            log.warn("找不到节点的配置,node uuid:{}", state.getUuid());
+            log.warn("Node configuration not found, node uuid:{}", state.getUuid());
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
         boolean configValid = true;
@@ -215,11 +219,11 @@ public abstract class AbstractWfNode {
                 configValid = false;
             }
         } catch (Exception e) {
-            log.error("节点配置校验失败,node uuid:{},error:{}", state.getUuid(), e.getMessage());
+            log.error("Node configuration validation failed, node uuid:{}, error:{}", state.getUuid(), e.getMessage());
             configValid = false;
         }
         if (!configValid) {
-            log.warn("节点配置错误,node uuid:{}", state.getUuid());
+            log.warn("Node configuration error, node uuid:{}", state.getUuid());
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
         return nodeConfig;

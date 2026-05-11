@@ -46,11 +46,12 @@ public class KnowledgeBaseController {
     }
 
     /**
+* Upload, parse and index documents
      * 上传、解析并索引文档
      *
-     * @param uuid             知识库uuid
-     * @param indexAfterUpload 是否上传完接着索引文档
-     * @param doc              二进制文件
+* @param uuid             知识库uuid / Knowledge base UUID
+* @param indexAfterUpload 是否上传完接着索引文档 / Whether to index documents after upload
+* @param doc              二进制文件 / Binary file
      * @return 上传成功的文件信息
      */
     @PostMapping(path = "/upload/{uuid}", headers = "content-type=multipart/form-data", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -63,12 +64,13 @@ public class KnowledgeBaseController {
     }
 
     /**
+* Search my knowledge bases
      * 搜索我的知识库
      *
-     * @param keyword             搜索关键词
-     * @param includeOthersPublic 是否包含其他人公开的知识库
-     * @param currentPage         当前页数
-     * @param pageSize            每页数量
+* @param keyword             搜索关键词 / Search keyword
+* @param includeOthersPublic 是否包含其他人公开的知识库 / Whether to include other users' public knowledge bases
+* @param currentPage         当前页数 / Current page number
+* @param pageSize            每页数量 / Page size
      * @return 我的知识库列表
      */
     @GetMapping("/mine/search")
@@ -80,11 +82,12 @@ public class KnowledgeBaseController {
     }
 
     /**
+* Search public knowledge bases
      * 搜索公开的知识库
      *
-     * @param keyword     搜索关键词
-     * @param currentPage 当前页数
-     * @param pageSize    每页数量
+* @param keyword     搜索关键词 / Search keyword
+* @param currentPage 当前页数 / Current page number
+* @param pageSize    每页数量 / Page size
      * @return 知识库列表
      */
     @GetMapping("/public/search")
@@ -95,9 +98,10 @@ public class KnowledgeBaseController {
     }
 
     /**
+* Knowledge base details
      * 知识库详情
      *
-     * @param uuid 知识库uuid
+* @param uuid 知识库uuid / Knowledge base UUID
      * @return 知识库详情
      */
     @GetMapping("/info/{uuid}")
@@ -111,7 +115,7 @@ public class KnowledgeBaseController {
     /**
      * 删除知识库
      *
-     * @param uuid 知识库uuid
+* @param uuid 知识库uuid / Knowledge base UUID
      * @return 成功或失败
      */
     @PostMapping("/del/{uuid}")
@@ -120,9 +124,10 @@ public class KnowledgeBaseController {
     }
 
     /**
+* Index entire knowledge base
      * 索引整个知识库
      *
-     * @param uuid 知识库uuid
+* @param uuid 知识库uuid / Knowledge base UUID
      * @return 成功或失败
      */
     @PostMapping("/indexing/{uuid}")
@@ -132,9 +137,10 @@ public class KnowledgeBaseController {
     }
 
     /**
+* Batch index knowledge points
      * 批量索引知识点
      *
-     * @param req 知识点列表
+* @param req 知识点列表 / Knowledge point list
      * @return 成功或失败
      */
     @PostMapping("/item/indexing-list")
@@ -143,6 +149,7 @@ public class KnowledgeBaseController {
     }
 
     /**
+* Check if knowledge base indexing is complete
      * 检查知识库是否已经索引完成
      *
      * @return 成功或失败
@@ -153,6 +160,7 @@ public class KnowledgeBaseController {
     }
 
     /**
+* Like/Star
      * 点赞
      *
      * @return true:star;false:unstar

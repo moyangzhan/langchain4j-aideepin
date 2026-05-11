@@ -96,7 +96,7 @@ public class JsonUtil {
             }
             return jp.readValueAs(clazz);
         } catch (IOException ioe) {
-            log.error("反序列化失败", ioe);
+            log.error("Deserialization failed", ioe);
         }
         return null;
     }
@@ -105,7 +105,7 @@ public class JsonUtil {
         try {
             return objectMapper.treeToValue(jsonNode, clazz);
         } catch (JsonProcessingException e) {
-            log.error("反序列化失败", e);
+            log.error("Deserialization failed", e);
         }
         return null;
     }
@@ -118,7 +118,7 @@ public class JsonUtil {
                 result.add(objectMapper.treeToValue(jsonNode, clazz));
             }
         } catch (JsonProcessingException e) {
-            log.error("反序列化失败", e);
+            log.error("Deserialization failed", e);
         }
         return result;
     }
@@ -127,7 +127,7 @@ public class JsonUtil {
         try {
             return objectMapper.readTree(json);
         } catch (JsonProcessingException e) {
-            log.error("反序列化失败", e);
+            log.error("Deserialization failed", e);
         }
         return null;
     }
@@ -146,7 +146,7 @@ public class JsonUtil {
         try {
             return objectMapper.readValue(json, objectMapper.getTypeFactory().constructCollectionType(List.class, clazz));
         } catch (JsonProcessingException e) {
-            log.error("反序列化失败", e);
+            log.error("Deserialization failed", e);
         }
         return null;
     }

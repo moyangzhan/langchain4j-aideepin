@@ -11,4 +11,5 @@ public class LoginResp {
     private String activeTime;
     private String captchaId;
     private String uuid;
+    private String locale;
 }

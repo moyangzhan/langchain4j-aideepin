@@ -23,7 +23,7 @@ public class ModelController {
     @Resource
     private ModelPlatformService modelPlatformService;
 
-    @Operation(summary = "支持的大语言模型列表")
+    @Operation(summary = "支持的大语言模型列表 | Supported LLM List")
     @GetMapping(value = "/llms")
     public List<LLMModelInfo> llms() {
         return LLMContext.getAllServices().stream().map(item -> {
@@ -39,7 +39,7 @@ public class ModelController {
         }).toList();
     }
 
-    @Operation(summary = "支持的图片模型列表")
+    @Operation(summary = "支持的图片模型列表 | Supported Image Model List")
     @GetMapping(value = "/imageModels")
     public List<ImageModelInfo> imageModels() {
         return ImageModelContext.LLM_SERVICES.stream().map(item -> {
@@ -55,7 +55,7 @@ public class ModelController {
         }).toList();
     }
 
-    @Operation(summary = "模型平台列表")
+    @Operation(summary = "模型平台列表 | Model Platform List")
     @GetMapping(value = "/platforms")
     public List<ModelPlatform> platforms() {
         List<ModelPlatform> platforms = modelPlatformService.listAll();

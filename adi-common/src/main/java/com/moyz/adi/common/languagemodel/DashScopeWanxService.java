@@ -20,6 +20,7 @@ import java.util.List;
 
 /**
  * 通义万相
+ * Tongyi Wanx (DashScope image generation)
  */
 @Slf4j
 public class DashScopeWanxService extends AbstractImageModelService {
@@ -38,16 +39,16 @@ public class DashScopeWanxService extends AbstractImageModelService {
         if (draw.getAiModelName().contains("wanx-background-generation")) {
             JsonNode dynamicParams = draw.getDynamicParams();
             if (dynamicParams.isEmpty()) {
-                log.error("动态参数不能为空");
+                log.error("Dynamic parameters cannot be empty");
                 throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
             }
             WanxBackgroundGenerationParams dynamicParamsObj = JsonUtil.fromJson(dynamicParams, WanxBackgroundGenerationParams.class);
             if (null == dynamicParamsObj) {
-                log.error("动态参数解析失败");
+                log.error("Failed to parse dynamic parameters");
                 throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
             }
             if (StringUtils.isAllBlank(dynamicParamsObj.getRefImageUrl(), dynamicParamsObj.getRefPrompt())) {
-                log.error("引导图与提示词不能全部为空,dynamicParams:{}", dynamicParamsObj);
+                log.error("Reference image and prompt cannot both be empty, dynamicParams:{}", dynamicParamsObj);
                 throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
             }
             AdiWanxImageModel model = AdiWanxImageModel.builder()

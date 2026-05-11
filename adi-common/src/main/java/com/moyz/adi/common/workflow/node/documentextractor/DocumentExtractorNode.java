@@ -50,13 +50,13 @@ public class DocumentExtractorNode extends AbstractWfNode {
                 AdiFile adiFile = fileService.getFile(uuid);
                 Document document = FileOperatorContext.loadDocument(adiFile);
                 if (null == document) {
-                    log.warn("{}的文件类型:{}无法解析，忽略", adiFile.getUuid(), adiFile.getExt());
+                    log.warn("File type {}:{} cannot be parsed, ignored", adiFile.getUuid(), adiFile.getExt());
                     continue;
                 }
                 documentText.append(document.text());
             }
         } catch (Exception e) {
-            log.error("解析文档失败", e);
+            log.error("Failed to parse document", e);
         }
         NodeIODataTextContent dataContent = new NodeIODataTextContent();
         dataContent.setValue(documentText.toString());

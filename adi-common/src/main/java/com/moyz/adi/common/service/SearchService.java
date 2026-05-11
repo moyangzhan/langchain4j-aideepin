@@ -265,6 +265,7 @@ public class SearchService {
             updateRecord.setId(existRecord.getId());
             //Update search engine response content.(with html body text)
             updateRecord.setSearchEngineResp(new SearchEngineResp().setItems(resultItems));
+//TODO: Enhanced prompt
             //TODO 增强后的prompt
             updateRecord.setPrompt("");
             updateRecord.setPromptTokens(promptMeta.getTokens());

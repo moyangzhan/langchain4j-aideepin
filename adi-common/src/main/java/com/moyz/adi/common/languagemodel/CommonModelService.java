@@ -20,6 +20,7 @@ public class CommonModelService {
         this.aiModel = aiModel;
         this.platform = modelPlatform;
 
+//Compatible with old config without api_key
         //兼容旧版配置部分没有 api_key 的情况，后续统一使用 api_key 字段名作为秘钥字段
         if (null != platform && StringUtils.isNotBlank(platform.getSecretKey()) && StringUtils.isBlank(platform.getApiKey())) {
             platform.setApiKey(platform.getSecretKey());

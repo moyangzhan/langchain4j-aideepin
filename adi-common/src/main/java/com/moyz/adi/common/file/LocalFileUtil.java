@@ -30,10 +30,10 @@ import static com.moyz.adi.common.enums.ErrorEnum.*;
 public class LocalFileUtil {
 
     /**
-     * @param file    文件
-     * @param dir     存放目录
-     * @param newName 文件名（包括后缀）
-     * @return 文件路径及后缀
+     * @param file    文件 / File
+     * @param dir     存放目录 / Storage directory
+     * @param newName 文件名（包括后缀） / File name (including extension)
+     * @return 文件路径及后缀 / File path and extension
      */
     public static Pair<String, String> saveToLocal(MultipartFile file, String dir, String newName) {
         if (file.isEmpty()) {
@@ -46,6 +46,7 @@ public class LocalFileUtil {
         String filePath = dir + newName + "." + fileExt;
         try {
             // 将文件保存到目标路径
+            // Save file to target path
             file.transferTo(new File(filePath).getAbsoluteFile());
         } catch (IOException e) {
             log.error("save to local error", e);
@@ -55,10 +56,10 @@ public class LocalFileUtil {
     }
 
     /**
-     * @param file     文件
-     * @param dir      存放目录
-     * @param fileName 文件名
-     * @return 路径及后缀
+     * @param file     文件 / File
+     * @param dir      存放目录 / Storage directory
+     * @param fileName 文件名 / File name
+     * @return 路径及后缀 / Path and extension
      */
     public static Pair<String, String> saveToLocal(byte[] file, String dir, String fileName) {
         if (file.length == 0) {
@@ -71,7 +72,7 @@ public class LocalFileUtil {
         try (FileOutputStream fos = new FileOutputStream(pathName)) {
             fos.write(file);
         } catch (IOException e) {
-            log.error("保存文件失败", e);
+            log.error("Failed to save file", e);
             throw new BaseException(B_SAVE_FILE_ERROR);
         }
         return new ImmutablePair<>(pathName, fileExt);
@@ -79,18 +80,21 @@ public class LocalFileUtil {
 
     /**
      * 读取图片到BufferedImage
+     * Read image to BufferedImage
      *
-     * @param adiFile        图片实体类
-     * @param thumbnail      读取的是缩略图
-     * @param thumbnailsPath 缩略图路径
-     * @return 图片内容
+     * @param adiFile        图片实体类 / Image entity
+     * @param thumbnail      读取的是缩略图 / Whether reading thumbnail
+     * @param thumbnailsPath 缩略图路径 / Thumbnail path
+     * @return 图片内容 / Image content
      */
     public static BufferedImage readLocalImage(AdiFile adiFile, boolean thumbnail, String thumbnailsPath) {
         try {
             String currentFilePath = adiFile.getPath();
             if (thumbnail) {
                 currentFilePath = thumbnailsPath + adiFile.getUuid() + "." + adiFile.getExt();
+//Create if not exists
                 //不存在则创建
+                // Create if not exists
                 if (new File(adiFile.getPath()).exists() && !new File(currentFilePath).exists()) {
                     ImgUtil.scale(
                             cn.hutool.core.io.FileUtil.file(adiFile.getPath()),
@@ -122,14 +126,18 @@ public class LocalFileUtil {
             int dotIndex = fileName.lastIndexOf(".");
             if (dotIndex == -1 || dotIndex == fileName.length() - 1) {
                 // 文件名中没有后缀或者 . 位于文件名的末尾
+                // No extension in filename or dot is at the end
                 return "";
             } else {
+// Handle case 1: xxx.com/xxx
                 // 处理场景1： xxx.com/xxx
                 int endIndex = fileName.indexOf("?");
                 if (endIndex == -1) {
                     endIndex = fileName.length();
                 } else {
+// Handle case 2: xxx.com/xxx.png?xxx.xxx.xxx
                     // 处理场景2： xxx.com/xxx.png?xxx.xxx.xxx
+                    // Handle case 2: xxx.com/xxx.png?xxx.xxx.xxx
                     String tmpUrl = fileName.substring(0, endIndex);
                     dotIndex = tmpUrl.lastIndexOf(".");
                 }
@@ -156,10 +164,10 @@ public class LocalFileUtil {
     }
 
     /**
-     * @param fileUrl     文件url
-     * @param newFileName 文件名（不带后缀时解析 fileUrl 得出后缀）
-     * @param defaultExt  默认后缀
-     * @return 文件路径
+     * @param fileUrl     文件url / File URL
+     * @param newFileName 文件名（不带后缀时解析 fileUrl 得出后缀） / File name (parse extension from fileUrl if not provided)
+     * @param defaultExt  默认后缀 / Default extension
+     * @return 文件路径 / File path
      */
     public static String saveFromUrl(String fileUrl, String newFileName, String defaultExt) {
         String filePath;

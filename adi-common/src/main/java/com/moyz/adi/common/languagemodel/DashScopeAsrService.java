@@ -26,6 +26,7 @@ public class DashScopeAsrService extends AbstractAsrModelService {
 
     @Override
     public String audioToText(String urlOrPath) {
+//Only remote URLs supported
         //只支持远程URL
         if (!StringUtils.beginsWithIgnoreCase(urlOrPath, "http")) {
             log.info("Audio path is not a URL: {}", urlOrPath);

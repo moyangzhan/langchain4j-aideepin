@@ -115,10 +115,12 @@ public class BeanConfig {
         MybatisSqlSessionFactoryBean bean = new MybatisSqlSessionFactoryBean();
         bean.setDataSource(dataSource);
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+// Pagination plugin
         // 分页插件
         interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.POSTGRE_SQL));
         // 防止全表更新
         interceptor.addInnerInterceptor(new BlockAttackInnerInterceptor());
+// Dynamic table name
         // 动态表名
         DynamicTableNameInnerInterceptor dynamicTableNameInnerInterceptor = new DynamicTableNameInnerInterceptor();
         dynamicTableNameInnerInterceptor.setTableNameHandler(

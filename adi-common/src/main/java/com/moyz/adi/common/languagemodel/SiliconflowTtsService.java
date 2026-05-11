@@ -104,15 +104,18 @@ public class SiliconflowTtsService extends AbstractTtsModelService {
         headers.set("Authorization", "Bearer " + platform.getApiKey());
         RestTemplate restTemplate = new RestTemplate();
         String url = platform.getBaseUrl() + "/audio/speech";
+// Use streaming processing
         // 使用流式处理
         ResponseExtractor<Void> responseExtractor = response -> {
             try (InputStream inputStream = response.getBody()) {
                 String datetime = LocalDateTimeUtil.format(LocalDateTime.now(), PATTERN_YYYYMMDDMMHHSS);
                 String fileName = aiModel.getName().toLowerCase().replace("/", "-") + "-" + datetime + "-" + UuidUtil.createShort().substring(0, 6) + ".mp3";
+// Create temporary file
                 // 创建临时文件
                 Path tempFile = Files.createTempFile("tmp-tts-" + datetime, ".mp3");
                 ByteArrayOutputStream sendBuffer = new ByteArrayOutputStream();
                 final int MIN_BUFFER_SIZE = 16 * 1024; // 最小缓冲大小
+// Use buffered stream to write file
                 // 使用缓冲流写入文件
                 try (OutputStream outputStream = Files.newOutputStream(tempFile);
                      BufferedOutputStream bufferedOutput = new BufferedOutputStream(outputStream)) {
@@ -122,6 +125,7 @@ public class SiliconflowTtsService extends AbstractTtsModelService {
                         bufferedOutput.write(buffer, 0, bytesRead);
                         sendBuffer.write(buffer, 0, bytesRead);
                         if (sendBuffer.size() >= MIN_BUFFER_SIZE) {
+// Send buffer content
                             // 发送缓冲区内容
                             jobData.getProcessCallback().accept(ByteBuffer.wrap(sendBuffer.toByteArray()));
                             // 重置缓冲区
@@ -133,8 +137,9 @@ public class SiliconflowTtsService extends AbstractTtsModelService {
                     }
                 }
                 Pair<String, String> pair = new FileOperatorContext().save(Files.readAllBytes(tempFile), false, fileName);
-                log.info("保存文件成功，路径为：" + pair.getLeft());
+                log.info("File saved successfully, path: " + pair.getLeft());
                 jobData.getCompleteCallback().accept(pair.getLeft());
+// Delete temporary file
                 // 删除临时文件
                 Files.deleteIfExists(tempFile);
             }

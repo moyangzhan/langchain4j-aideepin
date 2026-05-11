@@ -267,6 +267,7 @@ public class GraphStoreIngestor {
 
                         appendExistsToNewOne(existGraphEdge.getMetadata(), metadata);
                     } else {
+//Create if not exists
                         //检查sourceName的节点是否存在，不存在则创建
                         checkOrCreateVertex("", sourceName, chunkId, filter, metadata);
                         checkOrCreateVertex("", targetName, chunkId, filter, metadata);

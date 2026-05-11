@@ -34,12 +34,14 @@ import static org.springframework.http.HttpHeaders.CACHE_CONTROL;
 @Validated
 public class FileController {
 
+//Cache for 1 year
     //缓存一年
     private static final String CACHE_TIME = "public, max-age=31536000";
 
     @Resource
     private FileService fileService;
 
+//    My images
 //    @Operation(summary = "我的图片")
 //    @GetMapping(value = "/my-image/{uuid}", produces = MediaType.IMAGE_PNG_VALUE)
 //    public void myImage(@Length(min = 32, max = 32) @PathVariable String uuid, HttpServletResponse response) {
@@ -61,8 +63,10 @@ public class FileController {
     }
 
 //    /**
+//     Get image
 //     * 获取图片
 //     *
+//     Image UUID
 //     * @param uuid     图片uuid
 //     * @param response HttpServletResponse
 //     */
@@ -101,8 +105,10 @@ public class FileController {
 
     private void responseImage(String uuid, String ext, boolean thumbnail, HttpServletResponse response) {
         BufferedImage bufferedImage = fileService.readMyImage(uuid, thumbnail);
+//Write image to browser
         //把图片写给浏览器
         try {
+// Cache for 30 days
             // 缓存30天
             response.setHeader(CACHE_CONTROL, CACHE_TIME);
             ImageIO.write(bufferedImage, ext, response.getOutputStream());

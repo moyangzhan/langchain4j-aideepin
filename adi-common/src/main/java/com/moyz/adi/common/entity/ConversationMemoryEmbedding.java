@@ -10,7 +10,7 @@ import lombok.Data;
 
 @Data
 @TableName("adi_conversation_memory_embedding")
-@Schema(title = "角色-记忆-嵌入实体", description = "角色记忆嵌入表")
+@Schema(title = "角色-记忆-嵌入实体 | Conversation Memory Embedding Entity", description = "角色记忆嵌入表 | Conversation Memory Embedding Table")
 public class ConversationMemoryEmbedding {
 
     @Schema(title = "embedding_id")
@@ -21,7 +21,7 @@ public class ConversationMemoryEmbedding {
     @TableField("embedding")
     private PGvector embedding;
 
-    @Schema(title = "对应的文档")
+    @Schema(title = "对应的文档 | Corresponding Document")
     @TableField("text")
     private String text;
 }

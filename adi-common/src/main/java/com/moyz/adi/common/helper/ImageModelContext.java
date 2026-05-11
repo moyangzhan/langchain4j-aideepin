@@ -8,12 +8,14 @@ import java.util.List;
 
 /**
  * image model service上下文类（策略模式）
+ * Image model service context class (Strategy pattern)
  */
 @Slf4j
 public class ImageModelContext {
 
     /**
      * AI图片模型
+     * AI image model services
      */
     public static final List<AbstractImageModelService> LLM_SERVICES = new ArrayList<>();
 

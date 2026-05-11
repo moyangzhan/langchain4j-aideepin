@@ -52,12 +52,12 @@ public class WorkflowRuntimeService extends ServiceImpl<WorkflowRunMapper, Workf
 
     public void updateInput(long id, WfState wfState) {
         if (CollectionUtils.isEmpty(wfState.getInput())) {
-            log.warn("没有输入数据,id:{}", id);
+            log.warn("No input data, id:{}", id);
             return;
         }
         WorkflowRuntime node = baseMapper.selectById(id);
         if (null == node) {
-            log.error("工作流实例不存在,id:{}", id);
+            log.error("Workflow runtime not found, id:{}", id);
             return;
         }
         WorkflowRuntime updateOne = new WorkflowRuntime();
@@ -74,7 +74,7 @@ public class WorkflowRuntimeService extends ServiceImpl<WorkflowRunMapper, Workf
     public WorkflowRuntime updateOutput(long id, WfState wfState) {
         WorkflowRuntime node = baseMapper.selectById(id);
         if (null == node) {
-            log.error("工作流实例不存在,id:{}", id);
+            log.error("Workflow runtime not found, id:{}", id);
             return null;
         }
         WorkflowRuntime updateOne = new WorkflowRuntime();
@@ -92,7 +92,7 @@ public class WorkflowRuntimeService extends ServiceImpl<WorkflowRunMapper, Workf
     public void updateStatus(long id, int processStatus, String statusRemark) {
         WorkflowRuntime node = baseMapper.selectById(id);
         if (null == node) {
-            log.error("工作流实例不存在,id:{}", id);
+            log.error("Workflow runtime not found, id:{}", id);
             return;
         }
         WorkflowRuntime updateOne = new WorkflowRuntime();

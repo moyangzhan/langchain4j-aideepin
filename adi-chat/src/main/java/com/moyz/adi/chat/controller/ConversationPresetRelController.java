@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-@Tag(name = "预设对话与用户对话关联关系controller")
+@Tag(name = "预设对话与用户对话关联关系controller | Conversation Preset Relation Controller")
 @RequestMapping("/conversation-preset-rel")
 @RestController
 public class ConversationPresetRelController {
@@ -22,9 +22,9 @@ public class ConversationPresetRelController {
     @Resource
     private ConversationPresetRelService conversationPresetRelService;
 
-    @Operation(summary = "获取当前用户使用到的预设会话")
+    @Operation(summary = "获取当前用户使用到的预设会话 | List My Used Preset Conversations")
     @GetMapping("/mine")
-    public List<ConvPresetRelDto> mine(@Parameter(description = "限制数量") @RequestParam(defaultValue = "100") Integer limit) {
+    public List<ConvPresetRelDto> mine(@Parameter(description = "限制数量 | Limit Count") @RequestParam(defaultValue = "100") Integer limit) {
         return conversationPresetRelService.listByUser(ThreadContext.getCurrentUserId(), limit);
     }
 }

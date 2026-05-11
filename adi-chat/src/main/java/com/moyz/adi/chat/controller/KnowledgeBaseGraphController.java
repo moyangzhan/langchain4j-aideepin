@@ -27,6 +27,7 @@ public class KnowledgeBaseGraphController {
         List<Triple<GraphVertex, GraphEdge, GraphVertex>> edgeWithVertices = knowledgeBaseGraphService.listEdgesByKbItemUuid(kbItemUuid, maxEdgeId, limit);
         Pair<List<GraphVertex>, List<GraphEdge>> pair = knowledgeBaseGraphService.getFromTriple(edgeWithVertices);
         vertices.addAll(pair.getLeft());
+//Deduplicate
         //去重
         List<GraphVertex> filteredVertices = vertices
                 .stream()

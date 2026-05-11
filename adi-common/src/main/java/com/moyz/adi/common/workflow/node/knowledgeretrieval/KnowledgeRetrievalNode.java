@@ -53,14 +53,14 @@ public class KnowledgeRetrievalNode extends AbstractWfNode {
         }
         KnowledgeRetrievalNodeConfig nodeConfigObj = JsonUtil.fromJson(objectConfig, KnowledgeRetrievalNodeConfig.class);
         if (null == nodeConfigObj || StringUtils.isBlank(nodeConfigObj.getKnowledgeBaseUuid())) {
-            log.warn("找不到知识检索节点的配置");
+            log.warn("Knowledge retrieval node configuration not found");
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
         String kbUuid = nodeConfigObj.getKnowledgeBaseUuid();
         log.info("KnowledgeRetrievalNode config:{}", nodeConfigObj);
         String textInput = getFirstInputText();
         if (StringUtils.isBlank(textInput)) {
-            log.warn("输入内容为空");
+            log.warn("Input content is empty");
             return NodeProcessResult
                     .builder()
                     .content(List.of(NodeIOData.createByText(DEFAULT_OUTPUT_PARAM_NAME, "", "")))

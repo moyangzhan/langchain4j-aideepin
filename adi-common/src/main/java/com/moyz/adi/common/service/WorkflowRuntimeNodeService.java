@@ -60,12 +60,12 @@ public class WorkflowRuntimeNodeService extends ServiceImpl<WorkflowRuntimeNodeM
 
     public void updateInput(Long id, WfNodeState state) {
         if (CollectionUtils.isEmpty(state.getInputs())) {
-            log.warn("没有输入数据,id:{}", id);
+            log.warn("No input data, id:{}", id);
             return;
         }
         WorkflowRuntimeNode node = baseMapper.selectById(id);
         if (null == node) {
-            log.error("节点实例不存在,id:{}", id);
+            log.error("Node instance not found, id:{}", id);
             return;
         }
         WorkflowRuntimeNode updateOne = new WorkflowRuntimeNode();
@@ -83,7 +83,7 @@ public class WorkflowRuntimeNodeService extends ServiceImpl<WorkflowRuntimeNodeM
     public void updateOutput(Long id, WfNodeState state) {
         WorkflowRuntimeNode node = baseMapper.selectById(id);
         if (null == node) {
-            log.error("节点实例不存在,id:{}", id);
+            log.error("Node instance not found, id:{}", id);
             return;
         }
         WorkflowRuntimeNode updateOne = new WorkflowRuntimeNode();

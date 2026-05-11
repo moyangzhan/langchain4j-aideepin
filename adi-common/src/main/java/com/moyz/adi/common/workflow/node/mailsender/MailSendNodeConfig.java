@@ -18,9 +18,11 @@ public class MailSendNodeConfig {
     @Max(MAIL_SENDER_TYPE_CUSTOM)
     @JsonProperty("sender_type")
     private int senderType;
+//Multiple emails separated by commas
     //多邮箱则以逗号分隔
     @JsonProperty("cc_mails")
     private String ccMails;
+//Multiple emails separated by commas
     //多邮箱则以逗号分隔
     @NotBlank
     @JsonProperty("to_mails")

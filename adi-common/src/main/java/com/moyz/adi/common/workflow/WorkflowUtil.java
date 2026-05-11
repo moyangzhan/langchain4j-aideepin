@@ -71,6 +71,7 @@ public class WorkflowUtil {
                 .build();
         streamingLLM.chat(request, streamingGenerator.handler());
         wfState.getNodeToStreamingGenerator().put(node.getUuid(), streamingGenerator);
+//LLM returned chunks are stored in blocking queue, not processed here, handled by WorkflowEngine
         //LLM返回的chunk存放在阻塞队列中，此处不做处理，交由WorkflowEngine统一处理
 //            for (StreamingOutput<AgentState> r : streamingGenerator) {
 //                log.info("chunk:{}", r);

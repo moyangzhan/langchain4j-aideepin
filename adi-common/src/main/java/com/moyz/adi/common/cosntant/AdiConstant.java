@@ -81,7 +81,30 @@ public class AdiConstant {
             使用用户提问的语言进行内容输出
             """);
 
+    public static final PromptTemplate PROMPT_INFO_EXTRA_TEMPLATE_EN = PromptTemplate.from("""
+            ## Task
+            Answer the user's question as accurately as possible based on the known information and the user's memory
+
+            ## Requirements
+            1. Based on the user's memory, adjust the tone and style appropriately to better match the user's preferences
+            2. The answer should not reveal the existence of the known information to the user
+            {{extraInfo}}
+
+            ## User's Question
+            {{question}}
+
+            ## Known Information
+            {{information}}
+
+            ## About the User's Memory
+            {{memory}}
+
+            ## Output Language
+            Respond in the language of the user's question
+            """);
+
     public static final String PROMPT_EXTRA_AUDIO = "3. 回答的内容要尽量口语化，以方便将内容转成语音";
+    public static final String PROMPT_EXTRA_AUDIO_EN = "3. The response should be as colloquial as possible to facilitate converting the content to speech";
 
     public static final Double LLM_TEMPERATURE_DEFAULT = 0.7D;
     public static final Double RAG_RETRIEVE_MIN_SCORE_DEFAULT = 0.6D;
@@ -158,6 +181,7 @@ public class AdiConstant {
         public static final String STORAGE_LOCATION_ALI_OSS = "storage_location_ali_oss";
         public static final String ASR_SETTING = "asr_setting";
         public static final String TTS_SETTING = "tts_setting";
+        public static final String DEFAULT_LOCALE = "default_locale";
     }
 
     public static final String[] POI_DOC_TYPES = {"doc", "docx", "ppt", "pptx", "xls", "xlsx"};

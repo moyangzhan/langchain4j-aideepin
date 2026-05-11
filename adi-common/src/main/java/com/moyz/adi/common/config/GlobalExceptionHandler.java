@@ -3,6 +3,7 @@ package com.moyz.adi.common.config;
 import com.moyz.adi.common.base.BaseResponse;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.util.SpringUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -25,7 +26,7 @@ public class GlobalExceptionHandler {
             final MethodArgumentNotValidException exception) {
         Map<Object, Object> error = wrapperError(exception.getBindingResult());
         log.error("参数校验异常:{}", error);
-        return new BaseResponse(ErrorEnum.A_PARAMS_ERROR.getCode(), ErrorEnum.A_PARAMS_ERROR.getInfo(), error);
+        return new BaseResponse(ErrorEnum.A_PARAMS_ERROR.getCode(), SpringUtil.getMessage(ErrorEnum.A_PARAMS_ERROR.getInfo()), error);
     }
 
     @ExceptionHandler(BaseException.class)
@@ -42,7 +43,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     private BaseResponse handleException(final Exception exception) {
         log.error("拦截全局异常:", exception);
-        return new BaseResponse(ErrorEnum.B_GLOBAL_ERROR.getCode(), ErrorEnum.B_GLOBAL_ERROR.getInfo(), null);
+        return new BaseResponse(ErrorEnum.B_GLOBAL_ERROR.getCode(), SpringUtil.getMessage(ErrorEnum.B_GLOBAL_ERROR.getInfo()), null);
     }
 
     private Map<Object, Object> wrapperError(BindingResult result) {

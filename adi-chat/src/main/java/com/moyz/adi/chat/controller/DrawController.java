@@ -23,6 +23,7 @@ import java.util.Map;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 /**
+* Draw
  * 绘图
  */
 @Slf4j
@@ -55,9 +56,10 @@ public class DrawController {
 
 
     /**
+* Draw
      * 获取绘图任务详情
      *
-     * @param uuid 绘图任务uuid
+* @param uuid 绘图任务uuid / Draw
      * @return 绘图任务详情
      */
     @GetMapping("/detail/{uuid}")
@@ -100,6 +102,7 @@ public class DrawController {
     }
 
     /**
+* Draw
      * 删除绘图任务{uuid}的所有内容（提示词及生成的所有图片）
      *
      * @param uuid
@@ -111,10 +114,11 @@ public class DrawController {
     }
 
     /**
+* Draw
      * 删除绘图任务{uuid}中的一张图片
      *
-     * @param uuid     绘图任务的uuid
-     * @param fileUuid 待删除图片uuid
+* @param uuid     绘图任务的uuid / Draw
+* @param fileUuid 待删除图片uuid / Image UUID
      * @return
      */
     @PostMapping("/file/del/{fileUuid}")
@@ -122,19 +126,19 @@ public class DrawController {
         return drawService.delGeneratedFile(uuid, fileUuid);
     }
 
-    @Operation(summary = "将绘图任务设置为公开或私有")
+    @Operation(summary = "将绘图任务设置为公开或私有 | Set Draw Task Public or Private")
     @PostMapping("/set-public/{uuid}")
     public DrawDto setPublic(@PathVariable @NotBlank String uuid, @RequestParam(defaultValue = "false") Boolean isPublic, @RequestParam(required = false) Boolean withWatermark) {
         return drawService.setDrawPublic(uuid, isPublic, withWatermark);
     }
 
-    @Operation(summary = "公开的绘图任务列表")
+    @Operation(summary = "公开的绘图任务列表 | Public Draw Task List")
     @GetMapping("/public/list")
     public DrawListResp publicList(@RequestParam Long maxId, @RequestParam int pageSize) {
         return drawService.listPublic(maxId, pageSize);
     }
 
-    @Operation(summary = "公开的图片,可能带水印（根据水印设置决定）")
+    @Operation(summary = "公开的图片,可能带水印（根据水印设置决定） | Public Image, May Have Watermark (Based on Watermark Settings)")
     @GetMapping(value = "/public/image/{drawUuid}/{imageUuidWithExt}", produces = MediaType.IMAGE_PNG_VALUE)
     public void publicImage(@Length(min = 32) @PathVariable String drawUuid, @Length(min = 32, max = 32) @PathVariable String imageUuidWithExt, HttpServletResponse response) {
         DrawDto drawDto = drawService.getPublicOrMine(drawUuid);
@@ -143,6 +147,7 @@ public class DrawController {
         }
         String imageUuid = UrlUtil.getUuid(imageUuidWithExt);
         BufferedImage bufferedImage = fileService.readImage(imageUuid, false);
+//Write image to browser
         //把图片写给浏览器
         try {
             ImageIO.write(bufferedImage, "png", response.getOutputStream());
@@ -152,7 +157,7 @@ public class DrawController {
         }
     }
 
-    @Operation(summary = "公开的缩略图,可能带水印（根据水印设置决定）")
+    @Operation(summary = "公开的缩略图,可能带水印（根据水印设置决定） | Public Thumbnail, May Have Watermark (Based on Watermark Settings)")
     @GetMapping(value = "/public/thumbnail/{drawUuid}/{imageUuidWithExt}", produces = MediaType.IMAGE_PNG_VALUE)
     public void publicThumbnail(@Length(min = 32) @PathVariable String drawUuid, @Length(min = 32) @PathVariable String imageUuidWithExt, HttpServletResponse response) {
         DrawDto drawDto = drawService.getPublicOrMine(drawUuid);

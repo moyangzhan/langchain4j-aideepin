@@ -39,6 +39,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+//Replaced by ParamsLogAspect
         //使用ParamsLogAspect代替
 //        log.info("WebMvcConfig==addInterceptors");
 //        registry.addInterceptor(logInterceptor)

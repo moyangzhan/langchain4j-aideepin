@@ -60,8 +60,9 @@ public class DashScopeTtsService extends AbstractTtsModelService {
                 voice = DASHSCOPE_DEFAULT_VOICE;
             }
         }
-        log.info("开始语音合成，jobId: {}, voice: {}", jobId, voice);
+        log.info("Starting speech synthesis, jobId: {}, voice: {}", jobId, voice);
         // 配置回调函数
+        // Configure callback functions
         ResultCallback<SpeechSynthesisResult> callback = new ResultCallback<>() {
             @Override
             public void onEvent(SpeechSynthesisResult result) {
@@ -79,7 +80,7 @@ public class DashScopeTtsService extends AbstractTtsModelService {
 
             @Override
             public void onComplete() {
-                log.info("收到Complete，语音合成结束,jobId:{}", jobId);
+                log.info("Received Complete, speech synthesis finished, jobId:{}", jobId);
                 ByteBuffer audioData = jobToAudioData.get(jobId).rewind();
                 jobToSynthesizer.remove(jobId);
                 jobToAudioData.remove(jobId);
@@ -90,7 +91,7 @@ public class DashScopeTtsService extends AbstractTtsModelService {
 
                 String datetime = LocalDateTimeUtil.format(LocalDateTime.now(), PATTERN_YYYYMMDDMMHHSS);
                 Pair<String, String> pair = new FileOperatorContext().save(pcmData, false, aiModel.getName().toLowerCase() + "-" + datetime + "-" + UuidUtil.createShort().substring(0, 6) + ".mp3");
-                log.info("保存文件成功，路径为：" + pair.getLeft());
+                log.info("File saved successfully, path: " + pair.getLeft());
 
                 onComplete.accept(pair.getLeft());
 
@@ -105,6 +106,7 @@ public class DashScopeTtsService extends AbstractTtsModelService {
             }
         };
         // 请求参数
+        // Request parameters
         SpeechSynthesisParam param =
                 SpeechSynthesisParam.builder()
                         .apiKey(platform.getApiKey())
@@ -119,10 +121,10 @@ public class DashScopeTtsService extends AbstractTtsModelService {
     @Override
     public void processByStream(String jobId, String partText) {
         if (!jobToSynthesizer.containsKey(jobId)) {
-            log.error("没有找到对应的jobId: {}", jobId);
+            log.error("JobId not found: {}", jobId);
             return;
         }
-        log.info("开始流式合成，jobId: {}, partText: {}", jobId, partText);
+        log.info("Starting streaming synthesis, jobId: {}, partText: {}", jobId, partText);
         SpeechSynthesizer synthesizer = jobToSynthesizer.get(jobId);
         synthesizer.streamingCall(partText);
     }
@@ -132,14 +134,16 @@ public class DashScopeTtsService extends AbstractTtsModelService {
         SpeechSynthesizer synthesizer = jobToSynthesizer.get(jobId);
         if (null != synthesizer) {
             synthesizer.streamingComplete();
-            log.info("[Metric] requestId为：" + synthesizer.getLastRequestId() + "，首包延迟（毫秒）为：" + synthesizer.getFirstPackageDelay());
+            log.info("[Metric] requestId: " + synthesizer.getLastRequestId() + ", first package delay (ms): " + synthesizer.getFirstPackageDelay());
         }
     }
 
     public byte[] returnWavBytes(byte[] pcmData) {
+// Generate WAV file header
         // 生成 WAV 文件头
         byte[] wavHeader = generateWavHeader(pcmData.length);
 
+// Merge WAV Header and PCM data
         // 合并 WAV Header 和 PCM 数据
         byte[] wavData = new byte[wavHeader.length + pcmData.length];
         System.arraycopy(wavHeader, 0, wavData, 0, wavHeader.length);
@@ -149,9 +153,10 @@ public class DashScopeTtsService extends AbstractTtsModelService {
 
     /**
      * 生成WAV格式的文件头
+     * Generate WAV format file header
      *
-     * @param totalAudioSize PCM数据的大小（不包含头部）
-     * @return byte[] WAV头部字节数组
+     * @param totalAudioSize PCM数据的大小（不包含头部） / PCM data size (excluding header)
+     * @return byte[] WAV头部字节数组 / WAV header byte array
      */
     private byte[] generateWavHeader(int totalAudioSize) {
         long totalLength = totalAudioSize + 36;
@@ -168,6 +173,7 @@ public class DashScopeTtsService extends AbstractTtsModelService {
         headerBuffer.putInt((int) (totalLength - 8)); // ChunkSize
         headerBuffer.put("WAVE".getBytes()); // Format
 
+// fmt sub-chunk
         // fmt 子块
         headerBuffer.put("fmt ".getBytes()); // Subchunk1ID
         headerBuffer.putInt(16); // Subchunk1Size
@@ -178,6 +184,7 @@ public class DashScopeTtsService extends AbstractTtsModelService {
         headerBuffer.putShort(blockAlign);
         headerBuffer.putShort(bitsPerSample);
 
+// data sub-chunk
         // data 子块
         headerBuffer.put("data".getBytes()); // Subchunk2ID
         headerBuffer.putInt(totalAudioSize); // Subchunk2Size

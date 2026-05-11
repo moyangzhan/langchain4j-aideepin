@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "知识库点赞controller")
+@Tag(name = "知识库点赞controller | Knowledge Base Star Controller")
 @Validated
 @RequestMapping("/knowledge-base/star")
 @RestController

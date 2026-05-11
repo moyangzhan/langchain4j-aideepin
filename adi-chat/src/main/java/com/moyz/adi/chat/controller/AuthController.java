@@ -37,7 +37,7 @@ import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
 
 @Slf4j
-@Tag(name = "权限controller", description = "权限controller")
+@Tag(name = "权限controller | Auth Controller", description = "权限controller | Auth Controller")
 @Validated
 @RestController
 @RequestMapping("auth")
@@ -49,16 +49,16 @@ public class AuthController {
     @Resource
     private UserService userService;
 
-    @Operation(summary = "注册")
+    @Operation(summary = "注册 | Register")
     @PostMapping(value = "/register", produces = MediaType.TEXT_PLAIN_VALUE)
     public String register(@RequestBody RegisterReq registerReq) {
         userService.register(registerReq.getEmail(), registerReq.getPassword(), registerReq.getCaptchaId(), registerReq.getCaptchaCode());
         return "激活链接已经发送到邮箱，请登录邮箱进行激活";
     }
 
-    @Operation(summary = "注册的验证码")
+    @Operation(summary = "注册的验证码 | Registration Captcha")
     @GetMapping("/register/captcha")
-    public void registerCaptcha(@Parameter(description = "验证码ID") @RequestParam @Length(min = 32) String captchaId,
+    public void registerCaptcha(@Parameter(description = "验证码ID | Captcha ID") @RequestParam @Length(min = 32) String captchaId,
                                 HttpServletRequest request,
                                 HttpServletResponse response) {
         HappyCaptcha happyCaptcha = HappyCaptcha.require(request, response).type(CaptchaType.WORD_NUMBER_UPPER).build().finish();
@@ -67,7 +67,7 @@ public class AuthController {
         happyCaptcha.output();
     }
 
-    @Operation(summary = "激活")
+    @Operation(summary = "激活 | Activate")
     @GetMapping("active")
     public boolean active(@RequestParam("code") String activeCode, HttpServletResponse response) {
 
@@ -93,7 +93,7 @@ public class AuthController {
         return true;
     }
 
-    @Operation(summary = "忘记密码")
+    @Operation(summary = "忘记密码 | Forgot Password")
     @PostMapping("password/forgot")
     public String forgotPassword(@RequestParam @NotBlank String email) {
         userService.forgotPassword(email);
@@ -101,7 +101,7 @@ public class AuthController {
     }
 
 
-    @Operation(summary = "重置密码")
+    @Operation(summary = "重置密码 | Reset Password")
     @GetMapping("/password/reset")
     public void resetPassword(@RequestParam @NotBlank String code, HttpServletResponse response) {
         userService.resetPassword(code);
@@ -113,7 +113,7 @@ public class AuthController {
         }
     }
 
-    @Operation(summary = "登录")
+    @Operation(summary = "登录 | Login")
     @PostMapping("login")
     public LoginResp login(@Validated @RequestBody LoginReq loginReq, HttpServletResponse response) {
         LoginResp loginResp = userService.login(loginReq);
@@ -123,7 +123,7 @@ public class AuthController {
         return loginResp;
     }
 
-    @Operation(summary = "获取登录验证码")
+    @Operation(summary = "获取登录验证码 | Get Login Captcha")
     @GetMapping("/login/captcha")
     public void captcha(@RequestParam @Length(min = 32) String captchaId, HttpServletRequest request, HttpServletResponse response) {
         HappyCaptcha happyCaptcha = HappyCaptcha.require(request, response).type(CaptchaType.WORD_NUMBER_UPPER).build().finish();

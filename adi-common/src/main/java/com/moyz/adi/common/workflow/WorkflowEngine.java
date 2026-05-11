@@ -103,6 +103,7 @@ public class WorkflowEngine {
             Map<String, Integer> nodeVisitCount = new HashMap<>();
             buildCompileNode(rootCompileNode, startNode, nodeVisitCount);
 
+//Main state graph
             //主状态图
             StateGraph<WfNodeState> mainStateGraph = new StateGraph<>(stateSerializer);
             this.wfState.addEdge(START, startNode.getUuid());
@@ -124,6 +125,7 @@ public class WorkflowEngine {
     }
 
     private void exe(RunnableConfig invokeConfig, boolean resume) {
+//Do not use langgraph4j state update methods, no need to pass input
         //不使用langgraph4j state的update相关方法，无需传入input
         AsyncGenerator<NodeOutput<WfNodeState>> outputs = app.stream(resume ? null : Map.of(), invokeConfig);
         streamingResult(wfState, outputs, sseEmitter);
@@ -211,6 +213,7 @@ public class WorkflowEngine {
             throw new BaseException(ErrorEnum.B_WF_RUN_ERROR);
         }
         resultMap.put("name", wfNode.getTitle());
+//langgraph4j state data is not stored, only metadata is stored
         //langgraph4j state中的data不做数据存储，只存储元数据
         StreamingChatGenerator<AgentState> generator = wfState.getNodeToStreamingGenerator().get(wfNode.getUuid());
         if (null != generator) {
@@ -275,13 +278,13 @@ public class WorkflowEngine {
                 requiredParamMissing = false;
                 boolean valid = paramDefinition.checkValue(nodeIOData);
                 if (!valid) {
-                    log.error("用户输入无效,workflowId:{}", startNode.getWorkflowId());
+                    log.error("Invalid user input, workflowId:{}", startNode.getWorkflowId());
                     throw new BaseException(ErrorEnum.A_WF_INPUT_INVALID);
                 }
                 wfInputs.add(nodeIOData);
             }
             if (requiredParamMissing) {
-                log.error("在流程定义中必填的参数没有传进来,name:{}", paramNameFromDef);
+                log.error("Required parameter in flow definition not provided, name:{}", paramNameFromDef);
                 throw new BaseException(A_WF_INPUT_MISSING);
             }
         }
@@ -309,7 +312,7 @@ public class WorkflowEngine {
             }
         }
         if (null == startNode) {
-            log.error("没有开始节点,workflowId:{}", wfNodes.get(0).getWorkflowId());
+            log.error("No start node found, workflowId:{}", wfNodes.get(0).getWorkflowId());
             throw new BaseException(ErrorEnum.A_WF_START_NODE_NOT_FOUND);
         }
         //Find all end nodes
@@ -331,7 +334,7 @@ public class WorkflowEngine {
         log.info("start node:{}", startNode);
         log.info("end nodes:{}", endNodes);
         if (endNodes.isEmpty()) {
-            log.error("没有结束节点,workflowId:{}", startNode.getWorkflowId());
+            log.error("No end node found, workflowId:{}", startNode.getWorkflowId());
             throw new BaseException(A_WF_END_NODE_NOT_FOUND);
         }
         return Pair.of(startNode, endNodes);
@@ -345,14 +348,14 @@ public class WorkflowEngine {
             Map<String, Integer> nodeVisitCount) {
         int visits = nodeVisitCount.merge(node.getUuid(), 1, Integer::sum);
         if (visits > MAX_NODE_VISITS) {
-            log.error("节点{}被访问超过{}次，工作流图中可能存在无限循环", node.getUuid(), MAX_NODE_VISITS);
+            log.error("Node {} visited more than {} times, possible infinite loop in workflow graph", node.getUuid(), MAX_NODE_VISITS);
             throw new BaseException(ErrorEnum.B_WF_RUN_ERROR);
         }
         log.info("buildByNode, parentNode:{}, node:{},title:{}", parentNode.getId(), node.getUuid(), node.getTitle());
         CompileNode newNode;
         List<String> upstreamNodeUuids = getUpstreamNodeUuids(node.getUuid());
         if (upstreamNodeUuids.isEmpty()) {
-            log.error("节点{}没有上游节点", node.getUuid());
+            log.error("Node {} has no upstream node", node.getUuid());
             newNode = parentNode;
         } else if (upstreamNodeUuids.size() == 1) {
             String upstreamUuid = upstreamNodeUuids.get(0);
@@ -376,7 +379,7 @@ public class WorkflowEngine {
         }
 
         if (null == newNode) {
-            log.error("节点{}不存在", node.getUuid());
+            log.error("Node {} does not exist", node.getUuid());
             return;
         }
         List<String> downstreamUuids = getDownstreamNodeUuids(node.getUuid());
@@ -426,6 +429,7 @@ public class WorkflowEngine {
                 addNodeToStateGraph(stateGraph, stateGraphNodeUuid);
             }
 
+//ConditionalEdge creation is handled separately
             //ConditionalEdge 的创建另外处理
             if (Boolean.FALSE.equals(upstreamCompileNode.getConditional())) {
                 addEdgeToStateGraph(stateGraph, upstreamCompileNode.getId(), stateGraphNodeUuid);
@@ -487,6 +491,7 @@ public class WorkflowEngine {
                 .toList();
     }
 
+//Determine if node belongs to subgraph
     //判断节点是否属于子图
     private boolean pointToParallelBranch(String nodeUuid) {
         int edgeCount = 0;

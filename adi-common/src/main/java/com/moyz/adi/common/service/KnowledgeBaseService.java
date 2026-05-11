@@ -159,11 +159,13 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             //解析文档
             Document document = FileOperatorContext.loadDocument(adiFile);
             if (null == document) {
-                log.warn("该文件类型:{}无法解析，忽略", adiFile.getExt());
+                log.warn("This file type:{} cannot be parsed, ignored", adiFile.getExt());
                 return adiFile;
             }
+//Create knowledge base item
             //创建知识库条目
             String uuid = UuidUtil.createShort();
+//PostgreSQL does not support \u0000
             //postgresql不支持\u0000
             String content = document.text().replace("\u0000", "");
             KnowledgeBaseItem knowledgeBaseItem = new KnowledgeBaseItem();
@@ -220,7 +222,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
         Boolean exist = stringRedisTemplate.hasKey(userIndexKey);
         if (Boolean.TRUE.equals(exist)) {
-            log.warn("文档正在索引中,请忽频繁操作,userId:{}", knowledgeBase.getOwnerId());
+            log.warn("Document is being indexed, please avoid frequent operations, userId:{}", knowledgeBase.getOwnerId());
             throw new BaseException(A_DOC_INDEX_DOING);
         }
         try {
@@ -382,6 +384,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         try {
             int maxInputTokens = aiModel.getMaxInputTokens();
             int maxResults = knowledgeBase.getRetrieveMaxResults();
+//maxResults < 1 means the system auto-calculates based on model maxInputTokens
             //maxResults < 1 表示由系统根据设置的模型maxInputTokens自动计算大小
             if (maxResults < 1) {
                 maxResults = EmbeddingRag.getRetrieveMaxResults(qaRecord.getQuestion(), maxInputTokens);
@@ -405,7 +408,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             sseAskParams.setModelName(aiModel.getName());
             sseAskParams.setUser(user);
             if (maxResults == 0) {
-                log.info("用户问题过长，无需再召回文档，严格模式下直接返回异常提示,宽松模式下接着请求LLM");
+                log.info("User question too long, no need to retrieve docs; strict mode returns error, relaxed mode continues to LLM");
                 if (Boolean.TRUE.equals(knowledgeBase.getIsStrict())) {
                     sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "提问内容过长，最多不超过 " + maxInputTokens + " tokens");
                 } else {
@@ -424,7 +427,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                     );
                 }
             } else {
-                log.info("进行RAG请求,maxResults:{}", maxResults);
+                log.info("Performing RAG request, maxResults:{}", maxResults);
                 ChatModel chatModel = LLMContext.getServiceById(knowledgeBase.getIngestModelId(), true).buildChatLLM(
                         ChatModelBuilderProperties.builder()
                                 .temperature(knowledgeBase.getQueryLlmTemperature())
@@ -476,7 +479,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         createRef(updateQaParams.getRetrievers(), user, qaRecord.getId());
         //用户本次请求消耗的token数指的是整个RAG过程中消耗的token数量，其中可能涉及到多次LLM请求
         int allToken = inputOutputTokenCost.getLeft() + inputOutputTokenCost.getRight();
-        log.info("用户{}本次请示消耗总token:{}", user.getName(), allToken);
+        log.info("User {} total token consumption for this request: {}", user.getName(), allToken);
         if (allToken > 0) {
             userDayCostService.appendCostToUser(user, allToken, updateQaParams.isTokenFree());
         }
@@ -544,13 +547,13 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                     int embeddingCount = embeddingService.countByKbUuid(kbUuid);
                     baseMapper.updateStatByUuid(kbUuid, embeddingCount);
                 } catch (Exception e) {
-                    log.error("更新知识库统计失败,kbUuid:{}", kbUuid, e);
+                    log.error("Failed to update knowledge base statistics, kbUuid:{}", kbUuid, e);
                 } finally {
                     stringRedisTemplate.opsForSet().remove(KB_STATISTIC_RECALCULATE_SIGNAL, kbUuid);
                 }
             }
         } catch (Exception e) {
-            log.error("asyncUpdateStatistic执行异常", e);
+            log.error("asyncUpdateStatistic execution exception", e);
         }
     }
 

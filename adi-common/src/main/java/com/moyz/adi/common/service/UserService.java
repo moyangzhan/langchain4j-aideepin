@@ -118,11 +118,13 @@ public class UserService extends ServiceImpl<UserMapper, User> {
             return;
         }
 
+//Send activation link
         //发送激活链接
         sendActiveEmail(email);
 
         String hashed = BCrypt.hashpw(password, BCrypt.gensalt());
 
+//Create user
         //创建用户
         User newOne = new User();
         newOne.setName(StringUtils.substringBefore(email, "@"));
@@ -350,6 +352,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         setPaidCostStat(user, quotaCostResp);
         setFreeCostStat(user, quotaCostResp);
         result.setQuotaCost(quotaCostResp);
+        result.setLocale(user.getLocale());
         return result;
     }
 

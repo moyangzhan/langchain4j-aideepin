@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @TableName("adi_conversation_preset_rel")
-@Schema(title = "预设对话与用户会话关系实体", description = "预设对话与用户会话关系表")
+@Schema(title = "预设对话与用户会话关系实体 | Conversation Preset Relation Entity", description = "预设对话与用户会话关系表 | Conversation Preset Relation Table")
 public class ConversationPresetRel extends BaseEntity {
     private String uuid;
     private Long userId;

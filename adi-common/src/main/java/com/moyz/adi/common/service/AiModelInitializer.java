@@ -81,6 +81,7 @@ public class AiModelInitializer {
      */
     private synchronized void initLLMServiceList(Map<String, ModelPlatform> nameToPlatform, String modelType) {
 
+// OpenAI API compatible model
         // OpenAi api 兼容模型
         initOpenAiCompatibleService(nameToPlatform, (model, modelPlatformName) -> new OpenAiCompatibleLLMService(model, nameToPlatform.get(modelPlatformName)).setProxyAddress(proxyAddress));
 

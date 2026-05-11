@@ -7,7 +7,7 @@ import org.hibernate.validator.constraints.Length;
 
 import java.util.List;
 
-@Schema(description = "对话的请求对象")
+@Schema(description = "对话的请求对象 | Conversation Request Object")
 @Data
 @AskReqCheck
 public class AskReq {
@@ -19,8 +19,10 @@ public class AskReq {
 
     private String prompt;
 
+//Day
     //语音聊天时产生的音频文件uuid
     private String audioUuid;
+//Day
     //语音聊天时产生的音频时长，单位秒
     private Integer audioDuration;
 
@@ -37,6 +39,7 @@ public class AskReq {
     private String modelPlatform;
     private String modelName;
 
+//Backend temporary variable
     //后端用的临时变量
     private String processedPrompt;
 }

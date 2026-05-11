@@ -28,7 +28,7 @@ public class AdminUserController {
         return userService.search(userSearchReq, currentPage, pageSize);
     }
 
-    @Operation(summary = "用户信息")
+    @Operation(summary = "用户信息 | User Info")
     @GetMapping("/info/{uuid}")
     public UserInfoDto info(@PathVariable String uuid) {
         User user = userService.getByUuidOrThrow(uuid);
