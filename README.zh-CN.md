@@ -15,7 +15,7 @@ AIDEEPIN
   |__ 管理端 WEB (langchain4j-aideepin-admin)
 ```
 
-👉 [详细文档](https://github.com/moyangzhan/langchain4j-aideepin/wiki)
+👉 [详细文档](docs/cn/index.md)
 
 后端服务代码地址：[github](https://github.com/moyangzhan/langchain4j-aideepin) | [gitee](https://gitee.com/moyangzhan/langchain4j-aideepin)
 

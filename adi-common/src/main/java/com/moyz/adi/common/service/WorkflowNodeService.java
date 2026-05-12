@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.base.NodeInputConfigTypeHandler;
+import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.workflow.WfNodeDto;
 import com.moyz.adi.common.entity.Workflow;
 import com.moyz.adi.common.entity.WorkflowComponent;
@@ -219,11 +220,14 @@ public class WorkflowNodeService extends ServiceImpl<WorkflowNodeMapper, Workflo
      * @param workflow 工作流定义
      */
     public WorkflowNode createStartNode(Workflow workflow) {
+        String locale = ThreadContext.getCurrentUser() != null ? ThreadContext.getCurrentUser().getLocale() : "";
+        String startNodeTitle = (locale != null && locale.startsWith("zh")) ? "开始" : "Start";
+        String userInputTitle = (locale != null && locale.startsWith("zh")) ? "用户输入" : "User Input";
         WfNodeIOText wfNodeIOText = WfNodeIOText.builder()
                 .uuid(UuidUtil.createShort())
                 .type(WfIODataTypeEnum.TEXT.getValue())
                 .name("var_user_input")
-                .title("用户输入")
+                .title(userInputTitle)
                 .required(false)
                 .maxLength(1000)
                 .build();
@@ -234,9 +238,9 @@ public class WorkflowNodeService extends ServiceImpl<WorkflowNodeMapper, Workflo
         WorkflowNode node = new WorkflowNode();
         node.setWorkflowComponentId(startComponent.getId());
         node.setWorkflowId(workflow.getId());
-        node.setRemark("用户输入");
+        node.setRemark(userInputTitle);
         node.setUuid(UuidUtil.createShort());
-        node.setTitle("开始");
+        node.setTitle(startNodeTitle);
         node.setInputConfig(nodeInputConfig);
         baseMapper.insert(node);
         return node;

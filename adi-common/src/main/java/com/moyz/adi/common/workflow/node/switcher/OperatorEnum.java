@@ -6,29 +6,29 @@ import java.util.Arrays;
 
 @Getter
 public enum OperatorEnum {
-    CONTAINS("contains", "包含"),
+    CONTAINS("contains", "Contains"),
 
-    NOT_CONTAINS("not contains", "不包含"),
+    NOT_CONTAINS("not contains", "Not Contains"),
 
-    START_WITH("start with", "开始内容是"),
+    START_WITH("start with", "Starts With"),
 
-    END_WITH("end with", "结束内容是"),
+    END_WITH("end with", "Ends With"),
 
-    EMPTY("empty", "为空"),
+    EMPTY("empty", "Is Empty"),
 
-    NOT_EMPTY("not empty", "不为空"),
+    NOT_EMPTY("not empty", "Is Not Empty"),
 
-    EQUAL("=", "等于"),
+    EQUAL("=", "Equals"),
 
-    NOT_EQUAL("!=", "不等于"),
+    NOT_EQUAL("!=", "Not Equals"),
 
-    GREATER(">", "大于"),
+    GREATER(">", "Greater Than"),
 
-    GREATER_OR_EQUAL(">=", "大于或等于"),
+    GREATER_OR_EQUAL(">=", "Greater or Equal"),
 
-    LESS("<", "小于"),
+    LESS("<", "Less Than"),
 
-    LESS_OR_EQUAL("<=", "小于或等于");
+    LESS_OR_EQUAL("<=", "Less or Equal");
 
     private final String name;
 

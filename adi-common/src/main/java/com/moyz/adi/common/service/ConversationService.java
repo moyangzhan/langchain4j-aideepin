@@ -13,6 +13,8 @@ import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.util.MPPageUtil;
 import com.moyz.adi.common.util.UuidUtil;
+
+import java.util.Objects;
 import com.moyz.adi.common.vo.AudioConfig;
 import com.moyz.adi.common.vo.TtsSetting;
 import jakarta.annotation.Resource;
@@ -173,10 +175,18 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
     }
 
     public int createDefault(Long userId) {
+        return createDefault(userId, null);
+    }
+
+    public int createDefault(Long userId, String locale) {
         Conversation conversation = new Conversation();
         conversation.setUuid(UuidUtil.createShort());
         conversation.setUserId(userId);
-        conversation.setTitle(AdiConstant.ConversationConstant.DEFAULT_NAME);
+        String defaultLocale = StringUtils.isNotBlank(locale) ? locale
+                : Objects.toString(SysConfigService.getByKey(AdiConstant.SysConfigKey.DEFAULT_LOCALE), "zh-CN");
+        conversation.setTitle(defaultLocale.startsWith("zh")
+                ? AdiConstant.ConversationConstant.DEFAULT_NAME
+                : AdiConstant.ConversationConstant.DEFAULT_NAME_EN);
         return baseMapper.insert(conversation);
     }
 

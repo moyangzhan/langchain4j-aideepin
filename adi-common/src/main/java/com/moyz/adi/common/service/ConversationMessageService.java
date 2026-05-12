@@ -132,7 +132,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                     .count();
             long convsMax = Integer.parseInt(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.CONVERSATION_MAX_NUM));
             if (convsCount >= convsMax) {
-                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, SpringUtil.getMessage("A_CONVERSATION_MAX_LIMIT", convsMax));
+                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, SpringUtil.getMessage("A_CONVERSATION_MAX_LIMIT", String.valueOf(convsMax)));
                 return false;
             }
 
@@ -648,7 +648,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                     memory.append(content.textSegment().text()).append("\n");
                 }
                 if (memory.isEmpty()) {
-                    memory.append("无\n");
+                    memory.append("None\n");
                 } else {
                     memory.append("\n");
                 }
@@ -657,7 +657,7 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
                     knowledge.append(content.textSegment().text()).append("\n");
                 }
                 if (knowledge.isEmpty()) {
-                    knowledge.append("无\n");
+                    knowledge.append("None\n");
                 } else {
                     knowledge.append("\n");
                 }

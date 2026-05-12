@@ -89,7 +89,10 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         String code = UuidUtil.createShort();
         String key = MessageFormat.format(FIND_MY_PASSWORD, code);
         stringRedisTemplate.opsForValue().set(key, user.getId().toString(), 8, TimeUnit.HOURS);
-        adiMailSender.send(appName + "重置密码", "点击链接将密码重置为" + AdiConstant.DEFAULT_PASSWORD + "，链接(" + AdiConstant.AUTH_ACTIVE_CODE_EXPIRE + "小时内有效):" + adiProperties.getBackendUrl() + "/auth/password/reset?code=" + code, email);
+        String resetLink = adiProperties.getBackendUrl() + "/auth/password/reset?code=" + code;
+        String subject = SpringUtil.getMessage("mail.resetPasswordSubject");
+        String body = MessageFormat.format(SpringUtil.getMessage("mail.resetPasswordBody"), AdiConstant.DEFAULT_PASSWORD, AdiConstant.AUTH_ACTIVE_CODE_EXPIRE, resetLink);
+        adiMailSender.send(subject, body, email);
     }
 
     /**
@@ -461,7 +464,10 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         String activeCode = UuidUtil.createShort();
         String activeCodeKey = MessageFormat.format(AUTH_ACTIVE_CODE, activeCode);
         stringRedisTemplate.opsForValue().set(activeCodeKey, email, AdiConstant.AUTH_ACTIVE_CODE_EXPIRE, TimeUnit.HOURS);
-        adiMailSender.send("欢迎注册AIDeepIn", "激活链接(" + AdiConstant.AUTH_ACTIVE_CODE_EXPIRE + "小时内有效):" + adiProperties.getBackendUrl() + "/auth/active?code=" + activeCode, email);
+        String activeLink = adiProperties.getBackendUrl() + "/auth/active?code=" + activeCode;
+        String subject = SpringUtil.getMessage("mail.welcomeSubject");
+        String body = MessageFormat.format(SpringUtil.getMessage("mail.welcomeBody"), AdiConstant.AUTH_ACTIVE_CODE_EXPIRE, activeLink);
+        adiMailSender.send(subject, body, email);
     }
 
     /**

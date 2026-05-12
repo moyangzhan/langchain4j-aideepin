@@ -10,7 +10,7 @@ import java.util.Collections;
 
 public class CodeGenerator {
     public static void main(String[] args) {
-        FastAutoGenerator.create("jdbc:postgres://172.17.30.40:5432/aideepin?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&tinyInt1isBit=false&allowMultiQueries=true", "postgres", "postgres")
+        FastAutoGenerator.create("jdbc:postgresql://172.17.30.40:5432/aideepin", "postgres", "postgres")
                 .globalConfig(builder -> {
                     builder.author("moyz") // 设置作者
                             .enableSwagger() // 开启 swagger 模式

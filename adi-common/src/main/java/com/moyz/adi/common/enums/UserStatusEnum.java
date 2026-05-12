@@ -9,9 +9,9 @@ import java.util.Arrays;
 @AllArgsConstructor
 public enum UserStatusEnum implements BaseEnum {
 
-    WAIT_CONFIRM(1, "待验证"),
-    NORMAL(2, "正常"),
-    FREEZE(3, "冻结");
+    WAIT_CONFIRM(1, "Pending Verification"),
+    NORMAL(2, "Active"),
+    FREEZE(3, "Frozen");
 
     private final Integer value;
     private final String desc;

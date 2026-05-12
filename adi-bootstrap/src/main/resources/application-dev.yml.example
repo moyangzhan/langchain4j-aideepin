@@ -8,7 +8,7 @@
 spring:
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://${ADI_DB_HOST:localhost}:${ADI_DB_PORT:5432}/${ADI_DB_NAME:postgres}?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8&tinyInt1isBit=false&allowMultiQueries=true
+    url: jdbc:postgresql://${ADI_DB_HOST:localhost}:${ADI_DB_PORT:5432}/${ADI_DB_NAME:postgres}
     username: ${ADI_DB_USERNAME:your-username}
     password: ${ADI_DB_PASSWORD:your-password}
     hikari:

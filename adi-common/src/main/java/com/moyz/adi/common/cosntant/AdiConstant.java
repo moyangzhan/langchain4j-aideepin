@@ -114,6 +114,7 @@ public class AdiConstant {
         }
 
         public static final String DEFAULT_NAME = "通用智能助手";
+        public static final String DEFAULT_NAME_EN = "General AI Assistant";
 
         public static final int ANSWER_CONTENT_TYPE_AUTO = 1;
         public static final int ANSWER_CONTENT_TYPE_TEXT = 2;
@@ -278,20 +279,21 @@ public class AdiConstant {
         /**
          * 状态：问题分析中
          * 如敏感词校验等
+         * remark uses i18n code, frontend maps code to locale-specific text
          */
         public static final String STATE_QUESTION_ANALYSING = """
-                {"state":"question_analysing","remark":"问题分析中"}
+                {"state":"question_analysing","remark":"state.question_analysing"}
                 """;
 
         public static final String STATE_KNOWLEDGE_SEARCHING = """
-                {"state":"knowledge_searching","remark":"知识库搜索中"}
+                {"state":"knowledge_searching","remark":"state.knowledge_searching"}
                 """;
         //使用 THINKING 事件代替
         public static final String STATE_THINKING = """
-                {"state":"thinking","remark":"推理中"}
+                {"state":"thinking","remark":"state.thinking"}
                 """;
         public static final String STATE_RESPONDING = """
-                {"state":"responding","remark":"回答中"}
+                {"state":"responding","remark":"state.responding"}
                 """;
     }
 

@@ -8,13 +8,13 @@ import java.util.Arrays;
 @Getter
 @AllArgsConstructor
 public enum WfIODataTypeEnum implements BaseEnum {
-    TEXT(1, "文本"),
-    NUMBER(2, "数字"),
-    OPTIONS(3, "下拉选项"),
-    FILES(4, "文件列表"),
-    BOOL(5, "布尔值"),
-    REF_INPUT(6, "引用节点的输入参数"),
-    REF_OUTPUT(7, "引用节点的输出参数");
+    TEXT(1, "Text"),
+    NUMBER(2, "Number"),
+    OPTIONS(3, "Dropdown"),
+    FILES(4, "File List"),
+    BOOL(5, "Boolean"),
+    REF_INPUT(6, "Reference Node Input"),
+    REF_OUTPUT(7, "Reference Node Output");
 
     private final Integer value;
     private final String desc;

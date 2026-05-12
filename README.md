@@ -15,7 +15,7 @@ AIDEEPIN
   |__ Admin Web (langchain4j-aideepin-admin)
 ```
 
-👉 [Detailed Documentation](https://github.com/moyangzhan/langchain4j-aideepin/wiki)
+👉 [Detailed Documentation](docs/en/index.md)
 
 Backend source repository: [github](https://github.com/moyangzhan/langchain4j-aideepin)
 

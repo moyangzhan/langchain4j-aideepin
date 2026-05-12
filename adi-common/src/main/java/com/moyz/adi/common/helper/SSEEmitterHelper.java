@@ -4,6 +4,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.cosntant.RedisKeyConstant;
+import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.interfaces.TriConsumer;
 import com.moyz.adi.common.languagemodel.data.LLMResponseContent;

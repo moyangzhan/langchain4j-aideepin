@@ -8,10 +8,10 @@ import java.util.Arrays;
 @Getter
 @AllArgsConstructor
 public enum EmbeddingStatusEnum implements BaseEnum {
-    NONE(1, "未向量化"),
-    DOING(2, "正在向量化"),
-    DONE(3, "已向量化"),
-    FAIL(4, "向量化失败");
+    NONE(1, "Not Embedded"),
+    DOING(2, "Embedding"),
+    DONE(3, "Embedded"),
+    FAIL(4, "Embedding Failed");
 
     private final Integer value;
     private final String desc;
