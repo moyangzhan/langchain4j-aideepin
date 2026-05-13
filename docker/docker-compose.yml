@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:6.2.5
+    container_name: redis
+    ports:
+      - 6379:6379
+    volumes:
+      - /data/redis/data:/data
+
+  aideepin-api:
+    image: adi-bootstrap:${IMAGE_VERSION}
+    container_name: aideepin-api
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+    environment:
+      APP_VERSION: ${APP_VERSION}
+      TZ: ${TZ}
+      APP_PROFILE: ${APP_PROFILE}
+      JAVA_OPTS: ${JAVA_OPTS}
+    volumes:
+      - /data/aideepin/logs:/data/logs
+    depends_on:
+      - redis
+
+  aideepin-user-web:
+    container_name: aideepin-user-web
+    build:
+      context: ../user-web
+      dockerfile: Dockerfile
+
+  aideepin-admin-web:
+    container_name: aideepin-admin-web
+    build:
+      context: ../admin-web
+      dockerfile: Dockerfile
+
+  nginx:
+    container_name: nginx
+    image: nginx:alpine
+    ports:
+      - '80:80'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - aideepin-api
+      - aideepin-user-web
+      - aideepin-admin-web

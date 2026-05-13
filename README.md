@@ -6,25 +6,18 @@
 
 *It can be used to assist enterprises/teams in technical research and development, product design, HR/finance/IT information consulting, system/product consulting, customer service support, etc.*
 
-## System Composition and Documentation
+## Repository Structure
 
 ```
-AIDEEPIN
-  |__ Server (langchain4j-aideepin)
-  |__ User Web (langchain4j-aideepin-web)
-  |__ Admin Web (langchain4j-aideepin-admin)
+langchain4j-aideepin/
+  ├── server/         Backend service (Spring Boot + langchain4j)
+  ├── admin-web/      Admin dashboard (Vue 3 + Naive UI)
+  └── user-web/       User-facing web app (Vue 3 + Naive UI)
 ```
 
-👉 [Detailed Documentation](docs/en/index.md)
-
-Backend source repository: [github](https://github.com/moyangzhan/langchain4j-aideepin)
-
-Frontend projects:
-
-- User Web: langchain4j-aideepin-web
-  - [github](https://github.com/moyangzhan/langchain4j-aideepin-web)
-- Admin Web: langchain4j-aideepin-admin
-  - [github](https://github.com/moyangzhan/langchain4j-aideepin-admin)
+- [Server README](server/README.md) — Tech stack, deployment, configuration
+- [Admin Web README](admin-web/README.md) — Admin dashboard features and setup
+- [User Web README](user-web/README.md) — User-facing web app features and setup
 
 ## Demo URL
 
@@ -34,26 +27,23 @@ Frontend projects:
 
 ### AI Chat
 
-Multi-conversation support with different AI roles. Each conversation can be configured with a specific system prompt, model, and parameters. Supports streaming output with real-time token display.
+Multi-conversation, multi-role support with configurable prompts, models, and parameters. Streaming output.
 
 ### Image Generation
 
-Generate images from text prompts using models like GPT-Image-2 and DashScope's Wanx. Supports text-to-image, image editing, image variation, and background generation.
+Text-to-image and image editing. Supports GPT-Image-2, DashScope Wanx, and more.
 
 ### Knowledge Base (RAG)
 
-Build knowledge bases from uploaded documents (PDF, Word, PPT, Excel, etc.) and use them to enhance AI responses with retrieval-augmented generation.
-
-- **Vector Search**: Embed documents into vector space using models like `all-minilm-l6-v2` or `bge-small-zh-v1.5`, then retrieve relevant chunks via similarity search
-- **Graph Search**: Extract entities and relationships from documents to build knowledge graphs using Apache AGE or Neo4j, enabling structured knowledge retrieval
+Upload documents to build knowledge bases. Supports both vector search and knowledge graph retrieval.
 
 ### AI Workflow
 
-Visual workflow editor for building complex AI pipelines. Supports conditional branching, parallel execution, and various node types including LLM calls, knowledge base queries, code execution, and human feedback loops.
+Visual editor with conditional branching, parallel execution, and built-in nodes for LLM calls, knowledge base queries, human feedback, and more.
 
 ### MCP Service Marketplace
 
-Discover and integrate MCP (Model Context Protocol) servers to extend AI capabilities with external tools and data sources. Supports SSE and stdio transport types.
+Integrate MCP services to extend AI with external tools and data sources.
 
 ### ASR & TTS
 
@@ -64,9 +54,9 @@ Full voice interaction support with flexible input/output combinations:
 - Voice question → Text response
 - Voice question → Voice response
 
-### Long-term Memory
+### Short & Long-term Memory
 
-Automatically extracts and stores key information from conversations as user memories, allowing the AI to personalize responses based on historical context.
+Automatically extracts and stores key information from conversations, allowing the AI to personalize responses based on historical context.
 
 ### Storage
 
@@ -78,14 +68,12 @@ Automatically extracts and stores key information from conversations as user mem
 | Model Platform | Chat | Image Generation | Background Generation | Image Recognition | Text-to-Speech | Speech Recognition |
 |:---------------|:----:|:----------------:|:---------------------:|:-----------------:|:--------------:|:------------------:|
 | OpenAI         |  ✓   |        ✓         |                       |                   |                |                    |
-| Dashscope      |  ✓   |        ✓         |           ✓           |         ✓         |       ✓        |         ✓          |
+| Qwen      |  ✓   |        ✓         |           ✓           |         ✓         |       ✓        |         ✓          |
 | SiliconFlow    |  ✓   |        ✓         |                       |         ✓         |       ✓        |         ✓          |
 | Ollama         |  ✓   |                  |                       |                   |                |                    |
 | DeepSeek       |  ✓   |                  |                       |                   |                |                    |
 
 ## Tech Stack
-
-This repository is for the backend service.
 
 Backend:
 
@@ -107,100 +95,7 @@ Frontend:
 - Pinia
 - Naive UI
 
-## How to Deploy
-
-### Initialization
-
-**a. Initialize the database**
-
-1. Create the database `aideepin`
-2. Execute `db_migration/all_ddl.sql` to create tables
-3. Execute `db_migration/all_dml.sql` to insert base data
-4. Execute `db_migration/all_dml_en.sql` (English) or `db_migration/all_dml_cn.sql` (Chinese) to insert display data
-5. Enable and configure the model platform (also referred to as model provider) or use the [admin web](https://github.com/moyangzhan/langchain4j-aideepin-admin) to configure via the interface
-
-Configure model platforms:
-
-```sql
--- DeepSeek
-UPDATE adi_model_platform SET api_key = 'my_deepseek_secret_key' WHERE name = 'deepseek';
-
--- OpenAI
-UPDATE adi_model_platform SET api_key = 'my_openai_secret_key' WHERE name = 'openai';
-
--- Dashscope
-UPDATE adi_model_platform SET api_key = 'my_dashcope_api_key' WHERE name = 'dashscope';
-
--- Siliconflow
-UPDATE adi_model_platform SET api_key = 'my_siliconflow_api_key' WHERE name = 'siliconflow_setting';
-
--- Ollama
-UPDATE adi_model_platform SET base_url = 'my_ollama_base_url' WHERE name = 'ollama';
-```
-
-Enable models or add new models:
-
-```sql
--- Enable models
-UPDATE adi_ai_model SET is_enable = true WHERE name = 'deepseek-v4-flash';
-UPDATE adi_ai_model SET is_enable = true WHERE name = 'gpt-3.5-turbo';
-UPDATE adi_ai_model SET is_enable = true WHERE name = 'gpt-image-2';
-UPDATE adi_ai_model SET is_enable = true WHERE name = 'qwen-turbo';
-UPDATE adi_ai_model SET is_enable = true WHERE name = 'THUDM/GLM-Z1-9B-0414';
-UPDATE adi_ai_model SET is_enable = true WHERE name = 'tinydolphin';
-
--- Add new model
-INSERT INTO adi_ai_model (name, type, platform, is_enable) VALUES ('vicuna', 'text', 'ollama', true);
-```
-
-Configure search engine (Google):
-
-```sql
-UPDATE adi_sys_config SET value = '{"url":"https://www.googleapis.com/customsearch/v1","key":"my key from cloud.google.com","cx":"my cx from programmablesearchengine.google.com"}' WHERE name = 'google_setting';
-```
-
-**b. Modify the configuration file**
-
-Copy the example config and rename it:
-
-```bash
-cp adi-bootstrap/src/main/resources/application-dev.yml.example adi-bootstrap/src/main/resources/application-dev.yml
-```
-
-Then modify the following entries:
-
-- PostgreSQL: `application-[dev|prod].yml` → `spring.datasource`
-- Redis: `application-[dev|prod].yml` → `spring.data.redis`
-- Mail: `application.yml` → `spring.mail`
-
-### Build and Run
-
-```bash
-cd langchain4j-aideepin
-mvn clean package -Dmaven.test.skip=true
-```
-
-Start with JAR:
-
-```bash
-cd adi-bootstrap/target
-nohup java -jar -Xms768m -Xmx1024m -XX:+HeapDumpOnOutOfMemoryError \
-  adi-bootstrap-0.0.1-SNAPSHOT.jar --spring.profiles.active=[dev|prod] \
-  /dev/null 2>&1 &
-```
-
-Start with Docker:
-
-```bash
-cd adi-bootstrap
-docker build . -t aideepin:0.0.1
-docker run -d \
-  --name=aideepin \
-  -p 8888:9999 \
-  -e APP_PROFILE=[dev|prod] \
-  -v="/data/aideepin/logs:/data/logs" \
-  aideepin:0.0.1
-```
+For detailed deployment instructions, see [docker/README.md](docker/README.md) or each sub-project's README.
 
 ## Contributing Guidelines
 
@@ -236,6 +131,12 @@ If you find LangChain4j-AIDeepin useful, please consider:
 </a>
 
 <br/>
+
+**Infrastructure Sponsor:**
+
+<a href="https://www.digitalocean.com/">
+  <img src="https://opensource.nyc3.cdn.digitaloceanspaces.com/attribution/assets/SVG/DO_Logo_horizontal_blue.svg" width="201px">
+</a>
 
 ## Recommended Projects
 
