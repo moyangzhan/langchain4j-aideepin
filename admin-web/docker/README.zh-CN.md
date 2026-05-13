@@ -5,6 +5,7 @@
 ### 使用
 
 ```bash
+# 在 admin-web 目录下执行
 cd docker
 
 # 构建并启动

@@ -8,6 +8,7 @@ services:
       - 6379:6379
     volumes:
       - /data/redis/data:/data
+    command: redis-server --appendonly yes
 
   aideepin-api:
     image: adi-bootstrap:${IMAGE_VERSION}
@@ -20,6 +21,24 @@ services:
       TZ: ${TZ}
       APP_PROFILE: ${APP_PROFILE}
       JAVA_OPTS: ${JAVA_OPTS}
+      ADI_DB_HOST: ${ADI_DB_HOST}
+      ADI_DB_PORT: ${ADI_DB_PORT}
+      ADI_DB_NAME: ${ADI_DB_NAME}
+      ADI_DB_USERNAME: ${ADI_DB_USERNAME}
+      ADI_DB_PASSWORD: ${ADI_DB_PASSWORD}
+      ADI_REDIS_HOST: ${ADI_REDIS_HOST}
+      ADI_REDIS_PORT: ${ADI_REDIS_PORT}
+      ADI_REDIS_PASSWORD: ${ADI_REDIS_PASSWORD}
+      ADI_MAIL_HOST: ${ADI_MAIL_HOST}
+      ADI_MAIL_USERNAME: ${ADI_MAIL_USERNAME}
+      ADI_MAIL_PASSWORD: ${ADI_MAIL_PASSWORD}
+      ADI_ENCRYPT_AES_KEY: ${ADI_ENCRYPT_AES_KEY}
+      # Neo4j (optional, uncomment if needed)
+      # ADI_NEO4J_HOST: ${ADI_NEO4J_HOST}
+      # ADI_NEO4J_PORT: ${ADI_NEO4J_PORT}
+      # ADI_NEO4J_USERNAME: ${ADI_NEO4J_USERNAME}
+      # ADI_NEO4J_PASSWORD: ${ADI_NEO4J_PASSWORD}
+      # ADI_NEO4J_DATABASE: ${ADI_NEO4J_DATABASE}
     volumes:
       - /data/aideepin/logs:/data/logs
     depends_on:

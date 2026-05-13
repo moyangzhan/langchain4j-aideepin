@@ -5,6 +5,7 @@
 ### Usage
 
 ```bash
+# Run from admin-web directory
 cd docker
 
 # Build and start

@@ -7,15 +7,21 @@
 ### 前置条件
 
 - 已安装 Docker 和 Docker Compose
-- 已初始化 PostgreSQL 数据库（见 [server/README](../server/README.zh-CN.md)）
+- 已安装并初始化 PostgreSQL 数据库（见 [server/README](../server/README.zh-CN.md)）
 
 ### 使用
 
 ```bash
+# 在项目根目录下执行
 cd docker
 
-# 构建并启动所有服务
+# 方式一：修改 .env 后直接启动（默认读取 .env；如需生产配置可指定 .env.prod）
+# ⚠️ 必须修改：ADI_DB_HOST、ADI_DB_USERNAME、ADI_DB_PASSWORD、ADI_MAIL_HOST、ADI_MAIL_USERNAME、ADI_MAIL_PASSWORD、ADI_ENCRYPT_AES_KEY
 docker-compose up -d --build
+# docker-compose --env-file .env.prod up -d --build
+
+# 方式二：通过命令行传入环境变量（优先级高于 --env-file）
+TZ=Asia/Shanghai ADI_DB_HOST=192.168.1.100 ADI_DB_PASSWORD=mypassword ADI_MAIL_HOST=smtp.example.com ADI_MAIL_USERNAME=user@example.com ADI_MAIL_PASSWORD=mypassword ADI_ENCRYPT_AES_KEY=PLEASE_REPLACE_ME docker-compose --env-file .env.prod up -d --build
 
 # 查看日志
 docker-compose logs -f
@@ -44,6 +50,22 @@ docker-compose down
 | APP_VERSION | 应用版本 | 1.0.0-SNAPSHOT |
 | APP_PROFILE | Spring 环境（dev/prod） | dev |
 | JAVA_OPTS | JVM 参数 | -Xms1024m -Xmx2048m ... |
+| ADI_DB_HOST | PostgreSQL 主机 | localhost |
+| ADI_DB_PORT | PostgreSQL 端口 | 5432 |
+| ADI_DB_NAME | PostgreSQL 数据库名 | aideepin |
+| ADI_DB_USERNAME | PostgreSQL 用户名 | your-db-account |
+| ADI_DB_PASSWORD | PostgreSQL 密码 | your-db-password |
+| ADI_REDIS_HOST | Redis 主机 | redis |
+| ADI_REDIS_PORT | Redis 端口 | 6379 |
+| ADI_MAIL_HOST | SMTP 邮件主机 | your-email-host |
+| ADI_MAIL_USERNAME | SMTP 邮件用户名 | your-email-username |
+| ADI_MAIL_PASSWORD | SMTP 邮件密码 | your-email-password |
+| ADI_ENCRYPT_AES_KEY | AES 加密密钥（16 位字符） | your-16-char-key |
+| ADI_NEO4J_HOST | Neo4j 主机（可选） | localhost |
+| ADI_NEO4J_PORT | Neo4j 端口（可选） | 7687 |
+| ADI_NEO4J_USERNAME | Neo4j 用户名（可选） | neo4j |
+| ADI_NEO4J_PASSWORD | Neo4j 密码（可选） | your-neo4j-password |
+| ADI_NEO4J_DATABASE | Neo4j 数据库名（可选） | neo4j |
 
 ### 独立部署
 
@@ -56,6 +78,6 @@ docker-compose down
 例如，将管理端部署在内网、用户端部署在公网时，分别在对应目录下执行：
 
 ```bash
-cd <子项目>/docker-compose
-docker-compose up -d --build
+cd <子项目>/docker
+docker-compose --env-file .env.prod up -d --build
 ```
