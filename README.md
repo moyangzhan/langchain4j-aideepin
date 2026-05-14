@@ -41,6 +41,27 @@ Demo: [http://www.aideepin.com](http://www.aideepin.com/)
 
 For detailed deployment instructions, see [docker/README.md](docker/README.md) or each sub-project's README.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td><img src="docs/image/README/1691583184761.png" alt="AI Chat" /></td>
+    <td><img src="docs/image/README/adi-gallery.png" alt="Image Generation" /></td>
+  </tr>
+  <tr>
+    <td align="center">AI Chat</td>
+    <td align="center">Image Generation</td>
+  </tr>
+  <tr>
+    <td><img src="docs/image/README/kbidx.png" alt="Knowledge Base" /></td>
+    <td><img src="docs/image/README/workflow.png" alt="Workflow" /></td>
+  </tr>
+  <tr>
+    <td align="center">Knowledge Base</td>
+    <td align="center">Workflow</td>
+  </tr>
+</table>
+
 ## Contributing Guidelines
 
 See [Contributing Guidelines](CONTRIBUTING.md) for details.

@@ -41,6 +41,27 @@
 
 详细部署说明请查看 [docker/README.zh-CN.md](docker/README.zh-CN.md) 或各子项目的 README。
 
+## 截图
+
+<table>
+  <tr>
+    <td><img src="docs/image/README/1691583184761.png" alt="AI 对话" /></td>
+    <td><img src="docs/image/README/adi-gallery.png" alt="AI 画图" /></td>
+  </tr>
+  <tr>
+    <td align="center">AI 对话</td>
+    <td align="center">AI 画图</td>
+  </tr>
+  <tr>
+    <td><img src="docs/image/README/kb03.png" alt="知识库" /></td>
+   <td><img src="docs/image/README/workflow.png" alt="工作流" /></td>
+  </tr>
+  <tr>
+    <td align="center">知识库</td>
+    <td align="center">工作流</td>
+  </tr>
+</table>
+
 ## 贡献指南
 
 详见 [贡献指南](CONTRIBUTING.zh-CN.md)。
