@@ -10,7 +10,6 @@ import { t } from '@/locales'
 import { SvgIcon } from '@/components/common'
 import { useWfStore } from '@/store'
 
-
 interface Props {
   workflow: Workflow.WorkflowInfo
   wfNode: Workflow.WorkflowNode

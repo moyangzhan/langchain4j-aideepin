@@ -26,7 +26,7 @@ UPDATE adi_workflow_component SET name = 'OpenAiImage', title = 'OpenAI 画图',
 
 -- 千帆平台停用（ERNIE-Speed-128K 已于 2026-01-27 下架，deepseek-v4-flash 全面覆盖其能力）
 UPDATE adi_ai_model SET is_enable = false, remark = 'Qianfan deprecated, ERNIE-Speed-128K delisted on 2026-01-27' WHERE platform = 'qianfan';
-UPDATE adi_model_platform SET is_enable = false WHERE name = 'qianfan';
+UPDATE adi_model_platform SET remark = 'Qianfan deprecated, ERNIE-Speed-128K delisted on 2026-01-27' WHERE name = 'qianfan';
 
 -- 工作流节点中的 ERNIE-Speed-128K 替换为 deepseek-v4-flash
 UPDATE adi_workflow_node SET node_config = REPLACE(node_config::text, '"model_name": "ERNIE-Speed-128K"', '"model_name": "deepseek-v4-flash"')::jsonb WHERE node_config::text LIKE '%"model_name": "ERNIE-Speed-128K"%';
