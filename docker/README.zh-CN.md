@@ -17,17 +17,17 @@ cd docker
 
 # 方式一：修改 .env 后直接启动（默认读取 .env；如需生产配置可指定 .env.prod）
 # ⚠️ 必须修改：ADI_DB_HOST、ADI_DB_USERNAME、ADI_DB_PASSWORD、ADI_MAIL_HOST、ADI_MAIL_USERNAME、ADI_MAIL_PASSWORD、ADI_ENCRYPT_AES_KEY
-docker-compose up -d --build
-# docker-compose --env-file .env.prod up -d --build
+docker compose up -d --build
+# docker compose --env-file .env.prod up -d --build
 
 # 方式二：通过命令行传入环境变量（优先级高于 --env-file）
-TZ=Asia/Shanghai ADI_DB_HOST=192.168.1.100 ADI_DB_PASSWORD=mypassword ADI_MAIL_HOST=smtp.example.com ADI_MAIL_USERNAME=user@example.com ADI_MAIL_PASSWORD=mypassword ADI_ENCRYPT_AES_KEY=PLEASE_REPLACE_ME docker-compose --env-file .env.prod up -d --build
+TZ=Asia/Shanghai ADI_DB_HOST=192.168.1.100 ADI_DB_PASSWORD=mypassword ADI_MAIL_HOST=smtp.example.com ADI_MAIL_USERNAME=user@example.com ADI_MAIL_PASSWORD=mypassword ADI_ENCRYPT_AES_KEY=PLEASE_REPLACE_ME docker compose --env-file .env.prod up -d --build
 
 # 查看日志
-docker-compose logs -f
+docker compose logs -f
 
 # 停止所有服务
-docker-compose down
+docker compose down
 ```
 
 ### 架构
@@ -69,7 +69,7 @@ docker-compose down
 
 ### 独立部署
 
-如果需要将各服务部署到不同服务器，可以使用各子项目独立的 docker-compose 配置：
+如果需要将各服务部署到不同服务器，可以使用各子项目独立的 docker compose 配置：
 
 - `server/docker/` — 后端服务 + Redis
 - `user-web/docker/` — 用户端前端 + Nginx
@@ -79,5 +79,5 @@ docker-compose down
 
 ```bash
 cd <子项目>/docker
-docker-compose --env-file .env.prod up -d --build
+docker compose --env-file .env.prod up -d --build
 ```

@@ -7,6 +7,7 @@ import ModifyPassword from './ModifyPassword.vue'
 import api from '@/api'
 import { SvgIcon } from '@/components/common'
 import { emptyQuota } from '@/utils/functions'
+import { t } from '@/locales'
 
 interface Props {
   visible: boolean
@@ -61,7 +62,7 @@ onMounted(() => {
         <NTabPane name="General" tab="General">
           <template #tab>
             <SvgIcon class="text-lg" icon="ri:file-user-line" />
-            <span class="ml-2">{{ $t('setting.general') }}</span>
+            <span class="ml-2">{{ t('setting.general') }}</span>
           </template>
           <div class="min-h-[100px]">
             <General />
@@ -70,14 +71,14 @@ onMounted(() => {
         <NTabPane name="Quota" tab="Quota">
           <template #tab>
             <SvgIcon class="text-lg" icon="eos-icons:quota-outlined" />
-            <span class="ml-2">{{ $t('setting.quota') }}</span>
+            <span class="ml-2">{{ t('setting.quota') }}</span>
           </template>
           <Quota :user-config="userConfig" @reloadConfig="fetchConfig" />
         </NTabPane>
         <NTabPane name="ModifyPassword" tab="ModifyPassword">
           <template #tab>
             <SvgIcon class="text-lg" icon="carbon:password" />
-            <span class="ml-2">{{ $t('setting.modifyPassword') }}</span>
+            <span class="ml-2">{{ t('setting.modifyPassword') }}</span>
           </template>
           <ModifyPassword />
         </NTabPane>

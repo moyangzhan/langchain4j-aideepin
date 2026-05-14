@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { NInput } from 'naive-ui'
 import { t } from '@/locales'
-
 interface Props {
   workflow: Workflow.WorkflowInfo
   wfNode: Workflow.WorkflowNode

@@ -111,6 +111,6 @@ public class WorkflowController {
 
     @GetMapping("/public/component/list")
     public List<WorkflowComponent> component() {
-        return workflowComponentService.getAllEnable();
+        return workflowComponentService.listAvailable();
     }
 }

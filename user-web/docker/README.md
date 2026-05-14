@@ -1,5 +1,7 @@
 > **[🇨🇳 中文文档](README.zh-CN.md)** | English
 
+To start all services at once, use [docker/](../../docker/README.md) in the root directory.
+
 ## User Web - Docker Deployment
 
 ### Usage
@@ -9,13 +11,13 @@
 cd docker
 
 # Build and start
-docker-compose up -d --build
+docker compose up -d --build
 
 # View status
 docker ps
 
 # Stop
-docker-compose down
+docker compose down
 ```
 
 ### Notes
@@ -23,4 +25,4 @@ docker-compose down
 - Builds the user web frontend and starts an Nginx container
 - Modify `proxy_pass` in `nginx/nginx.conf` to point to your backend service
 - Access: `http://your-ip:80/`
-- This configuration only starts the user web frontend. To start all services at once, use [docker/](../../docker/README.md) in the root directory
+- This configuration only starts the user web frontend

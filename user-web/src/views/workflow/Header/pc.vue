@@ -6,7 +6,6 @@ import { emptyWorkflowInfo } from '@/utils/functions'
 import { useAuthStore, useUserStore, useWfStore } from '@/store'
 import api from '@/api'
 import { t } from '@/locales'
-
 interface Props {
   workflow: Workflow.WorkflowInfo
 }

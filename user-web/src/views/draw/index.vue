@@ -13,7 +13,6 @@ import api from '@/api'
 import { debounce } from '@/utils/functions/debounce'
 import { t } from '@/locales'
 import { changeFileUrlToUuid } from '@/utils/functions'
-
 const appStore = useAppStore()
 const ms = useMessage()
 const loaddingBar = useLoadingBar()

@@ -5,7 +5,6 @@ import NodePropertyInput from '../NodePropertyInput.vue'
 import ReferComment from '../ReferComment.vue'
 import { OPENAI_IMAGE_QUALITY_OPTIONS, OPENAI_IMAGE_SIZE_OPTIONS } from '@/utils/constant'
 import { t } from '@/locales'
-
 interface Props {
   workflow: Workflow.WorkflowInfo
   wfNode: Workflow.WorkflowNode

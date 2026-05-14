@@ -6,7 +6,6 @@ import { defaultConv } from '@/store/modules/chat/helper'
 import { useChatStore, useUserStore } from '@/store'
 import api from '@/api'
 import { t } from '@/locales'
-
 interface Props {
   conversation: Chat.Conversation
   tmpSave: boolean // 是否临时保存(即不保存到远程)

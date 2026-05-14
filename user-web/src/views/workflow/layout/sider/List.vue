@@ -6,7 +6,6 @@ import SubList from './SubList.vue'
 import { useAuthStore, useWfStore } from '@/store'
 import api from '@/api'
 import { t } from '@/locales'
-
 const currentPage = ref<number>(1)
 const pageSize = 20
 const wfStore = useWfStore()

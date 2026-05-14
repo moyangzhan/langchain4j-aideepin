@@ -5,7 +5,6 @@ import { SvgIcon } from '@/components/common'
 import { getIconByComponentName, getIconClassByComponentName } from '@/utils/workflow-util'
 import { useWfStore } from '@/store'
 import { t } from '@/locales'
-
 const props = defineProps<Props>()
 const options = [
   {

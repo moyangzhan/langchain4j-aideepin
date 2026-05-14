@@ -6,7 +6,6 @@ import { emptyConv } from '@/utils/functions'
 import EditConvDetail from '@/views/chat/components/Header/EditConvDetail.vue'
 import api from '@/api'
 import { t } from '@/locales'
-
 const authStore = useAuthStore()
 const authStoreRef = ref<AuthState>(authStore)
 const convSaving = ref<boolean>(false)

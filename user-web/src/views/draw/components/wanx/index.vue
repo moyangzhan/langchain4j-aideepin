@@ -5,7 +5,6 @@ import GenerateImage from './GenerateImage.vue'
 import GenerateBackground from './GenerateBackground.vue'
 import { useAppStore } from '@/store'
 import { t } from '@/locales'
-
 interface Emit {
   (e: 'submitted'): void
 }

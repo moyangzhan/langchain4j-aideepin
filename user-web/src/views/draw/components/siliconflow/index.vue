@@ -3,7 +3,6 @@ import { ref } from 'vue'
 import { NTab, NTabPane, NTabs } from 'naive-ui'
 import GenerateImage from './GenerateImage.vue'
 import { t } from '@/locales'
-
 interface Emit {
   (e: 'submitted'): void
 }

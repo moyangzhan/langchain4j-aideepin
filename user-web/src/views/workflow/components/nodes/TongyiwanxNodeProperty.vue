@@ -6,7 +6,6 @@ import WfImageModelSelector from '../WfImageModelSelector.vue'
 import ReferComment from '../ReferComment.vue'
 import { TONGYI_WANX_SIZE_OPTIONS } from '@/utils/constant'
 import { t } from '@/locales'
-
 interface Props {
   workflow: Workflow.WorkflowInfo
   wfNode: Workflow.WorkflowNode

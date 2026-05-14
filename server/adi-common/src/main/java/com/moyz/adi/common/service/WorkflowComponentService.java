@@ -4,11 +4,13 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
+import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.workflow.WfComponentReq;
 import com.moyz.adi.common.dto.workflow.WfComponentSearchReq;
 import com.moyz.adi.common.entity.WorkflowComponent;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.searchengine.SearchEngineServiceContext;
 import com.moyz.adi.common.mapper.WorkflowComponentMapper;
 import com.moyz.adi.common.util.PrivilegeUtil;
 import com.moyz.adi.common.util.UuidUtil;
@@ -98,6 +100,17 @@ public class WorkflowComponentService extends ServiceImpl<WorkflowComponentMappe
                 .eq(WorkflowComponent::getIsDeleted, false)
                 .orderByAsc(List.of(WorkflowComponent::getDisplayOrder, WorkflowComponent::getId))
                 .list();
+    }
+
+    public List<WorkflowComponent> listAvailable() {
+        List<WorkflowComponent> components = self.getAllEnable();
+        boolean googleEnabled = SearchEngineServiceContext.getService(AdiConstant.SearchEngineName.GOOGLE).isEnabled();
+        if (!googleEnabled) {
+            return components.stream()
+                    .filter(c -> !WfComponentNameEnum.GOOGLE_SEARCH.getName().equals(c.getName()))
+                    .toList();
+        }
+        return components;
     }
 
     @Cacheable(cacheNames = WORKFLOW_COMPONENT_START_KEY)

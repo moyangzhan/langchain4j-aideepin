@@ -9,6 +9,8 @@ import { useScroll } from '@/views/chat/hooks/useScroll'
 import { knowledgeBaseEmptyInfo } from '@/utils/functions'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
 import KbInfo from '@/views/knowledge-base/Header/KbInfo.vue'
+import { t } from '@/locales'
+
 const props = defineProps<Props>()
 const router = useRouter()
 const kbStore = useKbStore()
@@ -58,7 +60,7 @@ onUnmounted(() => {
     <template v-if="!list.length">
       <div class="flex flex-col items-center mt-4 text-center text-neutral-300">
         <SvgIcon icon="ri:inbox-line" class="mb-2 text-3xl" />
-        <span>{{ $t('common.noData') }}</span>
+        <span>{{ t('common.noData') }}</span>
       </div>
     </template>
     <template v-else>

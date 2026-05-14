@@ -7,7 +7,6 @@ import { useAuthStore, useWfStore } from '@/store'
 import { SvgIcon } from '@/components/common'
 import api from '@/api'
 import { t } from '@/locales'
-
 interface Props {
   workflow: Workflow.WorkflowInfo
 }

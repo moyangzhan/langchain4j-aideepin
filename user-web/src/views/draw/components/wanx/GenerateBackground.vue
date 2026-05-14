@@ -9,7 +9,6 @@ import { useAppStore, useAuthStore, useDrawStore } from '@/store'
 import { t } from '@/locales'
 import api from '@/api'
 import { emptyDraw } from '@/utils/functions'
-
 interface Emit {
   (e: 'submitted'): void
 }

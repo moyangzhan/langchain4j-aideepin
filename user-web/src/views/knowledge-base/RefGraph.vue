@@ -5,6 +5,7 @@ import cytoscape from 'cytoscape'
 import { useKbStore } from '@/store'
 import api from '@/api'
 import { t } from '@/locales'
+
 interface Props {
   qaRecordUuid: string
 }

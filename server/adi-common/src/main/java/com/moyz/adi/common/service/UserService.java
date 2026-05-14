@@ -417,10 +417,17 @@ public class UserService extends ServiceImpl<UserMapper, User> {
      * @param userUpdateReq 用户更新请求|user update request
      */
     public void updateConfig(UserUpdateReq userUpdateReq) {
+        Long userId = ThreadContext.getCurrentUserId();
         User user = new User();
-        user.setId(ThreadContext.getCurrentUserId());
+        user.setId(userId);
         BeanUtils.copyProperties(userUpdateReq, user);
         baseMapper.updateById(user);
+
+        // Refresh Redis cache with latest data from DB
+        User updatedUser = baseMapper.selectById(userId);
+        String token = ThreadContext.getToken();
+        String tokenKey = MessageFormat.format(USER_TOKEN, token);
+        stringRedisTemplate.opsForValue().set(tokenKey, JsonUtil.toJson(updatedUser), AdiConstant.USER_TOKEN_EXPIRE, TimeUnit.HOURS);
     }
 
     /**

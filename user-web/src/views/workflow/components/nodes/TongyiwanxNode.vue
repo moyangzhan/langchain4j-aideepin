@@ -5,7 +5,6 @@ import type { NodeProps } from '@vue-flow/core'
 import CommonNodeHeader from '../CommonNodeHeader.vue'
 import { TONGYI_WANX_SIZE_OPTIONS } from '@/utils/constant'
 import { t } from '@/locales'
-
 const props = defineProps<NodeProps>()
 const sizeLabel = computed(() => {
   return TONGYI_WANX_SIZE_OPTIONS.find(item => item.value === props.data.nodeConfig.size)?.label || ''

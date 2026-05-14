@@ -12,7 +12,6 @@ import { useBasicLayout } from '@/hooks/useBasicLayout'
 import { emptyAudioPlayState } from '@/utils/functions'
 import AudioQueue from '@/utils/AudioQueue'
 import api from '@/api'
-
 const props = withDefaults(defineProps<Props>(), {
   audioPlayState: () => emptyAudioPlayState(),
   showAvatar: true,

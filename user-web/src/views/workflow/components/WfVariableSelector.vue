@@ -7,7 +7,6 @@ import { emptyWorkflowInfo } from '@/utils/functions'
 import { getIconByComponentName, getIconClassByComponentName } from '@/utils/workflow-util'
 import { SvgIcon } from '@/components/common'
 import { t } from '@/locales'
-
 interface Props {
   workflow: Workflow.WorkflowInfo
   wfNode: Workflow.WorkflowNode

@@ -9,7 +9,6 @@ import { debounce } from '@/utils/functions/debounce'
 import { emptyConv } from '@/utils/functions'
 import api from '@/api'
 import { t } from '@/locales'
-
 interface Props {
   conversation: Chat.Conversation
 }
@@ -309,13 +308,13 @@ const handleDeleteDebounce = debounce(handleDelete, 600)
       <NPopconfirm placement="top" @positive-click.stop="handleDeleteDebounce(tmpConv.uuid, $event)">
         <template #trigger>
           <NButton type="error" text tag="a" :loading="submitting" :disabled="submitting">
-            {{ $t('common.delete') }}
+            {{ t('common.delete') }}
           </NButton>
         </template>
         {{ t('chat.editConv.confirmDeleteRole', { title: tmpConv.title }) }}
       </NPopconfirm>
       <NButton type="primary" :loading="submitting" :disabled="submitting" @click="handleEdit()">
-        {{ $t('common.save') }}
+        {{ t('common.save') }}
       </NButton>
     </NFlex>
   </div>

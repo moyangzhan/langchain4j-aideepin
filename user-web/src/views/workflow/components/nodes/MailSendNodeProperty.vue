@@ -4,7 +4,6 @@ import NodePropertyInput from '../NodePropertyInput.vue'
 import ReferComment from '../ReferComment.vue'
 import ReferTooltip from '../ReferTooltip.vue'
 import { t } from '@/locales'
-
 interface Props {
   workflow: Workflow.WorkflowInfo
   wfNode: Workflow.WorkflowNode

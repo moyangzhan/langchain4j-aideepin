@@ -3,7 +3,6 @@ import { computed } from 'vue'
 import NodePropertyInput from '../NodePropertyInput.vue'
 import { useWfStore } from '@/store'
 import { t } from '@/locales'
-
 interface Props {
   workflow: Workflow.WorkflowInfo
   wfNode: Workflow.WorkflowNode

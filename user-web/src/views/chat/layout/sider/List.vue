@@ -7,7 +7,7 @@ import { useAppStore, useAuthStore, useChatStore } from '@/store'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
 import EditConv from '@/views/chat/components/Header/EditConv.vue'
 import api from '@/api'
-
+import { t } from '@/locales'
 const { isMobile } = useBasicLayout()
 const route = useRoute()
 const appStore = useAppStore()
@@ -116,7 +116,7 @@ onMounted(() => {
       <template v-if="!convList.length">
         <div class="flex flex-col items-center mt-4 text-center text-neutral-300">
           <SvgIcon icon="ri:inbox-line" class="mb-2 text-3xl" />
-          <span>{{ $t('common.noData') }}</span>
+          <span>{{ t('common.noData') }}</span>
         </div>
       </template>
       <template v-else>

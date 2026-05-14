@@ -819,7 +819,8 @@ create table adi_workflow_component
     is_enable     boolean      default false             not null,
     create_time   timestamp    default CURRENT_TIMESTAMP not null,
     update_time   timestamp    default CURRENT_TIMESTAMP not null,
-    is_deleted    boolean      default false             not null
+    is_deleted    boolean      default false             not null,
+    constraint uk_workflow_component_name unique (name, is_deleted)
 );
 create trigger trigger_workflow_component
     before update

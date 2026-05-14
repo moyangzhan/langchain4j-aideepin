@@ -3,7 +3,6 @@ import { NIcon, NIconWrapper, NInput, NRadio, NRadioGroup, NSlider, NTooltip } f
 import { AnimalCat24Regular, QuestionCircle16Regular } from '@vicons/fluent'
 import WfKnowledgeSelector from '../WfKnowledgeSelector.vue'
 import { t } from '@/locales'
-
 interface Props {
   workflow: Workflow.WorkflowInfo
   wfNode: Workflow.WorkflowNode

@@ -3,7 +3,6 @@ import { Handle, Position } from '@vue-flow/core'
 import type { NodeProps } from '@vue-flow/core'
 import CommonNodeHeader from '../CommonNodeHeader.vue'
 import { t } from '@/locales'
-
 defineProps<NodeProps>()
 </script>
 

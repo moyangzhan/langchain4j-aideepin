@@ -12,7 +12,6 @@ import { emptyAudioPlayState, emptyChatMessage } from '@/utils/functions'
 import { AUDIO_SYNTHESIZER_SIDE, CHAT_MESSAGE_CONTENT_TYPE } from '@/utils/constant'
 import { t } from '@/locales'
 import api from '@/api'
-
 interface Props {
   conversationUuid: string
   imageUuids: string[]

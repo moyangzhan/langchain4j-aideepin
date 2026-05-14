@@ -5,7 +5,6 @@ import type { NodeProps } from '@vue-flow/core'
 import CommonNodeHeader from '../CommonNodeHeader.vue'
 import { GOOGLE_COUNTRY_OPTIONS, GOOGLE_LANGUAGE_OPTIONS } from '@/utils/constant'
 import { t } from '@/locales'
-
 const props = defineProps<NodeProps>()
 const country = computed(() => {
   return GOOGLE_COUNTRY_OPTIONS.find(item => item.value === props.data.nodeConfig.country)?.label || ''

@@ -284,13 +284,13 @@ watch(
       <div class="flex gap-3 mb-4" :class="[isMobile ? 'flex-col' : 'flex-row justify-between']">
         <div class="flex items-center space-x-4">
           <NButton type="primary" size="small" @click="changeShowModal('add')">
-            {{ $t('common.add') }}
+            {{ t('common.add') }}
           </NButton>
           <NButton size="small" @click="changeShowModal('local_import')">
-            {{ $t('common.import') }}
+            {{ t('common.import') }}
           </NButton>
           <NButton size="small" :loading="exportLoading" @click="exportPromptTemplate()">
-            {{ $t('common.export') }}
+            {{ t('common.export') }}
           </NButton>
         </div>
         <div class="flex items-center">

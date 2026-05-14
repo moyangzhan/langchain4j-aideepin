@@ -246,7 +246,7 @@ watch(
     <div class="flex gap-3 mb-2 mt-1" :class="[isMobile ? 'flex-col' : 'flex-row justify-between']">
       <div class="flex items-center space-x-4">
         <NButton type="primary" size="small" @click="changeShowModal()">
-          {{ $t('common.add') }}
+          {{ t('common.add') }}
         </NButton>
       </div>
       <div class="flex justify-between">

@@ -17,7 +17,6 @@ import { SvgIcon } from '@/components/common'
 import { getNameByInputType } from '@/utils/workflow-util'
 import { useWfStore } from '@/store'
 import { t } from '@/locales'
-
 interface Props {
   workflow: Workflow.WorkflowInfo
   wfNode: Workflow.WorkflowNode

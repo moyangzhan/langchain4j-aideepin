@@ -50,7 +50,7 @@ public class UserController {
 
     @Operation(summary = "更新信息 | Update Info")
     @PostMapping("/edit")
-    public void update(@Validated UserUpdateReq userUpdateReq) {
+    public void update(@Validated @RequestBody UserUpdateReq userUpdateReq) {
         userService.updateConfig(userUpdateReq);
     }
 

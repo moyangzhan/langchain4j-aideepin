@@ -8,7 +8,6 @@ import api from '@/api'
 import { useAuthStore, useUserStore } from '@/store'
 import Icon403 from '@/icons/403.vue'
 import { t } from '@/locales'
-
 interface Props {
   visible: boolean
 }
@@ -155,23 +154,23 @@ async function handleForgotPassword() {
       <div class="space-y-4">
         <header class="space-y-2">
           <!-- <p class="text-base text-center text-slate-500 dark:text-slate-500">
-            {{ $t('common.unauthorizedTips') }}
+            {{ t('common.unauthorizedTips') }}
           </p> -->
           <Icon403 class="w-[200px] m-auto" />
         </header>
 
         <NTabs v-model:value="activeTab" default-value="login" type="line">
-          <NTabPane name="login" :tab="$t('common.login')">
+          <NTabPane name="login" :tab="t('common.login')">
             <NSpace vertical>
               <NInput v-model:value="email" type="text" :placeholder="t('common.email')" :input-props="{ autocomplete: 'on' }" />
               <NInput
                 v-model:value="password" type="password" show-password-on="click"
-                :placeholder="$t('common.password')" @keypress="handlePress"
+                :placeholder="t('common.password')" @keypress="handlePress"
               />
               <NSpace :wrap-item="false">
                 <NInput
                   v-if="loginCaptchaId" v-model:value="loginCaptchaCode" style="flex:1;height:40px;"
-                  :placeholder="$t('common.captcha')"
+                  :placeholder="t('common.captcha')"
                 />
                 <NImage
                   v-if="loginCaptchaId"
@@ -181,30 +180,30 @@ async function handleForgotPassword() {
               </NSpace>
               <NSpace justify="space-between">
                 <NButton type="primary" size="medium" :disabled="disabled" :loading="loading" @click="handleLogin">
-                  {{ $t('common.login') }}
+                  {{ t('common.login') }}
                 </NButton>
                 <NButton text type="primary" @click="activeTab = 'forgotPassword'">
-                  {{ $t('common.forgotPassword') }}
+                  {{ t('common.forgotPassword') }}
                 </NButton>
               </NSpace>
             </NSpace>
           </NTabPane>
 
-          <NTabPane name="register" :tab="$t('common.register')">
+          <NTabPane name="register" :tab="t('common.register')">
             <NSpace vertical>
               <NInput v-model:value="email" type="text" size="large" :placeholder="t('common.email')" />
               <NInput
                 v-model:value="password" type="password" size="large" show-password-on="click"
-                :placeholder="$t('common.password')"
+                :placeholder="t('common.password')"
               />
               <NInput
                 v-model:value="confirmPassword" type="password" size="large" show-password-on="click"
-                :placeholder="$t('common.confirmPassword')" :status="confirmPasswordStatus"
+                :placeholder="t('common.confirmPassword')" :status="confirmPasswordStatus"
               />
               <NSpace :wrap-item="false">
                 <NInput
                   v-if="registerCaptchaId" v-model:value="registerCaptchaCode" size="large"
-                  style="flex:1;height:40px;" :placeholder="$t('common.captcha')"
+                  style="flex:1;height:40px;" :placeholder="t('common.captcha')"
                 />
                 <NImage
                   v-if="registerCaptchaId" object-fit="fill"
@@ -224,7 +223,7 @@ async function handleForgotPassword() {
                 type="primary" size="medium" :disabled="disabled || password !== confirmPassword"
                 :loading="loading" @click="handleRegister"
               >
-                {{ $t('common.register') }}
+                {{ t('common.register') }}
               </NButton>
             </NSpace>
           </NTabPane>
@@ -239,7 +238,7 @@ async function handleForgotPassword() {
                 </template>
               </NTag>
               <NButton type="primary" :disabled="email.length <= 0" :loading="loading" @click="handleForgotPassword">
-                {{ $t('common.resetPassword') }}
+                {{ t('common.resetPassword') }}
               </NButton>
             </NSpace>
           </NTabPane>

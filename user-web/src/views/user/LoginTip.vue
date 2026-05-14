@@ -3,6 +3,7 @@ import { NButton, NIcon } from 'naive-ui'
 import { Cat } from '@vicons/fa'
 import { useAuthStore } from '@/store'
 import { t } from '@/locales'
+
 const authStore = useAuthStore()
 </script>
 

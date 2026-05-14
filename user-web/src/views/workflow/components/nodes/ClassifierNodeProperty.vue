@@ -6,7 +6,6 @@ import NodeSelector from '../NodeSelector.vue'
 import WfLLMSelector from '../WfLLMSelector.vue'
 import { createNewEdge, deleteEdgesBySourceHandle, updateEdgeBySourceHandle } from '@/utils/workflow-util'
 import { t } from '@/locales'
-
 interface Props {
   workflow: Workflow.WorkflowInfo
   uiWorkflow: Workflow.UIWorkflow

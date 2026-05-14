@@ -2,12 +2,21 @@
 
 > **[🇨🇳 中文文档](README.zh-CN.md)** | English
 
-### 1. Install PostgreSQL Extensions
+### 1. Install PostgreSQL
+
+For Ubuntu users, it's recommended to add the PGDG repository first (see [postgresql.org/download/linux/ubuntu](https://www.postgresql.org/download/linux/ubuntu/)), then install PostgreSQL along with the required extensions in one command:
+
+```bash
+sudo apt install -y \
+  postgresql-16 \
+  postgresql-16-pgvector \
+  postgresql-16-age
+```
 
 > **Note**: Install extensions as needed. If you use neo4j to replace an extension, you don't need to install that extension.
-
-* pgvector: https://github.com/pgvector/pgvector (vector database, can be replaced by neo4j)
-* Apache AGE: https://github.com/apache/age (graph database, can be replaced by neo4j)
+>
+> * pgvector: https://github.com/pgvector/pgvector (vector database, can be replaced by neo4j)
+> * Apache AGE: https://github.com/apache/age (graph database, can be replaced by neo4j)
 
 ### 2. Enable Extensions
 

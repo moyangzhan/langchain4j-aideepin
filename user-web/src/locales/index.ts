@@ -7,9 +7,9 @@ import type { Language } from '@/store/modules/app/helper'
 const defaultLocale = 'zh-CN'
 
 const i18n = createI18n({
+  legacy: false,
   locale: defaultLocale,
   fallbackLocale: 'en-US',
-  allowComposition: true,
   messages: {
     'en-US': enUS,
     'zh-CN': zhCN,
@@ -19,7 +19,7 @@ const i18n = createI18n({
 export const t = i18n.global.t
 
 export function setLocale(locale: Language) {
-  i18n.global.locale = locale
+  i18n.global.locale.value = locale
 }
 
 export function setupI18n(app: App) {

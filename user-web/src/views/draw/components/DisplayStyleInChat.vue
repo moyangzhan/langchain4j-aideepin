@@ -12,7 +12,6 @@ import { useBasicLayout } from '@/hooks/useBasicLayout'
 import { calcImageUrls, emptyDraw } from '@/utils/functions'
 import { t } from '@/locales'
 import api from '@/api'
-
 const emit = defineEmits<Emit>()
 const { scrollRef, scrollToBottom, scrollTo } = useScroll()
 const { isMobile } = useBasicLayout()

@@ -13,7 +13,6 @@ import { t } from '@/locales'
 import { useAuthStore } from '@/store'
 import NoPic from '@/assets/no_pic.png'
 import { getRealFileUrl } from '@/utils/functions'
-
 const props = withDefaults(defineProps<Props>(), {
   showAvatar: true,
 })

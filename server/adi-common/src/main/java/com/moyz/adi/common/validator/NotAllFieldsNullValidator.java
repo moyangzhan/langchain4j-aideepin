@@ -20,6 +20,7 @@ public class NotAllFieldsNullValidator implements
         Field[] fields = UserUpdateReq.class.getDeclaredFields();
         try {
             for (Field field : fields) {
+                field.setAccessible(true);
                 Object object = field.get(value);
                 if (object instanceof String) {
                     return StringUtils.isNotBlank((String) object);

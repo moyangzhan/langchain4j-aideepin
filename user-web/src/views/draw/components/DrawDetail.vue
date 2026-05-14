@@ -10,7 +10,6 @@ import NoPic from '@/assets/no_pic.png'
 import { calcImageUrls, emptyDraw } from '@/utils/functions'
 import api from '@/api'
 import { t } from '@/locales'
-
 const props = withDefaults(defineProps<Props>(), {
   drawUuid: '',
   fromPageType: '',

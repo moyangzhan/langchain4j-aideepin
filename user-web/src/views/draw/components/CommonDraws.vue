@@ -10,7 +10,6 @@ import LoginTip from '@/views/user/LoginTip.vue'
 import NoPic from '@/assets/no_pic.png'
 import { emptyDraw, getRealFileUrl } from '@/utils/functions'
 import { t } from '@/locales'
-
 const props = withDefaults(defineProps<Props>(), {
   draws: () => [],
   delBtnEnable: true,

@@ -2,12 +2,21 @@
 
 > 中文文档 | **[🇬🇧 English](README.md)**
 
-### 1. 安装 PostgreSQL 扩展
+### 1. 安装 PostgreSQL
+
+Ubuntu 用户建议先添加 PGDG 源（参考 [postgresql.org/download/linux/ubuntu](https://www.postgresql.org/download/linux/ubuntu/)），然后一键安装 PostgreSQL 及所需扩展：
+
+```bash
+sudo apt install -y \
+  postgresql-16 \
+  postgresql-16-pgvector \
+  postgresql-16-age
+```
 
 > **注意**：扩展按需安装。如果使用 neo4j 替代某个扩展，则该扩展无需安装。
-
-* pgvector：https://github.com/pgvector/pgvector（向量数据库，可用 neo4j 替代）
-* Apache AGE：https://github.com/apache/age（图数据库，可用 neo4j 替代）
+>
+> * pgvector：https://github.com/pgvector/pgvector（向量数据库，可用 neo4j 替代）
+> * Apache AGE：https://github.com/apache/age（图数据库，可用 neo4j 替代）
 
 ### 2. 启用扩展
 

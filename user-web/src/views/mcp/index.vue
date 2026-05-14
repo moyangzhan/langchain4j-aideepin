@@ -10,6 +10,7 @@ import McpInfoList from './McpInfoList.vue'
 import UserMcpList from './UserMcpList.vue'
 import { t } from '@/locales'
 import { useAuthStore, useMcpStore } from '@/store'
+
 import { emptyMcp, emptyUserMcp } from '@/utils/functions'
 import api from '@/api'
 

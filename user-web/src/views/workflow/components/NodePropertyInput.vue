@@ -7,7 +7,6 @@ import WfVariableSelector from './WfVariableSelector.vue'
 import { SvgIcon } from '@/components/common'
 import { useWfStore } from '@/store'
 import { t } from '@/locales'
-
 interface Props {
   workflow: Workflow.WorkflowInfo
   wfNode: Workflow.WorkflowNode

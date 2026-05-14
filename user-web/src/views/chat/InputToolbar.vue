@@ -9,7 +9,6 @@ import { defaultConv } from '@/store/modules/chat/helper'
 import { router } from '@/router'
 import { t } from '@/locales'
 import api from '@/api'
-
 const emit = defineEmits<Emit>()
 const allowedImageTypes = ['image/png', 'image/jpeg']
 interface Emit {
@@ -275,8 +274,8 @@ watch(isDeepSeekThinking, async (newVal) => {
               <SvgIcon icon="ri:chat-history-line" />
             </span>
           </template>
-          <span> {{ currConv.understandContextEnable ? $t('chat.understandContextEnable')
-            : $t('chat.understandContextDisable') }} </span>
+          <span> {{ currConv.understandContextEnable ? t('chat.understandContextEnable')
+            : t('chat.understandContextDisable') }} </span>
         </NPopover>
       </div>
       <div class="rounded border hover:border-green-600 hover:text-green-600 cursor-pointer pt-2 px-2">

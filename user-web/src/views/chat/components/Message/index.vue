@@ -15,7 +15,6 @@ import { useAuthStore } from '@/store'
 import { getRealFileUrl } from '@/utils/functions'
 
 import NoPic from '@/assets/no_pic.png'
-
 const props = withDefaults(defineProps<Props>(), {
   showAvatar: true,
 })

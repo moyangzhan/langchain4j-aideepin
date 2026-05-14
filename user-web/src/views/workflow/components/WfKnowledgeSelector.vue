@@ -8,7 +8,6 @@ import { debounce } from '@/utils/functions/debounce'
 import { useAuthStore, useUserStore } from '@/store'
 import api from '@/api'
 import { t } from '@/locales'
-
 interface Props {
   knowledgeBaseUuid: string
 }

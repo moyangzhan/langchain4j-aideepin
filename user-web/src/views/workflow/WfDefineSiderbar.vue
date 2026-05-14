@@ -30,9 +30,6 @@ function onDragStart(event: DragEvent, nodeType: string) {
             {{ t(`workflow.componentTitle.${component.name}`) }}
           </div>
         </div>
-        <!-- <div v-else>
-        {{ component.title }}
-      </div> -->
       </template>
     </div>
   </aside>

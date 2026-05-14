@@ -9,7 +9,6 @@ import { useIconRender } from '@/hooks/useIconRender'
 import { useAuthStore } from '@/store'
 import { getRealFileUrl } from '@/utils/functions'
 import { t } from '@/locales'
-
 interface Props {
   wfRuntime: Workflow.WorkflowRuntime
   ioObject: any

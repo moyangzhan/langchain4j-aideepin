@@ -7,7 +7,6 @@ import { useBasicLayout } from '@/hooks/useBasicLayout'
 import { debounce } from '@/utils/functions/debounce'
 import { t } from '@/locales'
 import api from '@/api'
-
 interface Emit {
   (e: 'submit', prompt: string): void
 }

@@ -6,7 +6,7 @@ import { useWfStore } from '@/store'
 import { SvgIcon } from '@/components/common'
 import { useScroll } from '@/views/chat/hooks/useScroll'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
-
+import { t } from '@/locales'
 const props = defineProps<Props>()
 const wfStore = useWfStore()
 const { scrollRef, scrollTo, scrollToTop } = useScroll()
@@ -58,7 +58,7 @@ onUnmounted(() => {
     <template v-if="!list.length">
       <div class="flex flex-col items-center mt-4 text-center text-neutral-300">
         <SvgIcon icon="ri:inbox-line" class="mb-2 text-3xl" />
-        <span>{{ $t('common.noData') }}</span>
+        <span>{{ t('common.noData') }}</span>
       </div>
     </template>
     <template v-else>

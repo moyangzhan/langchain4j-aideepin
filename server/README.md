@@ -15,17 +15,15 @@ This directory contains the backend service. For project overview, see the [root
   - [Apache AGE](https://github.com/apache/age) extension (graph database)
 - [neo4j](https://neo4j.com/deployment-center/) (alternative to pgvector + Apache AGE)
 
-## How to Deploy
+## Local Development
 
-### Initialization
-
-**a. Initialize the database**
+### Initialize the Database
 
 1. Create the database `aideepin`
 2. Execute `db_migration/all_ddl.sql` to create tables
 3. Execute `db_migration/all_dml.sql` to insert base data
 4. Execute `db_migration/all_dml_en.sql` (English) or `db_migration/all_dml_cn.sql` (Chinese) to insert display data
-5. Enable and configure the model platform (also referred to as model provider) or use the [admin web](../admin-web/README.md) to configure via the interface
+5. Enable and configure at least one model platform (see the table in the [root README](../README.md)), or use the [admin web](../admin-web/README.md) to configure via the interface
 
 Configure model platforms:
 
@@ -51,7 +49,7 @@ Enable models or add new models:
 ```sql
 -- Enable models
 UPDATE adi_ai_model SET is_enable = true WHERE name = 'deepseek-v4-flash';
-UPDATE adi_ai_model SET is_enable = true WHERE name = 'gpt-3.5-turbo';
+UPDATE adi_ai_model SET is_enable = true WHERE name = 'gpt-5-mini';
 UPDATE adi_ai_model SET is_enable = true WHERE name = 'gpt-image-2';
 UPDATE adi_ai_model SET is_enable = true WHERE name = 'qwen-turbo';
 UPDATE adi_ai_model SET is_enable = true WHERE name = 'THUDM/GLM-Z1-9B-0414';
@@ -61,13 +59,13 @@ UPDATE adi_ai_model SET is_enable = true WHERE name = 'tinydolphin';
 INSERT INTO adi_ai_model (name, type, platform, is_enable) VALUES ('vicuna', 'text', 'ollama', true);
 ```
 
-Configure search engine (required for workflow Google search node):
+Configure search engine (optional, required for workflow Google search node):
 
 ```sql
 UPDATE adi_sys_config SET value = '{"url":"https://www.googleapis.com/customsearch/v1","key":"my_google_api_key","cx":"my_cx"}' WHERE name = 'google_setting';
 ```
 
-**b. Modify the configuration file**
+### Configuration
 
 Copy the example config and rename it:
 
@@ -77,11 +75,11 @@ cp adi-bootstrap/src/main/resources/application-dev.yml.example adi-bootstrap/sr
 
 Then modify the following entries:
 
-- PostgreSQL: `application-[dev|prod].yml` → `spring.datasource`
-- Redis: `application-[dev|prod].yml` → `spring.data.redis`
+- PostgreSQL: `application-dev.yml` → `spring.datasource`
+- Redis: `application-dev.yml` → `spring.data.redis`
 - Mail: `application.yml` → `spring.mail`
-- Vector database (default pgvector): `application-[dev|prod].yml` → `adi.vector-database=[pgvector|neo4j]`
-- Graph database (default Apache AGE): `application-[dev|prod].yml` → `adi.graph-database=[apache-age|neo4j]`
+- Vector database (default pgvector): `application-dev.yml` → `adi.vector-database=[pgvector|neo4j]`
+- Graph database (default Apache AGE): `application-dev.yml` → `adi.graph-database=[apache-age|neo4j]`
 
 ### Build and Run
 
@@ -90,24 +88,52 @@ cd server
 mvn clean package -Dmaven.test.skip=true
 ```
 
-Start with JAR:
+Run locally (development mode):
+
+```bash
+cd adi-bootstrap
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+Or run the JAR directly:
+
+```bash
+cd adi-bootstrap/target
+java -jar adi-bootstrap-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev
+```
+
+## Production Deployment
+
+### Initialize the Database
+
+Same as the [development environment](#initialize-the-database).
+
+### Configuration
+
+Configuration entries are the same as the [development environment](#configuration), using `application-prod.yml`.
+
+### Deployment
+
+#### Option A: JAR
+
+Build:
+
+```bash
+cd server
+mvn clean package -Dmaven.test.skip=true
+```
+
+Run:
 
 ```bash
 cd adi-bootstrap/target
 nohup java -jar -Xms768m -Xmx1024m -XX:+HeapDumpOnOutOfMemoryError \
-  adi-bootstrap-0.0.1-SNAPSHOT.jar --spring.profiles.active=[dev|prod] \
+  adi-bootstrap-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod \
   /dev/null 2>&1 &
 ```
 
-Start with Docker (backend only, for all services use [docker/](../docker/README.md)):
+#### Option B: Docker
 
-```bash
-cd server
-docker build . -t aideepin-api:0.0.1
-docker run -d \
-  --name=aideepin-api \
-  -p 8888:9999 \
-  -e APP_PROFILE=[dev|prod] \
-  -v="/data/aideepin/logs:/data/logs" \
-  aideepin-api:0.0.1
-```
+Backend service + Redis only: see [server/docker/README.md](docker/README.md).
+
+All services (including frontends): see [docker/README.md](../docker/README.md).

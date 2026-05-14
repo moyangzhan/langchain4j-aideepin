@@ -4,7 +4,6 @@ import JsonEditorVue from 'json-editor-vue'
 import NodePropertyInput from '../NodePropertyInput.vue'
 import { SvgIcon } from '@/components/common'
 import { t } from '@/locales'
-
 const props = defineProps<Props>()
 enum Mode {
   text = 'text',
