@@ -58,7 +58,7 @@ If you find LangChain4j-AIDeepin useful, please consider:
 **Contributors**
 
 <a href="https://github.com/moyangzhan/langchain4j-aideepin/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=moyangzhan/langchain4j-aideepin" width="50%" />
+  <img src="https://contrib.rocks/image?repo=moyangzhan/langchain4j-aideepin" width="25%" />
 </a>
 
 <br/>
@@ -66,7 +66,7 @@ If you find LangChain4j-AIDeepin useful, please consider:
 **Infrastructure Sponsor:**
 
 <a href="https://www.digitalocean.com/">
-  <img src="https://opensource.nyc3.cdn.digitaloceanspaces.com/attribution/assets/SVG/DO_Logo_horizontal_blue.svg" width="201px">
+  <img src="https://opensource.nyc3.cdn.digitaloceanspaces.com/attribution/assets/SVG/DO_Logo_horizontal_blue.svg" width="150px">
 </a>
 
 ## Recommended Projects
