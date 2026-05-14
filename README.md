@@ -16,6 +16,8 @@ Demo: [http://www.aideepin.com](http://www.aideepin.com/)
 | admin-web/ | Admin dashboard ([Vue 3](https://github.com/vuejs/core) + [Naive UI](https://github.com/tusen-ai/naive-ui)) | [README](admin-web/README.md) |
 | user-web/ | User-facing web app ([Vue 3](https://github.com/vuejs/core) + [Naive UI](https://github.com/tusen-ai/naive-ui)) | [README](user-web/README.md) |
 
+See [docker/README.md](docker/README.md) or each sub-project's README for detailed **deployment** instructions.
+
 ## Features
 
 | Feature | Description |
@@ -39,8 +41,6 @@ Demo: [http://www.aideepin.com](http://www.aideepin.com/)
 | Ollama         |  ✓   |                  |                   |                |                    |
 | DeepSeek       |  ✓   |                  |                   |                |                    |
 
-For detailed deployment instructions, see [docker/README.md](docker/README.md) or each sub-project's README.
-
 ## Screenshots
 
 <table>
@@ -53,7 +53,7 @@ For detailed deployment instructions, see [docker/README.md](docker/README.md) o
     <td align="center">Image Generation</td>
   </tr>
   <tr>
-    <td><img src="docs/image/README/kbidx.png" alt="Knowledge Base" /></td>
+    <td><img src="docs/image/README/kb_graph_02.png" alt="Knowledge Base" /></td>
     <td><img src="docs/image/README/workflow.png" alt="Workflow" /></td>
   </tr>
   <tr>
@@ -61,10 +61,6 @@ For detailed deployment instructions, see [docker/README.md](docker/README.md) o
     <td align="center">Workflow</td>
   </tr>
 </table>
-
-## Contributing Guidelines
-
-See [Contributing Guidelines](CONTRIBUTING.md) for details.
 
 ## ⭐ Support the Project
 

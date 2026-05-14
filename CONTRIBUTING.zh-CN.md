@@ -1,5 +1,7 @@
 # 贡献指南
 
+> 中文版 | **[🇬🇧 English](CONTRIBUTING.md)**
+
 感谢你对 LangChain4j-AIDeepin 的关注！欢迎以任何形式参与贡献。
 
 ## 如何贡献

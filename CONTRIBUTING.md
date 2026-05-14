@@ -1,5 +1,7 @@
 # Contributing Guidelines
 
+> **[🇨🇳 中文版](CONTRIBUTING.zh-CN.md)** | English
+
 Thank you for your interest in LangChain4j-AIDeepin! We welcome all forms of contribution.
 
 ## How to Contribute

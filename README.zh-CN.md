@@ -16,6 +16,8 @@
 | admin-web/ | 管理端 WEB（[Vue 3](https://github.com/vuejs/core) + [Naive UI](https://github.com/tusen-ai/naive-ui)） | [README](admin-web/README.zh-CN.md) |
 | user-web/ | 用户端 WEB（[Vue 3](https://github.com/vuejs/core) + [Naive UI](https://github.com/tusen-ai/naive-ui)） | [README](user-web/README.md) |
 
+**部署**说明详见 [docker/README.zh-CN.md](docker/README.zh-CN.md) 或各子项目的 README。
+
 ## 功能点
 
 | 功能 | 说明 |
@@ -39,8 +41,6 @@
 | Ollama   |  ✓   |       |         |         |         |
 | DeepSeek |  ✓   |       |         |         |         |
 
-详细部署说明请查看 [docker/README.zh-CN.md](docker/README.zh-CN.md) 或各子项目的 README。
-
 ## 截图
 
 <table>
@@ -53,7 +53,7 @@
     <td align="center">AI 画图</td>
   </tr>
   <tr>
-    <td><img src="docs/image/README/kb03.png" alt="知识库" /></td>
+    <td><img src="docs/image/README/kb_graph_02.png" alt="知识库" /></td>
    <td><img src="docs/image/README/workflow.png" alt="工作流" /></td>
   </tr>
   <tr>
