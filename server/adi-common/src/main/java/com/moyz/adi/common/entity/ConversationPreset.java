@@ -12,4 +12,6 @@ public class ConversationPreset extends BaseEntity {
     private String title;
     private String remark;
     private String aiSystemMessage;
+    private String kbTitle;
+    private String type;
 }

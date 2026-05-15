@@ -45,6 +45,14 @@
             show-count
           />
         </n-form-item>
+        <n-form-item :label="t('conversation.presetType')" path="type">
+          <n-select
+            :placeholder="t('conversation.presetTypePlaceholder')"
+            v-model:value="editFormParams.type"
+            :options="presetTypeOptions"
+            clearable
+          />
+        </n-form-item>
         <n-form-item :label="t('common.description')" path="remark">
           <n-input
             type="textarea"
@@ -59,6 +67,13 @@
             :autosize="{ minRows: 3, maxRows: 10 }"
             :placeholder="t('conversation.aiSystemMessagePlaceholder')"
             v-model:value="editFormParams.aiSystemMessage"
+          />
+        </n-form-item>
+        <n-form-item :label="t('conversation.kbTitle')" path="kbTitle">
+          <n-input
+            :placeholder="t('conversation.kbTitlePlaceholder')"
+            v-model:value="editFormParams.kbTitle"
+            maxlength="100"
           />
         </n-form-item>
       </n-form>
@@ -134,6 +149,19 @@
 
   const dialog = useDialog()
   const formRef: any = ref(null)
+
+  const presetTypeOptions = [
+    { label: () => t('conversation.presetTypeTechnology'), value: 'technology' },
+    { label: () => t('conversation.presetTypeCreative'), value: 'creative' },
+    { label: () => t('conversation.presetTypeEducation'), value: 'education' },
+    { label: () => t('conversation.presetTypeBusiness'), value: 'business' },
+    { label: () => t('conversation.presetTypeProfessional'), value: 'professional' },
+    { label: () => t('conversation.presetTypeDesign'), value: 'design' },
+    { label: () => t('conversation.presetTypeMarketing'), value: 'marketing' },
+    { label: () => t('conversation.presetTypeService'), value: 'service' },
+    { label: () => t('conversation.presetTypeAdministration'), value: 'administration' },
+    { label: () => t('conversation.presetTypeUtility'), value: 'utility' },
+  ]
   const actionRef = ref()
 
   const showEditModal = ref(false)
@@ -144,6 +172,8 @@
     title: '',
     remark: '',
     aiSystemMessage: '',
+    kbTitle: '',
+    type: '',
   })
 
   const actionColumn = reactive({
@@ -201,6 +231,8 @@
     editFormParams.title = ''
     editFormParams.remark = ''
     editFormParams.aiSystemMessage = ''
+    editFormParams.kbTitle = ''
+    editFormParams.type = ''
   }
 
   const loadDataTable = async (res) => {

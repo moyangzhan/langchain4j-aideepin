@@ -221,6 +221,8 @@ CREATE TABLE adi_conversation_preset
     title             varchar(45)   default ''                not null,
     remark            varchar(1000) default ''                not null,
     ai_system_message varchar(1000) default ''                not null,
+    kb_title          varchar(100)  default ''                not null,
+    type              varchar(45)   default ''                not null,
     create_time       timestamp     default CURRENT_TIMESTAMP not null,
     update_time       timestamp     default CURRENT_TIMESTAMP not null,
     is_deleted        boolean       default false             not null
@@ -229,6 +231,8 @@ COMMENT ON TABLE adi_conversation_preset IS '预设会话(角色)表 | Preset co
 COMMENT ON COLUMN adi_conversation_preset.title IS '标题 | Title';
 COMMENT ON COLUMN adi_conversation_preset.remark IS '描述 | Description';
 COMMENT ON COLUMN adi_conversation_preset.ai_system_message IS '提供给LLM的系统信息 | System message for LLM';
+COMMENT ON COLUMN adi_conversation_preset.kb_title IS '自动创建的知识库名称,为空则不创建 | Knowledge base title to auto-create, empty means no creation';
+COMMENT ON COLUMN adi_conversation_preset.type IS '角色类型(technology/creative/education/business/professional/design/marketing/service/administration/utility) | Role type category';
 
 create trigger trigger_conversation_preset
     before update

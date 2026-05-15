@@ -14,4 +14,6 @@ public class ConvPresetEditReq {
     private String remark;
     @NotBlank
     private String aiSystemMessage;
+    private String kbTitle;
+    private String type;
 }

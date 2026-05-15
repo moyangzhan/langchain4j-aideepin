@@ -34,6 +34,8 @@ public class ConversationPresetService extends ServiceImpl<ConversationPresetMap
         newOne.setTitle(presetAddReq.getTitle());
         newOne.setRemark(presetAddReq.getRemark());
         newOne.setAiSystemMessage(presetAddReq.getAiSystemMessage());
+        newOne.setKbTitle(presetAddReq.getKbTitle());
+        newOne.setType(presetAddReq.getType());
         this.save(newOne);
         return newOne;
     }
@@ -50,6 +52,8 @@ public class ConversationPresetService extends ServiceImpl<ConversationPresetMap
                 .set(ConversationPreset::getTitle, editReq.getTitle())
                 .set(ConversationPreset::getRemark, editReq.getRemark())
                 .set(ConversationPreset::getAiSystemMessage, editReq.getAiSystemMessage())
+                .set(ConversationPreset::getKbTitle, editReq.getKbTitle())
+                .set(ConversationPreset::getType, editReq.getType())
                 .update();
     }
 

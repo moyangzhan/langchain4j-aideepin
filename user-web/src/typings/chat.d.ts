@@ -32,6 +32,8 @@ declare namespace Chat {
 		title: string
 		remark: string
 		aiSystemMessage: string
+		kbTitle: string
+		type: string
 
 		used: boolean
 	}

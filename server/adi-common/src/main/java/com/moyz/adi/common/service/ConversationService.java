@@ -282,6 +282,7 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
      *
      * @param presetConvUuid 预设会话uuid
      */
+    @Transactional
     public ConvDto addByPresetConv(String presetConvUuid) {
         ConversationPreset presetConv = this.conversationPresetService.lambdaQuery()
                 .eq(ConversationPreset::getUuid, presetConvUuid)
@@ -298,10 +299,21 @@ public class ConversationService extends ServiceImpl<ConversationMapper, Convers
             Conversation conv = this.getById(presetRel.getUserConvId());
             return MPPageUtil.convertTo(conv, ConvDto.class);
         }
+
+        List<Long> kbIds = Collections.emptyList();
+        if (StringUtils.isNotBlank(presetConv.getKbTitle())) {
+            KbEditReq kbEditReq = new KbEditReq();
+            kbEditReq.setTitle(presetConv.getKbTitle());
+            kbEditReq.setRemark(presetConv.getTitle() + " - " + presetConv.getKbTitle());
+            KnowledgeBase kb = knowledgeBaseService.saveOrUpdate(kbEditReq);
+            kbIds = List.of(kb.getId());
+        }
+
         ConvAddReq convAddReq = ConvAddReq.builder()
                 .title(presetConv.getTitle())
                 .remark(presetConv.getRemark())
                 .aiSystemMessage(presetConv.getAiSystemMessage())
+                .kbIds(kbIds)
                 .build();
         ConvDto convDto = self.add(convAddReq);
         conversationPresetRelService.save(

@@ -1,11 +1,31 @@
 <script setup lang='ts'>
-import { onMounted, ref, watch } from 'vue'
-import { NButton, NList, NListItem, NModal, NScrollbar, NTabPane, NTabs, NThing, useMessage } from 'naive-ui'
+import { computed, onMounted, ref, watch } from 'vue'
+import { NButton, NDivider, NList, NListItem, NModal, NScrollbar, NTabPane, NTabs, NThing, NTag, useMessage } from 'naive-ui'
 import { useAuthStore, useChatStore } from '@/store'
 import { emptyConv } from '@/utils/functions'
 import EditConvDetail from '@/views/chat/components/Header/EditConvDetail.vue'
 import api from '@/api'
 import { t } from '@/locales'
+
+const typeOrder = [
+  'technology', 'creative', 'education', 'business', 'professional',
+  'design', 'marketing', 'service', 'administration', 'utility', 'other',
+]
+
+const typeLabelMap = computed<Record<string, string>>(() => ({
+  technology: t('chat.presetTypeTechnology'),
+  creative: t('chat.presetTypeCreative'),
+  education: t('chat.presetTypeEducation'),
+  business: t('chat.presetTypeBusiness'),
+  professional: t('chat.presetTypeProfessional'),
+  design: t('chat.presetTypeDesign'),
+  marketing: t('chat.presetTypeMarketing'),
+  service: t('chat.presetTypeService'),
+  administration: t('chat.presetTypeAdministration'),
+  utility: t('chat.presetTypeUtility'),
+  other: t('chat.presetTypeOther'),
+}))
+
 const authStore = useAuthStore()
 const authStoreRef = ref<AuthState>(authStore)
 const convSaving = ref<boolean>(false)
@@ -15,6 +35,22 @@ const tmpConv = ref<Chat.Conversation>(emptyConv())
 const showModal = ref<boolean>(false)
 const chatStore = useChatStore()
 const ms = useMessage()
+
+const groupedPresets = computed(() => {
+  const groups: Record<string, Chat.ConversationPreset[]> = {}
+  for (const preset of chatStore.presetConvs) {
+    const type = preset.type || 'other'
+    if (!groups[type])
+      groups[type] = []
+    groups[type].push(preset)
+  }
+  const ordered: [string, Chat.ConversationPreset[]][] = []
+  for (const type of typeOrder) {
+    if (groups[type])
+      ordered.push([type, groups[type]])
+  }
+  return ordered
+})
 
 async function searchPresetConvs() {
   if (loadingPresetConvs.value)
@@ -103,25 +139,33 @@ defineExpose({ toggleModal })
       </NTabPane>
       <NTabPane name="presetConv" :tab="t('chat.presetRole')">
         <NScrollbar class="max-h-96">
-          <NList hoverable bordered>
-            <NListItem v-for="presetConv in chatStore.presetConvs" :key="presetConv.id">
-              <NThing :title="presetConv.title" content-style="margin-top: 10px;">
-                {{ presetConv.remark }}
-              </NThing>
-              <template #suffix>
-                <template v-if="presetConv.used">
-                  <NButton size="small" disabled>
-                    {{ t('chat.used') }}
-                  </NButton>
+          <template v-for="[type, presets] in groupedPresets" :key="type">
+            <NDivider title-placement="left" style="margin: 8px 0 4px;">
+              {{ typeLabelMap[type] || type }}
+            </NDivider>
+            <NList hoverable bordered>
+              <NListItem v-for="presetConv in presets" :key="presetConv.id">
+                <NThing :title="presetConv.title" content-style="margin-top: 6px;">
+                  {{ presetConv.remark }}
+                  <NTag v-if="presetConv.kbTitle" size="small" type="info" style="margin-left: 6px;">
+                    {{ t('chat.kbAttached') }}
+                  </NTag>
+                </NThing>
+                <template #suffix>
+                  <template v-if="presetConv.used">
+                    <NButton size="small" disabled>
+                      {{ t('chat.used') }}
+                    </NButton>
+                  </template>
+                  <template v-else>
+                    <NButton size="small" @click="handleUsePresetConv(presetConv.uuid)">
+                      {{ t('chat.use') }}
+                    </NButton>
+                  </template>
                 </template>
-                <template v-else>
-                  <NButton size="small" @click="handleUsePresetConv(presetConv.uuid)">
-                    {{ t('chat.use') }}
-                  </NButton>
-                </template>
-              </template>
-            </NListItem>
-          </NList>
+              </NListItem>
+            </NList>
+          </template>
         </NScrollbar>
       </NTabPane>
     </NTabs>

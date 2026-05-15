@@ -14,6 +14,9 @@ export interface ConversationPreset {
   uuid: string
   title: string
   remark: string
+  aiSystemMessage: string
+  kbTitle: string
+  type: string
   createTime: string
   updateTime: string
 }
