@@ -17,11 +17,23 @@ cd docker
 
 # 方式一：修改 .env 后直接启动（默认读取 .env；如需生产配置可指定 .env.prod）
 # ⚠️ 必须修改：ADI_DB_HOST、ADI_DB_USERNAME、ADI_DB_PASSWORD、ADI_MAIL_HOST、ADI_MAIL_USERNAME、ADI_MAIL_PASSWORD、ADI_ENCRYPT_AES_KEY
-docker compose up -d --build
-# docker compose --env-file .env.prod up -d --build
+
+# 内存 ≥ 8G 的服务器，可直接并行构建：
+# docker compose up -d --build
+
+# 内存 < 8G 的服务器，建议顺序构建以避免 OOM：
+docker compose build aideepin-admin-web aideepin-user-web
+docker compose build aideepin-api
+docker compose up -d
 
 # 方式二：通过命令行传入环境变量（优先级高于 --env-file）
+# 内存 ≥ 8G 的服务器：
 TZ=Asia/Shanghai ADI_DB_HOST=192.168.1.100 ADI_DB_PASSWORD=mypassword ADI_MAIL_HOST=smtp.example.com ADI_MAIL_USERNAME=user@example.com ADI_MAIL_PASSWORD=mypassword ADI_ENCRYPT_AES_KEY=PLEASE_REPLACE_ME docker compose --env-file .env.prod up -d --build
+
+# 内存 < 8G 的服务器：
+docker compose --env-file .env.prod build aideepin-admin-web aideepin-user-web
+docker compose --env-file .env.prod build aideepin-api
+TZ=Asia/Shanghai ADI_DB_PASSWORD=mypassword ADI_DB_USERNAME=postgres ADI_MAIL_PASSWORD=mypassword ADI_ENCRYPT_AES_KEY=PLEASE_REPLACE_ME docker compose --env-file .env.prod up -d
 
 # 查看日志
 docker compose logs -f

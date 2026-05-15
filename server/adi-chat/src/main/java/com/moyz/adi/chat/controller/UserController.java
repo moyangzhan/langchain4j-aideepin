@@ -33,6 +33,8 @@ import static com.moyz.adi.common.enums.ErrorEnum.B_IMAGE_LOAD_ERROR;
 @RequestMapping("/user")
 public class UserController {
 
+    private static final Object AVATAR_LOCK = new Object();
+
     @Resource
     private UserService userService;
 
@@ -71,12 +73,8 @@ public class UserController {
     @GetMapping(value = "/myAvatar", produces = MediaType.IMAGE_PNG_VALUE)
     public void myAvatar(HttpServletResponse response) {
         User user = ThreadContext.getCurrentUser();
-        Avatar avatar = CatAvatar.newAvatarBuilder().build();
-        BufferedImage bufferedImage = avatar.create(user.getId());
-//Write image to browser
-        //把图片写给浏览器
         try {
-            ImageIO.write(bufferedImage, "png", response.getOutputStream());
+            writeToResponse(user.getId(), 64, 64, response);
         } catch (IOException e) {
             log.error("load my avatar error", e);
             throw new BaseException(B_IMAGE_LOAD_ERROR);
@@ -101,8 +99,10 @@ public class UserController {
 
     private void writeToResponse(Long userId, Integer width, Integer height, HttpServletResponse response) throws IOException {
         response.setHeader("Cache-Control", "max-age=" + 3600 * 24 * 365);
-        Avatar avatar = CatAvatar.newAvatarBuilder().size(width, height).build();
-        BufferedImage bufferedImage = avatar.create(userId);
+        BufferedImage bufferedImage;
+        synchronized (AVATAR_LOCK) {
+            bufferedImage = CatAvatar.newAvatarBuilder().size(width, height).build().create(userId);
+        }
         ImageIO.write(bufferedImage, "png", response.getOutputStream());
     }
 }

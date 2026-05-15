@@ -140,7 +140,7 @@ public class DrawController {
 
     @Operation(summary = "公开的图片,可能带水印（根据水印设置决定） | Public Image, May Have Watermark (Based on Watermark Settings)")
     @GetMapping(value = "/public/image/{drawUuid}/{imageUuidWithExt}", produces = MediaType.IMAGE_PNG_VALUE)
-    public void publicImage(@Length(min = 32) @PathVariable String drawUuid, @Length(min = 32, max = 32) @PathVariable String imageUuidWithExt, HttpServletResponse response) {
+    public void publicImage(@Length(min = 32) @PathVariable String drawUuid, @Length(min = 32) @PathVariable String imageUuidWithExt, HttpServletResponse response) {
         DrawDto drawDto = drawService.getPublicOrMine(drawUuid);
         if (null == drawDto) {
             throw new BaseException(A_AI_IMAGE_NO_AUTH);

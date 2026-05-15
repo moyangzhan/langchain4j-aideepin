@@ -134,5 +134,13 @@
   "homepage": "https://github.com/jekip/naive-ui-admin",
   "engines": {
     "node": ">=16"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "core-js",
+      "esbuild",
+      "json-editor-vue",
+      "vue-demi"
+    ]
   }
 }

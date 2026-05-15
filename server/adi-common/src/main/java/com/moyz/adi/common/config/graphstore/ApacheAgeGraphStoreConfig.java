@@ -29,7 +29,7 @@ public class ApacheAgeGraphStoreConfig {
     @Bean(name = "kbGraphStore")
     @Primary
     public GraphStore initGraphStore() {
-        String regex = "jdbc:postgresql://([^:/]+):(\\d+)/(\\w+).+";
+        String regex = "jdbc:postgresql://([^:/]+):(\\d+)/(\\w+).*";
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(dataBaseUrl);
 

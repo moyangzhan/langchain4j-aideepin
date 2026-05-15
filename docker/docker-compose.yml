@@ -40,7 +40,7 @@ services:
       # ADI_NEO4J_PASSWORD: ${ADI_NEO4J_PASSWORD}
       # ADI_NEO4J_DATABASE: ${ADI_NEO4J_DATABASE}
     volumes:
-      - /data/aideepin/logs:/data/logs
+      - /data/aideepin:/data/aideepin
     depends_on:
       - redis
 

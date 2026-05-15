@@ -69,7 +69,7 @@ public class PgVectorEmbeddingStoreConfig {
 
     private EmbeddingStore<TextSegment> createEmbeddingStore(String tableName, int dimension) {
         // 正则表达式匹配
-        String regex = "jdbc:postgresql://([^:/]+):(\\d+)/(\\w+).+";
+        String regex = "jdbc:postgresql://([^:/]+):(\\d+)/(\\w+).*";
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(dataBaseUrl);
 

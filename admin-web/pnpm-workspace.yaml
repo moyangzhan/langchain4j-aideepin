@@ -1,0 +1,5 @@
+allowBuilds:
+  core-js: true
+  esbuild: true
+  json-editor-vue: true
+  vue-demi: true

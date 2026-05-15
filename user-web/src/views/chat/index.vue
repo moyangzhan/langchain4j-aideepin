@@ -652,7 +652,7 @@ onDeactivated(() => {
                 v-if="qaMessage.state && qaMessage.state.get('remark')"
                 class="my-2 text-sm bg-gray-200 px-2 py-1 rounded-md"
               >
-                {{ t(qaMessage.state.get('remark')!) }}
+                {{ qaMessage.state.get('remark')!.startsWith('state.') ? t(qaMessage.state.get('remark')!) : qaMessage.state.get('remark') }}
               </div>
             </div>
           </template>
