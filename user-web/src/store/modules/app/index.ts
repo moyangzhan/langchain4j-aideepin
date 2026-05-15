@@ -4,6 +4,18 @@ import { getLocalSetting, setLocalSetting } from './helper'
 import { AUDIO_SYNTHESIZER_SIDE } from '@/utils/constant'
 import { store } from '@/store'
 
+export function detectBrowserLocale(): Language | null {
+  const browserLangs = navigator.languages || [navigator.language]
+  for (const lang of browserLangs) {
+    const lower = lang.toLowerCase()
+    if (lower.startsWith('zh'))
+      return 'zh-CN'
+    if (lower.startsWith('en'))
+      return 'en-US'
+  }
+  return null
+}
+
 export const useAppStore = defineStore('app-store', {
 
   state: (): AppState => getLocalSetting(),

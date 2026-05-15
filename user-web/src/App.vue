@@ -12,6 +12,7 @@ import { useTheme } from '@/hooks/useTheme'
 import { useLanguage } from '@/hooks/useLanguage'
 import { t } from '@/locales'
 import { useAppStore, useAuthStore, useChatStore, useKbStore, useWfStore } from '@/store'
+import { detectBrowserLocale } from '@/store/modules/app'
 import Login from '@/views/user/Login.vue'
 import api from '@/api'
 
@@ -190,7 +191,10 @@ onMounted(async () => {
   appStore.setSearchEngines(engines.data)
   const sysConfig = await api.getSysConfig<SysConfigInfo>()
   appStore.setSysConfig(sysConfig.data)
-  appStore.initLocale(sysConfig.data.defaultLocale)
+  const locale = authStore.token
+    ? sysConfig.data.defaultLocale
+    : detectBrowserLocale() || sysConfig.data.defaultLocale
+  appStore.initLocale(locale)
 })
 </script>
 
