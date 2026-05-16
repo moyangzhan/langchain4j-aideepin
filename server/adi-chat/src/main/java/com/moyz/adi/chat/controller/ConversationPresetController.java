@@ -20,7 +20,7 @@ public class ConversationPresetController {
     @Resource
     private ConversationPresetService conversationPresetService;
 
-    @Operation(summary = "搜索预设会话(角色) | Search Preset Conversations (Roles)")
+    @Operation(summary = "搜索预设会话(角色) | Search Preset Conversations (Characters)")
     @PostMapping("/search")
     public Page<ConversationPreset> page(@RequestBody ConvPresetSearchReq searchReq, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
         return conversationPresetService.search(searchReq.getTitle(), currentPage, pageSize);

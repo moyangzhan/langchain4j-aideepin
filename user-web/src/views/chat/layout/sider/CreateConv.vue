@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import { computed, onMounted, ref, watch } from 'vue'
-import { NButton, NDivider, NList, NListItem, NModal, NScrollbar, NTabPane, NTabs, NThing, NTag, useMessage } from 'naive-ui'
+import { NButton, NDivider, NList, NListItem, NModal, NScrollbar, NTabPane, NTabs, NThing, NTag, NTooltip, useMessage } from 'naive-ui'
 import { useAuthStore, useChatStore } from '@/store'
 import { emptyConv } from '@/utils/functions'
 import EditConvDetail from '@/views/chat/components/Header/EditConvDetail.vue'
@@ -28,7 +28,7 @@ const typeLabelMap = computed<Record<string, string>>(() => ({
 
 const authStore = useAuthStore()
 const authStoreRef = ref<AuthState>(authStore)
-const convSaving = ref<boolean>(false)
+const savingUuids = ref<Set<string>>(new Set())
 const loadingPresetConvs = ref<boolean>(false)
 const loadingRels = ref<boolean>(false)
 const tmpConv = ref<Chat.Conversation>(emptyConv())
@@ -73,8 +73,8 @@ async function searchPresetConvRel() {
   loadingRels.value = true
   try {
     const { success, data: rels } = await api.listConvPresetRels<Chat.ConvToPresetRel[]>()
-    if (success && rels && rels.length > 0)
-      chatStore.setUsedPresetConv(rels)
+    if (success)
+      chatStore.setUsedPresetConv(rels || [])
   } finally {
     loadingRels.value = false
   }
@@ -84,14 +84,19 @@ function handleSubmitted() {
   showModal.value = false
 }
 
-async function handleUsePresetConv(presetConvUuid: string) {
-  if (convSaving.value)
+async function handleUsePresetConv(presetConv: Chat.ConversationPreset) {
+  if (savingUuids.value.has(presetConv.uuid))
     return
 
-  convSaving.value = true
+  savingUuids.value.add(presetConv.uuid)
   try {
-    const { data: newConv } = await api.convAddByPreset<Chat.Conversation>({ presetConvUuid })
+    const { data: newConv } = await api.convAddByPreset<Chat.Conversation>({ presetConvUuid: presetConv.uuid })
     chatStore.addConvAndActive(newConv)
+    chatStore.markPresetConvUsed(presetConv.uuid)
+
+    ms.success(t('chat.copySuccess'), { duration: 2000 })
+    if (presetConv.kbTitle)
+      ms.success(t('chat.kbCreated', { kbTitle: presetConv.kbTitle }), { duration: 2000 })
 
     showModal.value = false
   } catch (error: any) {
@@ -102,7 +107,7 @@ async function handleUsePresetConv(presetConvUuid: string) {
       })
     }
   } finally {
-    convSaving.value = false
+    savingUuids.value.delete(presetConv.uuid)
   }
 
   await searchPresetConvRel()
@@ -110,18 +115,18 @@ async function handleUsePresetConv(presetConvUuid: string) {
 
 watch(
   () => authStoreRef.value.token,
-  (newVal) => {
+  async (newVal) => {
     if (newVal) {
-      searchPresetConvs()
-      searchPresetConvRel()
+      await searchPresetConvs()
+      await searchPresetConvRel()
     }
   },
 )
 
 onMounted(async () => {
   if (authStoreRef.value.token) {
-    searchPresetConvs()
-    searchPresetConvRel()
+    await searchPresetConvs()
+    await searchPresetConvRel()
   }
 })
 
@@ -138,30 +143,34 @@ defineExpose({ toggleModal })
         <EditConvDetail :conversation="tmpConv" @submitted="handleSubmitted" />
       </NTabPane>
       <NTabPane name="presetConv" :tab="t('chat.presetRole')">
-        <NScrollbar class="max-h-96">
+        <NScrollbar style="max-height: 60vh;">
           <template v-for="[type, presets] in groupedPresets" :key="type">
             <NDivider title-placement="left" style="margin: 8px 0 4px;">
               {{ typeLabelMap[type] || type }}
             </NDivider>
             <NList hoverable bordered>
               <NListItem v-for="presetConv in presets" :key="presetConv.id">
-                <NThing :title="presetConv.title" content-style="margin-top: 6px;">
+                <NThing content-style="margin-top: 6px;">
+                  <template #header>
+                    {{ presetConv.title }}
+                    <NTag v-if="presetConv.used" size="tiny" type="success" style="margin-left: 6px; font-size: 11px;">
+                      {{ t('chat.used') }}
+                    </NTag>
+                    <NTooltip v-if="presetConv.kbTitle">
+                      <template #trigger>
+                        <NTag size="tiny" type="info" style="margin-left: 6px; font-size: 11px;">
+                          {{ t('chat.kbAttached') }}
+                        </NTag>
+                      </template>
+                      {{ t('chat.kbAutoCreateTip') }}
+                    </NTooltip>
+                  </template>
                   {{ presetConv.remark }}
-                  <NTag v-if="presetConv.kbTitle" size="small" type="info" style="margin-left: 6px;">
-                    {{ t('chat.kbAttached') }}
-                  </NTag>
                 </NThing>
                 <template #suffix>
-                  <template v-if="presetConv.used">
-                    <NButton size="small" disabled>
-                      {{ t('chat.used') }}
-                    </NButton>
-                  </template>
-                  <template v-else>
-                    <NButton size="small" @click="handleUsePresetConv(presetConv.uuid)">
-                      {{ t('chat.use') }}
-                    </NButton>
-                  </template>
+                  <NButton size="small" :loading="savingUuids.has(presetConv.uuid)" :disabled="savingUuids.has(presetConv.uuid)" @click="handleUsePresetConv(presetConv)">
+                    {{ savingUuids.has(presetConv.uuid) ? t('chat.copying') : t('chat.use') }}
+                  </NButton>
                 </template>
               </NListItem>
             </NList>

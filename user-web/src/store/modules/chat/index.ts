@@ -330,9 +330,15 @@ export const useChatStore = defineStore('chat-store', {
 
     setUsedPresetConv(rels: Chat.ConvToPresetRel[]) {
       this.presetConvs.forEach((item) => {
-        const hit = rels.some(rel => rel.presetConvId === item.id)
+        const hit = rels.some(rel => String(rel.presetConvId) === String(item.id))
         item.used = hit
       })
+    },
+
+    markPresetConvUsed(presetConvUuid: string) {
+      const item = this.presetConvs.find(i => i.uuid === presetConvUuid)
+      if (item)
+        item.used = true
     },
 
     initAudioText(message: Chat.ChatMessage) {

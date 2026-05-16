@@ -22,7 +22,7 @@ See [docker/README.md](docker/README.md) or each sub-project's README for detail
 
 | Feature | Description |
 |:--------|:------------|
-| AI Chat | Multi-role (multi-conversation) with configurable prompts, models, and parameters. Streaming output |
+| AI Chat | Multi-character (multi-conversation) with configurable prompts, models, and parameters. Streaming output |
 | Image Generation | Text-to-image and image editing. Supports GPT-Image-2, DashScope Wanx, and more |
 | Knowledge Base (RAG) | Supports both vector search and knowledge graph retrieval |
 | AI Workflow | Visual editor with conditional branching, parallel execution, and built-in nodes for LLM calls, knowledge base queries, human feedback, and more |
