@@ -43,21 +43,31 @@ VALUES ('storage_location', '1');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('storage_location_ali_oss', '{"access_key_id":"","access_key_secret":"","endpoint":"","bucket_name":""}');
 
--- ASR设置
--- 音频文件最大10MB，最大录音时长60秒（TODO）
+-- ASR settings
+-- Supported platforms and models:
+--   siliconflow  -> FunAudioLLM/SenseVoiceSmall
+--   dashscope    -> paraformer-v2
+--   openai       -> gpt-4o-mini-transcribe
+-- Max file size: 10MB, max recording duration: 60s (TODO)
 INSERT INTO adi_sys_config (name, value)
 VALUES ('asr_setting',
         '{"model_name":"FunAudioLLM/SenseVoiceSmall","platform":"siliconflow","max_record_duration":60,"max_file_size":10485760}');
 
--- TTS设置
--- synthesizer_side指定TTS的合成器类型，如: client,server
--- synthesizer_side如果设置为client，表示使用客户端（如浏览器）的tts功能，忽略model_name, platform等参数，免费使用
--- synthesizer_side如果设置为server，表示使用服务端进行语音合成，实际上就是使用各大平台的大语言模型如cosyvoice-v2,FunAudioLLM/CosyVoice2-0.5B等进行合成，付费使用
--- 注意：大语言模型的TTS接口收费不便宜，请提前做好规划
+-- TTS settings
+-- Supported platforms and models:
+--   siliconflow  -> FunAudioLLM/CosyVoice2-0.5B
+--   dashscope    -> cosyvoice-v2
+--   openai       -> gpt-4o-mini-tts
+-- synthesizer_side: "client" uses browser TTS (free), "server" uses models (paid)
 INSERT INTO adi_sys_config (name, value)
 VALUES ('tts_setting', '{"synthesizer_side":"client","model_name":"","platform":""}');
+-- Uncomment one of the following to enable server-side TTS with a specific model:
 -- INSERT INTO adi_sys_config (name, value)
--- VALUES ('tts_setting', '{"synthesizer":"server","model_name":"cosyvoice-v2","platform":"dashscope"}');
+-- VALUES ('tts_setting', '{"synthesizer_side":"server","model_name":"cosyvoice-v2","platform":"dashscope"}');
+-- INSERT INTO adi_sys_config (name, value)
+-- VALUES ('tts_setting', '{"synthesizer_side":"server","model_name":"gpt-4o-mini-tts","platform":"openai"}');
+-- INSERT INTO adi_sys_config (name, value)
+-- VALUES ('tts_setting', '{"synthesizer_side":"server","model_name":"FunAudioLLM/CosyVoice2-0.5B","platform":"siliconflow"}');
 
 -- 模型平台
 insert into adi_model_platform (name, title, base_url)
@@ -70,9 +80,9 @@ insert into adi_model_platform (name, title, base_url)
 values ('siliconflow', '硅基流动', 'https://api.siliconflow.cn/v1');
 insert into adi_model_platform (name, title, base_url)
 values ('ollama', 'ollama', 'http://localhost:11434');
--- 硅基流动的文本模型的api兼容 openai api，本行数据用来测试动态创建的模型平台及模型是否正常使用了 OpenAiCompatibleLLMService 进行请求
+-- SiliconFlow text models are compatible with OpenAI API; this row tests whether dynamically created platforms/models use OpenAiCompatibleLLMService correctly
 insert into adi_model_platform (name, title, base_url, is_openai_api_compatible)
-values ('openai-compatible-platform-test', '兼容openai的平台', 'https://api.siliconflow.cn/v1', true);
+values ('openai-compatible-platform-test', 'OpenAI-Compatible Platform', 'https://api.siliconflow.cn/v1', true);
 
 -- 大语言模型
 -- https://api-docs.deepseek.com/zh-cn/quick_start/pricing
@@ -97,38 +107,27 @@ VALUES ('gpt-5-mini', 'gpt-5-mini', 'text', 'openai', 400000, 272000, 128000, 't
 
 INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
 VALUES ('gpt-image-2', 'GPT-Image-2', 'image', 'openai', false);
--- OpenAI 语音识别 (Whisper)
+-- OpenAI 语音识别 (ASR)
 INSERT INTO adi_ai_model (name, title, type, platform, input_types, is_enable)
-VALUES ('whisper-1', 'OpenAI-语音识别', 'asr', 'openai', 'audio', false);
+VALUES ('gpt-4o-mini-transcribe', 'OpenAI-ASR', 'asr', 'openai', 'audio', false);
 -- OpenAI 语音合成 (TTS)
+-- gpt-4o-mini-tts supports all 13 voices
 INSERT INTO adi_ai_model (name, title, type, platform, input_types, properties, is_enable)
-VALUES ('tts-1', 'OpenAI-语音合成', 'tts', 'openai', 'text', '{
+VALUES ('gpt-4o-mini-tts', 'OpenAI-TTS', 'tts', 'openai', 'text', '{
   "voices": [
-    {"name": "Alloy", "remark": "均衡中性", "param_name": "alloy", "lang": "多语言"},
-    {"name": "Ash", "remark": "轻松沉稳男", "param_name": "ash", "lang": "多语言"},
-    {"name": "Ballad", "remark": "柔和抒情男", "param_name": "ballad", "lang": "多语言"},
-    {"name": "Coral", "remark": "温暖活力女", "param_name": "coral", "lang": "多语言"},
-    {"name": "Echo", "remark": "沉稳叙事男", "param_name": "echo", "lang": "多语言"},
-    {"name": "Fable", "remark": "英式讲故事", "param_name": "fable", "lang": "多语言"},
-    {"name": "Nova", "remark": "友好专业女", "param_name": "nova", "lang": "多语言"},
-    {"name": "Onyx", "remark": "权威深沉男", "param_name": "onyx", "lang": "多语言"},
-    {"name": "Sage", "remark": "智慧温和女", "param_name": "sage", "lang": "多语言"},
-    {"name": "Shimmer", "remark": "清脆明亮女", "param_name": "shimmer", "lang": "多语言"}
-  ]
-}', false);
-INSERT INTO adi_ai_model (name, title, type, platform, input_types, properties, is_enable)
-VALUES ('tts-1-hd', 'OpenAI-语音合成HD', 'tts', 'openai', 'text', '{
-  "voices": [
-    {"name": "Alloy", "remark": "均衡中性", "param_name": "alloy", "lang": "多语言"},
-    {"name": "Ash", "remark": "轻松沉稳男", "param_name": "ash", "lang": "多语言"},
-    {"name": "Ballad", "remark": "柔和抒情男", "param_name": "ballad", "lang": "多语言"},
-    {"name": "Coral", "remark": "温暖活力女", "param_name": "coral", "lang": "多语言"},
-    {"name": "Echo", "remark": "沉稳叙事男", "param_name": "echo", "lang": "多语言"},
-    {"name": "Fable", "remark": "英式讲故事", "param_name": "fable", "lang": "多语言"},
-    {"name": "Nova", "remark": "友好专业女", "param_name": "nova", "lang": "多语言"},
-    {"name": "Onyx", "remark": "权威深沉男", "param_name": "onyx", "lang": "多语言"},
-    {"name": "Sage", "remark": "智慧温和女", "param_name": "sage", "lang": "多语言"},
-    {"name": "Shimmer", "remark": "清脆明亮女", "param_name": "shimmer", "lang": "多语言"}
+    {"name": "Alloy", "remark": "Alloy", "param_name": "alloy", "lang": "multilingual"},
+    {"name": "Ash", "remark": "Ash", "param_name": "ash", "lang": "multilingual"},
+    {"name": "Ballad", "remark": "Ballad", "param_name": "ballad", "lang": "multilingual"},
+    {"name": "Coral", "remark": "Coral", "param_name": "coral", "lang": "multilingual"},
+    {"name": "Echo", "remark": "Echo", "param_name": "echo", "lang": "multilingual"},
+    {"name": "Fable", "remark": "Fable", "param_name": "fable", "lang": "multilingual"},
+    {"name": "Nova", "remark": "Nova", "param_name": "nova", "lang": "multilingual"},
+    {"name": "Onyx", "remark": "Onyx", "param_name": "onyx", "lang": "multilingual"},
+    {"name": "Sage", "remark": "Sage", "param_name": "sage", "lang": "multilingual"},
+    {"name": "Shimmer", "remark": "Shimmer", "param_name": "shimmer", "lang": "multilingual"},
+    {"name": "Verse", "remark": "Verse", "param_name": "verse", "lang": "multilingual"},
+    {"name": "Marin", "remark": "Marin", "param_name": "marin", "lang": "multilingual"},
+    {"name": "Cedar", "remark": "Cedar", "param_name": "cedar", "lang": "multilingual"}
   ]
 }', false);
 INSERT INTO adi_ai_model (name, title, type, platform, max_input_tokens, properties, is_enable)

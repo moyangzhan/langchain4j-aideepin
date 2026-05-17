@@ -6,7 +6,7 @@ import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
 @Data
-public class SiliconflowTtsJobData {
+public class TtsJobData {
     private StringBuilder text;
     private Consumer<String> completeCallback;
     private Consumer<String> errorCallback;

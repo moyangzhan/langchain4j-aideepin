@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.file.FileOperatorContext;
-import com.moyz.adi.common.languagemodel.data.SiliconflowTtsJobData;
+import com.moyz.adi.common.languagemodel.data.TtsJobData;
 import com.moyz.adi.common.languagemodel.data.SiliconflowTtsReq;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
@@ -40,7 +40,7 @@ import static com.moyz.adi.common.util.LocalDateTimeUtil.PATTERN_YYYYMMDDMMHHSS;
  */
 @Slf4j
 public class SiliconflowTtsService extends AbstractTtsModelService {
-    private final Map<String, SiliconflowTtsJobData> jobToData = new HashMap<>();
+    private final Map<String, TtsJobData> jobToData = new HashMap<>();
 
     public SiliconflowTtsService(AiModel model, ModelPlatform modelPlatform) {
         super(model, modelPlatform);
@@ -67,7 +67,7 @@ public class SiliconflowTtsService extends AbstractTtsModelService {
                 voice = SILICONFLOW_DEFAULT_VOICE;
             }
         }
-        SiliconflowTtsJobData jobData = new SiliconflowTtsJobData();
+        TtsJobData jobData = new TtsJobData();
         jobData.setVoice(voice);
         jobData.setText(new StringBuilder());
         jobData.setProcessCallback(onProcess);
@@ -89,7 +89,7 @@ public class SiliconflowTtsService extends AbstractTtsModelService {
         if (null == jobToData.get(jobId)) {
             return;
         }
-        SiliconflowTtsJobData jobData = jobToData.get(jobId);
+        TtsJobData jobData = jobToData.get(jobId);
         jobToData.remove(jobId);
         SiliconflowTtsReq.SiliconflowTtsReqBuilder requestBuilder = SiliconflowTtsReq.builder()
                 .input(jobData.getText().toString())
