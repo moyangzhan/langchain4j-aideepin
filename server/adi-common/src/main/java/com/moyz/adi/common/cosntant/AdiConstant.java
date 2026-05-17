@@ -452,6 +452,7 @@ public class AdiConstant {
          */
         public static final String DASHSCOPE_DEFAULT_VOICE = "longyingyan";
         public static final String SILICONFLOW_DEFAULT_VOICE = "FunAudioLLM/CosyVoice2-0.5B:alex";
+        public static final String OPENAI_DEFAULT_VOICE = "alloy";
     }
 
     public static class CustomChatRequestParameterKeys {

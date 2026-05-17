@@ -124,6 +124,7 @@ public class AiModelInitializer {
     private synchronized void initAsrModelServiceList(Map<String, ModelPlatform> nameToPlatform) {
         initAsrModelService(AdiConstant.ModelPlatform.DASHSCOPE, model -> new DashScopeAsrService(model, nameToPlatform.get(AdiConstant.ModelPlatform.DASHSCOPE)));
         initAsrModelService(AdiConstant.ModelPlatform.SILICONFLOW, model -> new SiliconflowAsrService(model, nameToPlatform.get(AdiConstant.ModelPlatform.SILICONFLOW)));
+        initAsrModelService(AdiConstant.ModelPlatform.OPENAI, model -> new OpenAiAsrService(model, nameToPlatform.get(AdiConstant.ModelPlatform.OPENAI)).setProxyAddress(proxyAddress));
     }
 
     /**
@@ -134,6 +135,7 @@ public class AiModelInitializer {
     private synchronized void initTtsModelServiceList(Map<String, ModelPlatform> nameToPlatform) {
         initTtsModelService(AdiConstant.ModelPlatform.DASHSCOPE, model -> new DashScopeTtsService(model, nameToPlatform.get(AdiConstant.ModelPlatform.DASHSCOPE)));
         initTtsModelService(AdiConstant.ModelPlatform.SILICONFLOW, model -> new SiliconflowTtsService(model, nameToPlatform.get(AdiConstant.ModelPlatform.SILICONFLOW)));
+        initTtsModelService(AdiConstant.ModelPlatform.OPENAI, model -> new OpenAiTtsService(model, nameToPlatform.get(AdiConstant.ModelPlatform.OPENAI)).setProxyAddress(proxyAddress));
     }
 
     private void initLLMService(String platform, String modelType, Function<AiModel, AbstractLLMService> function) {
@@ -222,6 +224,8 @@ public class AiModelInitializer {
             initImageModelServiceList(nameToPlatform);
         } else if (ASR.equalsIgnoreCase(modelType)) {
             initAsrModelServiceList(nameToPlatform);
+        } else if (TTS.equalsIgnoreCase(modelType)) {
+            initTtsModelServiceList(nameToPlatform);
         } else {
             throw new BaseException(ErrorEnum.A_MODEL_NOT_FOUND);
         }
