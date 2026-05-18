@@ -66,10 +66,10 @@ public class CharacterService extends ServiceImpl<CharacterMapper, Character> {
     @Resource
     private AiModelService aiModelService;
 
-    public Page<CharacterDto> search(CharacterSearchReq convSearchReq, int currentPage, int pageSize) {
+    public Page<CharacterDto> search(CharacterSearchReq characterSearchReq, int currentPage, int pageSize) {
         Page<Character> page = this.lambdaQuery()
                 .eq(Character::getIsDeleted, false)
-                .like(!StringUtils.isBlank(convSearchReq.getTitle()), Character::getTitle, convSearchReq.getTitle())
+                .like(!StringUtils.isBlank(characterSearchReq.getTitle()), Character::getTitle, characterSearchReq.getTitle())
                 .orderByDesc(Character::getId)
                 .page(new Page<>(currentPage, pageSize));
         return MPPageUtil.convertToPage(page, CharacterDto.class);
@@ -161,13 +161,13 @@ public class CharacterService extends ServiceImpl<CharacterMapper, Character> {
                 children = children.stream().sorted(Comparator.comparing(CharacterMsgDto::getCreateTime).reversed()).toList();
             }
 
-            for (CharacterMsgDto convMsgDto : children) {
-                AiModel aiModel = MODEL_ID_TO_OBJ.get(convMsgDto.getAiModelId());
-                convMsgDto.setAiModelPlatform(null == aiModel ? "" : aiModel.getPlatform());
-                if (StringUtils.isNotBlank(convMsgDto.getAudioUuid())) {
-                    convMsgDto.setAudioUrl(fileService.getUrl(convMsgDto.getAudioUuid()));
+            for (CharacterMsgDto characterMsgDto : children) {
+                AiModel aiModel = MODEL_ID_TO_OBJ.get(characterMsgDto.getAiModelId());
+                characterMsgDto.setAiModelPlatform(null == aiModel ? "" : aiModel.getPlatform());
+                if (StringUtils.isNotBlank(characterMsgDto.getAudioUuid())) {
+                    characterMsgDto.setAudioUrl(fileService.getUrl(characterMsgDto.getAudioUuid()));
                 } else {
-                    convMsgDto.setAudioUrl("");
+                    characterMsgDto.setAudioUrl("");
                 }
             }
             item.setChildren(children);
@@ -201,35 +201,35 @@ public class CharacterService extends ServiceImpl<CharacterMapper, Character> {
         return this.lambdaQuery().eq(Character::getUuid, uuid).oneOpt().orElse(null);
     }
 
-    public CharacterDto add(CharacterAddReq convAddReq) {
+    public CharacterDto add(CharacterAddReq characterAddReq) {
         Character character = this.lambdaQuery()
                 .eq(Character::getUserId, ThreadContext.getCurrentUserId())
-                .eq(Character::getTitle, convAddReq.getTitle())
+                .eq(Character::getTitle, characterAddReq.getTitle())
                 .eq(Character::getIsDeleted, false)
                 .one();
         if (null != character) {
             throw new BaseException(A_CHARACTER_TITLE_EXIST);
         }
 
-        List<Long> filteredMcpIds = filterEnableMcpIds(convAddReq.getMcpIds());
-        List<Long> filteredKbIds = filterEnableKbIds(ThreadContext.getCurrentUser(), convAddReq.getKbIds());
+        List<Long> filteredMcpIds = filterEnableMcpIds(characterAddReq.getMcpIds());
+        List<Long> filteredKbIds = filterEnableKbIds(ThreadContext.getCurrentUser(), characterAddReq.getKbIds());
 
         String uuid = UuidUtil.createShort();
         Character one = new Character();
-        BeanUtils.copyProperties(convAddReq, one);
+        BeanUtils.copyProperties(characterAddReq, one);
         one.setUuid(uuid);
         one.setUserId(ThreadContext.getCurrentUserId());
         one.setMcpIds(StringUtils.join(filteredMcpIds, ","));
         one.setKbIds(StringUtils.join(filteredKbIds, ","));
-        if (null != convAddReq.getAudioConfig()) {
-            one.setAudioConfig(convAddReq.getAudioConfig());
+        if (null != characterAddReq.getAudioConfig()) {
+            one.setAudioConfig(characterAddReq.getAudioConfig());
         }
         baseMapper.insert(one);
 
-        Character conv = this.lambdaQuery().eq(Character::getUuid, uuid).one();
-        CharacterDto dto = MPPageUtil.convertTo(conv, CharacterDto.class);
-        setMcpToDto(conv, dto);
-        setKbInfoToDto(conv, dto);
+        Character saved = this.lambdaQuery().eq(Character::getUuid, uuid).one();
+        CharacterDto dto = MPPageUtil.convertTo(saved, CharacterDto.class);
+        setMcpToDto(saved, dto);
+        setKbInfoToDto(saved, dto);
         return dto;
     }
 
@@ -255,22 +255,22 @@ public class CharacterService extends ServiceImpl<CharacterMapper, Character> {
      * @param conv 对话信息
      * @param dto  对话DTO
      */
-    private void setKbInfoToDto(Character conv, CharacterDto dto) {
+    private void setKbInfoToDto(Character character, CharacterDto dto) {
         //组装已关联的知识库信息
         List<Long> kids = new ArrayList<>();
         List<CharacterKnowledge> characterKnowledgeList = new ArrayList<>();
-        if (StringUtils.isNotBlank(conv.getKbIds())) {
-            List<Long> kbIds = Arrays.stream(conv.getKbIds().split(","))
+        if (StringUtils.isNotBlank(character.getKbIds())) {
+            List<Long> kbIds = Arrays.stream(character.getKbIds().split(","))
                     .map(Long::parseLong)
                     .toList();
             knowledgeBaseService.listByIds(kbIds).forEach(kb -> {
-                CharacterKnowledge convKnowledge = convertToConvKbDto(ThreadContext.getCurrentUser(), kb);
+                CharacterKnowledge characterKnowledge = convertToCharacterKbDto(ThreadContext.getCurrentUser(), kb);
                 // Skip if not mine and not public
-                if (!convKnowledge.getIsMine() && !convKnowledge.getIsPublic()) {
-                    convKnowledge.setKbInfo(null);
-                    convKnowledge.setIsEnable(false);
+                if (!characterKnowledge.getIsMine() && !characterKnowledge.getIsPublic()) {
+                    characterKnowledge.setKbInfo(null);
+                    characterKnowledge.setIsEnable(false);
                 }
-                characterKnowledgeList.add(convKnowledge);
+                characterKnowledgeList.add(characterKnowledge);
                 kids.add(kb.getId());
             });
         }
@@ -284,73 +284,73 @@ public class CharacterService extends ServiceImpl<CharacterMapper, Character> {
      * @param presetConvUuid 预设会话uuid
      */
     @Transactional
-    public CharacterDto addByPresetConv(String presetConvUuid) {
-        CharacterPreset presetConv = this.characterPresetService.lambdaQuery()
+    public CharacterDto addByPresetCharacter(String presetConvUuid) {
+        CharacterPreset presetCharacter = this.characterPresetService.lambdaQuery()
                 .eq(CharacterPreset::getUuid, presetConvUuid)
                 .eq(CharacterPreset::getIsDeleted, false)
                 .oneOpt()
                 .orElseThrow(() -> new BaseException(A_PRESET_CHARACTER_NOT_EXIST));
         CharacterPresetRel presetRel = this.characterPresetRelService.lambdaQuery()
                 .eq(CharacterPresetRel::getUserId, ThreadContext.getCurrentUserId())
-                .eq(CharacterPresetRel::getPresetCharacterId, presetConv.getId())
+                .eq(CharacterPresetRel::getPresetCharacterId, presetCharacter.getId())
                 .eq(CharacterPresetRel::getIsDeleted, false)
                 .oneOpt()
                 .orElse(null);
         if (null != presetRel) {
-            Character conv = this.getById(presetRel.getUserCharacterId());
-            return MPPageUtil.convertTo(conv, CharacterDto.class);
+            Character character = this.getById(presetRel.getUserCharacterId());
+            return MPPageUtil.convertTo(character, CharacterDto.class);
         }
 
         List<Long> kbIds = Collections.emptyList();
-        if (StringUtils.isNotBlank(presetConv.getKbTitle())) {
+        if (StringUtils.isNotBlank(presetCharacter.getKbTitle())) {
             KbEditReq kbEditReq = new KbEditReq();
-            kbEditReq.setTitle(presetConv.getKbTitle());
-            kbEditReq.setRemark(presetConv.getTitle() + " - " + presetConv.getKbTitle());
+            kbEditReq.setTitle(presetCharacter.getKbTitle());
+            kbEditReq.setRemark(presetCharacter.getTitle() + " - " + presetCharacter.getKbTitle());
             KnowledgeBase kb = knowledgeBaseService.saveOrUpdate(kbEditReq);
             kbIds = List.of(kb.getId());
         }
 
-        CharacterAddReq convAddReq = CharacterAddReq.builder()
-                .title(presetConv.getTitle())
-                .remark(presetConv.getRemark())
-                .aiSystemMessage(presetConv.getAiSystemMessage())
+        CharacterAddReq characterAddReq = CharacterAddReq.builder()
+                .title(presetCharacter.getTitle())
+                .remark(presetCharacter.getRemark())
+                .aiSystemMessage(presetCharacter.getAiSystemMessage())
                 .kbIds(kbIds)
                 .build();
-        CharacterDto convDto = self.add(convAddReq);
+        CharacterDto characterDto = self.add(characterAddReq);
         characterPresetRelService.save(
                 CharacterPresetRel.builder()
-                        .presetCharacterId(presetConv.getId())
-                        .userCharacterId(convDto.getId())
+                        .presetCharacterId(presetCharacter.getId())
+                        .userCharacterId(characterDto.getId())
                         .userId(ThreadContext.getCurrentUserId())
                         .build()
         );
-        return convDto;
+        return characterDto;
     }
 
-    public boolean edit(String uuid, CharacterEditReq convEditReq) {
+    public boolean edit(String uuid, CharacterEditReq characterEditReq) {
         Character character = getOrThrow(uuid);
         Character one = new Character();
-        BeanUtils.copyProperties(convEditReq, one);
+        BeanUtils.copyProperties(characterEditReq, one);
         one.setId(character.getId());
-        if (null != convEditReq.getUnderstandContextEnable()) {
-            one.setUnderstandContextEnable(convEditReq.getUnderstandContextEnable());
+        if (null != characterEditReq.getUnderstandContextEnable()) {
+            one.setUnderstandContextEnable(characterEditReq.getUnderstandContextEnable());
         }
-        if (null != convEditReq.getMcpIds()) {
-            List<Long> filteredMcpIds = filterEnableMcpIds(convEditReq.getMcpIds());
+        if (null != characterEditReq.getMcpIds()) {
+            List<Long> filteredMcpIds = filterEnableMcpIds(characterEditReq.getMcpIds());
             if (filteredMcpIds.isEmpty()) {
                 one.setMcpIds(StringUtils.join(filteredMcpIds, ","));
             }
         }
-        if (null != convEditReq.getKbIds()) {
-            if (convEditReq.getKbIds().isEmpty()) {
+        if (null != characterEditReq.getKbIds()) {
+            if (characterEditReq.getKbIds().isEmpty()) {
                 one.setKbIds("");
             } else {
-                List<Long> filteredKbIds = filterEnableKbIds(ThreadContext.getCurrentUser(), convEditReq.getKbIds());
+                List<Long> filteredKbIds = filterEnableKbIds(ThreadContext.getCurrentUser(), characterEditReq.getKbIds());
                 one.setKbIds(StringUtils.join(filteredKbIds, ","));
             }
         }
-        if (null != convEditReq.getAudioConfig()) {
-            one.setAudioConfig(convEditReq.getAudioConfig());
+        if (null != characterEditReq.getAudioConfig()) {
+            one.setAudioConfig(characterEditReq.getAudioConfig());
         }
         return baseMapper.updateById(one) > 0;
     }
@@ -438,7 +438,7 @@ public class CharacterService extends ServiceImpl<CharacterMapper, Character> {
                 .toList();
     }
 
-    private CharacterKnowledge convertToConvKbDto(User user, KbInfoResp kbInfo) {
+    private CharacterKnowledge convertToCharacterKbDto(User user, KbInfoResp kbInfo) {
         CharacterKnowledge result = new CharacterKnowledge();
         BeanUtils.copyProperties(kbInfo, result);
         result.setKbInfo(kbInfo);

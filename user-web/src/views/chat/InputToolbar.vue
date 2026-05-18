@@ -30,8 +30,8 @@ const isThinkingClosable = ref<boolean>(false)
 const mcpModalShow = ref<boolean>(false)
 const knowledgeModalShow = ref<boolean>(false)
 const tmpMcpIds = ref<string[]>([])
-const tmpConvKbs = ref<Chat.CharacterKnowledge[]>([])
-const tmpConvKbIds = ref<string[]>([])
+const tmpCharacterKbs = ref<Chat.CharacterKnowledge[]>([])
+const tmpCharacterKbIds = ref<string[]>([])
 
 async function beforeUpload(data: { file: UploadFileInfo; fileList: UploadFileInfo[] }) {
   const file = data.file.file
@@ -93,8 +93,8 @@ function handleMcpModalShow() {
 
 function handleKnowledgeModalShow() {
   knowledgeModalShow.value = true
-  tmpConvKbs.value = [...currCharacter.value.characterKnowledgeList]
-  tmpConvKbIds.value = currCharacter.value.characterKnowledgeList.map(kb => kb.id)
+  tmpCharacterKbs.value = [...currCharacter.value.characterKnowledgeList]
+  tmpCharacterKbIds.value = currCharacter.value.characterKnowledgeList.map(kb => kb.id)
 }
 
 function handleKnowledgeSave() {

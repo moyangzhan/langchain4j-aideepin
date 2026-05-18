@@ -138,7 +138,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         newOne.setUserStatus(UserStatusEnum.WAIT_CONFIRM);
         baseMapper.insert(newOne);
 
-        //Create default conversation
+        //Create default character
         characterService.createDefault(newOne.getId());
     }
 

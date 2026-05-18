@@ -30,10 +30,10 @@ public class ExtCharacterController {
     @Operation(summary = "Chat with a character")
     @PostMapping
     public Object chatMessages(@RequestBody @Validated OpenApiChatReq req) {
-        String convUuid = ThreadContext.getOpenApiEntityUuid();
+        String characterUuid = ThreadContext.getOpenApiEntityUuid();
 
         Character character = characterService.lambdaQuery()
-                .eq(Character::getUuid, convUuid)
+                .eq(Character::getUuid, characterUuid)
                 .eq(Character::getIsDeleted, false)
                 .one();
         if (null == character) {
@@ -41,7 +41,7 @@ public class ExtCharacterController {
         }
 
         AskReq askReq = new AskReq();
-        askReq.setCharacterUuid(convUuid);
+        askReq.setCharacterUuid(characterUuid);
         askReq.setPrompt(req.getQuery());
 
         if ("blocking".equalsIgnoreCase(req.getResponseMode())) {

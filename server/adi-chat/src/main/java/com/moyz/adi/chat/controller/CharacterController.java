@@ -21,9 +21,9 @@ import java.util.List;
 
 /**
 * Character controller
- * 对话controller
+ * 角色controller
  */
-@Tag(name = "对话controller | Character Controller", description = "对话controller | Character Controller")
+@Tag(name = "角色controller | Character Controller", description = "角色controller | Character Controller")
 @RequestMapping("/character")
 @RestController
 @Validated
@@ -32,13 +32,13 @@ public class CharacterController {
     @Resource
     private CharacterService characterService;
 
-    @Operation(summary = "获取当前用户所有的对话 | List All Characters")
+    @Operation(summary = "获取当前用户所有的角色 | List All Characters")
     @GetMapping("/list")
     public List<CharacterDto> list() {
         return characterService.listByUser();
     }
 
-    @Operation(summary = "查询某个对话的信息列表 | List Character Messages")
+    @Operation(summary = "查询某个角色的信息列表 | List Character Messages")
     @GetMapping("/{uuid}")
     public CharacterMsgListResp detail(
             @Parameter(name = "对话uuid | Character UUID") @PathVariable @NotBlank(message = "Character UUID cannot be empty") String uuid
@@ -48,19 +48,19 @@ public class CharacterController {
     }
 
     @PostMapping("/add")
-    public CharacterDto add(@RequestBody @Validated CharacterAddReq convAddReq) {
-        return characterService.add(convAddReq);
+    public CharacterDto add(@RequestBody @Validated CharacterAddReq characterAddReq) {
+        return characterService.add(characterAddReq);
     }
 
-    @Operation(summary = "根据预设会话创建用户自己的会话 | Create Character from Preset")
+    @Operation(summary = "根据预设角色创建用户自己的角色 | Create Character from Preset")
     @PostMapping("/addByPreset")
     public CharacterDto addByPreset(@Length(min = 32, max = 32) @RequestParam String presetUuid) {
-        return characterService.addByPresetConv(presetUuid);
+        return characterService.addByPresetCharacter(presetUuid);
     }
 
     @PostMapping("/edit/{uuid}")
-    public boolean edit(@PathVariable String uuid, @RequestBody CharacterEditReq convEditReq) {
-        return characterService.edit(uuid, convEditReq);
+    public boolean edit(@PathVariable String uuid, @RequestBody CharacterEditReq characterEditReq) {
+        return characterService.edit(uuid, characterEditReq);
     }
 
     @PostMapping("/del/{uuid}")

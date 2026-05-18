@@ -20,7 +20,7 @@ import java.util.List;
 public class CharacterMessageRefMemoryEmbeddingService extends ServiceImpl<CharacterMessageRefMemoryEmbeddingMapper, CharacterMessageRefMemoryEmbedding> {
 
     @Resource
-    private ICharacterMemoryEmbeddingService convMemoryEmbeddingService;
+    private ICharacterMemoryEmbeddingService characterMemoryEmbeddingService;
 
     public List<RefEmbeddingDto> listRefEmbeddings(String uuid) {
         List<CharacterMessageRefMemoryEmbedding> recordReferences = this.getBaseMapper().listByMsgUuid(uuid);
@@ -31,7 +31,7 @@ public class CharacterMessageRefMemoryEmbeddingService extends ServiceImpl<Chara
         if (CollectionUtils.isEmpty(embeddingIds)) {
             return Collections.emptyList();
         }
-        List<KbItemEmbeddingDto> embeddings = convMemoryEmbeddingService.listByEmbeddingIds(embeddingIds);
+        List<KbItemEmbeddingDto> embeddings = characterMemoryEmbeddingService.listByEmbeddingIds(embeddingIds);
         return EmbeddingUtil.itemToRefEmbeddingDto(embeddings);
     }
 

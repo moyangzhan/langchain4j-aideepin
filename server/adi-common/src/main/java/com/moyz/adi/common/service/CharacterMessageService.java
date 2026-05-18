@@ -471,14 +471,14 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
     public void saveAfterAiResponse(User user, AskReq askReq, List<RetrieverWrapper> retrievers, LLMResponseContent response, PromptMeta questionMeta, AnswerMeta answerMeta, AudioInfo audioInfo) {
         Character character;
         String prompt = askReq.getPrompt();
-        String convUuid = askReq.getCharacterUuid();
+        String characterUuid = askReq.getCharacterUuid();
         String modelPlatform = askReq.getModelPlatform();
         String modelName = askReq.getModelName();
         character = characterService.lambdaQuery()
-                .eq(Character::getUuid, convUuid)
+                .eq(Character::getUuid, characterUuid)
                 .eq(Character::getUserId, user.getId())
                 .oneOpt()
-                .orElseGet(() -> characterService.createByFirstMessage(user.getId(), convUuid, prompt));
+                .orElseGet(() -> characterService.createByFirstMessage(user.getId(), characterUuid, prompt));
         AiModel aiModel = LLMContext.getAiModel(modelPlatform, modelName);
 
         //Check if regenerate question
@@ -491,7 +491,7 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
             question.setUserId(user.getId());
             question.setUuid(questionMeta.getUuid());
             question.setCharacterId(character.getId());
-            question.setCharacterUuid(convUuid);
+            question.setCharacterUuid(characterUuid);
             question.setMessageRole(ChatMessageRoleEnum.USER.getValue());
             question.setRemark(prompt);
             question.setProcessedRemark(askReq.getProcessedPrompt());
@@ -512,7 +512,7 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
         aiAnswer.setUserId(user.getId());
         aiAnswer.setUuid(answerMeta.getUuid());
         aiAnswer.setCharacterId(character.getId());
-        aiAnswer.setCharacterUuid(convUuid);
+        aiAnswer.setCharacterUuid(characterUuid);
         aiAnswer.setMessageRole(ChatMessageRoleEnum.ASSISTANT.getValue());
         aiAnswer.setThinkingContent(Objects.toString(response.getThinkingContent(), ""));
         aiAnswer.setRemark(response.getContent());

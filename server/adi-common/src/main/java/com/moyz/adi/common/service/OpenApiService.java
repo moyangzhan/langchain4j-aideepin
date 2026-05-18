@@ -56,10 +56,10 @@ public class OpenApiService {
 
         switch (type) {
             case "conv" -> {
-                Character conv = getConvOrThrow(uuid);
-                checkOwnership(conv.getUserId(), currentUser);
+                Character character = getCharacterOrThrow(uuid);
+                checkOwnership(character.getUserId(), currentUser);
                 characterService.lambdaUpdate()
-                        .eq(Character::getId, conv.getId())
+                        .eq(Character::getId, character.getId())
                         .set(Character::getApiKey, encryptedValue)
                         .update();
             }
@@ -103,9 +103,9 @@ public class OpenApiService {
         String encryptedApiKey;
         switch (type) {
             case "conv" -> {
-                Character conv = getConvOrThrow(uuid);
-                checkOwnership(conv.getUserId(), currentUser);
-                encryptedApiKey = conv.getApiKey();
+                Character character = getCharacterOrThrow(uuid);
+                checkOwnership(character.getUserId(), currentUser);
+                encryptedApiKey = character.getApiKey();
             }
             case "kb" -> {
                 KnowledgeBase kb = getKbOrThrow(uuid);
@@ -145,9 +145,9 @@ public class OpenApiService {
         String encryptedApiKey;
         switch (type) {
             case "conv" -> {
-                Character conv = getConvOrThrow(uuid);
-                checkOwnership(conv.getUserId(), currentUser);
-                encryptedApiKey = conv.getApiKey();
+                Character character = getCharacterOrThrow(uuid);
+                checkOwnership(character.getUserId(), currentUser);
+                encryptedApiKey = character.getApiKey();
             }
             case "kb" -> {
                 KnowledgeBase kb = getKbOrThrow(uuid);
@@ -191,18 +191,18 @@ public class OpenApiService {
 
         switch (type) {
             case "conv" -> {
-                Character conv = characterService.lambdaQuery()
+                Character character = characterService.lambdaQuery()
                         .eq(Character::getApiKey, encryptedValue)
                         .eq(Character::getIsDeleted, false)
                         .one();
-                if (null == conv) {
+                if (null == character) {
                     throw new BaseException(A_API_KEY_NOT_FOUND);
                 }
-                User owner = userService.getById(conv.getUserId());
+                User owner = userService.getById(character.getUserId());
                 if (null == owner) {
                     throw new BaseException(A_API_KEY_INVALID);
                 }
-                return new ValidateResult(conv.getUuid(), owner);
+                return new ValidateResult(character.getUuid(), owner);
             }
             case "kb" -> {
                 KnowledgeBase kb = knowledgeBaseService.lambdaQuery()
@@ -250,7 +250,7 @@ public class OpenApiService {
         }
     }
 
-    private Character getConvOrThrow(String uuid) {
+    private Character getCharacterOrThrow(String uuid) {
         return characterService.lambdaQuery()
                 .eq(Character::getUuid, uuid)
                 .eq(Character::getIsDeleted, false)

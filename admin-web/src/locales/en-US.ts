@@ -275,7 +275,7 @@ export default {
     imageQuota: 'Image Quota',
     imageQuotaDesc: 'User image generation count settings',
     chatQuota: 'Chat Quota',
-    chatQuotaDesc: 'User conversation count settings',
+    chatQuotaDesc: 'User character count settings',
     dailyMaxConsume: 'Daily Maximum Consumption',
     monthlyMaxConsume: 'Monthly Maximum Consumption',
     dailyMaxRequests: 'Daily Maximum Requests',

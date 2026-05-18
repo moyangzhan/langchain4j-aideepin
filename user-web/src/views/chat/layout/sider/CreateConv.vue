@@ -29,7 +29,7 @@ const typeLabelMap = computed<Record<string, string>>(() => ({
 const authStore = useAuthStore()
 const authStoreRef = ref<AuthState>(authStore)
 const savingUuids = ref<Set<string>>(new Set())
-const loadingPresetConvs = ref<boolean>(false)
+const loadingPresetCharacters = ref<boolean>(false)
 const loadingRels = ref<boolean>(false)
 const tmpCharacter = ref<Chat.Character>(emptyCharacter())
 const showModal = ref<boolean>(false)
@@ -53,20 +53,20 @@ const groupedPresets = computed(() => {
 })
 
 async function searchPresetCharacters() {
-  if (loadingPresetConvs.value)
+  if (loadingPresetCharacters.value)
     return
 
-  loadingPresetConvs.value = true
+  loadingPresetCharacters.value = true
   try {
     const { success, data: characters } = await api.searchPresetCharacters<PageResponse>()
     if (success)
       chatStore.setPresetCharacters(characters.records)
   } finally {
-    loadingPresetConvs.value = false
+    loadingPresetCharacters.value = false
   }
 }
 
-async function searchPresetConvRel() {
+async function searchPresetCharacterRel() {
   if (loadingRels.value)
     return
 
@@ -110,7 +110,7 @@ async function handleUsePresetCharacter(presetCharacter: Chat.CharacterPreset) {
     savingUuids.value.delete(presetCharacter.uuid)
   }
 
-  await searchPresetConvRel()
+  await searchPresetCharacterRel()
 }
 
 watch(
@@ -118,7 +118,7 @@ watch(
   async (newVal) => {
     if (newVal) {
       await searchPresetCharacters()
-      await searchPresetConvRel()
+      await searchPresetCharacterRel()
     }
   },
 )
@@ -126,7 +126,7 @@ watch(
 onMounted(async () => {
   if (authStoreRef.value.token) {
     await searchPresetCharacters()
-    await searchPresetConvRel()
+    await searchPresetCharacterRel()
   }
 })
 
