@@ -760,6 +760,17 @@ function userMcpSaveOrUpdate<T = any>(data: Mcp.UserMcpUpdateReq) {
   })
 }
 
+// External API Key management
+function openApiKeyGenerate<T = any>(type: string, uuid: string) {
+  return post<T>({ url: `/external-api-key/${type}/${uuid}` })
+}
+function openApiKeyInfo<T = any>(type: string, uuid: string) {
+  return get<T>({ url: `/external-api-key/${type}/${uuid}` })
+}
+function openApiKeyReveal<T = any>(type: string, uuid: string) {
+  return post<T>({ url: `/external-api-key/${type}/${uuid}/reveal` })
+}
+
 export default {
   getSysConfig,
   login,
@@ -859,4 +870,7 @@ export default {
   mcpSearch,
   userMcpList,
   userMcpSaveOrUpdate,
+  openApiKeyGenerate,
+  openApiKeyInfo,
+  openApiKeyReveal,
 }

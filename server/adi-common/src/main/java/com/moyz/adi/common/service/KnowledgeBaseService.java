@@ -9,12 +9,14 @@ import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.cosntant.RedisKeyConstant;
 import com.moyz.adi.common.dto.KbEditReq;
 import com.moyz.adi.common.dto.KbInfoResp;
+import com.moyz.adi.common.dto.KbQaDto;
 import com.moyz.adi.common.dto.KbSearchReq;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.file.FileOperatorContext;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SSEEmitterHelper;
+import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.rag.*;
 import com.moyz.adi.common.service.embedding.IKnowledgeEmbeddingService;
@@ -22,6 +24,8 @@ import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.vo.*;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import jakarta.annotation.Resource;
@@ -33,6 +37,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.BeanUtils;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -43,10 +48,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.text.MessageFormat;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE;
 import static com.moyz.adi.common.cosntant.AdiConstant.SSE_TIMEOUT;
@@ -311,6 +313,118 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         sseEmitterHelper.startSse(user, sseEmitter);
         self.retrieveAndPushToLLM(user, sseEmitter, qaRecordUuid);
         return sseEmitter;
+    }
+
+    /**
+     * Blocking knowledge base Q&A: retrieve from knowledge base, then call LLM synchronously.
+     *
+     * @param user          current user
+     * @param knowledgeBase knowledge base entity
+     * @param qaDto         QA record DTO
+     * @return JSON response with answer
+     */
+    public ResponseEntity<Map<String, Object>> blockingAsk(User user, KnowledgeBase knowledgeBase, KbQaDto qaDto) {
+        checkRequestTimesOrThrow();
+        KnowledgeBaseQa qaRecord = knowledgeBaseQaRecordService.getOrThrow(qaDto.getUuid());
+        AiModel aiModel = qaRecord.getAiModelId() > 0
+                ? aiModelService.getByIdOrThrow(qaRecord.getAiModelId())
+                : LLMContext.getAiModel(null, null);
+
+        int maxInputTokens = aiModel.getMaxInputTokens();
+        int maxResults = knowledgeBase.getRetrieveMaxResults();
+        if (maxResults < 1) {
+            maxResults = EmbeddingRag.getRetrieveMaxResults(qaRecord.getQuestion(), maxInputTokens);
+        }
+
+        // Retrieve from knowledge base
+        String knowledgeContext = "";
+        if (maxResults == 0) {
+            // User question too long, no retrieval possible
+            if (Boolean.TRUE.equals(knowledgeBase.getIsStrict())) {
+                throw new BaseException(A_PARAMS_ERROR);
+            }
+        }
+        if (maxResults > 0) {
+            ChatModel chatModel = LLMContext.getServiceById(knowledgeBase.getIngestModelId(), true).buildChatLLM(
+                    ChatModelBuilderProperties.builder()
+                            .temperature(knowledgeBase.getQueryLlmTemperature())
+                            .build());
+            RetrieverCreateParam createParam = RetrieverCreateParam.builder()
+                    .chatModel(chatModel)
+                    .filter(new IsEqualTo(AdiConstant.MetadataKey.KB_UUID, qaRecord.getKbUuid()))
+                    .maxResults(maxResults)
+                    .minScore(knowledgeBase.getRetrieveMinScore())
+                    .breakIfSearchMissed(knowledgeBase.getIsStrict())
+                    .build();
+            CompositeRag compositeRag = new CompositeRag(AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE);
+            List<RetrieverWrapper> retrieverWrappers = compositeRag.createRetriever(createParam);
+
+            StringBuilder sb = new StringBuilder();
+            for (RetrieverWrapper wrapper : retrieverWrappers) {
+                for (Content content : wrapper.getResponse()) {
+                    sb.append(content.textSegment().text()).append("\n");
+                }
+            }
+            knowledgeContext = sb.toString();
+        }
+
+        // Build prompt
+        String prompt = PromptUtil.createPrompt(qaRecord.getQuestion(), "", knowledgeContext, "");
+
+        // Call LLM in blocking mode
+        String uuid = UuidUtil.createShort();
+        AbstractLLMService llmService = LLMContext.getServiceOrDefault(null, null);
+        ChatModelBuilderProperties modelProperties = ChatModelBuilderProperties.builder()
+                .temperature(knowledgeBase.getQueryLlmTemperature())
+                .build();
+        ChatModelRequestParams chatRequestParams = ChatModelRequestParams.builder()
+                .memoryId(knowledgeBase.getUuid() + "_" + user.getUuid())
+                .systemMessage(knowledgeBase.getQuerySystemMessage())
+                .userMessage(prompt)
+                .build();
+        SseAskParams sseAskParams = SseAskParams.builder()
+                .user(user)
+                .uuid(uuid)
+                .modelProperties(modelProperties)
+                .httpRequestParams(chatRequestParams)
+                .build();
+
+        ChatResponse chatResponse = llmService.chat(sseAskParams);
+
+        // Update QA record
+        KnowledgeBaseQa updateRecord = new KnowledgeBaseQa();
+        updateRecord.setId(qaRecord.getId());
+        updateRecord.setPrompt(prompt);
+        updateRecord.setAnswer(chatResponse.aiMessage().text());
+        if (chatResponse.metadata() != null && chatResponse.metadata().tokenUsage() != null) {
+            updateRecord.setPromptTokens(chatResponse.metadata().tokenUsage().inputTokenCount());
+            updateRecord.setAnswerTokens(chatResponse.metadata().tokenUsage().outputTokenCount());
+        }
+        knowledgeBaseQaRecordService.updateById(updateRecord);
+
+        // Record token consumption
+        if (chatResponse.metadata() != null && chatResponse.metadata().tokenUsage() != null) {
+            int allToken = chatResponse.metadata().tokenUsage().totalTokenCount().intValue();
+            if (allToken > 0) {
+                userDayCostService.appendCostToUser(user, allToken, false);
+            }
+        }
+
+        // Build response
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("success", true);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("message_id", uuid);
+        data.put("answer", chatResponse.aiMessage().text());
+        if (chatResponse.metadata() != null && chatResponse.metadata().tokenUsage() != null) {
+            Map<String, Object> usage = new LinkedHashMap<>();
+            usage.put("prompt_tokens", chatResponse.metadata().tokenUsage().inputTokenCount());
+            usage.put("completion_tokens", chatResponse.metadata().tokenUsage().outputTokenCount());
+            usage.put("total_tokens", chatResponse.metadata().tokenUsage().totalTokenCount());
+            data.put("usage", usage);
+        }
+        result.put("data", data);
+        return ResponseEntity.ok(result);
     }
 
     /**

@@ -94,3 +94,10 @@ VALUES ('gpt-4o-mini-tts', 'OpenAI-TTS', 'tts', 'openai', 'text', '{
     }
   ]
 }', false);
+
+-- ============================================================
+-- Open API: Add api_key column to conversation, knowledge base, workflow
+-- ============================================================
+ALTER TABLE adi_conversation ADD COLUMN api_key varchar(200) DEFAULT '' NOT NULL;
+ALTER TABLE adi_knowledge_base ADD COLUMN api_key varchar(200) DEFAULT '' NOT NULL;
+ALTER TABLE adi_workflow ADD COLUMN api_key varchar(200) DEFAULT '' NOT NULL;

@@ -31,6 +31,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
@@ -42,6 +43,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.core.task.AsyncTaskExecutor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -110,6 +112,99 @@ public class ConversationMessageService extends ServiceImpl<ConversationMessageM
         sseEmitterHelper.startSse(user, sseEmitter);
         self.asyncCheckAndChat(sseEmitter, user, askReq);
         return sseEmitter;
+    }
+
+    /**
+     * Blocking chat: same preparation as SSE but calls ChatModel.chat() instead of streaming.
+     * Returns the ChatResponse after persisting messages to DB.
+     */
+    public ResponseEntity<Map<String, Object>> blockingAsk(AskReq askReq) {
+        User user = ThreadContext.getExistCurrentUser();
+
+        // Validate conversation exists
+        Conversation conversation = conversationService.lambdaQuery()
+                .eq(Conversation::getUuid, askReq.getConversationUuid())
+                .eq(Conversation::getIsDeleted, false)
+                .oneOpt()
+                .orElseThrow(() -> new BaseException(A_CONVERSATION_NOT_FOUND));
+
+        // Quota check (same as checkConversation's check 3)
+        AiModel aiModel = LLMContext.getAiModel(askReq.getModelPlatform(), askReq.getModelName());
+        if (null != aiModel && !aiModel.getIsFree()) {
+            ErrorEnum quotaError = quotaHelper.checkTextQuota(user);
+            if (null != quotaError) {
+                throw new BaseException(quotaError);
+            }
+        }
+
+        AbstractLLMService llmService = LLMContext.getServiceOrDefault(askReq.getModelPlatform(), askReq.getModelName());
+
+        // Knowledge base retrieval
+        List<KbInfoResp> filteredKb = new ArrayList<>();
+        if (StringUtils.isNotBlank(conversation.getKbIds())) {
+            List<Long> kbIds = Arrays.stream(conversation.getKbIds().split(",")).map(Long::parseLong).toList();
+            filteredKb = conversationService.filterEnableKb(user, kbIds);
+        }
+        List<RetrieverWrapper> retrieverWrappers = retrieve(conversation.getId(), filteredKb, llmService, askReq);
+
+        // Build prompt with memory and knowledge context
+        Pair<String, String> memoryAndKnowledge = buildMemoryAndKnowledge(retrieverWrappers);
+        String effectiveLocale = StringUtils.isNotBlank(user.getLocale())
+                ? user.getLocale()
+                : Objects.toString(SysConfigService.getByKey(AdiConstant.SysConfigKey.DEFAULT_LOCALE), "zh-CN");
+        String processedPrompt = PromptUtil.createPrompt(askReq.getPrompt(), memoryAndKnowledge.getLeft(), memoryAndKnowledge.getRight(), "", effectiveLocale);
+        if (!Objects.equals(askReq.getPrompt(), processedPrompt)) {
+            askReq.setProcessedPrompt(processedPrompt);
+        }
+
+        String questionUuid = UuidUtil.createShort();
+        ChatModelRequestParams chatRequestParams = buildChatRequestParams(conversation, askReq);
+        SseAskParams sseAskParams = new SseAskParams();
+        sseAskParams.setUser(user);
+        sseAskParams.setUuid(questionUuid);
+        sseAskParams.setModelName(askReq.getModelName());
+        sseAskParams.setHttpRequestParams(chatRequestParams);
+        sseAskParams.setModelProperties(
+                ChatModelBuilderProperties.builder()
+                        .temperature(conversation.getLlmTemperature())
+                        .returnThinking(chatRequestParams.getReturnThinking())
+                        .build()
+        );
+
+        // Blocking LLM call
+        ChatResponse chatResponse = llmService.chat(sseAskParams);
+
+        // Persist messages to DB
+        int inputTokens = 0;
+        int outputTokens = 0;
+        int totalTokens = 0;
+        if (chatResponse.metadata() != null && chatResponse.metadata().tokenUsage() != null) {
+            inputTokens = chatResponse.metadata().tokenUsage().inputTokenCount();
+            outputTokens = chatResponse.metadata().tokenUsage().outputTokenCount();
+            totalTokens = chatResponse.metadata().tokenUsage().totalTokenCount();
+        }
+        PromptMeta questionMeta = new PromptMeta(inputTokens, questionUuid);
+        AnswerMeta answerMeta = AnswerMeta.builder()
+                .tokens(outputTokens)
+                .uuid(UuidUtil.createShort())
+                .build();
+        LLMResponseContent responseContent = new LLMResponseContent(
+                chatResponse.aiMessage().thinking(), chatResponse.aiMessage().text(), null);
+        self.saveAfterAiResponse(user, askReq, retrieverWrappers, responseContent, questionMeta, answerMeta, null);
+
+        // Build response
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("success", true);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("message_id", questionUuid);
+        data.put("answer", chatResponse.aiMessage().text());
+        Map<String, Object> usage = new LinkedHashMap<>();
+        usage.put("prompt_tokens", inputTokens);
+        usage.put("completion_tokens", outputTokens);
+        usage.put("total_tokens", totalTokens);
+        data.put("usage", usage);
+        result.put("data", data);
+        return ResponseEntity.ok(result);
     }
 
     private boolean checkConversation(SseEmitter sseEmitter, User user, AskReq askReq) {

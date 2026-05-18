@@ -79,6 +79,10 @@ public class Conversation extends BaseEntity {
     @TableField("is_enable_web_search")
     private Boolean isEnableWebSearch;
 
+    @Schema(title = "OpenAPI密钥 | OpenAPI API Key")
+    @TableField("api_key")
+    private String apiKey;
+
     @TableField(value = "audio_config", jdbcType = JdbcType.JAVA_OBJECT, typeHandler = AudioConfigTypeHandler.class)
     private AudioConfig audioConfig;
 }

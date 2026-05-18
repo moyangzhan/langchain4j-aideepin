@@ -9,11 +9,13 @@ import com.moyz.adi.common.service.*;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
+import java.util.Map;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.SSE_TIMEOUT;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
@@ -90,6 +92,37 @@ public class WorkflowStarter {
             log.error("asyncRun execution exception, workflowUuid:{}", workflow.getUuid(), e);
             sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "Workflow execution error:" + e.getMessage());
         }
+    }
+
+    /**
+     * Run a workflow in blocking mode, wait for completion and return the result.
+     */
+    public ResponseEntity<Map<String, Object>> blocking(User user, String workflowUuid, List<ObjectNode> userInputs) {
+        Workflow workflow = workflowService.getByUuid(workflowUuid);
+        if (null == workflow) {
+            throw new BaseException(A_WF_NOT_FOUND);
+        } else if (Boolean.FALSE.equals(workflow.getIsEnable())) {
+            throw new BaseException(A_WF_DISABLED);
+        }
+
+        List<WorkflowComponent> components = workflowComponentService.getAllEnable();
+        List<WorkflowNode> nodes = workflowNodeService.lambdaQuery()
+                .eq(WorkflowNode::getWorkflowId, workflow.getId())
+                .eq(WorkflowNode::getIsDeleted, false)
+                .list();
+        List<WorkflowEdge> edges = workflowEdgeService.lambdaQuery()
+                .eq(WorkflowEdge::getWorkflowId, workflow.getId())
+                .eq(WorkflowEdge::getIsDeleted, false)
+                .list();
+
+        WorkflowEngine workflowEngine = new WorkflowEngine(workflow,
+                sseEmitterHelper,
+                components,
+                nodes,
+                edges,
+                workflowRuntimeService,
+                workflowRuntimeNodeService);
+        return workflowEngine.blockingRun(user, userInputs);
     }
 
     @Async

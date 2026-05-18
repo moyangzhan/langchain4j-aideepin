@@ -258,6 +258,7 @@ CREATE TABLE adi_conversation
     is_enable_thinking        boolean       default false             not null,
     is_enable_web_search      boolean       default false             not null,
     audio_config              jsonb         default '{}'              not null,
+    api_key                   varchar(200)  default ''                not null,
     create_time               timestamp     default CURRENT_TIMESTAMP not null,
     update_time               timestamp     default CURRENT_TIMESTAMP not null,
     is_deleted                boolean       default false             not null
@@ -608,6 +609,7 @@ create table adi_knowledge_base
     star_count             int           default 0                 not null,
     item_count             int           default 0                 not null,
     embedding_count        int           default 0                 not null,
+    api_key                varchar(200)  default ''                not null,
     create_time            timestamp     default CURRENT_TIMESTAMP not null,
     update_time            timestamp     default CURRENT_TIMESTAMP not null,
     is_deleted             boolean       default false             not null
@@ -842,6 +844,7 @@ create table adi_workflow
     user_id     bigint       default 0                 not null,
     is_public   boolean      default false             not null,
     is_enable   boolean      default true              not null,
+    api_key     varchar(200) default ''                not null,
     create_time timestamp    default CURRENT_TIMESTAMP not null,
     update_time timestamp    default CURRENT_TIMESTAMP not null,
     is_deleted  boolean      default false             not null

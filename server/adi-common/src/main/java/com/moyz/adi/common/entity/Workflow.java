@@ -34,4 +34,7 @@ public class Workflow extends BaseEntity {
 
     @TableField("is_enable")
     private Boolean isEnable;
+
+    @TableField("api_key")
+    private String apiKey;
 }

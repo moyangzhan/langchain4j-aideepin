@@ -37,6 +37,7 @@ public class TokenFilter extends OncePerRequestFilter {
             "/workflow/public",
             "/mcp/public",
             "/sys/config/public/",
+            "/api/v1/",
     };
 
     protected static final String[] TOKEN_IN_PARAMS = {
@@ -102,7 +103,10 @@ public class TokenFilter extends OncePerRequestFilter {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             }
         } finally {
-            ThreadContext.unload();
+            // Open API requests are cleaned up by OpenApiAuthFilter
+            if (!ThreadContext.isOpenApiRequest()) {
+                ThreadContext.unload();
+            }
         }
     }
 

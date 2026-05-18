@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, h, ref } from 'vue'
 import { NDropdown, NTag, useMessage } from 'naive-ui'
-import { HoverButton, SvgIcon } from '@/components/common'
+import { HoverButton, SvgIcon, ApiKeyModal } from '@/components/common'
 import { emptyWorkflowInfo } from '@/utils/functions'
 import { useAuthStore, useUserStore, useWfStore } from '@/store'
 import api from '@/api'
@@ -22,6 +22,7 @@ const authStore = useAuthStore()
 const userStore = useUserStore()
 const showViewType = ref<string>('instanceList')
 const submitting = ref<boolean>(false)
+const showApiKeyModal = ref(false)
 const options = computed(() => {
   const mine = props.workflow.userUuid === userStore.userInfo.uuid
   const common = [
@@ -86,11 +87,17 @@ function handleSelect(key: string | number) {
     submitting.value = false
   }
 }
+
+function openApiKey() {
+  if (!authStore.checkLoginOrShow())
+    return
+  showApiKeyModal.value = true
+}
 </script>
 
 <template>
   <header
-    class="sticky top-0 left-0 top-0 z-30 border-b dark:border-neutral-800 bg-white/80 dark:bg-black/20 backdrop-blur"
+    class="sticky top-0 left-0 z-30 border-b dark:border-neutral-800 bg-white/80 dark:bg-black/20 backdrop-blur"
   >
     <div class="relative flex items-center justify-between max-w-screen-xl px-4 m-auto h-10">
       <div class="flex items-center">
@@ -118,10 +125,16 @@ function handleSelect(key: string | number) {
             </NTag>
           </div>
         </HoverButton>
+        <HoverButton @click="openApiKey()">
+          <span class="text-xl">
+            <SvgIcon icon="carbon:api" />
+          </span>
+        </HoverButton>
         <NDropdown :options="options" class="mr-2" @select="handleSelect">
           <SvgIcon class="w-6 ml-2 cursor-pointer" icon="ri:more-fill" />
         </NDropdown>
       </div>
     </div>
+    <ApiKeyModal v-model:show="showApiKeyModal" type="wf" :uuid="workflow.uuid" :title="workflow.title" />
   </header>
 </template>

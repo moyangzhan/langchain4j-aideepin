@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
-import { HoverButton, SvgIcon } from '@/components/common'
+import { HoverButton, SvgIcon, ApiKeyModal } from '@/components/common'
+import { useAuthStore } from '@/store'
 import { knowledgeBaseEmptyInfo } from '@/utils/functions'
 import KbInfo from '@/views/knowledge-base/Header/KbInfo.vue'
 
@@ -11,13 +12,19 @@ withDefaults(defineProps<Props>(), {
   knowledgeBase: () => knowledgeBaseEmptyInfo(),
 })
 const showEditModal = ref(false)
+const showApiKeyModal = ref(false)
+const authStore = useAuthStore()
 
 function openEditView() {
-  console.log('openEditView', showEditModal.value)
   showEditModal.value = true
 }
 function showOrCloseModal(show: boolean) {
   showEditModal.value = show
+}
+function openApiKey() {
+  if (!authStore.checkLoginOrShow())
+    return
+  showApiKeyModal.value = true
 }
 </script>
 
@@ -32,6 +39,11 @@ function showOrCloseModal(show: boolean) {
         </p>
       </div>
       <div class="flex items-center space-x-2">
+        <HoverButton @click="openApiKey()">
+          <span class="text-xl">
+            <SvgIcon icon="carbon:api" />
+          </span>
+        </HoverButton>
         <HoverButton @click="openEditView()">
           <span class="text-xl">
             <SvgIcon icon="si:align-left-detailed-line" />
@@ -40,5 +52,6 @@ function showOrCloseModal(show: boolean) {
       </div>
     </div>
     <KbInfo v-if="knowledgeBase && knowledgeBase.uuid" :show-modal="showEditModal" :knowledge-base="knowledgeBase" @showModal="showOrCloseModal" />
+    <ApiKeyModal v-model:show="showApiKeyModal" type="kb" :uuid="knowledgeBase.uuid" :title="knowledgeBase.title" />
   </header>
 </template>

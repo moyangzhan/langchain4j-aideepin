@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
 import EditConv from './EditConv.vue'
-import { HoverButton, SvgIcon } from '@/components/common'
+import { HoverButton, SvgIcon, ApiKeyModal } from '@/components/common'
 import { useAuthStore } from '@/store'
 import { emptyConv } from '@/utils/functions'
 
@@ -13,6 +13,7 @@ withDefaults(defineProps<Props>(), {
 })
 const showEditModal = ref(false)
 const showEditBtn = ref(false)
+const showApiKeyModal = ref(false)
 const authStore = useAuthStore()
 
 function openEditView() {
@@ -22,6 +23,11 @@ function openEditView() {
 }
 function showOrCloseModal(show: boolean) {
   showEditModal.value = show
+}
+function openApiKey() {
+  if (!authStore.checkLoginOrShow())
+    return
+  showApiKeyModal.value = true
 }
 </script>
 
@@ -37,6 +43,11 @@ function showOrCloseModal(show: boolean) {
         </p>
       </div>
       <div v-show="showEditBtn" class="flex items-center space-x-2">
+        <HoverButton @click="openApiKey()">
+          <span class="text-xl">
+            <SvgIcon icon="carbon:api" />
+          </span>
+        </HoverButton>
         <HoverButton @click="openEditView()">
           <span class="text-xl">
             <SvgIcon icon="carbon:edit" />
@@ -46,4 +57,5 @@ function showOrCloseModal(show: boolean) {
     </div>
   </header>
   <EditConv :show-modal="showEditModal" :conversation="conversation" @showModal="showOrCloseModal" />
+  <ApiKeyModal v-model:show="showApiKeyModal" type="conv" :uuid="conversation.uuid" :title="conversation.title" />
 </template>

@@ -87,4 +87,8 @@ public class KnowledgeBase extends BaseEntity {
     @Schema(title = "请求LLM时的系统提示词 | System Prompt for LLM")
     @TableField("query_system_message")
     private String querySystemMessage;
+
+    @Schema(title = "OpenAPI密钥 | OpenAPI API Key")
+    @TableField("api_key")
+    private String apiKey;
 }

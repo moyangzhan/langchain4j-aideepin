@@ -6,7 +6,6 @@ import com.moyz.adi.common.dto.workflow.WfRuntimeResp;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.helper.SSEEmitterHelper;
 import com.moyz.adi.common.service.WorkflowRuntimeNodeService;
 import com.moyz.adi.common.service.WorkflowRuntimeService;
 import com.moyz.adi.common.util.JsonUtil;
@@ -25,6 +24,8 @@ import org.bsc.langgraph4j.serializer.std.ObjectStreamStateSerializer;
 import org.bsc.langgraph4j.state.AgentState;
 import org.bsc.langgraph4j.state.StateSnapshot;
 import org.bsc.langgraph4j.streaming.StreamingOutput;
+import com.moyz.adi.common.helper.SSEEmitterHelper;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.*;
@@ -166,6 +167,80 @@ public class WorkflowEngine {
             if (wfState.getProcessStatus() != WORKFLOW_PROCESS_STATUS_WAITING_INPUT) {
                 InterruptedFlow.remove(wfState.getUuid());
             }
+        }
+    }
+
+    /**
+     * Blocking execution: build the workflow graph, run it synchronously,
+     * and return the final output as a JSON response.
+     */
+    public ResponseEntity<Map<String, Object>> blockingRun(User user, List<ObjectNode> userInputs) {
+        this.user = user;
+        // Create a dummy SseEmitter and mark it completed via sendComplete,
+        // so all SSE send operations in runNode silently skip (COMPLETED_SSE cache check)
+        this.sseEmitter = new SseEmitter(0L);
+        sseEmitterHelper.sendComplete(user.getId(), this.sseEmitter);
+        log.info("WorkflowEngine blockingRun,userId:{},workflowUuid:{},userInputs:{}", user.getId(), workflow.getUuid(), userInputs);
+        if (!this.workflow.getIsEnable()) {
+            throw new BaseException(ErrorEnum.A_WF_DISABLED);
+        }
+
+        Long workflowId = this.workflow.getId();
+        this.wfRuntimeResp = workflowRuntimeService.create(user, workflowId);
+
+        String runtimeUuid = this.wfRuntimeResp.getUuid();
+        try {
+            Pair<WorkflowNode, Set<WorkflowNode>> startAndEnds = findStartAndEndNode();
+            WorkflowNode startNode = startAndEnds.getLeft();
+            List<NodeIOData> wfInputs = getAndCheckUserInput(userInputs, startNode);
+            this.wfState = new WfState(user, wfInputs, runtimeUuid);
+            if (!wfState.getInterruptNodes().isEmpty()) {
+                throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
+            }
+            workflowRuntimeService.updateInput(this.wfRuntimeResp.getId(), wfState);
+
+            CompileNode rootCompileNode = new CompileNode();
+            rootCompileNode.setId(startNode.getUuid());
+
+            Map<String, Integer> nodeVisitCount = new HashMap<>();
+            buildCompileNode(rootCompileNode, startNode, nodeVisitCount);
+
+            StateGraph<WfNodeState> mainStateGraph = new StateGraph<>(stateSerializer);
+            this.wfState.addEdge(START, startNode.getUuid());
+            buildStateGraph(null, mainStateGraph, rootCompileNode);
+
+            MemorySaver saver = new MemorySaver();
+            CompileConfig compileConfig = CompileConfig.builder()
+                    .checkpointSaver(saver)
+                    .build();
+            app = mainStateGraph.compile(compileConfig);
+            RunnableConfig invokeConfig = RunnableConfig.builder().build();
+
+            // Synchronous invoke instead of streaming
+            app.invoke(Map.of(), invokeConfig);
+
+            // Collect results from completed nodes
+            WorkflowRuntime updatedRuntime = workflowRuntimeService.updateOutput(wfRuntimeResp.getId(), wfState);
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("success", true);
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("task_id", runtimeUuid);
+            data.put("status", "completed");
+            if (null != updatedRuntime) {
+                data.put("outputs", updatedRuntime.getOutput());
+            }
+            result.put("data", data);
+            return ResponseEntity.ok(result);
+        } catch (Throwable e) {
+            log.error("blockingRun execution exception, workflowUuid:{}", workflow.getUuid(), e);
+            String errorMsg = e.getMessage();
+            workflowRuntimeService.updateStatus(wfRuntimeResp.getId(), WORKFLOW_PROCESS_STATUS_FAIL, errorMsg);
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("success", false);
+            result.put("message", errorMsg);
+            return ResponseEntity.internalServerError().body(result);
         }
     }
 
