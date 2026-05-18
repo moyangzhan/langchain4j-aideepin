@@ -227,12 +227,12 @@ CREATE TABLE adi_conversation_preset
     update_time       timestamp     default CURRENT_TIMESTAMP not null,
     is_deleted        boolean       default false             not null
 );
-COMMENT ON TABLE adi_conversation_preset IS '预设会话(角色)表 | Preset conversation (role) table';
+COMMENT ON TABLE adi_conversation_preset IS '预设角色表 | Preset Character table';
 COMMENT ON COLUMN adi_conversation_preset.title IS '标题 | Title';
 COMMENT ON COLUMN adi_conversation_preset.remark IS '描述 | Description';
 COMMENT ON COLUMN adi_conversation_preset.ai_system_message IS '提供给LLM的系统信息 | System message for LLM';
 COMMENT ON COLUMN adi_conversation_preset.kb_title IS '自动创建的知识库名称,为空则不创建 | Knowledge base title to auto-create, empty means no creation';
-COMMENT ON COLUMN adi_conversation_preset.type IS '角色类型(technology/creative/education/business/professional/design/marketing/service/administration/utility) | Role type category';
+COMMENT ON COLUMN adi_conversation_preset.type IS 'Character类型(technology/creative/education/business/professional/design/marketing/service/administration/utility) | Character type';
 
 create trigger trigger_conversation_preset
     before update
@@ -264,11 +264,11 @@ CREATE TABLE adi_conversation
     is_deleted                boolean       default false             not null
 );
 
-COMMENT ON TABLE adi_conversation IS '用户会话(角色)表 | User conversation (role) table';
+COMMENT ON TABLE adi_conversation IS '角色表（承载系统中的 Character 概念，即具有长期记忆的持久化人格，而非一次性会话） | Character table (represents a persistent persona with long-term memory, not a one-off session)';
 COMMENT ON COLUMN adi_conversation.user_id IS '用户ID | User ID';
 COMMENT ON COLUMN adi_conversation.title IS '标题，如：狄仁杰 | Title, e.g., Sherlock Holmes';
 COMMENT ON COLUMN adi_conversation.remark IS '备注，如：断案如神，手下能人众多 | Remark, e.g., Brilliant detective with keen observation skills';
-COMMENT ON COLUMN adi_conversation.ai_system_message IS '角色设定内容，如：你是唐朝的狄仁杰，破了很多大案、疑案 | Role setting content, e.g., You are Sherlock Holmes, a brilliant detective known for your keen observation skills';
+COMMENT ON COLUMN adi_conversation.ai_system_message IS 'Character设定内容，如：你是唐朝的狄仁杰，破了很多大案、疑案 | Character setting content, e.g., You are Sherlock Holmes, a brilliant detective known for your keen observation skills';
 COMMENT ON COLUMN adi_conversation.llm_temperature IS 'LLM响应的创造性/随机性 | LLM response creativity/randomness';
 COMMENT ON COLUMN adi_conversation.mcp_ids IS '启用的MCP服务id,以逗号隔开 | Enabled MCP service IDs, comma-separated';
 COMMENT ON COLUMN adi_conversation.kb_ids IS '关联使用的知识库id列表,以逗号隔开 | Associated knowledge base IDs, comma-separated';
@@ -298,7 +298,7 @@ CREATE TABLE adi_conversation_preset_rel
     is_deleted     boolean     default false             not null
 );
 
-COMMENT ON TABLE adi_conversation_preset_rel IS '预设会话与用户会话关系表 | Preset conversation and user conversation relationship table';
+COMMENT ON TABLE adi_conversation_preset_rel IS '预设角色与用户角色关系表 | Preset Character Relation table';
 COMMENT ON COLUMN adi_conversation_preset_rel.user_id IS '用户ID | User ID';
 COMMENT ON COLUMN adi_conversation_preset_rel.preset_conv_id IS '预设会话ID | Preset conversation ID';
 COMMENT ON COLUMN adi_conversation_preset_rel.user_conv_id IS '用户会话ID | User conversation ID';
@@ -336,7 +336,7 @@ CREATE TABLE adi_conversation_message
     is_deleted                      boolean       default false             not null
 );
 
-COMMENT ON TABLE adi_conversation_message IS '对话消息表 | Conversation message table';
+COMMENT ON TABLE adi_conversation_message IS '角色消息表 | Character Message table';
 COMMENT ON COLUMN adi_conversation_message.parent_message_id IS '父级消息id | Parent message ID';
 COMMENT ON COLUMN adi_conversation_message.conversation_id IS '对话id | Conversation ID';
 COMMENT ON COLUMN adi_conversation_message.conversation_uuid IS '对话的UUID | Conversation UUID';
