@@ -26,7 +26,7 @@ public class StatisticController {
         result.setKbStatistic(statisticService.calKbStat());
         result.setUserStatistic(statisticService.calUserStat());
         result.setTokenCostStatistic(statisticService.calTokenCostStat());
-        result.setConvStatistic(statisticService.calConvStatistic());
+        result.setCharacterStatistic(statisticService.calCharacterStatistic());
         result.setImageCostStatistic(statisticService.calImageCostStat());
         return result;
     }

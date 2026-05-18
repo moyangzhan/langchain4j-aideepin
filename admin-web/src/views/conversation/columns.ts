@@ -1,8 +1,8 @@
 import { BasicColumn } from '@/components/Table'
 import { useI18n } from '@/locales'
-import { Conversation } from '/#/conversation'
+import { Character } from '/#/conversation'
 
-export function getColumns(): BasicColumn<Conversation>[] {
+export function getColumns(): BasicColumn<Character>[] {
   const { t } = useI18n()
   return [
     {

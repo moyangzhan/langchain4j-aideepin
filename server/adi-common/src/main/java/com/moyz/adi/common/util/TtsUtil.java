@@ -13,6 +13,6 @@ public class TtsUtil {
      * @return 是否要进行文本转语音
      */
     public static boolean needTts(TtsSetting ttsSetting, int answerContentType) {
-        return AdiConstant.TtsConstant.SYNTHESIZER_SERVER.equals(ttsSetting.getSynthesizerSide()) && answerContentType == AdiConstant.ConversationConstant.ANSWER_CONTENT_TYPE_AUDIO;
+        return AdiConstant.TtsConstant.SYNTHESIZER_SERVER.equals(ttsSetting.getSynthesizerSide()) && answerContentType == AdiConstant.CharacterConstant.ANSWER_CONTENT_TYPE_AUDIO;
     }
 }

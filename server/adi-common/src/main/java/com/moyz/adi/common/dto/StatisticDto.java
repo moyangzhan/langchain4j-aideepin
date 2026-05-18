@@ -8,6 +8,6 @@ public class StatisticDto {
     private UserStatistic userStatistic;
     private KbStatistic kbStatistic;
     private TokenCostStatistic tokenCostStatistic;
-    private ConvStatistic convStatistic;
+    private CharacterStatistic characterStatistic;
     private ImageCostStatistic imageCostStatistic;
 }

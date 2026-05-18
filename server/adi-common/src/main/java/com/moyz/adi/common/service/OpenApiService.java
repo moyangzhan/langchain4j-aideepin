@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.ApiKeyResp;
 import com.moyz.adi.common.entity.*;
+import com.moyz.adi.common.entity.Character;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.AesUtil;
 import jakarta.annotation.Resource;
@@ -28,7 +29,7 @@ public class OpenApiService {
     private static final Set<String> VALID_TYPES = Set.of("conv", "kb", "wf");
 
     @Resource
-    private ConversationService conversationService;
+    private CharacterService characterService;
 
     @Resource
     private KnowledgeBaseService knowledgeBaseService;
@@ -55,11 +56,11 @@ public class OpenApiService {
 
         switch (type) {
             case "conv" -> {
-                Conversation conv = getConvOrThrow(uuid);
+                Character conv = getConvOrThrow(uuid);
                 checkOwnership(conv.getUserId(), currentUser);
-                conversationService.lambdaUpdate()
-                        .eq(Conversation::getId, conv.getId())
-                        .set(Conversation::getApiKey, encryptedValue)
+                characterService.lambdaUpdate()
+                        .eq(Character::getId, conv.getId())
+                        .set(Character::getApiKey, encryptedValue)
                         .update();
             }
             case "kb" -> {
@@ -102,7 +103,7 @@ public class OpenApiService {
         String encryptedApiKey;
         switch (type) {
             case "conv" -> {
-                Conversation conv = getConvOrThrow(uuid);
+                Character conv = getConvOrThrow(uuid);
                 checkOwnership(conv.getUserId(), currentUser);
                 encryptedApiKey = conv.getApiKey();
             }
@@ -144,7 +145,7 @@ public class OpenApiService {
         String encryptedApiKey;
         switch (type) {
             case "conv" -> {
-                Conversation conv = getConvOrThrow(uuid);
+                Character conv = getConvOrThrow(uuid);
                 checkOwnership(conv.getUserId(), currentUser);
                 encryptedApiKey = conv.getApiKey();
             }
@@ -190,9 +191,9 @@ public class OpenApiService {
 
         switch (type) {
             case "conv" -> {
-                Conversation conv = conversationService.lambdaQuery()
-                        .eq(Conversation::getApiKey, encryptedValue)
-                        .eq(Conversation::getIsDeleted, false)
+                Character conv = characterService.lambdaQuery()
+                        .eq(Character::getApiKey, encryptedValue)
+                        .eq(Character::getIsDeleted, false)
                         .one();
                 if (null == conv) {
                     throw new BaseException(A_API_KEY_NOT_FOUND);
@@ -249,12 +250,12 @@ public class OpenApiService {
         }
     }
 
-    private Conversation getConvOrThrow(String uuid) {
-        return conversationService.lambdaQuery()
-                .eq(Conversation::getUuid, uuid)
-                .eq(Conversation::getIsDeleted, false)
+    private Character getConvOrThrow(String uuid) {
+        return characterService.lambdaQuery()
+                .eq(Character::getUuid, uuid)
+                .eq(Character::getIsDeleted, false)
                 .oneOpt()
-                .orElseThrow(() -> new BaseException(A_CONVERSATION_NOT_EXIST));
+                .orElseThrow(() -> new BaseException(A_CHARACTER_NOT_EXIST));
     }
 
     private KnowledgeBase getKbOrThrow(String uuid) {

@@ -29,7 +29,7 @@ public class StatisticService {
     private KnowledgeBaseItemService knowledgeBaseItemService;
 
     @Resource
-    private ConversationService conversationService;
+    private CharacterService characterService;
 
     @Resource
     private DrawService drawService;
@@ -97,11 +97,11 @@ public class StatisticService {
      *
      * @return
      */
-    @Cacheable(value = STATISTIC + ":" + STATISTIC_CONVERSATION)
-    public ConvStatistic calConvStatistic() {
-        return ConvStatistic.builder()
-                .todayCreated(conversationService.countTodayCreated())
-                .total(conversationService.countAllCreated())
+    @Cacheable(value = STATISTIC + ":" + STATISTIC_CHARACTER)
+    public CharacterStatistic calCharacterStatistic() {
+        return CharacterStatistic.builder()
+                .todayCreated(characterService.countTodayCreated())
+                .total(characterService.countAllCreated())
                 .build();
     }
 

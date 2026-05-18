@@ -17,7 +17,7 @@ import RefGraph from './RefGraph.vue'
 import LoginTip from '@/views/user/LoginTip.vue'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
 import { useAppStore, useAuthStore, useChatStore } from '@/store'
-import { defaultConv } from '@/store/modules/chat/helper'
+import { getDefaultCharacter } from '@/store/modules/chat/helper'
 import { AUDIO_SYNTHESIZER_SIDE, CHAT_MESSAGE_CONTENT_TYPE } from '@/utils/constant'
 import { SvgIcon } from '@/components/common'
 import api from '@/api'
@@ -37,14 +37,14 @@ const loaddingBar = useLoadingBar()
 const { isMobile } = useBasicLayout()
 const { unshiftAnswer, updateMessageSomeFields, appendChunk } = useChat()
 const { scrollRef, scrollToBottom, scrollToBottomIfAtBottom, scrollTo } = useScroll()
-const { uuid: curConvUuid } = route.params as { uuid: string }
+const { uuid: curCharacterUuid } = route.params as { uuid: string }
 const regenerateQuestionUuid = ref<string>('')
 const inputEditorRef = ref()
 const tabsActiveTab = ref<string[]>([])
 const messages = computed(() => {
-  return chatStore.getMsgsByConv(curConvUuid)
+  return chatStore.getMsgsByCharacter(curCharacterUuid)
 })
-const currConv = computed(() => chatStore.getCurConv || defaultConv())
+const currCharacter = computed(() => chatStore.getCurCharacter || getDefaultCharacter())
 const imageUuids = ref<string[]>([])
 const isChatting = ref<boolean>(false)
 const loadingMsgs = ref<boolean>(false)
@@ -66,7 +66,7 @@ useCopyCode()
 // 未知原因刷新页面，loading 状态不会重置，手动重置
 messages.value.forEach((item: { loading?: boolean; uuid: string }) => {
   if (item.loading)
-    updateMessageSomeFields(curConvUuid, item.uuid, { loading: false })
+    updateMessageSomeFields(curCharacterUuid, item.uuid, { loading: false })
 })
 
 function sseStarted() {
@@ -143,16 +143,16 @@ async function handleGraphClick(msgUuid: string) {
 const fetchChatAPIOnce = async (regenerateQuestionUuid: string, childAudioPlayState: AudioPlayState) => {
   console.log('begin sseProcess')
 
-  const convUuid = currConv.value.uuid
-  const conv = chatStore.getConvByUuid(convUuid)
-  if (!conv) {
-    ms.error(t('chat.conversationNotFound'))
+  const characterUuid = currCharacter.value.uuid
+  const character = chatStore.getCharacterByUuid(characterUuid)
+  if (!character) {
+    ms.error(t('chat.characterNotFound'))
     return
   }
   api.sseProcess({
     options: {
       prompt: '',
-      conversationUuid: convUuid,
+      characterUuid: characterUuid,
       regenerateQuestionUuid,
       modelPlatform: appStore.selectedLLM.modelPlatform,
       modelName: appStore.selectedLLM.modelName,
@@ -179,7 +179,7 @@ const fetchChatAPIOnce = async (regenerateQuestionUuid: string, childAudioPlaySt
       try {
         for (let i = 0; i < chunk.length; i++) {
           appendChunk(
-            convUuid,
+            characterUuid,
             question.children[0].uuid,
             chunk[i],
             true, // thinking is true
@@ -201,7 +201,7 @@ const fetchChatAPIOnce = async (regenerateQuestionUuid: string, childAudioPlaySt
       try {
         for (let i = 0; i < chunk.length; i++) {
           appendChunk(
-            convUuid,
+            characterUuid,
             question.children[0].uuid,
             chunk[i],
           )
@@ -210,9 +210,9 @@ const fetchChatAPIOnce = async (regenerateQuestionUuid: string, childAudioPlaySt
       } catch (error) {
         console.error(error)
       }
-      const answerContentType = chatStore.answerContentType(conv, question.audioUuid)
+      const answerContentType = chatStore.answerContentType(character, question.audioUuid)
       const ttsPartText = chunk.replace('\n', '')
-      if (ttsPartText && appStore.audioSynthesizerSide === AUDIO_SYNTHESIZER_SIDE.client && answerContentType === CHAT_MESSAGE_CONTENT_TYPE.audio && conv.isAutoplayAnswer) {
+      if (ttsPartText && appStore.audioSynthesizerSide === AUDIO_SYNTHESIZER_SIDE.client && answerContentType === CHAT_MESSAGE_CONTENT_TYPE.audio && character.isAutoplayAnswer) {
         // settimeout是防止执行太快导致 AudioMessage 中的 watch 没有触发
         setTimeout(() => {
           childAudioPlayState.msgPart = chunk
@@ -234,17 +234,17 @@ const fetchChatAPIOnce = async (regenerateQuestionUuid: string, childAudioPlaySt
       if (chunk.includes('[META]')) {
         const meta = chunk.replace('[META]', '')
         const metaData: Chat.MetaData = JSON.parse(meta)
-        updateMessageSomeFields(convUuid, question.uuid, { ...metaData.question, loading: false, state: new Map<string, string>() })
+        updateMessageSomeFields(characterUuid, question.uuid, { ...metaData.question, loading: false, state: new Map<string, string>() })
         // 保留临时answer的uuid以方便自动选中最新答案
-        updateMessageSomeFields(convUuid, answer.uuid, { ...metaData.answer, uuid: answer.uuid, loading: false })
+        updateMessageSomeFields(characterUuid, answer.uuid, { ...metaData.answer, uuid: answer.uuid, loading: false })
         if (metaData.audioInfo) {
           answer.audioPlayState.audioUrl = metaData.audioInfo.url
           answer.audioDuration = metaData.audioInfo.duration
           answer.audioUuid = metaData.audioInfo.uuid
         }
       } else {
-        updateMessageSomeFields(convUuid, regenerateQuestionUuid, { loading: false })
-        updateMessageSomeFields(convUuid, answer.uuid, { uuid: answer.uuid, loading: false })
+        updateMessageSomeFields(characterUuid, regenerateQuestionUuid, { loading: false })
+        updateMessageSomeFields(characterUuid, answer.uuid, { uuid: answer.uuid, loading: false })
       }
       messageComplelted(regenerateQuestionUuid)
     },
@@ -255,7 +255,7 @@ const fetchChatAPIOnce = async (regenerateQuestionUuid: string, childAudioPlaySt
         ms.error(t('chat.questionNotFound'))
         return
       }
-      updateMessageSomeFields(convUuid, question.children[0].uuid, { remark: `${t('common.systemTip')}${error}`, loading: false })
+      updateMessageSomeFields(characterUuid, question.children[0].uuid, { remark: `${t('common.systemTip')}${error}`, loading: false })
     },
   })
 }
@@ -266,7 +266,7 @@ async function onRegenerate(questionUuid: string) {
     return
 
   regenerateQuestionUuid.value = questionUuid
-  const message = chatStore.getMsgByCurConv(questionUuid)
+  const message = chatStore.getMsgByCurCharacter(questionUuid)
   if (!message)
     return
 
@@ -274,11 +274,11 @@ async function onRegenerate(questionUuid: string) {
   controller = new AbortController()
 
   try {
-    const answerContentType = chatStore.answerContentType(currConv.value, message.audioUuid)
+    const answerContentType = chatStore.answerContentType(currCharacter.value, message.audioUuid)
     const answerUuid = uuidv4().replace(/-/g, '')
     const audioPlayState = emptyAudioPlayState()
     unshiftAnswer(
-      curConvUuid,
+      curCharacterUuid,
       questionUuid,
       {
         uuid: answerUuid,
@@ -322,23 +322,23 @@ function selectedLatestAnswer(questionUuid: string) {
 }
 
 async function loadMoreMessage(callback?: Function) {
-  if (currConv.value.loadedAll || loadingMsgs.value)
+  if (currCharacter.value.loadedAll || loadingMsgs.value)
     return
 
   loadingMsgs.value = true
   loaddingBar.start()
   try {
-    const minMsgUuid = chatStore.getCurConv?.minMsgUuid || ''
-    const { data } = await api.fetchMessages<Chat.ConvMsgListResp>(curConvUuid, minMsgUuid, pageSize)
+    const minMsgUuid = chatStore.getCurCharacter?.minMsgUuid || ''
+    const { data } = await api.fetchMessages<Chat.CharacterMsgListResp>(curCharacterUuid, minMsgUuid, pageSize)
 
     if (data.msgList.length < pageSize) {
-      chatStore.updateConv(curConvUuid, { minMsgUuid: data.minMsgUuid, loadedAll: true })
+      chatStore.updateCharacter(curCharacterUuid, { minMsgUuid: data.minMsgUuid, loadedAll: true })
       ms.warning(t('common.noMore'), {
         duration: 3000,
       })
     } else {
-      chatStore.updateConv(curConvUuid, { minMsgUuid: data.minMsgUuid })
-      chatStore.unshiftMessages(curConvUuid, data.msgList)
+      chatStore.updateCharacter(curCharacterUuid, { minMsgUuid: data.minMsgUuid })
+      chatStore.unshiftMessages(curCharacterUuid, data.msgList)
     }
   } catch (error) {
     console.error(`loadMoreMessage${error}`)
@@ -380,10 +380,10 @@ function handleDelete(questionUuid: string, answerUuid: string, isQuestion = fal
     negativeText: t('common.no'),
     onPositiveClick: () => {
       if (isQuestion) {
-        chatStore.deleteQuestion(curConvUuid, questionUuid)
+        chatStore.deleteQuestion(curCharacterUuid, questionUuid)
         api.messageDel(questionUuid)
       } else {
-        chatStore.deleteAnswer(curConvUuid, questionUuid, answerUuid)
+        chatStore.deleteAnswer(curCharacterUuid, questionUuid, answerUuid)
         api.messageDel(answerUuid)
         setTimeout(() => {
           selectedLatestAnswer(questionUuid)
@@ -401,9 +401,9 @@ const footerClass = computed(() => {
 })
 
 function toggleUsingContext() {
-  api.convToggleUsingContext(currConv.value.uuid, !currConv.value.understandContextEnable)
-  currConv.value.understandContextEnable = !currConv.value.understandContextEnable
-  if (currConv.value.understandContextEnable)
+  api.characterToggleUsingContext(currCharacter.value.uuid, !currCharacter.value.understandContextEnable)
+  currCharacter.value.understandContextEnable = !currCharacter.value.understandContextEnable
+  if (currCharacter.value.understandContextEnable)
     ms.success(t('chat.turnOnContext'))
   else
     ms.warning(t('chat.turnOffContext'))
@@ -414,9 +414,9 @@ function imagesChange(uuids: string[]) {
 }
 
 watch(
-  () => currConv.value.loadedFirstPageMsg,
+  () => currCharacter.value.loadedFirstPageMsg,
   () => {
-    if (currConv.value.loadedFirstPageMsg)
+    if (currCharacter.value.loadedFirstPageMsg)
       scrollToBottom()
   },
   { immediate: true },
@@ -438,7 +438,7 @@ onUnmounted(() => {
 
 onActivated(async () => {
   console.log('onActivated')
-  if (!curConvUuid && chatStore.active)
+  if (!curCharacterUuid && chatStore.active)
     await chatStore.setActive(chatStore.active)
 
   scrollToBottom()
@@ -452,10 +452,10 @@ onDeactivated(() => {
 <template>
   <div class="chat-box flex flex-col w-full h-full">
     <HeaderComponent
-      v-if="isMobile" :using-context="currConv.understandContextEnable"
+      v-if="isMobile" :using-context="currCharacter.understandContextEnable"
       @toggle-using-context="toggleUsingContext"
     />
-    <PcHeader v-if="!isMobile" :conversation="currConv" />
+    <PcHeader v-if="!isMobile" :character="currCharacter" />
     <main class="flex-1 overflow-hidden">
       <div ref="scrollRef" class="h-full overflow-hidden overflow-y-auto" @scroll="handleScroll">
         <div
@@ -481,7 +481,7 @@ onDeactivated(() => {
                 <!-- 语音聊天 -->
                 <AudioMessage
                   v-if="qaMessage.contentType === CHAT_MESSAGE_CONTENT_TYPE.audio" :inversion="true"
-                  :conversation="currConv" :message-uuid="qaMessage.uuid" :date-time="qaMessage.createTime"
+                  :character="currCharacter" :message-uuid="qaMessage.uuid" :date-time="qaMessage.createTime"
                   :audio-play-state="qaMessage.audioPlayState" :duration="qaMessage.audioDuration"
                   @delete="handleDelete(qaMessage.uuid, '', true)"
                 />
@@ -498,7 +498,7 @@ onDeactivated(() => {
                 <!-- 语音聊天 -->
                 <AudioMessage
                   v-if="qaMessage.contentType === CHAT_MESSAGE_CONTENT_TYPE.audio" :inversion="true"
-                  :conversation="currConv" :message-uuid="qaMessage.uuid" :date-time="qaMessage.createTime"
+                  :character="currCharacter" :message-uuid="qaMessage.uuid" :date-time="qaMessage.createTime"
                   :audio-play-state="qaMessage.audioPlayState" :duration="qaMessage.audioDuration"
                   @delete="handleDelete(qaMessage.uuid, '', true)"
                 />
@@ -525,7 +525,7 @@ onDeactivated(() => {
                     :name="`tab_${answer.uuid}`" :tab="`${t('chat.answer')} ${index + 1}`"
                   >
                     <AudioMessage
-                      v-if="answer.contentType === CHAT_MESSAGE_CONTENT_TYPE.audio" :conversation="currConv"
+                      v-if="answer.contentType === CHAT_MESSAGE_CONTENT_TYPE.audio" :character="currCharacter"
                       :duration="answer.audioDuration" :inversion="false" :message-uuid="answer.uuid"
                       :date-time="answer.createTime" :audio-play-state="answer.audioPlayState" :loading="answer.loading"
                       :ai-model-platform="answer.aiModelPlatform" @delete="handleDelete(qaMessage.uuid, answer.uuid)"
@@ -587,7 +587,7 @@ onDeactivated(() => {
               <template v-if="qaMessage.children.length === 1">
                 <AudioMessage
                   v-if="qaMessage.children[0].contentType === CHAT_MESSAGE_CONTENT_TYPE.audio"
-                  :conversation="currConv" :duration="qaMessage.children[0].audioDuration" :inversion="false"
+                  :character="currCharacter" :duration="qaMessage.children[0].audioDuration" :inversion="false"
                   :message-uuid="qaMessage.children[0].uuid" :date-time="qaMessage.children[0].createTime"
                   :audio-play-state="qaMessage.children[0].audioPlayState" :loading="qaMessage.children[0].loading"
                   :ai-model-platform="qaMessage.children[0].aiModelPlatform"
@@ -671,7 +671,7 @@ onDeactivated(() => {
       <div class="w-full max-w-screen-xl m-auto border-t">
         <InputToolbar @images-change="imagesChange" />
         <InputEditor
-          ref="inputEditorRef" :conversation-uuid="curConvUuid" :image-uuids="imageUuids"
+          ref="inputEditorRef" :character-uuid="curCharacterUuid" :image-uuids="imageUuids"
           @sse-started="sseStarted" @message-receiving="chatMessageReceiving" @message-complelted="messageComplelted"
           @is-chatting="(chatting) => isChatting = chatting"
         />

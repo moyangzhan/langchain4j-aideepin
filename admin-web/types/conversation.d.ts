@@ -1,4 +1,4 @@
-export interface Conversation {
+export interface Character {
   id: string
   uuid: string
   title: string
@@ -9,7 +9,7 @@ export interface Conversation {
   updateTime: string
 }
 
-export interface ConversationPreset {
+export interface CharacterPreset {
   id: string
   uuid: string
   title: string

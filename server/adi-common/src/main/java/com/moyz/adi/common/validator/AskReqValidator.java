@@ -24,9 +24,9 @@ public class AskReqValidator implements
 
         String uuidRegex = "^[0-9a-fA-F]{8}[0-9a-fA-F]{4}4[0-9a-fA-F]{3}[89abAB][0-9a-fA-F]{3}[0-9a-fA-F]{12}$";
         //check conversation uuid
-        boolean isValid = Pattern.matches(uuidRegex, value.getConversationUuid());
+        boolean isValid = Pattern.matches(uuidRegex, value.getCharacterUuid());
         if (!isValid) {
-            throw new IllegalArgumentException("conversation uuid error");
+            throw new IllegalArgumentException("character uuid error");
         }
         //check regenerate msg uuid
         if (StringUtils.isNotBlank(value.getRegenerateQuestionUuid())) {

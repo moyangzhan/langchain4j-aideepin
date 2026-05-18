@@ -7,13 +7,13 @@ import org.hibernate.validator.constraints.Length;
 
 import java.util.List;
 
-@Schema(description = "对话的请求对象 | Conversation Request Object")
+@Schema(description = "对话的请求对象 | Character Request Object")
 @Data
 @AskReqCheck
 public class AskReq {
 
     @Length(min = 32, max = 32)
-    private String conversationUuid;
+    private String characterUuid;
 
     private String parentMessageId;
 

@@ -16,34 +16,34 @@ const authStore = useAuthStore()
 const authStoreRef = ref<AuthState>(authStore)
 const mouseEnterKbUuid = ref<string>('')
 const showEditModal = ref<boolean>(false)
-const editConv = ref<Chat.Conversation>({} as Chat.Conversation)
+const editCharacter = ref<Chat.Character>({} as Chat.Character)
 
-async function handleSelect({ uuid }: Chat.Conversation) {
+async function handleSelect({ uuid }: Chat.Character) {
   console.log('click chat', uuid)
   if (isActive(uuid))
     return
 
   if (chatStore.active)
-    chatStore.updateConv(chatStore.active, {})
+    chatStore.updateCharacter(chatStore.active, {})
   await chatStore.setActive(uuid)
 
-  await checkAndLoadFirstPageMsgsByConv(uuid)
+  await checkAndLoadFirstPageMsgsByCharacter(uuid)
 
   if (isMobile.value)
     appStore.setSiderCollapsed(true)
 }
 
-function handleMouseEnter({ uuid }: Chat.Conversation) {
+function handleMouseEnter({ uuid }: Chat.Character) {
   mouseEnterKbUuid.value = uuid
 }
 function handleMouseLeave() {
   mouseEnterKbUuid.value = ''
 }
-function openEditView(item: Chat.Conversation) {
+function openEditView(item: Chat.Character) {
   if (!authStore.checkLoginOrShow())
     return
   showEditModal.value = true
-  editConv.value = item
+  editCharacter.value = item
 }
 
 function isActive(uuid: string) {
@@ -51,18 +51,18 @@ function isActive(uuid: string) {
 }
 
 async function fetchHistory() {
-  const { data: convs } = await api.fetchConvs<Chat.Conversation[]>()
-  if (convs.length > 0) {
+  const { data: characters } = await api.fetchCharacters<Chat.Character[]>()
+  if (characters.length > 0) {
     chatStore.clearDefault()
-    chatStore.addConvs(convs)
+    chatStore.addCharacters(characters)
 
     const active = route.params.uuid as string
     console.log('List.vue active', active)
     if (active === 'default') {
-      await handleSelect(convs[0])
+      await handleSelect(characters[0])
     } else {
       // F5刷新页面时
-      await checkAndLoadFirstPageMsgsByConv(active)
+      await checkAndLoadFirstPageMsgsByCharacter(active)
     }
   }
 }
@@ -70,27 +70,27 @@ async function fetchHistory() {
 /**
  * 如果会话{uuid}的消息不存在，向服务端请求第一页
  */
-async function checkAndLoadFirstPageMsgsByConv(uuid: string) {
+async function checkAndLoadFirstPageMsgsByCharacter(uuid: string) {
   if (chatStore.loadingMsgs.has(uuid))
     return
 
   chatStore.addLoadingMsg(uuid)
   try {
-    const minMsgUuid = chatStore.getCurConv?.minMsgUuid || ''
-    const cacheMessages = chatStore.getMsgsByConv(uuid)
+    const minMsgUuid = chatStore.getCurCharacter?.minMsgUuid || ''
+    const cacheMessages = chatStore.getMsgsByCharacter(uuid)
     if (cacheMessages.length === 0) {
-      const { data } = await api.fetchMessages<Chat.ConvMsgListResp>(uuid, minMsgUuid, 20)
+      const { data } = await api.fetchMessages<Chat.CharacterMsgListResp>(uuid, minMsgUuid, 20)
       data.msgList.forEach((messageRecord) => {
         chatStore.addMessage(uuid, messageRecord, false)
       })
-      chatStore.updateConv(uuid, { minMsgUuid: data.minMsgUuid, loadedFirstPageMsg: true })
+      chatStore.updateCharacter(uuid, { minMsgUuid: data.minMsgUuid, loadedFirstPageMsg: true })
     }
   } finally {
     chatStore.deleteLoadingMsg(uuid)
   }
 }
 
-const convList = computed(() => chatStore.conversations)
+const convList = computed(() => chatStore.characters)
 
 watch(
   () => authStoreRef.value.token,
@@ -110,7 +110,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <EditConv v-model:showModal="showEditModal" :conversation="editConv" @show-modal="(show) => showEditModal = show" />
+  <EditConv v-model:showModal="showEditModal" :character="editCharacter" @show-modal="(show) => showEditModal = show" />
   <NScrollbar class="px-4">
     <div class="flex flex-col gap-2 text-sm">
       <template v-if="!convList.length">

@@ -1,7 +1,7 @@
 <template>
   <n-card :bordered="false" class="proCard">
     <n-alert type="info" :show-icon="false" closable>
-      {{ t('conversation.conversationIsRole') }}
+      {{ t('character.characterIsRole') }}
     </n-alert>
 
     <BasicForm class="mt-3" @register="register" @submit="handleSubmit" @reset="handleReset" />
@@ -9,7 +9,7 @@
     <BasicTable
       :columns="columns"
       :request="loadDataTable"
-      :row-key="(row: Conversation) => row.id"
+      :row-key="(row: Character) => row.id"
       ref="actionRef"
       :actionColumn="actionColumn"
       @update:checked-row-keys="onCheckedRow"
@@ -32,7 +32,7 @@
       >
         <n-form-item :label="t('common.title')" path="title">
           <n-input
-            :placeholder="t('conversation.titlePlaceholder')"
+            :placeholder="t('character.titlePlaceholder')"
             v-model:value="editFormParams.title"
             maxlength="45"
             show-count
@@ -42,7 +42,7 @@
           <n-input
             type="textarea"
             :autosize="{ minRows: 3, maxRows: 10 }"
-            :placeholder="t('conversation.descriptionPlaceholder')"
+            :placeholder="t('character.descriptionPlaceholder')"
             v-model:value="editFormParams.aiSystemMessage"
           />
         </n-form-item>
@@ -63,12 +63,12 @@
   import { h, reactive, ref } from 'vue'
   import { BasicTable, TableAction } from '@/components/Table'
   import { BasicForm, FormSchema, useForm } from '@/components/Form/index'
-  import convApi from '@/api/conversation'
+  import characterApi from '@/api/conversation'
   import { getColumns } from './columns'
   const columns = getColumns()
   import { type FormRules } from 'naive-ui'
   import { useDialog } from 'naive-ui'
-  import { Conversation } from '/#/conversation'
+  import { Character } from '/#/conversation'
   import { t } from '@/locales'
 
   const newUserRules: FormRules = {
@@ -85,7 +85,7 @@
       component: 'NInput',
       label: t('common.title'),
       componentProps: {
-        placeholder: t('conversation.titlePlaceholder'),
+        placeholder: t('character.titlePlaceholder'),
         onInput: (e: any) => {
           console.log(e)
         },
@@ -142,11 +142,11 @@
         dropDownActions: [
           {
             label: t('common.delete'),
-            key: 'deleteConv',
+            key: 'deleteCharacter',
           },
         ],
         select: (key) => {
-          if (key === 'deleteConv') {
+          if (key === 'deleteCharacter') {
             dialog.warning({
               title: t('common.tip'),
               content: `${t('common.deleteConfirmPrefix')} ${record.title} ${t(
@@ -174,7 +174,7 @@
   })
 
   const loadDataTable = async (res) => {
-    const resp = await convApi.searchConvs({ ...getFieldsValue() }, res)
+    const resp = await characterApi.searchCharacters({ ...getFieldsValue() }, res)
     return resp.data
   }
 
@@ -191,7 +191,7 @@
     formBtnLoading.value = true
     formRef.value.validate(async (errors) => {
       if (!errors) {
-        await convApi.editConv(editFormParams.uuid, editFormParams)
+        await characterApi.editCharacter(editFormParams.uuid, editFormParams)
         window['$message'].success(t('common.editSuccess'))
         setTimeout(() => {
           showEditModal.value = false
@@ -211,7 +211,7 @@
   }
 
   async function handleDelete(record: Recordable) {
-    await convApi.deleteConv(record.uuid)
+    await characterApi.deleteCharacter(record.uuid)
     reloadTable()
   }
 

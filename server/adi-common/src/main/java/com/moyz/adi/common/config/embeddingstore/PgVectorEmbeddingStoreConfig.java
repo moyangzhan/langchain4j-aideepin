@@ -56,9 +56,9 @@ public class PgVectorEmbeddingStoreConfig {
      *
      * @return EmbeddingStore实例
      */
-    @Bean(name = "convMemoryEmbeddingStore")
-    public EmbeddingStore<TextSegment> initConvMemoryEmbeddingStore() {
-        log.info("Initializing convMemoryEmbeddingStore...");
+    @Bean(name = "characterMemoryEmbeddingStore")
+    public EmbeddingStore<TextSegment> initCharacterMemoryEmbeddingStore() {
+        log.info("Initializing characterMemoryEmbeddingStore...");
         String tableName = "adi_conversation_memory_embedding";
         Pair<String, Integer> pair = AdiPropertiesUtil.getSuffixAndDimension(adiProperties);
         if (StringUtils.isNotBlank(pair.getLeft())) {

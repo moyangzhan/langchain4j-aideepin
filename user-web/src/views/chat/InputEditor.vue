@@ -13,11 +13,11 @@ import { AUDIO_SYNTHESIZER_SIDE, CHAT_MESSAGE_CONTENT_TYPE } from '@/utils/const
 import { t } from '@/locales'
 import api from '@/api'
 interface Props {
-  conversationUuid: string
+  characterUuid: string
   imageUuids: string[]
 }
 const props = withDefaults(defineProps<Props>(), {
-  conversationUuid: '',
+  characterUuid: '',
 })
 const emit = defineEmits<Emit>()
 interface Emit {
@@ -40,7 +40,7 @@ const isChatting = ref<boolean>(false)
 const chattingMsg = ref<Chat.ChatMessage>(emptyChatMessage())
 const showAudioRecorderModal = ref<boolean>(false)
 const messages = computed(() => {
-  return chatStore.getMsgsByConv(props.conversationUuid)
+  return chatStore.getMsgsByCharacter(props.characterUuid)
 })
 let controller = new AbortController()
 let arrowKeyIdx = -1
@@ -140,15 +140,15 @@ function handleShowAudioRecorderModal() {
 
 const fetchChatAPIOnce = async (message: string, userAudioUuid: string, userAudioDuration: number) => {
   console.log('input editor chat')
-  const conv = chatStore.getConvByUuid(props.conversationUuid)
-  if (!conv) {
-    ms.error(t('chat.conversationNotFound'))
+  const character = chatStore.getCharacterByUuid(props.characterUuid)
+  if (!character) {
+    ms.error(t('chat.characterNotFound'))
     return
   }
   api.sseProcess({
     options: {
       prompt: message,
-      conversationUuid: props.conversationUuid,
+      characterUuid: props.characterUuid,
       regenerateQuestionUuid: '',
       modelPlatform: appStore.selectedLLM.modelPlatform,
       modelName: appStore.selectedLLM.modelName,
@@ -171,7 +171,7 @@ const fetchChatAPIOnce = async (message: string, userAudioUuid: string, userAudi
       const answer = chattingMsg.value.children[0]
       for (let i = 0; i < chunk.length; i++) {
         appendChunk(
-          props.conversationUuid,
+          props.characterUuid,
           answer.uuid,
           chunk[i],
           true, // thinking is true
@@ -186,7 +186,7 @@ const fetchChatAPIOnce = async (message: string, userAudioUuid: string, userAudi
         const answer = chattingMsg.value.children[0]
         for (let i = 0; i < chunk.length; i++) {
           appendChunk(
-            props.conversationUuid,
+            props.characterUuid,
             answer.uuid,
             chunk[i],
             false, // thinking is false
@@ -194,9 +194,9 @@ const fetchChatAPIOnce = async (message: string, userAudioUuid: string, userAudi
           emit('messageReceiving', chattingMsg.value.uuid)
         }
         // 使用浏览器的语音合成功能朗读文本
-        const answerContentType = chatStore.answerContentType(conv, userAudioUuid)
+        const answerContentType = chatStore.answerContentType(character, userAudioUuid)
         const ttsPartText = chunk.replace('\n', '')
-        if (ttsPartText && appStore.audioSynthesizerSide === AUDIO_SYNTHESIZER_SIDE.client && answerContentType === CHAT_MESSAGE_CONTENT_TYPE.audio && conv.isAutoplayAnswer) {
+        if (ttsPartText && appStore.audioSynthesizerSide === AUDIO_SYNTHESIZER_SIDE.client && answerContentType === CHAT_MESSAGE_CONTENT_TYPE.audio && character.isAutoplayAnswer) {
           // settimeout是防止执行太快导致 AudioMessage 中的 watch 没有触发
           setTimeout(() => {
             answer.audioPlayState.msgPart = ttsPartText
@@ -210,7 +210,7 @@ const fetchChatAPIOnce = async (message: string, userAudioUuid: string, userAudi
     },
     audioDataReceived(audioFrame) {
       // AudioMessage 监听audioFrame的变化并自动播放
-      if (!conv.isAutoplayAnswer || !audioFrame) {
+      if (!character.isAutoplayAnswer || !audioFrame) {
         console.log('AudioMessage audioFrame is empty or autoplay is disabled')
         return
       }
@@ -227,16 +227,16 @@ const fetchChatAPIOnce = async (message: string, userAudioUuid: string, userAudi
       if (chunk.includes('[META]')) {
         const meta = chunk.replace('[META]', '')
         const metaData: Chat.MetaData = JSON.parse(meta)
-        updateMessageSomeFields(props.conversationUuid, chattingMsg.value.uuid, { ...metaData.question, thinking: false, loading: false })
-        updateMessageSomeFields(props.conversationUuid, answer.uuid, { ...metaData.answer, thinking: false, loading: false })
+        updateMessageSomeFields(props.characterUuid, chattingMsg.value.uuid, { ...metaData.question, thinking: false, loading: false })
+        updateMessageSomeFields(props.characterUuid, answer.uuid, { ...metaData.answer, thinking: false, loading: false })
         if (metaData.audioInfo) {
           answer.audioPlayState.audioUrl = metaData.audioInfo.url
           answer.audioDuration = metaData.audioInfo.duration
           answer.audioUuid = metaData.audioInfo.uuid
         }
       } else {
-        updateMessageSomeFields(props.conversationUuid, chattingMsg.value.uuid, { thinking: false, loading: false })
-        updateMessageSomeFields(props.conversationUuid, answer.uuid, { thinking: false, loading: false })
+        updateMessageSomeFields(props.characterUuid, chattingMsg.value.uuid, { thinking: false, loading: false })
+        updateMessageSomeFields(props.characterUuid, answer.uuid, { thinking: false, loading: false })
       }
       emit('messageComplelted', chattingMsg.value.uuid)
       isChatting.value = false
@@ -246,7 +246,7 @@ const fetchChatAPIOnce = async (message: string, userAudioUuid: string, userAudi
       ms.warning(error)
       isChatting.value = false
       const question = messages.value[messages.value.length - 1]
-      updateMessageSomeFields(props.conversationUuid, question.children[0].uuid, { remark: `${t('common.systemTip')}${error}`, thinking: false, loading: false })
+      updateMessageSomeFields(props.characterUuid, question.children[0].uuid, { remark: `${t('common.systemTip')}${error}`, thinking: false, loading: false })
       chattingMsg.value.state = new Map<string, string>()
     },
   })
@@ -273,12 +273,12 @@ async function createChatTask(userAudioUuid = '', userAudioUrl = '', audioDurati
     const answerUuid = uuidv4().replace(/-/g, '')
     controller = new AbortController()
 
-    const conv = chatStore.getConvByUuid(props.conversationUuid)
-    if (!conv) {
-      ms.error(t('chat.conversationNotFound'))
+    const character = chatStore.getCharacterByUuid(props.characterUuid)
+    if (!character) {
+      ms.error(t('chat.characterNotFound'))
       return
     }
-    const answerContentType = chatStore.answerContentType(conv, userAudioUuid)
+    const answerContentType = chatStore.answerContentType(character, userAudioUuid)
 
     const audioPlayState = emptyAudioPlayState()
     audioPlayState.audioUrl = userAudioUrl
@@ -322,7 +322,7 @@ async function createChatTask(userAudioUuid = '', userAudioUrl = '', audioDurati
     }
     // add my question
     addMessage(
-      props.conversationUuid,
+      props.characterUuid,
       chattingMsg.value,
       true,
     )

@@ -215,7 +215,7 @@ export function emptyWfNodeRuntime() {
   }
 }
 
-export function emptyConv(): Chat.Conversation {
+export function emptyCharacter(): Chat.Character {
   return {
     uuid: '',
     title: '',
@@ -227,7 +227,7 @@ export function emptyConv(): Chat.Conversation {
     minMsgUuid: '',
     mcpIds: [],
     kbIds: [], // 关联的知识库ID
-    convKnowledgeList: [], // 关联的知识库
+    characterKnowledgeList: [], // 关联的知识库
     answerContentType: CHAT_MESSAGE_CONTENT_TYPE.auto, // 1: auto, 2: text, 3: audio
     isAutoplayAnswer: false, // 聊天时音频类型的响应内容是否自动播放
     isEnableThinking: false, // 是否启用思考过程

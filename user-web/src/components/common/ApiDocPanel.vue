@@ -16,7 +16,7 @@ const baseUrl = computed(() => {
 
 const endpointInfo = computed(() => {
   const urlBase = baseUrl.value
-  if (props.type === 'conv') {
+  if (props.type === 'character') {
     return {
       endpoint: `${urlBase}/character/chat-messages`,
       method: 'POST',

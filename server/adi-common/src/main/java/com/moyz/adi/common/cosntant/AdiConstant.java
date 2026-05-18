@@ -109,8 +109,8 @@ public class AdiConstant {
     public static final Double LLM_TEMPERATURE_DEFAULT = 0.7D;
     public static final Double RAG_RETRIEVE_MIN_SCORE_DEFAULT = 0.6D;
 
-    public static class ConversationConstant {
-        private ConversationConstant() {
+    public static class CharacterConstant {
+        private CharacterConstant() {
         }
 
         public static final String DEFAULT_NAME = "通用智能助手";
@@ -146,8 +146,8 @@ public class AdiConstant {
         public static final String KB_ITEM_UUID = "kb_item_uuid";
         public static final String ENGINE_NAME = "engine_name";
         public static final String SEARCH_UUID = "search_uuid";
-        public static final String CONVERSATION_ID = "conv_id";
-        public static final String CONVERSATION_MSG_ID = "conv_msg_id";
+        public static final String CHARACTER_ID = "conv_id";
+        public static final String CHARACTER_MSG_ID = "conv_msg_id";
 
         public static final String TEXT = "text";
     }
@@ -168,7 +168,7 @@ public class AdiConstant {
         public static final String GOOGLE_SETTING = "google_setting";
         public static final String REQUEST_TEXT_RATE_LIMIT = "request_text_rate_limit";
         public static final String REQUEST_IMAGE_RATE_LIMIT = "request_image_rate_limit";
-        public static final String CONVERSATION_MAX_NUM = "conversation_max_num";
+        public static final String CHARACTER_MAX_NUM = "conversation_max_num";
         public static final String QUOTA_BY_TOKEN_DAILY = "quota_by_token_daily";
         public static final String QUOTA_BY_TOKEN_MONTHLY = "quota_by_token_monthly";
         public static final String QUOTA_BY_REQUEST_DAILY = "quota_by_request_daily";
@@ -487,7 +487,7 @@ public class AdiConstant {
         }
 
         public static final String KNOWLEDGE_BASE = "knowledge_base";
-        public static final String CONV_MEMORY = "conversation_memory";
+        public static final String CHARACTER_MEMORY = "conversation_memory";
         public static final String WEB = "web";
     }
 

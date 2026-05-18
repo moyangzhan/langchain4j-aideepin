@@ -36,8 +36,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CONVERSATION_ID;
-import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CONVERSATION_MSG_ID;
+import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CHARACTER_ID;
+import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CHARACTER_MSG_ID;
 import static com.moyz.adi.common.cosntant.AdiConstant.RESPONSE_FORMAT_TYPE_JSON_OBJECT;
 
 /**
@@ -49,13 +49,13 @@ import static com.moyz.adi.common.cosntant.AdiConstant.RESPONSE_FORMAT_TYPE_JSON
 public class LongTermMemoryService {
 
     @Resource
-    private EmbeddingStore<TextSegment> convMemoryEmbeddingStore;
+    private EmbeddingStore<TextSegment> characterMemoryEmbeddingStore;
     @Resource
     private EmbeddingModel embeddingModel;
 
     @Async
-    public void asyncAdd(Long convId, String modelPlatform, String modelName, String userMessage, String assistantMessage) {
-        log.info("Converting messages to memory, convId:{}", convId);
+    public void asyncAdd(Long characterId, String modelPlatform, String modelName, String userMessage, String assistantMessage) {
+        log.info("Converting messages to memory, characterId:{}", characterId);
         String inputMessage = toInputMessage(userMessage, assistantMessage);
         log.info("inputMessage: {}", inputMessage);
         AbstractLLMService llmService = LLMContext.getServiceOrDefault(modelPlatform, modelName);
@@ -105,10 +105,10 @@ public class LongTermMemoryService {
                     .queryEmbedding(embedding)
                     .maxResults(5)
                     .minScore(0.7)
-                    .filter(new IsEqualTo(CONVERSATION_ID, convId))
+                    .filter(new IsEqualTo(CHARACTER_ID, characterId))
                     .build();
             Map<String, EmbeddingMatch<TextSegment>> oldMemoryEmbeddingToContent = new HashMap<>();
-            EmbeddingSearchResult<TextSegment> searchResult = convMemoryEmbeddingStore.search(searchRequest);
+            EmbeddingSearchResult<TextSegment> searchResult = characterMemoryEmbeddingStore.search(searchRequest);
             searchResult.matches().forEach(item -> oldMemoryEmbeddingToContent.put(item.embeddingId(), item));
 
             // mapping UUIDs with integers for handling UUID hallucinations
@@ -146,22 +146,22 @@ public class LongTermMemoryService {
                     log.info(" No changes required for memory id: {}", actionMemory.getId());
                 } else if (AdiConstant.MemoryEvent.DELETE.equalsIgnoreCase(actionMemory.getEvent())) {
                     String embeddingId = tmpIdToEmbeddingId.get(Integer.parseInt(actionMemory.getId()));
-                    convMemoryEmbeddingStore.remove(embeddingId);
+                    characterMemoryEmbeddingStore.remove(embeddingId);
                 } else if (AdiConstant.MemoryEvent.UPDATE.equalsIgnoreCase(actionMemory.getEvent())) {
 
                     // Remove by embedding id and re-add with new content
                     String oldEmbeddingId = tmpIdToEmbeddingId.get(Integer.parseInt(actionMemory.getId()));
-                    convMemoryEmbeddingStore.remove(oldEmbeddingId);
+                    characterMemoryEmbeddingStore.remove(oldEmbeddingId);
 
                     EmbeddingMatch<TextSegment> match = oldMemoryEmbeddingToContent.get(oldEmbeddingId);
-                    Metadata metadata = new Metadata(Map.of(CONVERSATION_ID, convId));
+                    Metadata metadata = new Metadata(Map.of(CHARACTER_ID, characterId));
                     TextSegment newSegment = TextSegment.from(actionMemory.getText(), metadata);
-                    convMemoryEmbeddingStore.addAll(List.of(oldEmbeddingId), List.of(match.embedding()), List.of(newSegment));
+                    characterMemoryEmbeddingStore.addAll(List.of(oldEmbeddingId), List.of(match.embedding()), List.of(newSegment));
 
                 } else if (AdiConstant.MemoryEvent.ADD.equalsIgnoreCase(actionMemory.getEvent())) {
-                    Metadata metadata = new Metadata(Map.of(CONVERSATION_ID, convId));
+                    Metadata metadata = new Metadata(Map.of(CHARACTER_ID, characterId));
                     Document document = new DefaultDocument(actionMemory.getText(), metadata);
-                    EmbeddingRagContext.get(AdiConstant.RetrieveContentFrom.CONV_MEMORY).ingest(document, 20, null, null);
+                    EmbeddingRagContext.get(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY).ingest(document, 20, null, null);
                 }
             }
         }

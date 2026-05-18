@@ -91,8 +91,8 @@ public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
         return ret > 0;
     }
 
-    public int getConversationMaxNum() {
-        String maxNum = LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.CONVERSATION_MAX_NUM);
+    public int getCharacterMaxNum() {
+        String maxNum = LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.CHARACTER_MAX_NUM);
         return Integer.parseInt(maxNum);
     }
 

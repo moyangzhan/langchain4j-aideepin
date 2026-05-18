@@ -5,7 +5,7 @@ import type { UploadFileInfo } from 'naive-ui'
 import ConvKnowledgeSelector from './ConvKnowledgeSelector.vue'
 import { LLMSelector, SvgIcon } from '@/components/common'
 import { useAppStore, useAuthStore, useChatStore, useMcpStore } from '@/store'
-import { defaultConv } from '@/store/modules/chat/helper'
+import { getDefaultCharacter } from '@/store/modules/chat/helper'
 import { router } from '@/router'
 import { t } from '@/locales'
 import api from '@/api'
@@ -23,14 +23,14 @@ const ms = useMessage()
 const uploadedFileInfoList = ref<UploadFileInfo[]>([])
 const uploadedUuidList = ref<string[]>([])
 const uploadedUrls = ref<string[]>([])
-const currConv = computed(() => chatStore.getCurConv || defaultConv())
+const currCharacter = computed(() => chatStore.getCurCharacter || getDefaultCharacter())
 const canUploadImage = ref<boolean>(false)
 const isReasoner = ref<boolean>(false)
 const isThinkingClosable = ref<boolean>(false)
 const mcpModalShow = ref<boolean>(false)
 const knowledgeModalShow = ref<boolean>(false)
 const tmpMcpIds = ref<string[]>([])
-const tmpConvKbs = ref<Chat.ConvKnowledge[]>([])
+const tmpConvKbs = ref<Chat.CharacterKnowledge[]>([])
 const tmpConvKbIds = ref<string[]>([])
 
 async function beforeUpload(data: { file: UploadFileInfo; fileList: UploadFileInfo[] }) {
@@ -79,7 +79,7 @@ function handlerRemove({ file }: { file: UploadFileInfo }) {
 // TODO: 升级 langchain4j 后移除此 workaround，恢复工具调用支持
 const isDeepSeekThinking = computed(() => {
   const modelName = appStore.selectedLLM?.modelName?.toLowerCase() || ''
-  return currConv.value.isEnableThinking && isReasoner.value && modelName.includes('deepseek')
+  return currCharacter.value.isEnableThinking && isReasoner.value && modelName.includes('deepseek')
 })
 
 function handleMcpModalShow() {
@@ -88,13 +88,13 @@ function handleMcpModalShow() {
     return
   }
   mcpModalShow.value = true
-  tmpMcpIds.value = [...currConv.value.mcpIds]
+  tmpMcpIds.value = [...currCharacter.value.mcpIds]
 }
 
 function handleKnowledgeModalShow() {
   knowledgeModalShow.value = true
-  tmpConvKbs.value = [...currConv.value.convKnowledgeList]
-  tmpConvKbIds.value = currConv.value.convKnowledgeList.map(kb => kb.id)
+  tmpConvKbs.value = [...currCharacter.value.characterKnowledgeList]
+  tmpConvKbIds.value = currCharacter.value.characterKnowledgeList.map(kb => kb.id)
 }
 
 function handleKnowledgeSave() {
@@ -103,9 +103,9 @@ function handleKnowledgeSave() {
 
 async function handleSaveMcps() {
   try {
-    currConv.value.mcpIds = tmpMcpIds.value
-    await api.convEdit(currConv.value.uuid, { mcpIds: currConv.value.mcpIds })
-    chatStore.updateConv(currConv.value.uuid, currConv.value)
+    currCharacter.value.mcpIds = tmpMcpIds.value
+    await api.characterEdit(currCharacter.value.uuid, { mcpIds: currCharacter.value.mcpIds })
+    chatStore.updateCharacter(currCharacter.value.uuid, currCharacter.value)
   } catch (error) {
     console.error('handleSaveMcps error', error)
   } finally {
@@ -119,9 +119,9 @@ function gotoMcp() {
 }
 
 function toggleUsingContext() {
-  api.convToggleUsingContext(currConv.value.uuid, !currConv.value.understandContextEnable)
-  currConv.value.understandContextEnable = !currConv.value.understandContextEnable
-  if (currConv.value.understandContextEnable)
+  api.characterToggleUsingContext(currCharacter.value.uuid, !currCharacter.value.understandContextEnable)
+  currCharacter.value.understandContextEnable = !currCharacter.value.understandContextEnable
+  if (currCharacter.value.understandContextEnable)
     ms.success(t('chat.turnOnContext'))
   else
     ms.warning(t('chat.turnOffContext'))
@@ -132,13 +132,13 @@ async function toogleThinking() {
     console.log('该模型不支持对深度思考功能的开启或关闭')
     return
   }
-  currConv.value.isEnableThinking = !currConv.value.isEnableThinking
-  await api.convToggleThinking(currConv.value.uuid, currConv.value.isEnableThinking)
-  if (currConv.value.isEnableThinking) {
+  currCharacter.value.isEnableThinking = !currCharacter.value.isEnableThinking
+  await api.characterToggleThinking(currCharacter.value.uuid, currCharacter.value.isEnableThinking)
+  if (currCharacter.value.isEnableThinking) {
     // DeepSeek 深度思考模式与工具调用不兼容（langchain4j #3461, TODO: 升级后移除）
-    if (isDeepSeekThinking.value && currConv.value.mcpIds.length > 0) {
-      currConv.value.mcpIds = []
-      await api.convEdit(currConv.value.uuid, { mcpIds: [] })
+    if (isDeepSeekThinking.value && currCharacter.value.mcpIds.length > 0) {
+      currCharacter.value.mcpIds = []
+      await api.characterEdit(currCharacter.value.uuid, { mcpIds: [] })
       ms.warning(t('chat.deepThinkingAutoCloseTool'))
     } else {
       ms.success(t('chat.deepThinkingEnabled'))
@@ -157,15 +157,15 @@ async function toogleWebSearch() {
     ms.warning(t('chat.deepThinkingIncompatibleWithWebSearch'))
     return
   }
-  currConv.value.isEnableWebSearch = !currConv.value.isEnableWebSearch
+  currCharacter.value.isEnableWebSearch = !currCharacter.value.isEnableWebSearch
   try {
-    await api.convEdit(currConv.value.uuid, { isEnableWebSearch: currConv.value.isEnableWebSearch })
+    await api.characterEdit(currCharacter.value.uuid, { isEnableWebSearch: currCharacter.value.isEnableWebSearch })
   } catch (err) {
     console.error('toogleWebSearch error', err)
     ms.error(`${t('chat.operationFailed')}${err}`, { duration: 2000 })
     return
   }
-  if (currConv.value.isEnableWebSearch)
+  if (currCharacter.value.isEnableWebSearch)
     ms.success(t('chat.webSearchEnabled'))
   else
     ms.warning(t('chat.webSearchDisabled'))
@@ -188,15 +188,15 @@ watch(
 
 watch(isDeepSeekThinking, async (newVal) => {
   if (newVal) {
-    if (currConv.value.mcpIds.length > 0) {
-      currConv.value.mcpIds = []
-      await api.convEdit(currConv.value.uuid, { mcpIds: [] })
+    if (currCharacter.value.mcpIds.length > 0) {
+      currCharacter.value.mcpIds = []
+      await api.characterEdit(currCharacter.value.uuid, { mcpIds: [] })
       ms.warning(t('chat.deepThinkingAutoCloseTool'))
     }
-    if (currConv.value.isEnableWebSearch) {
-      currConv.value.isEnableWebSearch = false
+    if (currCharacter.value.isEnableWebSearch) {
+      currCharacter.value.isEnableWebSearch = false
       try {
-        await api.convEdit(currConv.value.uuid, { isEnableWebSearch: false })
+        await api.characterEdit(currCharacter.value.uuid, { isEnableWebSearch: false })
       } catch (err) {
         console.error('auto disable webSearch error', err)
       }
@@ -219,7 +219,7 @@ watch(isDeepSeekThinking, async (newVal) => {
       >
         <template v-if="isReasoner && isThinkingClosable">
           {{ t('chat.deepThinking') }}
-          <NSwitch :value="currConv.isEnableThinking" size="small" />
+          <NSwitch :value="currCharacter.isEnableThinking" size="small" />
         </template>
         <template v-if="isReasoner && !isThinkingClosable">
           <NPopover trigger="hover">
@@ -251,7 +251,7 @@ watch(isDeepSeekThinking, async (newVal) => {
       >
         <template v-if="appStore.selectedLLM.isSupportWebSearch">
           {{ t('chat.webSearch') }}
-          <NSwitch :value="currConv.isEnableWebSearch" size="small" />
+          <NSwitch :value="currCharacter.isEnableWebSearch" size="small" />
         </template>
         <template v-if="!appStore.selectedLLM.isSupportWebSearch">
           <NPopover trigger="hover">
@@ -269,12 +269,12 @@ watch(isDeepSeekThinking, async (newVal) => {
         <NPopover trigger="hover">
           <template #trigger>
             <span
-              :class="{ 'text-[#4b9e5f]': currConv.understandContextEnable, 'text-[#a8071a]': !currConv.understandContextEnable }"
+              :class="{ 'text-[#4b9e5f]': currCharacter.understandContextEnable, 'text-[#a8071a]': !currCharacter.understandContextEnable }"
             >
               <SvgIcon icon="ri:chat-history-line" />
             </span>
           </template>
-          <span> {{ currConv.understandContextEnable ? t('chat.understandContextEnable')
+          <span> {{ currCharacter.understandContextEnable ? t('chat.understandContextEnable')
             : t('chat.understandContextDisable') }} </span>
         </NPopover>
       </div>
@@ -298,18 +298,18 @@ watch(isDeepSeekThinking, async (newVal) => {
         @click="handleKnowledgeModalShow"
       >
         <span class="text-xs text-green-600">{{ t('chat.knowledgeBaseLabel') }}</span>
-        <template v-for="knolwedge in currConv.convKnowledgeList" :key="knolwedge.uuid">
+        <template v-for="knolwedge in currCharacter.characterKnowledgeList" :key="knolwedge.uuid">
           <span class="text-xs mr-1">{{ knolwedge.title }}</span>
         </template>
-        <span v-if="currConv.convKnowledgeList.length === 0" class="text-xs mr-1">{{ t('common.none') }}</span>
+        <span v-if="currCharacter.characterKnowledgeList.length === 0" class="text-xs mr-1">{{ t('common.none') }}</span>
       </div>
       <div class="flex-1 overflow-hidden rounded border hover:border-green-600 cursor-pointer p-1 h-8" @click="handleMcpModalShow">
         <span class="text-xs text-green-600">{{ t('chat.toolLabel') }}</span>
         <template v-for="userMcp in mcpStore.myUserMcpList" :key="userMcp.uuid">
-          <span v-if="currConv.mcpIds.includes(userMcp.mcpInfo.id)" class="text-xs mr-1">{{ userMcp.mcpInfo.title
+          <span v-if="currCharacter.mcpIds.includes(userMcp.mcpInfo.id)" class="text-xs mr-1">{{ userMcp.mcpInfo.title
           }}</span>
         </template>
-        <span v-if="currConv.mcpIds.length === 0" class="text-xs mr-1">{{ t('common.none') }}</span>
+        <span v-if="currCharacter.mcpIds.length === 0" class="text-xs mr-1">{{ t('common.none') }}</span>
       </div>
     </div>
     <NList hoverable show-divider>
@@ -325,9 +325,9 @@ watch(isDeepSeekThinking, async (newVal) => {
     </NList>
     <NModal
       v-model:show="knowledgeModalShow" display-directive="show" style="width: 90%; max-width: 800px"
-      preset="card" :title="t('chat.configConversationKnowledge')"
+      preset="card" :title="t('chat.configCharacterKnowledge')"
     >
-      <ConvKnowledgeSelector :tmp-save="false" :conversation="currConv" @submitted="handleKnowledgeSave" />
+      <ConvKnowledgeSelector :tmp-save="false" :character="currCharacter" @submitted="handleKnowledgeSave" />
     </NModal>
     <NModal v-model:show="mcpModalShow" style="width: 90%; max-width: 640px" preset="card" :title="t('chat.configMcp')">
       <NCheckboxGroup v-model:value="tmpMcpIds" class="my-2 flex flex-wrap space-x-2">

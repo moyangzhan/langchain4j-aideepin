@@ -17,57 +17,57 @@ function fetchUserConfig<T = any>() {
   })
 }
 
-function fetchConvs<T = any>() {
+function fetchCharacters<T = any>() {
   return get<T>({
-    url: '/conversation/list',
+    url: '/character/list',
   })
 }
 
-function convAdd<T = any>(params: { title: string; remark: string; aiSystemMessage: string }) {
+function characterAdd<T = any>(params: { title: string; remark: string; aiSystemMessage: string }) {
   return post<T>({
-    url: '/conversation/add',
+    url: '/character/add',
     data: {
       ...params,
     },
   })
 }
 
-function convEdit<T = any>(uuid: string, params: Partial<Chat.Conversation>) {
+function characterEdit<T = any>(uuid: string, params: Partial<Chat.Character>) {
   return post<T>({
-    url: `/conversation/edit/${uuid}`,
+    url: `/character/edit/${uuid}`,
     data: {
       ...params,
     },
   })
 }
 
-function convToggleUsingContext<T = any>(uuid: string, usingContext: boolean) {
+function characterToggleUsingContext<T = any>(uuid: string, usingContext: boolean) {
   return post<T>({
-    url: `/conversation/edit/${uuid}`,
+    url: `/character/edit/${uuid}`,
     data: {
       understandContextEnable: usingContext,
     },
   })
 }
 
-function convToggleThinking<T = any>(uuid: string, isEnableThinking: boolean) {
+function characterToggleThinking<T = any>(uuid: string, isEnableThinking: boolean) {
   return post<T>({
-    url: `/conversation/edit/${uuid}`,
+    url: `/character/edit/${uuid}`,
     data: {
       isEnableThinking,
     },
   })
 }
 
-function convDel<T = any>(uuid: string) {
+function characterDel<T = any>(uuid: string) {
   return post<T>({
-    url: `/conversation/del/${uuid}`,
+    url: `/character/del/${uuid}`,
   })
 }
 
-function searchPresetConvs<T = any>(keyword = '') {
+function searchPresetCharacters<T = any>(keyword = '') {
   return post<T>({
-    url: '/conversation-preset/search?currentPage=1&pageSize=100',
+    url: '/character-preset/search?currentPage=1&pageSize=100',
     data: {
       keyword,
     },
@@ -75,21 +75,21 @@ function searchPresetConvs<T = any>(keyword = '') {
 }
 
 // 搜索会话与预设会话关联关系
-function listConvPresetRels<T = any>() {
+function listCharacterPresetRels<T = any>() {
   return get<T>({
-    url: '/conversation-preset-rel/mine?limit=100',
+    url: '/character-preset-rel/mine?limit=100',
   })
 }
 
-function convAddByPreset<T = any>(params: { presetConvUuid: string }) {
+function characterAddByPreset<T = any>(params: { presetCharacterUuid: string }) {
   return post<T>({
-    url: `/conversation/addByPreset?presetUuid=${params.presetConvUuid}`,
+    url: `/character/addByPreset?presetUuid=${params.presetCharacterUuid}`,
   })
 }
 
-function fetchMessages<T = any>(conversationUuid: string, maxMsgUuid: string, pageSize: number) {
+function fetchMessages<T = any>(characterUuid: string, maxMsgUuid: string, pageSize: number) {
   return get<T>({
-    url: `/conversation/${conversationUuid}?maxMsgUuid=${maxMsgUuid}&pageSize=${pageSize}`,
+    url: `/character/${characterUuid}?maxMsgUuid=${maxMsgUuid}&pageSize=${pageSize}`,
   })
 }
 
@@ -169,7 +169,7 @@ function commonSseProcess(
 }
 
 function sseProcess(params: {
-  options: { prompt?: string; conversationUuid?: string; parentMessageId?: string; regenerateQuestionUuid?: string; modelName?: String; modelPlatform?: string; imageUrls?: string[]; audioUuid?: string; audioDuration?: number }
+  options: { prompt?: string; characterUuid?: string; parentMessageId?: string; regenerateQuestionUuid?: string; modelName?: String; modelPlatform?: string; imageUrls?: string[]; audioUuid?: string; audioDuration?: number }
   signal?: AbortSignal
   startCallback: (chunk: string) => void
   messageReceived: (chunk: string, eventName?: string) => void
@@ -179,7 +179,7 @@ function sseProcess(params: {
   doneCallback: (chunk: string) => void
   errorCallback: (error: string) => void
 }) {
-  commonSseProcess('/api/conversation/message/process', params)
+  commonSseProcess('/api/character/message/process', params)
 }
 
 function login<T>(email: string, password: string, captchaId: string, captchaCode: string) {
@@ -415,31 +415,31 @@ function drawThumbnailImage<T = any>(uuid: string, imageUuid: string) {
 
 function messageDel<T = any>(uuid: string) {
   return post<T>({
-    url: `/conversation/message/del/${uuid}`,
+    url: `/character/message/del/${uuid}`,
   })
 }
 
 function messageTextByAudio<T = any>(audioUuid: string) {
   return get<T>({
-    url: `/conversation/message/text/${audioUuid}`,
+    url: `/character/message/text/${audioUuid}`,
   })
 }
 
 function memoryEmbeddingRef<T = any>(msgUuid: string) {
   return get<T>({
-    url: `/conversation/message/memory-embedding-ref/${msgUuid}`,
+    url: `/character/message/memory-embedding-ref/${msgUuid}`,
   })
 }
 
 function knowledgeEmbeddingRef<T = any>(msgUuid: string) {
   return get<T>({
-    url: `/conversation/message/knowledge-embedding-ref/${msgUuid}`,
+    url: `/character/message/knowledge-embedding-ref/${msgUuid}`,
   })
 }
 
 function messageGraphRef<T = any>(msgUuid: string) {
   return get<T>({
-    url: `/conversation/message/graph-ref/${msgUuid}`,
+    url: `/character/message/graph-ref/${msgUuid}`,
   })
 }
 
@@ -781,15 +781,15 @@ export default {
   modifyPassword,
   fetchUserConfig,
   userEdit,
-  fetchConvs,
-  convAdd,
-  convAddByPreset,
-  convEdit,
-  convToggleUsingContext,
-  convToggleThinking,
-  convDel,
-  searchPresetConvs,
-  listConvPresetRels,
+  fetchCharacters,
+  characterAdd,
+  characterAddByPreset,
+  characterEdit,
+  characterToggleUsingContext,
+  characterToggleThinking,
+  characterDel,
+  searchPresetCharacters,
+  listCharacterPresetRels,
   fetchMessages,
   sseProcess,
   searchPrompts,

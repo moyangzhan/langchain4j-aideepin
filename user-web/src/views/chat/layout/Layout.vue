@@ -11,14 +11,14 @@ const router = useRouter()
 const appStore = useAppStore()
 const chatStore = useChatStore()
 
-const { uuid: curConvUuid } = route.params as { uuid: string }
-console.log(`curConvUuid:${curConvUuid}`)
-if (!curConvUuid) {
+const { uuid: curCharacterUuid } = route.params as { uuid: string }
+console.log(`curCharacterUuid:${curCharacterUuid}`)
+if (!curCharacterUuid) {
   console.log(`uuid,chatStore.active:${chatStore.active}`)
   router.replace({ name: 'Chat', params: { uuid: chatStore.active } })
-} else if (curConvUuid !== chatStore.active) {
-  console.log(`curConvUuid !== chatStore.active:${chatStore.active}`)
-  chatStore.setActive(curConvUuid)
+} else if (curCharacterUuid !== chatStore.active) {
+  console.log(`curCharacterUuid !== chatStore.active:${chatStore.active}`)
+  chatStore.setActive(curCharacterUuid)
 }
 
 const { isMobile } = useBasicLayout()

@@ -112,7 +112,7 @@ public class RedisKeyConstant {
     public static final String STATISTIC_USER = "user";
     public static final String STATISTIC_KNOWLEDGE_BASE = "kb";
     public static final String STATISTIC_TOKEN_COST = "token-cost";
-    public static final String STATISTIC_CONVERSATION = "conversation";
+    public static final String STATISTIC_CHARACTER = "conversation";
     public static final String STATISTIC_IMAGE_COST = "image-cost";
 
     public static final String TOKEN_USAGE_KEY = "token:usage:{0}";

@@ -1,19 +1,19 @@
 import { ss } from '@/utils/storage'
-import { emptyConv } from '@/utils/functions'
+import { emptyCharacter } from '@/utils/functions'
 
 const LOCAL_NAME = 'chatStorage'
 
-const defaultConversation = emptyConv()
-defaultConversation.uuid = 'default'
-defaultConversation.title = '默认对话'
+const defaultCharacter = emptyCharacter()
+defaultCharacter.uuid = 'default'
+defaultCharacter.title = '默认对话'
 
 export function defaultState(): Chat.ChatState {
   return {
-    active: defaultConversation.uuid,
+    active: defaultCharacter.uuid,
     usingContext: true,
-    presetConvs: [],
-    conversations: [defaultConversation],
-    chats: [{ uuid: defaultConversation.uuid, data: [] }],
+    presetCharacters: [],
+    characters: [defaultCharacter],
+    chats: [{ uuid: defaultCharacter.uuid, data: [] }],
     loadingMsgs: new Set<string>(),
     msgToMemoryRef: new Map<string, Chat.MemoryEmbedding[]>(),
     msgToEmbeddingRef: new Map<string, KnowledgeBase.QaRecordEmbeddingRef[]>(),
@@ -22,8 +22,8 @@ export function defaultState(): Chat.ChatState {
   }
 }
 
-export function defaultConv(): Chat.Conversation {
-  return defaultConversation
+export function getDefaultCharacter(): Chat.Character {
+  return defaultCharacter
 }
 
 export function getLocalState(): Chat.ChatState {
@@ -35,8 +35,8 @@ export function setLocalState(state: Chat.ChatState) {
   ss.set(LOCAL_NAME, state)
 }
 
-export function findMessageFromConv(conv: Chat.ConvWithMessages, messageUuid: string): Chat.ChatMessage | null {
-  const questions = conv.data
+export function findMessageFromCharacter(character: Chat.CharacterWithMessages, messageUuid: string): Chat.ChatMessage | null {
+  const questions = character.data
   for (const question of questions) {
     if (question.uuid === messageUuid) {
       return question

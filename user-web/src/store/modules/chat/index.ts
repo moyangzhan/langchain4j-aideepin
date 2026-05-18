@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { defaultConv, defaultState, findMessageFromConv } from './helper'
+import { getDefaultCharacter, defaultState, findMessageFromCharacter } from './helper'
 import { router } from '@/router'
 import { emptyAudioPlayState } from '@/utils/functions'
 import { CHAT_MESSAGE_CONTENT_TYPE } from '@/utils/constant'
@@ -8,24 +8,24 @@ export const useChatStore = defineStore('chat-store', {
   state: (): Chat.ChatState => defaultState(),
 
   getters: {
-    allConvsCount(state: Chat.ChatState) {
-      return state.conversations.length
+    allCharactersCount(state: Chat.ChatState) {
+      return state.characters.length
     },
 
-    getCurConv(state: Chat.ChatState) {
-      const index = state.conversations.findIndex(item => item.uuid === state.active)
+    getCurCharacter(state: Chat.ChatState) {
+      const index = state.characters.findIndex(item => item.uuid === state.active)
       if (index !== -1)
-        return state.conversations[index]
+        return state.characters[index]
       return null
     },
 
-    getConvByUuid(state: Chat.ChatState) {
+    getCharacterByUuid(state: Chat.ChatState) {
       return (uuid: string) => {
-        return state.conversations.find(item => item.uuid === uuid)
+        return state.characters.find(item => item.uuid === uuid)
       }
     },
 
-    getMsgsByConv(state: Chat.ChatState) {
+    getMsgsByCharacter(state: Chat.ChatState) {
       return (uuid?: string) => {
         if (uuid)
           return state.chats.find(item => item.uuid === uuid)?.data ?? []
@@ -33,7 +33,7 @@ export const useChatStore = defineStore('chat-store', {
       }
     },
 
-    getMsgByCurConv(state: Chat.ChatState) {
+    getMsgByCurCharacter(state: Chat.ChatState) {
       return (messageUuid: string) => {
         const messages = state.chats.find(item => item.uuid === state.active)?.data ?? []
         const hitMessage = messages.find(item => item.uuid === messageUuid)
@@ -44,15 +44,15 @@ export const useChatStore = defineStore('chat-store', {
     },
 
     hasLoadedData(state: Chat.ChatState) {
-      const currConversation = state.chats.find(item => item.uuid === state.active)
-      if (currConversation)
-        return currConversation.data.length > 0
+      const currCharacter = state.chats.find(item => item.uuid === state.active)
+      if (currCharacter)
+        return currCharacter.data.length > 0
       return false
     },
 
     answerContentType(state: Chat.ChatState) {
-      return (conv: Chat.Conversation, userAudioUuid: string) => {
-        const isAudioContent = (conv.answerContentType === CHAT_MESSAGE_CONTENT_TYPE.auto && userAudioUuid) || (conv.answerContentType === CHAT_MESSAGE_CONTENT_TYPE.audio)
+      return (character: Chat.Character, userAudioUuid: string) => {
+        const isAudioContent = (character.answerContentType === CHAT_MESSAGE_CONTENT_TYPE.auto && userAudioUuid) || (character.answerContentType === CHAT_MESSAGE_CONTENT_TYPE.audio)
         if (isAudioContent)
           return CHAT_MESSAGE_CONTENT_TYPE.audio
         return CHAT_MESSAGE_CONTENT_TYPE.text
@@ -99,65 +99,65 @@ export const useChatStore = defineStore('chat-store', {
     },
 
     clearDefault() {
-      const index = this.conversations.findIndex(item => item.uuid === 'default')
+      const index = this.characters.findIndex(item => item.uuid === 'default')
       if (index !== -1) {
-        this.conversations.splice(index, 1)
+        this.characters.splice(index, 1)
         this.chats.splice(index, 1)
       }
     },
 
-    addConvs(convs: Chat.Conversation[]) {
-      convs.forEach((item) => {
-        if (this.conversations.findIndex(innerItem => innerItem.uuid === item.uuid) !== -1)
+    addCharacters(characters: Chat.Character[]) {
+      characters.forEach((item) => {
+        if (this.characters.findIndex(innerItem => innerItem.uuid === item.uuid) !== -1)
           return
 
-        this.conversations.push(item)
+        this.characters.push(item)
         this.chats.push({ uuid: item.uuid, data: [] })
       })
     },
 
-    addConvAndActive(newConv: Chat.Conversation, chatData: Chat.ChatMessage[] = []) {
-      if (this.conversations.findIndex(item => item.uuid === newConv.uuid) !== -1)
+    addCharacterAndActive(newCharacter: Chat.Character, chatData: Chat.ChatMessage[] = []) {
+      if (this.characters.findIndex(item => item.uuid === newCharacter.uuid) !== -1)
         return
 
-      this.conversations.unshift(newConv)
-      this.chats.unshift({ uuid: newConv.uuid, data: chatData })
-      this.active = newConv.uuid
-      this.reloadRoute(newConv.uuid)
+      this.characters.unshift(newCharacter)
+      this.chats.unshift({ uuid: newCharacter.uuid, data: chatData })
+      this.active = newCharacter.uuid
+      this.reloadRoute(newCharacter.uuid)
     },
 
-    updateConv(convUuid: string, edit: Partial<Chat.Conversation>) {
-      const index = this.conversations.findIndex(item => item.uuid === convUuid)
+    updateCharacter(characterUuid: string, edit: Partial<Chat.Character>) {
+      const index = this.characters.findIndex(item => item.uuid === characterUuid)
       if (index !== -1)
-        this.conversations[index] = { ...this.conversations[index], ...edit }
+        this.characters[index] = { ...this.characters[index], ...edit }
     },
 
-    async deleteConv(uuid: string) {
-      const index = this.conversations.findIndex(item => item.uuid === uuid)
-      this.conversations.splice(index, 1)
+    async deleteCharacter(uuid: string) {
+      const index = this.characters.findIndex(item => item.uuid === uuid)
+      this.characters.splice(index, 1)
       this.chats.splice(index, 1)
 
-      if (this.conversations.length === 0) {
+      if (this.characters.length === 0) {
         this.active = ''
         this.reloadRoute()
         return
       }
 
-      if (index > 0 && index <= this.conversations.length) {
-        const uuid = this.conversations[index - 1].uuid
+      if (index > 0 && index <= this.characters.length) {
+        const uuid = this.characters[index - 1].uuid
         this.active = uuid
         this.reloadRoute(uuid)
         return
       }
 
-      if (index === 0 && this.conversations.length > 0) {
-        const uuid = this.conversations[0].uuid
+      if (index === 0 && this.characters.length > 0) {
+        const uuid = this.characters[0].uuid
         this.active = uuid
         this.reloadRoute(uuid)
       }
 
-      if (index > this.conversations.length) {
-        const uuid = this.conversations[this.conversations.length - 1].uuid
+      if (index > this.characters.length) {
+        const uuid = this.characters[this.characters.length - 1].uuid
         this.active = uuid
         this.reloadRoute(uuid)
       }
@@ -168,7 +168,7 @@ export const useChatStore = defineStore('chat-store', {
       return await this.reloadRoute(uuid)
     },
 
-    getMsgsByConvAndIndex(uuid: string, index: number) {
+    getMsgsByCharacterAndIndex(uuid: string, index: number) {
       if (!uuid) {
         if (this.chats.length)
           return this.chats[0].data[index]
@@ -185,8 +185,8 @@ export const useChatStore = defineStore('chat-store', {
         message.inversion = message.messageRole !== 3
       this.initAudioText(message)
 
-      if (this.conversations.length === 0) {
-        this.conversations.push(defaultConv())
+      if (this.characters.length === 0) {
+        this.characters.push(getDefaultCharacter())
         this.chats.push({ uuid, data: [message] })
         this.active = uuid
         return
@@ -212,8 +212,8 @@ export const useChatStore = defineStore('chat-store', {
       if (!hit)
         tail ? this.chats[chatIndex].data.push(message) : this.chats[chatIndex].data.unshift(message)
 
-      if (this.conversations.find(item => item.uuid === uuid)?.title === 'New Chat')
-        this.conversations[chatIndex].title = message.remark
+      if (this.characters.find(item => item.uuid === uuid)?.title === 'New Chat')
+        this.characters[chatIndex].title = message.remark
     },
 
     unshiftMessages(uuid: string, messages: Chat.ChatMessage[]) {
@@ -238,23 +238,23 @@ export const useChatStore = defineStore('chat-store', {
         this.chats[chatIndex].data[index] = chat
     },
 
-    unshiftChild(convUuid: string, userMessageUuid: string, childMessage: Chat.ChatMessage) {
-      const chatIndex = this.chats.findIndex(item => item.uuid === convUuid)
+    unshiftChild(characterUuid: string, userMessageUuid: string, childMessage: Chat.ChatMessage) {
+      const chatIndex = this.chats.findIndex(item => item.uuid === characterUuid)
       if (chatIndex !== -1)
         this.chats[chatIndex].data.find(item => item.uuid === userMessageUuid)?.children.unshift(childMessage)
     },
 
-    appendChild(convUuid: string, userMessageUuid: string, childMessage: Chat.ChatMessage) {
-      const chatIndex = this.chats.findIndex(item => item.uuid === convUuid)
+    appendChild(characterUuid: string, userMessageUuid: string, childMessage: Chat.ChatMessage) {
+      const chatIndex = this.chats.findIndex(item => item.uuid === characterUuid)
       if (chatIndex !== -1)
         this.chats[chatIndex].data.find(item => item.uuid === userMessageUuid)?.children.push(childMessage)
     },
 
     // Append a chunk of text to an answer message
-    appendChunk(convUuid: string, answerUuid: string, chunk: string, thinking = false) {
-      const chatIndex = this.chats.findIndex(item => item.uuid === convUuid)
+    appendChunk(characterUuid: string, answerUuid: string, chunk: string, thinking = false) {
+      const chatIndex = this.chats.findIndex(item => item.uuid === characterUuid)
       if (chatIndex !== -1 && this.chats.length) {
-        const answer = findMessageFromConv(this.chats[chatIndex], answerUuid)
+        const answer = findMessageFromCharacter(this.chats[chatIndex], answerUuid)
         if (answer) {
           answer.thinking = thinking
           if (thinking) {
@@ -270,19 +270,19 @@ export const useChatStore = defineStore('chat-store', {
       }
     },
 
-    updateMessageSomeFields(convUuid: string, messageUuid: string, chat: Partial<Chat.ChatMessage>) {
-      const convIndex = this.chats.findIndex(item => item.uuid === convUuid)
-      if (convIndex !== -1) {
-        const hitConv = this.chats[convIndex]
-        const hitMessage = findMessageFromConv(hitConv, messageUuid)
+    updateMessageSomeFields(characterUuid: string, messageUuid: string, chat: Partial<Chat.ChatMessage>) {
+      const characterIndex = this.chats.findIndex(item => item.uuid === characterUuid)
+      if (characterIndex !== -1) {
+        const hitCharacter = this.chats[characterIndex]
+        const hitMessage = findMessageFromCharacter(hitCharacter, messageUuid)
         console.log('hitMessage', hitMessage)
         if (hitMessage)
           Object.assign(hitMessage, chat)
       }
     },
 
-    deleteQuestion(convUuid: string, questionUuid: string) {
-      const chatIndex = this.chats.findIndex(item => item.uuid === convUuid)
+    deleteQuestion(characterUuid: string, questionUuid: string) {
+      const chatIndex = this.chats.findIndex(item => item.uuid === characterUuid)
       if (chatIndex !== -1) {
         const index = this.chats[chatIndex].data.findIndex(message => message.uuid === questionUuid)
         if (index !== -1)
@@ -291,8 +291,8 @@ export const useChatStore = defineStore('chat-store', {
     },
 
     // Delete one answer of the question
-    deleteAnswer(convUuid: string, questionUuid: string, answerUuid: string) {
-      const chatIndex = this.chats.findIndex(item => item.uuid === convUuid)
+    deleteAnswer(characterUuid: string, questionUuid: string, answerUuid: string) {
+      const chatIndex = this.chats.findIndex(item => item.uuid === characterUuid)
       if (chatIndex !== -1) {
         const index = this.chats[chatIndex].data.findIndex(message => message.uuid === questionUuid)
         if (index !== -1) {
@@ -308,35 +308,35 @@ export const useChatStore = defineStore('chat-store', {
       await router.push({ name: 'ChatDetail', params: { uuid } })
     },
 
-    addLoadingMsg(convUuid: string) {
-      this.loadingMsgs.add(convUuid)
+    addLoadingMsg(characterUuid: string) {
+      this.loadingMsgs.add(characterUuid)
     },
 
-    deleteLoadingMsg(convUuid: string) {
-      this.loadingMsgs.delete(convUuid)
+    deleteLoadingMsg(characterUuid: string) {
+      this.loadingMsgs.delete(characterUuid)
     },
 
-    setPresetConvs(convs: Chat.ConversationPreset[]) {
-      this.presetConvs.splice(0, this.presetConvs.length)
-      convs.forEach((item) => {
-        if (this.presetConvs.findIndex(innerItem => innerItem.uuid === item.uuid) !== -1)
+    setPresetCharacters(characters: Chat.CharacterPreset[]) {
+      this.presetCharacters.splice(0, this.presetCharacters.length)
+      characters.forEach((item) => {
+        if (this.presetCharacters.findIndex(innerItem => innerItem.uuid === item.uuid) !== -1)
           return
         if (!item.used)
           item.used = false
 
-        this.presetConvs.push(item)
+        this.presetCharacters.push(item)
       })
     },
 
-    setUsedPresetConv(rels: Chat.ConvToPresetRel[]) {
-      this.presetConvs.forEach((item) => {
-        const hit = rels.some(rel => String(rel.presetConvId) === String(item.id))
+    setUsedPresetCharacter(rels: Chat.CharacterToPresetRel[]) {
+      this.presetCharacters.forEach((item) => {
+        const hit = rels.some(rel => String(rel.presetCharacterId) === String(item.id))
         item.used = hit
       })
     },
 
-    markPresetConvUsed(presetConvUuid: string) {
-      const item = this.presetConvs.find(i => i.uuid === presetConvUuid)
+    markPresetCharacterUsed(presetCharacterUuid: string) {
+      const item = this.presetCharacters.find(i => i.uuid === presetCharacterUuid)
       if (item)
         item.used = true
     },

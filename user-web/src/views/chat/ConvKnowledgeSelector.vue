@@ -2,21 +2,21 @@
 import { h, reactive, ref, watch } from 'vue'
 import { NButton, NDataTable, NInput, NTag, useMessage } from 'naive-ui'
 import type { DataTableColumns, DataTableRowData, DataTableRowKey } from 'naive-ui'
-import { defaultConv } from '@/store/modules/chat/helper'
+import { getDefaultCharacter } from '@/store/modules/chat/helper'
 import { useChatStore, useUserStore } from '@/store'
 import api from '@/api'
 import { t } from '@/locales'
 interface Props {
-  conversation: Chat.Conversation
+  character: Chat.Character
   tmpSave: boolean // 是否临时保存(即不保存到远程)
 }
 const props = withDefaults(defineProps<Props>(), {
-  conversation: () => defaultConv(),
+  character: () => getDefaultCharacter(),
 })
 const emit = defineEmits<Emit>()
 interface Emit {
-  (e: 'selectedChanged', knowledgeIds: string[], knowledgeList: Chat.ConvKnowledge[]): void
-  (e: 'submitted', knowledgeIds: string[], knowledgeList: Chat.ConvKnowledge[]): void
+  (e: 'selectedChanged', knowledgeIds: string[], knowledgeList: Chat.CharacterKnowledge[]): void
+  (e: 'submitted', knowledgeIds: string[], knowledgeList: Chat.CharacterKnowledge[]): void
 }
 const ms = useMessage()
 const userStore = useUserStore()
@@ -28,7 +28,7 @@ const paginationReactive = reactive({
   pageSize: 10,
   itemCount: 0,
 })
-const tmpConvKnowledgeList = ref<Chat.ConvKnowledge[]>([])
+const tmpCharacterKnowledgeList = ref<Chat.CharacterKnowledge[]>([])
 const tmpKnowledgeIds = ref<string[]>([])
 const cacheRows = ref<KnowledgeBase.Info[]>([])
 const searchValue = ref<string>('')
@@ -41,16 +41,16 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Info> => {
       type: 'selection',
     },
     {
-      title: t('chat.convKnowledgeTitle'),
+      title: t('chat.characterKnowledgeTitle'),
       key: 'title',
       width: 200,
     },
     {
-      title: t('chat.convKnowledgeDescription'),
+      title: t('chat.characterKnowledgeDescription'),
       key: 'remark',
     },
     {
-      title: t('chat.convKnowledgeAttribute'),
+      title: t('chat.characterKnowledgeAttribute'),
       key: 'remark',
       render(row) {
         return h('div', { class: 'flex items-center space-x-1' }, {
@@ -80,14 +80,14 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Info> => {
 const columns = createColumns()
 
 function handleClose(knowledgeId: string) {
-  const index = tmpConvKnowledgeList.value.findIndex(kb => kb.id === knowledgeId)
+  const index = tmpCharacterKnowledgeList.value.findIndex(kb => kb.id === knowledgeId)
   if (index !== -1) {
-    tmpConvKnowledgeList.value.splice(index, 1)
+    tmpCharacterKnowledgeList.value.splice(index, 1)
     const idIndex = tmpKnowledgeIds.value.findIndex(id => id === knowledgeId)
     if (idIndex !== -1)
       tmpKnowledgeIds.value.splice(idIndex, 1)
   }
-  emit('selectedChanged', tmpKnowledgeIds.value, tmpConvKnowledgeList.value)
+  emit('selectedChanged', tmpKnowledgeIds.value, tmpCharacterKnowledgeList.value)
 }
 
 async function onHandlePageChange(page: number) {
@@ -124,7 +124,7 @@ function onHandleCheck(rowKeys: DataTableRowKey[], rows: DataTableRowData[]) {
   const map = new Map()
   const selectedRows = (rows as KnowledgeBase.Info[]).filter(item => !!item)
   cacheRows.value = cacheRows.value.concat(selectedRows).filter(item => !map.has(item.id) && map.set(item.id, 0))
-  tmpConvKnowledgeList.value = cacheRows.value.filter((item: KnowledgeBase.Info) => rowKeys.includes(item.id)).map(knowledge => ({
+  tmpCharacterKnowledgeList.value = cacheRows.value.filter((item: KnowledgeBase.Info) => rowKeys.includes(item.id)).map(knowledge => ({
     id: knowledge.id,
     uuid: knowledge.uuid,
     title: knowledge.title,
@@ -133,27 +133,27 @@ function onHandleCheck(rowKeys: DataTableRowKey[], rows: DataTableRowData[]) {
     kbInfo: knowledge,
     isEnable: true,
   }))
-  emit('selectedChanged', tmpKnowledgeIds.value, tmpConvKnowledgeList.value)
+  emit('selectedChanged', tmpKnowledgeIds.value, tmpCharacterKnowledgeList.value)
 }
 
 async function handleSubmit() {
   try {
-    await api.convEdit(props.conversation.uuid, {
+    await api.characterEdit(props.character.uuid, {
       kbIds: tmpKnowledgeIds.value,
     })
-    chatStore.updateConv(props.conversation.uuid, { kbIds: tmpKnowledgeIds.value, convKnowledgeList: tmpConvKnowledgeList.value })
-    ms.success(t('chat.convKnowledgeSaved'), {
+    chatStore.updateCharacter(props.character.uuid, { kbIds: tmpKnowledgeIds.value, characterKnowledgeList: tmpCharacterKnowledgeList.value })
+    ms.success(t('chat.characterKnowledgeSaved'), {
       duration: 3000,
     })
   } catch (error) {
     console.error('handleSaveKnowledge error', error)
   }
-  emit('submitted', tmpKnowledgeIds.value, tmpConvKnowledgeList.value)
+  emit('submitted', tmpKnowledgeIds.value, tmpCharacterKnowledgeList.value)
 }
 
-watch(() => props.conversation.kbIds, (newVal) => {
+watch(() => props.character.kbIds, (newVal) => {
   console.log('watch newVal', newVal)
-  tmpConvKnowledgeList.value = props.conversation.convKnowledgeList || []
+  tmpCharacterKnowledgeList.value = props.character.characterKnowledgeList || []
   tmpKnowledgeIds.value = newVal || []
 
   if (knowledgeList.value.length === 0)
@@ -165,12 +165,12 @@ watch(() => props.conversation.kbIds, (newVal) => {
   <div class="flex flex-col space-y-2">
     <div class="mb-2">
       <NTag
-        v-for="convKnowledge in tmpConvKnowledgeList" :key="convKnowledge.uuid" closable class="mr-2"
-        @close="handleClose(convKnowledge.id)"
+        v-for="characterKnowledge in tmpCharacterKnowledgeList" :key="characterKnowledge.uuid" closable class="mr-2"
+        @close="handleClose(characterKnowledge.id)"
       >
-        {{ convKnowledge.title }}
+        {{ characterKnowledge.title }}
       </NTag>
-      <div v-if="tmpConvKnowledgeList.length === 0">
+      <div v-if="tmpCharacterKnowledgeList.length === 0">
         {{ t('chat.noSelectedData') }}
       </div>
     </div>

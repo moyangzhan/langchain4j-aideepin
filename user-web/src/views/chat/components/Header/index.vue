@@ -20,7 +20,7 @@ const appStore = useAppStore()
 const chatStore = useChatStore()
 
 const collapsed = computed(() => appStore.siderCollapsed)
-const currentChatHistory = computed(() => chatStore.getCurConv)
+const currentChatHistory = computed(() => chatStore.getCurCharacter)
 
 function handleUpdateCollapsed() {
   appStore.setSiderCollapsed(!collapsed.value)

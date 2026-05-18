@@ -10,20 +10,20 @@ import { t } from '@/locales'
 const appStore = useAppStore()
 const chatStore = useChatStore()
 const ms = useMessage()
-const createConvRef = ref()
+const createCharacterRef = ref()
 const { isMobile } = useBasicLayout()
 
 const collapsed = computed(() => appStore.siderCollapsed)
 
 function handleAdd(this: any) {
-  if (chatStore.allConvsCount >= 50) {
-    ms.warning(t('chat.converstaionReachLimit50'), {
+  if (chatStore.allCharactersCount >= 50) {
+    ms.warning(t('chat.characterReachLimit50'), {
       duration: 1000,
     })
     return
   }
-  if (createConvRef.value && createConvRef.value.toggleModal)
-    createConvRef.value.toggleModal()
+  if (createCharacterRef.value && createCharacterRef.value.toggleModal)
+    createCharacterRef.value.toggleModal()
 }
 
 function handleUpdateCollapsed() {
@@ -88,5 +88,5 @@ watch(
   <template v-if="isMobile">
     <div v-show="!collapsed" class="fixed inset-0 z-40 bg-black/40" @click="handleUpdateCollapsed" />
   </template>
-  <CreateConv ref="createConvRef" />
+  <CreateConv ref="createCharacterRef" />
 </template>

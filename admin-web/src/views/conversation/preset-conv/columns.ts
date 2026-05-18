@@ -2,22 +2,22 @@ import { NTag } from 'naive-ui'
 import { h } from 'vue'
 import { BasicColumn } from '@/components/Table'
 import { useI18n } from '@/locales'
-import { ConversationPreset } from '/#/conversation'
+import { CharacterPreset } from '/#/conversation'
 
 const typeLabels: Record<string, string> = {
-  technology: 'conversation.presetTypeTechnology',
-  creative: 'conversation.presetTypeCreative',
-  education: 'conversation.presetTypeEducation',
-  business: 'conversation.presetTypeBusiness',
-  professional: 'conversation.presetTypeProfessional',
-  design: 'conversation.presetTypeDesign',
-  marketing: 'conversation.presetTypeMarketing',
-  service: 'conversation.presetTypeService',
-  administration: 'conversation.presetTypeAdministration',
-  utility: 'conversation.presetTypeUtility',
+  technology: 'character.presetTypeTechnology',
+  creative: 'character.presetTypeCreative',
+  education: 'character.presetTypeEducation',
+  business: 'character.presetTypeBusiness',
+  professional: 'character.presetTypeProfessional',
+  design: 'character.presetTypeDesign',
+  marketing: 'character.presetTypeMarketing',
+  service: 'character.presetTypeService',
+  administration: 'character.presetTypeAdministration',
+  utility: 'character.presetTypeUtility',
 }
 
-export function getColumns(): BasicColumn<ConversationPreset>[] {
+export function getColumns(): BasicColumn<CharacterPreset>[] {
   const { t } = useI18n()
   return [
     {
@@ -36,7 +36,7 @@ export function getColumns(): BasicColumn<ConversationPreset>[] {
       width: 100,
     },
     {
-      title: t('conversation.presetType'),
+      title: t('character.presetType'),
       key: 'type',
       width: 120,
       render: (row) => {

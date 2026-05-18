@@ -55,10 +55,10 @@ public class Neo4jEmbeddingStoreConfig {
      *
      * @return EmbeddingStore实例
      */
-    @Bean(name = "convMemoryEmbeddingStore")
+    @Bean(name = "characterMemoryEmbeddingStore")
     @DependsOn("initializer")
-    public EmbeddingStore<TextSegment> initConvMemoryEmbeddingStore() {
-        log.info("Initializing convMemoryEmbeddingStore...");
+    public EmbeddingStore<TextSegment> initCharacterMemoryEmbeddingStore() {
+        log.info("Initializing characterMemoryEmbeddingStore...");
         String tableName = "adi_conversation_memory_embedding";
         String indexName = "conv_memory";
         Pair<String, Integer> pair = AdiPropertiesUtil.getSuffixAndDimension(adiProperties);

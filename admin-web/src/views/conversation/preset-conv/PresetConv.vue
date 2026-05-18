@@ -5,7 +5,7 @@
     <BasicTable
       :columns="columns"
       :request="loadDataTable"
-      :row-key="(row: ConversationPreset) => row.id"
+      :row-key="(row: CharacterPreset) => row.id"
       ref="actionRef"
       :actionColumn="actionColumn"
       @update:checked-row-keys="onCheckedRow"
@@ -39,15 +39,15 @@
       >
         <n-form-item :label="t('common.title')" path="title">
           <n-input
-            :placeholder="t('conversation.titlePlaceholder')"
+            :placeholder="t('character.titlePlaceholder')"
             v-model:value="editFormParams.title"
             maxlength="45"
             show-count
           />
         </n-form-item>
-        <n-form-item :label="t('conversation.presetType')" path="type">
+        <n-form-item :label="t('character.presetType')" path="type">
           <n-select
-            :placeholder="t('conversation.presetTypePlaceholder')"
+            :placeholder="t('character.presetTypePlaceholder')"
             v-model:value="editFormParams.type"
             :options="presetTypeOptions"
             clearable
@@ -57,21 +57,21 @@
           <n-input
             type="textarea"
             :autosize="{ minRows: 3, maxRows: 10 }"
-            :placeholder="t('conversation.descriptionPlaceholder')"
+            :placeholder="t('character.descriptionPlaceholder')"
             v-model:value="editFormParams.remark"
           />
         </n-form-item>
-        <n-form-item :label="t('conversation.aiSystemMessage')" path="aiSystemMessage">
+        <n-form-item :label="t('character.aiSystemMessage')" path="aiSystemMessage">
           <n-input
             type="textarea"
             :autosize="{ minRows: 3, maxRows: 10 }"
-            :placeholder="t('conversation.aiSystemMessagePlaceholder')"
+            :placeholder="t('character.aiSystemMessagePlaceholder')"
             v-model:value="editFormParams.aiSystemMessage"
           />
         </n-form-item>
-        <n-form-item :label="t('conversation.kbTitle')" path="kbTitle">
+        <n-form-item :label="t('character.kbTitle')" path="kbTitle">
           <n-input
-            :placeholder="t('conversation.kbTitlePlaceholder')"
+            :placeholder="t('character.kbTitlePlaceholder')"
             v-model:value="editFormParams.kbTitle"
             maxlength="100"
           />
@@ -93,10 +93,10 @@
   import { h, reactive, ref } from 'vue'
   import { BasicTable, TableAction } from '@/components/Table'
   import { BasicForm, FormSchema, useForm } from '@/components/Form/index'
-  import conversationApi from '@/api/conversation'
+  import characterApi from '@/api/conversation'
   import { getColumns } from './columns'
   const columns = getColumns()
-  import { ConversationPreset } from '/#/conversation'
+  import { CharacterPreset } from '/#/conversation'
   import { PlusOutlined } from '@vicons/antd'
   import { type FormRules } from 'naive-ui'
   import { useDialog } from 'naive-ui'
@@ -116,7 +116,7 @@
       component: 'NInput',
       label: t('common.title'),
       componentProps: {
-        placeholder: t('conversation.titlePlaceholder'),
+        placeholder: t('character.titlePlaceholder'),
       },
     },
     {
@@ -124,7 +124,7 @@
       component: 'NInput',
       label: t('common.description'),
       componentProps: {
-        placeholder: t('conversation.descriptionPlaceholder'),
+        placeholder: t('character.descriptionPlaceholder'),
       },
     },
     {
@@ -151,16 +151,16 @@
   const formRef: any = ref(null)
 
   const presetTypeOptions = [
-    { label: () => t('conversation.presetTypeTechnology'), value: 'technology' },
-    { label: () => t('conversation.presetTypeCreative'), value: 'creative' },
-    { label: () => t('conversation.presetTypeEducation'), value: 'education' },
-    { label: () => t('conversation.presetTypeBusiness'), value: 'business' },
-    { label: () => t('conversation.presetTypeProfessional'), value: 'professional' },
-    { label: () => t('conversation.presetTypeDesign'), value: 'design' },
-    { label: () => t('conversation.presetTypeMarketing'), value: 'marketing' },
-    { label: () => t('conversation.presetTypeService'), value: 'service' },
-    { label: () => t('conversation.presetTypeAdministration'), value: 'administration' },
-    { label: () => t('conversation.presetTypeUtility'), value: 'utility' },
+    { label: () => t('character.presetTypeTechnology'), value: 'technology' },
+    { label: () => t('character.presetTypeCreative'), value: 'creative' },
+    { label: () => t('character.presetTypeEducation'), value: 'education' },
+    { label: () => t('character.presetTypeBusiness'), value: 'business' },
+    { label: () => t('character.presetTypeProfessional'), value: 'professional' },
+    { label: () => t('character.presetTypeDesign'), value: 'design' },
+    { label: () => t('character.presetTypeMarketing'), value: 'marketing' },
+    { label: () => t('character.presetTypeService'), value: 'service' },
+    { label: () => t('character.presetTypeAdministration'), value: 'administration' },
+    { label: () => t('character.presetTypeUtility'), value: 'utility' },
   ]
   const actionRef = ref()
 
@@ -236,7 +236,7 @@
   }
 
   const loadDataTable = async (res) => {
-    const resp = await conversationApi.searchPresetConvs({ ...getFieldsValue() }, res)
+    const resp = await characterApi.searchPresetCharacters({ ...getFieldsValue() }, res)
     return resp.data
   }
 
@@ -254,9 +254,9 @@
     formRef.value.validate(async (errors) => {
       if (!errors) {
         if (editFormParams.uuid === '') {
-          await conversationApi.addPresetConv(editFormParams)
+          await characterApi.addPresetCharacter(editFormParams)
         } else {
-          await conversationApi.editPresetConv(editFormParams.uuid, editFormParams)
+          await characterApi.editPresetCharacter(editFormParams.uuid, editFormParams)
         }
         window['$message'].success(
           editFormParams.uuid === '' ? t('common.createSuccess') : t('common.editSuccess')
@@ -279,7 +279,7 @@
   }
 
   function handleDelete(record: Recordable) {
-    conversationApi.deletePresetConv(record.uuid)
+    characterApi.deletePresetCharacter(record.uuid)
     reloadTable()
   }
 

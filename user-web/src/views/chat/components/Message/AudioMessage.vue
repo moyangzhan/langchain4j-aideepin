@@ -19,7 +19,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emit>()
 
 interface Props {
-  conversation: Chat.Conversation
+  character: Chat.Character
   dateTime?: string
   inversion?: boolean
   showAvatar?: boolean
@@ -217,7 +217,7 @@ watch(() => props.loading, (loading) => {
 })
 
 // watch(() => props.loading, (loadding) => {
-//   if (!loadding && props.audioPlayState.audioUrl && props.conversation.isAutoplayAnswer && !hasAutoPlayed.value)
+//   if (!loadding && props.audioPlayState.audioUrl && props.character.isAutoplayAnswer && !hasAutoPlayed.value)
 //     playAudioByClick()
 
 //   hasAutoPlayed.value = false

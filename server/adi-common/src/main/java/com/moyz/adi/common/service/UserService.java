@@ -59,7 +59,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
     private StringRedisTemplate stringRedisTemplate;
 
     @Resource
-    private ConversationService conversationService;
+    private CharacterService characterService;
 
     @Resource
     private AdiProperties adiProperties;
@@ -139,7 +139,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         baseMapper.insert(newOne);
 
         //Create default conversation
-        conversationService.createDefault(newOne.getId());
+        characterService.createDefault(newOne.getId());
     }
 
     /**

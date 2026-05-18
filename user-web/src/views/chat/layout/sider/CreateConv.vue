@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { NButton, NDivider, NList, NListItem, NModal, NScrollbar, NTabPane, NTabs, NThing, NTag, NTooltip, useMessage } from 'naive-ui'
 import { useAuthStore, useChatStore } from '@/store'
-import { emptyConv } from '@/utils/functions'
+import { emptyCharacter } from '@/utils/functions'
 import EditConvDetail from '@/views/chat/components/Header/EditConvDetail.vue'
 import api from '@/api'
 import { t } from '@/locales'
@@ -31,20 +31,20 @@ const authStoreRef = ref<AuthState>(authStore)
 const savingUuids = ref<Set<string>>(new Set())
 const loadingPresetConvs = ref<boolean>(false)
 const loadingRels = ref<boolean>(false)
-const tmpConv = ref<Chat.Conversation>(emptyConv())
+const tmpCharacter = ref<Chat.Character>(emptyCharacter())
 const showModal = ref<boolean>(false)
 const chatStore = useChatStore()
 const ms = useMessage()
 
 const groupedPresets = computed(() => {
-  const groups: Record<string, Chat.ConversationPreset[]> = {}
-  for (const preset of chatStore.presetConvs) {
+  const groups: Record<string, Chat.CharacterPreset[]> = {}
+  for (const preset of chatStore.presetCharacters) {
     const type = preset.type || 'other'
     if (!groups[type])
       groups[type] = []
     groups[type].push(preset)
   }
-  const ordered: [string, Chat.ConversationPreset[]][] = []
+  const ordered: [string, Chat.CharacterPreset[]][] = []
   for (const type of typeOrder) {
     if (groups[type])
       ordered.push([type, groups[type]])
@@ -52,15 +52,15 @@ const groupedPresets = computed(() => {
   return ordered
 })
 
-async function searchPresetConvs() {
+async function searchPresetCharacters() {
   if (loadingPresetConvs.value)
     return
 
   loadingPresetConvs.value = true
   try {
-    const { success, data: convs } = await api.searchPresetConvs<PageResponse>()
+    const { success, data: characters } = await api.searchPresetCharacters<PageResponse>()
     if (success)
-      chatStore.setPresetConvs(convs.records)
+      chatStore.setPresetCharacters(characters.records)
   } finally {
     loadingPresetConvs.value = false
   }
@@ -72,9 +72,9 @@ async function searchPresetConvRel() {
 
   loadingRels.value = true
   try {
-    const { success, data: rels } = await api.listConvPresetRels<Chat.ConvToPresetRel[]>()
+    const { success, data: rels } = await api.listCharacterPresetRels<Chat.CharacterToPresetRel[]>()
     if (success)
-      chatStore.setUsedPresetConv(rels || [])
+      chatStore.setUsedPresetCharacter(rels || [])
   } finally {
     loadingRels.value = false
   }
@@ -84,30 +84,30 @@ function handleSubmitted() {
   showModal.value = false
 }
 
-async function handleUsePresetConv(presetConv: Chat.ConversationPreset) {
-  if (savingUuids.value.has(presetConv.uuid))
+async function handleUsePresetCharacter(presetCharacter: Chat.CharacterPreset) {
+  if (savingUuids.value.has(presetCharacter.uuid))
     return
 
-  savingUuids.value.add(presetConv.uuid)
+  savingUuids.value.add(presetCharacter.uuid)
   try {
-    const { data: newConv } = await api.convAddByPreset<Chat.Conversation>({ presetConvUuid: presetConv.uuid })
-    chatStore.addConvAndActive(newConv)
-    chatStore.markPresetConvUsed(presetConv.uuid)
+    const { data: newCharacter } = await api.characterAddByPreset<Chat.Character>({ presetCharacterUuid: presetCharacter.uuid })
+    chatStore.addCharacterAndActive(newCharacter)
+    chatStore.markPresetCharacterUsed(presetCharacter.uuid)
 
     ms.success(t('chat.copySuccess'), { duration: 2000 })
-    if (presetConv.kbTitle)
-      ms.success(t('chat.kbCreated', { kbTitle: presetConv.kbTitle }), { duration: 2000 })
+    if (presetCharacter.kbTitle)
+      ms.success(t('chat.kbCreated', { kbTitle: presetCharacter.kbTitle }), { duration: 2000 })
 
     showModal.value = false
   } catch (error: any) {
-    console.log('addConv error', error)
+    console.log('addCharacter error', error)
     if (error.message) {
       ms.error(error.message, {
         duration: 2000,
       })
     }
   } finally {
-    savingUuids.value.delete(presetConv.uuid)
+    savingUuids.value.delete(presetCharacter.uuid)
   }
 
   await searchPresetConvRel()
@@ -117,7 +117,7 @@ watch(
   () => authStoreRef.value.token,
   async (newVal) => {
     if (newVal) {
-      await searchPresetConvs()
+      await searchPresetCharacters()
       await searchPresetConvRel()
     }
   },
@@ -125,7 +125,7 @@ watch(
 
 onMounted(async () => {
   if (authStoreRef.value.token) {
-    await searchPresetConvs()
+    await searchPresetCharacters()
     await searchPresetConvRel()
   }
 })
@@ -139,24 +139,24 @@ defineExpose({ toggleModal })
 <template>
   <NModal v-model:show="showModal" style="min-width:200px; width: 60%;" preset="card">
     <NTabs type="line" justify-content="space-evenly" animated>
-      <NTabPane name="newConv" :tab="t('chat.newChatButton')">
-        <EditConvDetail :conversation="tmpConv" @submitted="handleSubmitted" />
+      <NTabPane name="newCharacter" :tab="t('chat.newChatButton')">
+        <EditConvDetail :character="tmpCharacter" @submitted="handleSubmitted" />
       </NTabPane>
-      <NTabPane name="presetConv" :tab="t('chat.presetRole')">
+      <NTabPane name="presetCharacter" :tab="t('chat.presetRole')">
         <NScrollbar style="max-height: 60vh;">
           <template v-for="[type, presets] in groupedPresets" :key="type">
             <NDivider title-placement="left" style="margin: 8px 0 4px;">
               {{ typeLabelMap[type] || type }}
             </NDivider>
             <NList hoverable bordered>
-              <NListItem v-for="presetConv in presets" :key="presetConv.id">
+              <NListItem v-for="presetCharacter in presets" :key="presetCharacter.id">
                 <NThing content-style="margin-top: 6px;">
                   <template #header>
-                    {{ presetConv.title }}
-                    <NTag v-if="presetConv.used" size="tiny" type="success" style="margin-left: 6px; font-size: 11px;">
+                    {{ presetCharacter.title }}
+                    <NTag v-if="presetCharacter.used" size="tiny" type="success" style="margin-left: 6px; font-size: 11px;">
                       {{ t('chat.used') }}
                     </NTag>
-                    <NTooltip v-if="presetConv.kbTitle">
+                    <NTooltip v-if="presetCharacter.kbTitle">
                       <template #trigger>
                         <NTag size="tiny" type="info" style="margin-left: 6px; font-size: 11px;">
                           {{ t('chat.kbAttached') }}
@@ -165,11 +165,11 @@ defineExpose({ toggleModal })
                       {{ t('chat.kbAutoCreateTip') }}
                     </NTooltip>
                   </template>
-                  {{ presetConv.remark }}
+                  {{ presetCharacter.remark }}
                 </NThing>
                 <template #suffix>
-                  <NButton size="small" :loading="savingUuids.has(presetConv.uuid)" :disabled="savingUuids.has(presetConv.uuid)" @click="handleUsePresetConv(presetConv)">
-                    {{ savingUuids.has(presetConv.uuid) ? t('chat.copying') : t('chat.use') }}
+                  <NButton size="small" :loading="savingUuids.has(presetCharacter.uuid)" :disabled="savingUuids.has(presetCharacter.uuid)" @click="handleUsePresetCharacter(presetCharacter)">
+                    {{ savingUuids.has(presetCharacter.uuid) ? t('chat.copying') : t('chat.use') }}
                   </NButton>
                 </template>
               </NListItem>

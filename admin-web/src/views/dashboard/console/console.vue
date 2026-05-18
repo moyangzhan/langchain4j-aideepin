@@ -123,7 +123,7 @@
       </n-grid-item>
       <n-grid-item>
         <NCard
-          :title="t('dashboard.conversationCount')"
+          :title="t('dashboard.characterCount')"
           :segmented="{ content: true, footer: true }"
           size="small"
           :bordered="false"
@@ -134,13 +134,13 @@
           <div class="flex justify-between px-1 py-1">
             <n-skeleton v-if="loading" :width="100" size="medium" />
             <CountTo
-              v-else-if="convStatistic.todayCreated > 0"
+              v-else-if="characterStatistic.todayCreated > 0"
               :startVal="0"
-              :endVal="convStatistic.todayCreated"
+              :endVal="characterStatistic.todayCreated"
               class="text-3xl"
             />
             <div v-else class="text-3xl">
-              {{ convStatistic.todayCreated }}
+              {{ characterStatistic.todayCreated }}
             </div>
           </div>
           <template #footer>
@@ -150,12 +150,12 @@
                 <div class="text-sn">{{ t('dashboard.totalCount') }}</div>
                 <div class="text-sn">
                   <CountTo
-                    v-if="convStatistic.total > 0"
+                    v-if="characterStatistic.total > 0"
                     :startVal="0"
-                    :endVal="Number(convStatistic.total)"
+                    :endVal="Number(characterStatistic.total)"
                   />
                   <div v-else class="text-sn">
-                    {{ convStatistic.total }}
+                    {{ characterStatistic.total }}
                   </div>
                 </div>
               </template>
@@ -279,7 +279,7 @@
     monthCost: number
   }
 
-  interface ConvStatistic {
+  interface CharacterStatistic {
     todayCreated: number
     total: number
   }
@@ -289,7 +289,7 @@
   const kbStatistic = ref({} as KbStatistic)
   const tokenCostStatistic = ref({} as TokenCostStatistic)
   const imageCostStatistic = ref({} as ImageCostStatistic)
-  const convStatistic = ref({} as ConvStatistic)
+  const characterStatistic = ref({} as CharacterStatistic)
 
   onMounted(async () => {
     const { data: resp } = await getStatistic()
@@ -297,7 +297,7 @@
     kbStatistic.value = resp.kbStatistic
     tokenCostStatistic.value = resp.tokenCostStatistic
     imageCostStatistic.value = resp.imageCostStatistic
-    convStatistic.value = resp.convStatistic
+    characterStatistic.value = resp.characterStatistic
     loading.value = false
   })
 </script>

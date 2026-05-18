@@ -26,7 +26,7 @@ declare namespace Chat {
 		state?: Map<string, string> //消息状态描述
 	}
 
-	interface ConversationPreset {
+	interface CharacterPreset {
 		id: string
 		uuid: string
 		title: string
@@ -38,15 +38,15 @@ declare namespace Chat {
 		used: boolean
 	}
 
-	interface ConvToPresetRel {
+	interface CharacterToPresetRel {
 		id: string
 		uuid: string
-		userConvId: string
-		presetConvId: string
+		userCharacterId: string
+		presetCharacterId: string
 	}
 
 	//会话关联的知识库信息
-	interface ConvKnowledge {
+	interface CharacterKnowledge {
 		id: string
 		uuid: string
 		title: string
@@ -66,7 +66,7 @@ declare namespace Chat {
 		voice: ConfigVoice
 	}
 
-	interface Conversation {
+	interface Character {
 		title: string
 		uuid: string
 		remark: string
@@ -77,7 +77,7 @@ declare namespace Chat {
 		minMsgUuid?: string | ''
 		mcpIds: string[]
 		kbIds: string[] // 关联的知识库ID
-		convKnowledgeList: ConvKnowledge[] //关联的知识库包装信息
+		characterKnowledgeList: CharacterKnowledge[] //关联的知识库包装信息
 		answerContentType: number // 1: auto, 2: text, 3: audio
 		isAutoplayAnswer: boolean //聊天时音频类型的响应内容是否自动播放
 		isEnableThinking: boolean //是否启用思考过程
@@ -85,7 +85,7 @@ declare namespace Chat {
 		audioConfig: AudioConfig //语音配置
 	}
 
-	interface ConvWithMessages {
+	interface CharacterWithMessages {
 		uuid: string
 		data: ChatMessage[]
 	}
@@ -93,23 +93,23 @@ declare namespace Chat {
 	interface ChatState {
 		active: string
 		usingContext: boolean
-		conversations: Conversation[]
-		chats: ConvWithMessages[]
+		characters: Character[]
+		chats: CharacterWithMessages[]
 		loadingMsgs: Set<string>
-		presetConvs: ConversationPreset[]
+		presetCharacters: CharacterPreset[]
 		msgToMemoryRef: Map<string, MemoryEmbedding[]>
 		msgToEmbeddingRef: Map<string, KnowledgeBase.QaRecordEmbeddingRef[]>
     msgToGraphRef: Map<string, KnowledgeBase.QaRecordGraphRef>
     loadingGraphRef: Map<string, boolean>
 	}
 
-	interface ConversationRequest {
+	interface CharacterRequest {
 		prompt: string,
-		conversationUuid?: string
+		characterUuid?: string
 		parentMessageId?: string
 	}
 
-	interface ConversationResponse {
+	interface CharacterResponse {
 		text: string
 	}
 
@@ -131,14 +131,14 @@ declare namespace Chat {
 		audioInfo: AudioInfo
 	}
 
-	interface ConvMsgListResp {
+	interface CharacterMsgListResp {
 		minMsgUuid: string
 		msgList: Chat.ChatMessage[]
 	}
 
-	interface ConversationsResp {
+	interface CharactersResp {
 		total: number
-		records: Chat.Conversation[]
+		records: Chat.Character[]
 	}
 
 	interface Prompt {

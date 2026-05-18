@@ -3,13 +3,13 @@ import { ref } from 'vue'
 import EditConv from './EditConv.vue'
 import { HoverButton, SvgIcon, ApiKeyModal } from '@/components/common'
 import { useAuthStore } from '@/store'
-import { emptyConv } from '@/utils/functions'
+import { emptyCharacter } from '@/utils/functions'
 
 interface Props {
-  conversation: Chat.Conversation
+  character: Chat.Character
 }
 withDefaults(defineProps<Props>(), {
-  conversation: () => emptyConv(),
+  character: () => emptyCharacter(),
 })
 const showEditModal = ref(false)
 const showEditBtn = ref(false)
@@ -39,7 +39,7 @@ function openApiKey() {
     <div class="relative flex items-center justify-between max-w-screen-xl px-4 m-auto h-12">
       <div class="flex items-center flex-col mx-2">
         <p class="text-sm">
-          {{ conversation?.title ?? '' }}
+          {{ character?.title ?? '' }}
         </p>
       </div>
       <div v-show="showEditBtn" class="flex items-center space-x-2">
@@ -56,6 +56,6 @@ function openApiKey() {
       </div>
     </div>
   </header>
-  <EditConv :show-modal="showEditModal" :conversation="conversation" @showModal="showOrCloseModal" />
-  <ApiKeyModal v-model:show="showApiKeyModal" type="conv" :uuid="conversation.uuid" :title="conversation.title" />
+  <EditConv :show-modal="showEditModal" :character="character" @showModal="showOrCloseModal" />
+  <ApiKeyModal v-model:show="showApiKeyModal" type="character" :uuid="character.uuid" :title="character.title" />
 </template>

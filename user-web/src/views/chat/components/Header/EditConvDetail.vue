@@ -6,11 +6,11 @@ import ConvKnowledgeSelector from '@/views/chat/ConvKnowledgeSelector.vue'
 import { useAppStore, useChatStore, useMcpStore } from '@/store'
 import { router } from '@/router'
 import { debounce } from '@/utils/functions/debounce'
-import { emptyConv } from '@/utils/functions'
+import { emptyCharacter } from '@/utils/functions'
 import api from '@/api'
 import { t } from '@/locales'
 interface Props {
-  conversation: Chat.Conversation
+  character: Chat.Character
 }
 interface Emit {
   (ev: 'submitted', show: boolean): void
@@ -20,24 +20,24 @@ const emit = defineEmits<Emit>()
 const appStore = useAppStore()
 const chatStore = useChatStore()
 const mcpStore = useMcpStore()
-const tmpConv = ref<Chat.Conversation>(emptyConv())
+const tmpCharacter = ref<Chat.Character>(emptyCharacter())
 const ms = useMessage()
 const submitting = ref<boolean>(false)
 const knowledgeModalShow = ref<boolean>(false)
 
-function initEditConv(item: Chat.Conversation) {
-  Object.assign(tmpConv.value, item)
-  if (!tmpConv.value.audioConfig.voice) {
-    tmpConv.value.audioConfig.voice = {
+function initEditCharacter(item: Chat.Character) {
+  Object.assign(tmpCharacter.value, item)
+  if (!tmpCharacter.value.audioConfig.voice) {
+    tmpCharacter.value.audioConfig.voice = {
       param_name: '',
       model: '',
       platform: '',
     }
   }
-  tmpConv.value.kbIds = []
-  tmpConv.value.convKnowledgeList = []
-  tmpConv.value.kbIds.push(...item.kbIds)
-  tmpConv.value.convKnowledgeList.push(...item.convKnowledgeList)
+  tmpCharacter.value.kbIds = []
+  tmpCharacter.value.characterKnowledgeList = []
+  tmpCharacter.value.kbIds.push(...item.kbIds)
+  tmpCharacter.value.characterKnowledgeList.push(...item.characterKnowledgeList)
 }
 async function handleEdit(event?: KeyboardEvent) {
   event?.stopPropagation()
@@ -47,7 +47,7 @@ async function handleEdit(event?: KeyboardEvent) {
     })
     return
   }
-  if (!tmpConv.value.title) {
+  if (!tmpCharacter.value.title) {
     ms.error(t('chat.titleRequired'), {
       duration: 2000,
     })
@@ -55,12 +55,12 @@ async function handleEdit(event?: KeyboardEvent) {
   }
   try {
     submitting.value = true
-    if (!tmpConv.value.uuid) {
-      const { data: newConv } = await api.convAdd<Chat.Conversation>(tmpConv.value)
-      chatStore.addConvAndActive(newConv)
+    if (!tmpCharacter.value.uuid) {
+      const { data: newCharacter } = await api.characterAdd<Chat.Character>(tmpCharacter.value)
+      chatStore.addCharacterAndActive(newCharacter)
     } else {
-      await api.convEdit(tmpConv.value.uuid, tmpConv.value)
-      chatStore.updateConv(tmpConv.value.uuid, tmpConv.value)
+      await api.characterEdit(tmpCharacter.value.uuid, tmpCharacter.value)
+      chatStore.updateCharacter(tmpCharacter.value.uuid, tmpCharacter.value)
     }
   } catch (error: any) {
     console.log('handleEdit error', error)
@@ -76,31 +76,31 @@ async function handleEdit(event?: KeyboardEvent) {
 }
 
 function handleRemoveKnowledge(knowledgeId: string) {
-  const index = tmpConv.value.convKnowledgeList.findIndex(kb => kb.id === knowledgeId)
+  const index = tmpCharacter.value.characterKnowledgeList.findIndex(kb => kb.id === knowledgeId)
   if (index !== -1) {
-    tmpConv.value.convKnowledgeList.splice(index, 1)
-    const idIndex = tmpConv.value.kbIds.findIndex(id => id === knowledgeId)
+    tmpCharacter.value.characterKnowledgeList.splice(index, 1)
+    const idIndex = tmpCharacter.value.kbIds.findIndex(id => id === knowledgeId)
     if (idIndex !== -1)
-      tmpConv.value.kbIds.splice(idIndex, 1)
+      tmpCharacter.value.kbIds.splice(idIndex, 1)
   }
 }
 
-function handleKnowledgeSelectedChanged(knowledgeIds: string[], knowledgeList: Chat.ConvKnowledge[]) {
-  tmpConv.value.kbIds = knowledgeIds
-  tmpConv.value.convKnowledgeList = knowledgeList
+function handleKnowledgeSelectedChanged(knowledgeIds: string[], knowledgeList: Chat.CharacterKnowledge[]) {
+  tmpCharacter.value.kbIds = knowledgeIds
+  tmpCharacter.value.characterKnowledgeList = knowledgeList
 }
 
 function handleUpdateVoice(name: string) {
-  tmpConv.value.audioConfig.voice.param_name = name
-  tmpConv.value.audioConfig.voice.model = appStore.ttsSetting.model_name || ''
-  tmpConv.value.audioConfig.voice.platform = appStore.ttsSetting.platform || ''
+  tmpCharacter.value.audioConfig.voice.param_name = name
+  tmpCharacter.value.audioConfig.voice.model = appStore.ttsSetting.model_name || ''
+  tmpCharacter.value.audioConfig.voice.platform = appStore.ttsSetting.platform || ''
 }
 
 function handleDelete(uuid: string, event?: MouseEvent | TouchEvent) {
   event?.stopPropagation()
   try {
-    api.convDel(uuid)
-    chatStore.deleteConv(uuid)
+    api.characterDel(uuid)
+    chatStore.deleteCharacter(uuid)
   } finally {
     emit('submitted', false)
   }
@@ -111,9 +111,9 @@ function gotoMcp() {
   emit('submitted', false)
 }
 
-watch(() => props.conversation.uuid, (val) => {
+watch(() => props.character.uuid, (val) => {
   if (val)
-    initEditConv(props.conversation)
+    initEditCharacter(props.character)
 }, { immediate: true })
 
 const handleDeleteDebounce = debounce(handleDelete, 600)
@@ -125,94 +125,94 @@ const handleDeleteDebounce = debounce(handleDelete, 600)
       <div class="flex flex-col space-y-3">
         <div>
           <div class="font-bold">
-            {{ t('chat.editConv.nameLabel') }}
+            {{ t('chat.editCharacterDetail.nameLabel') }}
           </div>
-          <NInput v-model:value="tmpConv.title" type="text" size="large" :placeholder="t('chat.editConv.namePlaceholder')" />
+          <NInput v-model:value="tmpCharacter.title" type="text" size="large" :placeholder="t('chat.editCharacterDetail.namePlaceholder')" />
         </div>
         <div>
           <div class="font-bold">
-            {{ t('chat.editConv.remarkLabel') }}
+            {{ t('chat.editCharacterDetail.remarkLabel') }}
           </div>
           <NInput
-            v-model:value="tmpConv.remark" type="textarea" :placeholder="t('chat.editConv.remarkPlaceholder')"
+            v-model:value="tmpCharacter.remark" type="textarea" :placeholder="t('chat.editCharacterDetail.remarkPlaceholder')"
             :autosize="{ minRows: 1, maxRows: 10 }"
           />
         </div>
         <div>
           <div class="font-bold">
-            {{ t('chat.editConv.roleSettingLabel') }}
+            {{ t('chat.editCharacterDetail.roleSettingLabel') }}
           </div>
           <NInput
-            v-model:value="tmpConv.aiSystemMessage" type="textarea" :placeholder="t('chat.editConv.roleSettingPlaceholder')"
+            v-model:value="tmpCharacter.aiSystemMessage" type="textarea" :placeholder="t('chat.editCharacterDetail.roleSettingPlaceholder')"
             :autosize="{ minRows: 1, maxRows: 10 }"
           />
         </div>
         <div>
           <div class="font-bold">
-            {{ t('chat.editConv.deepThinking') }}
+            {{ t('chat.editCharacterDetail.deepThinking') }}
             <NTooltip trigger="hover">
               <template #trigger>
                 <NIcon style="margin-top: 0.2rem">
                   <QuestionCircle16Regular />
                 </NIcon>
               </template>
-              <span>{{ t('chat.editConv.deepThinkingTip1') }}<br></span>
-              <span>{{ t('chat.editConv.deepThinkingTip2') }}</span>
+              <span>{{ t('chat.editCharacterDetail.deepThinkingTip1') }}<br></span>
+              <span>{{ t('chat.editCharacterDetail.deepThinkingTip2') }}</span>
             </NTooltip>
           </div>
           <NRadioGroup
-            :value="tmpConv.isEnableThinking" name="isEnableThinkingRadio" class="flex flex-col space-y-2"
-            size="small" @update:value="(checked) => tmpConv.isEnableThinking = checked"
+            :value="tmpCharacter.isEnableThinking" name="isEnableThinkingRadio" class="flex flex-col space-y-2"
+            size="small" @update:value="(checked) => tmpCharacter.isEnableThinking = checked"
           >
             <NRadio :value="false">
-              {{ t('chat.editConv.off') }}
+              {{ t('chat.editCharacterDetail.off') }}
             </NRadio>
             <NRadio :value="true">
-              {{ t('chat.editConv.on') }}
+              {{ t('chat.editCharacterDetail.on') }}
             </NRadio>
           </NRadioGroup>
         </div>
         <div class="flex flex-col space-y-2">
           <div class="flex space-x-2 font-bold">
-            <span>{{ t('chat.editConv.knowledgeBase') }}</span>
+            <span>{{ t('chat.editCharacterDetail.knowledgeBase') }}</span>
             <NButton type="primary" size="tiny" text tag="a" @click="knowledgeModalShow = !knowledgeModalShow">
-              {{ t('chat.editConv.addMoreKnowledge') }}
+              {{ t('chat.editCharacterDetail.addMoreKnowledge') }}
             </NButton>
           </div>
           <div v-if="!knowledgeModalShow">
-            <div v-if="tmpConv.convKnowledgeList.length === 0" class="pl-6">
+            <div v-if="tmpCharacter.characterKnowledgeList.length === 0" class="pl-6">
               {{ t('common.noData') }}
             </div>
             <NTag
-              v-for="convKnowledge in tmpConv.convKnowledgeList" :key="convKnowledge.uuid" closable class="mr-2"
-              @close="handleRemoveKnowledge(convKnowledge.id)"
+              v-for="characterKnowledge in tmpCharacter.characterKnowledgeList" :key="characterKnowledge.uuid" closable class="mr-2"
+              @close="handleRemoveKnowledge(characterKnowledge.id)"
             >
-              {{ convKnowledge.title }}
+              {{ characterKnowledge.title }}
             </NTag>
           </div>
           <div v-show="knowledgeModalShow" class="p-2">
             <ConvKnowledgeSelector
-              :tmp-save="true" :conversation="tmpConv"
+              :tmp-save="true" :character="tmpCharacter"
               @selected-changed="handleKnowledgeSelectedChanged"
             />
           </div>
         </div>
         <div class="flex flex-col space-y-2">
           <div class="flex space-x-2 font-bold">
-            {{ t('chat.editConv.mcpServices') }}
+            {{ t('chat.editCharacterDetail.mcpServices') }}
             <NTooltip trigger="hover">
               <template #trigger>
                 <NIcon style="margin-top: 0.2rem">
                   <QuestionCircle16Regular />
                 </NIcon>
               </template>
-              <span>{{ t('chat.editConv.mcpTip') }}</span>
+              <span>{{ t('chat.editCharacterDetail.mcpTip') }}</span>
             </NTooltip>
             <NButton type="primary" size="tiny" text tag="a" @click="gotoMcp">
-              {{ t('chat.editConv.goEnableMoreTools') }}
+              {{ t('chat.editCharacterDetail.goEnableMoreTools') }}
             </NButton>
           </div>
-          <NCheckboxGroup v-model:value="tmpConv.mcpIds" class="flex flex-wrap space-x-2">
+          <NCheckboxGroup v-model:value="tmpCharacter.mcpIds" class="flex flex-wrap space-x-2">
             <NCheckbox
               v-for="userMcp in mcpStore.myUserMcpList" :key="userMcp.uuid" :value="userMcp.mcpInfo.id"
               :label="userMcp.mcpInfo.title"
@@ -221,7 +221,7 @@ const handleDeleteDebounce = debounce(handleDelete, 600)
         </div>
         <div class="flex flex-col space-y-2">
           <div class="flex space-x-2 font-bold">
-            {{ t('chat.editConv.aiReplyFormat') }}
+            {{ t('chat.editCharacterDetail.aiReplyFormat') }}
             <NTooltip trigger="hover">
               <template #trigger>
                 <NIcon style="margin-top: 0.2rem">
@@ -229,31 +229,31 @@ const handleDeleteDebounce = debounce(handleDelete, 600)
                 </NIcon>
               </template>
               <span>
-                {{ t('chat.editConv.formatAutoDesc1') }}<br>
-                {{ t('chat.editConv.formatAutoDesc2') }}<br>
-                {{ t('chat.editConv.formatTextDesc') }}<br>
-                {{ t('chat.editConv.formatAudioDesc') }}
+                {{ t('chat.editCharacterDetail.formatAutoDesc1') }}<br>
+                {{ t('chat.editCharacterDetail.formatAutoDesc2') }}<br>
+                {{ t('chat.editCharacterDetail.formatTextDesc') }}<br>
+                {{ t('chat.editCharacterDetail.formatAudioDesc') }}
               </span>
             </NTooltip>
           </div>
           <NRadioGroup
-            :value="tmpConv.answerContentType" name="answerTypeRadio" class="flex flex-col space-y-2"
-            size="small" @update:value="(checked) => tmpConv.answerContentType = checked"
+            :value="tmpCharacter.answerContentType" name="answerTypeRadio" class="flex flex-col space-y-2"
+            size="small" @update:value="(checked) => tmpCharacter.answerContentType = checked"
           >
             <NRadio :value="1">
-              {{ t('chat.editConv.formatAuto') }}
+              {{ t('chat.editCharacterDetail.formatAuto') }}
             </NRadio>
             <NRadio :value="2">
-              {{ t('chat.editConv.formatText') }}
+              {{ t('chat.editCharacterDetail.formatText') }}
             </NRadio>
             <NRadio :value="3">
-              {{ t('chat.editConv.formatAudio') }}
+              {{ t('chat.editCharacterDetail.formatAudio') }}
             </NRadio>
           </NRadioGroup>
         </div>
         <div class="flex flex-col space-y-2">
           <div class="flex space-x-2 font-bold">
-            {{ t('chat.editConv.autoplayAudio') }}
+            {{ t('chat.editCharacterDetail.autoplayAudio') }}
             <NTooltip trigger="hover">
               <template #trigger>
                 <NIcon style="margin-top: 0.2rem">
@@ -261,18 +261,18 @@ const handleDeleteDebounce = debounce(handleDelete, 600)
                 </NIcon>
               </template>
               <span>
-                {{ t('chat.editConv.autoplayAudioTip') }}
+                {{ t('chat.editCharacterDetail.autoplayAudioTip') }}
               </span>
             </NTooltip>
           </div>
           <NCheckbox
-            :checked="tmpConv.isAutoplayAnswer" :label="t('common.yes')"
-            @update:checked="(checked) => tmpConv.isAutoplayAnswer = checked"
+            :checked="tmpCharacter.isAutoplayAnswer" :label="t('common.yes')"
+            @update:checked="(checked) => tmpCharacter.isAutoplayAnswer = checked"
           />
         </div>
         <div class="flex flex-col space-y-2">
           <div class="flex space-x-2 font-bold">
-            {{ t('chat.editConv.voiceSelection') }}
+            {{ t('chat.editCharacterDetail.voiceSelection') }}
             <NTooltip trigger="hover">
               <template #trigger>
                 <NIcon style="margin-top: 0.2rem">
@@ -280,15 +280,15 @@ const handleDeleteDebounce = debounce(handleDelete, 600)
                 </NIcon>
               </template>
               <span>
-                {{ t('chat.editConv.voiceSelectionTip') }}
+                {{ t('chat.editCharacterDetail.voiceSelectionTip') }}
               </span>
             </NTooltip>
           </div>
           <div v-if="appStore.ttsSetting.synthesizer_side === 'client'">
-            {{ t('chat.editConv.voiceFromBrowser') }}
+            {{ t('chat.editCharacterDetail.voiceFromBrowser') }}
           </div>
           <NRadioGroup
-            v-else-if="appStore.availableVoices.length > 0" :value="tmpConv.audioConfig.voice.param_name"
+            v-else-if="appStore.availableVoices.length > 0" :value="tmpCharacter.audioConfig.voice.param_name"
             name="audioConfigRadio" class="flex flex-col space-y-2" size="small" @update:value="handleUpdateVoice"
           >
             <NRadio
@@ -299,19 +299,19 @@ const handleDeleteDebounce = debounce(handleDelete, 600)
             </NRadio>
           </NRadioGroup>
           <div v-else>
-            {{ t('chat.editConv.noAvailableVoice') }}
+            {{ t('chat.editCharacterDetail.noAvailableVoice') }}
           </div>
         </div>
       </div>
     </div>
     <NFlex justify="space-between" class="mt-2">
-      <NPopconfirm placement="top" @positive-click.stop="handleDeleteDebounce(tmpConv.uuid, $event)">
+      <NPopconfirm placement="top" @positive-click.stop="handleDeleteDebounce(tmpCharacter.uuid, $event)">
         <template #trigger>
           <NButton type="error" text tag="a" :loading="submitting" :disabled="submitting">
             {{ t('common.delete') }}
           </NButton>
         </template>
-        {{ t('chat.editConv.confirmDeleteRole', { title: tmpConv.title }) }}
+        {{ t('chat.editCharacterDetail.confirmDeleteRole', { title: tmpCharacter.title }) }}
       </NPopconfirm>
       <NButton type="primary" :loading="submitting" :disabled="submitting" @click="handleEdit()">
         {{ t('common.save') }}

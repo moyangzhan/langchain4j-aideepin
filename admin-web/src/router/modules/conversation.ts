@@ -16,29 +16,29 @@ import { renderIconWithProps } from '@/utils/index'
  * */
 const routes: Array<RouteRecordRaw> = [
   {
-    path: '/conversation',
-    name: 'Conversation',
-    redirect: '/conversation/list',
+    path: '/character',
+    name: 'Character',
+    redirect: '/character/list',
     component: Layout,
     meta: {
-      title: 'route.conversationManagement',
+      title: 'route.characterManagement',
       icon: renderIconWithProps(ChatboxEllipsesOutline, { size: 20 }),
       sort: 3,
     },
     children: [
       {
         path: 'list',
-        name: 'ConversationList',
+        name: 'CharacterList',
         meta: {
-          title: 'route.conversationList',
+          title: 'route.characterList',
         },
         component: () => import('@/views/conversation/index.vue'),
       },
       {
         path: 'preset',
-        name: 'PresetConversationList',
+        name: 'PresetCharacterList',
         meta: {
-          title: 'route.presetConversation',
+          title: 'route.presetCharacter',
         },
         component: () => import('@/views/conversation/preset-conv/PresetConv.vue'),
       },
