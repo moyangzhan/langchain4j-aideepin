@@ -168,7 +168,7 @@ public class AdiConstant {
         public static final String GOOGLE_SETTING = "google_setting";
         public static final String REQUEST_TEXT_RATE_LIMIT = "request_text_rate_limit";
         public static final String REQUEST_IMAGE_RATE_LIMIT = "request_image_rate_limit";
-        public static final String CHARACTER_MAX_NUM = "conversation_max_num";
+        public static final String CHARACTER_MAX_NUM = "character_max_num";
         public static final String QUOTA_BY_TOKEN_DAILY = "quota_by_token_daily";
         public static final String QUOTA_BY_TOKEN_MONTHLY = "quota_by_token_monthly";
         public static final String QUOTA_BY_REQUEST_DAILY = "quota_by_request_daily";
@@ -480,14 +480,14 @@ public class AdiConstant {
     }
 
     /**
-     * 召回数据的来源：knowledge_base conversation_memory web
+     * 召回数据的来源：knowledge_base character_memory web
      */
     public static class RetrieveContentFrom {
         private RetrieveContentFrom() {
         }
 
         public static final String KNOWLEDGE_BASE = "knowledge_base";
-        public static final String CHARACTER_MEMORY = "conversation_memory";
+        public static final String CHARACTER_MEMORY = "character_memory";
         public static final String WEB = "web";
     }
 

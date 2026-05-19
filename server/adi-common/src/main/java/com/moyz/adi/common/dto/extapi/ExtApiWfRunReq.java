@@ -1,4 +1,4 @@
-package com.moyz.adi.common.dto.openapi;
+package com.moyz.adi.common.dto.extapi;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,7 +11,7 @@ import java.util.Map;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class OpenApiWfRunReq {
+public class ExtApiWfRunReq {
     private Map<String, Object> inputs;
     private String user;
     @Builder.Default

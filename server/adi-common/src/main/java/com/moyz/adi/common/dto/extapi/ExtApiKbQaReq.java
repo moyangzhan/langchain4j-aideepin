@@ -1,4 +1,4 @@
-package com.moyz.adi.common.dto.openapi;
+package com.moyz.adi.common.dto.extapi;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class OpenApiKbQaReq {
+public class ExtApiKbQaReq {
     @NotBlank(message = "query is required")
     private String query;
     private String user;

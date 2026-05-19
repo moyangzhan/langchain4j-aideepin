@@ -677,7 +677,7 @@ export default {
     quote: 'Reference',
     noAnswer: '[No answer]',
   },
-  openApi: {
+  extApi: {
     apiAccess: 'API Access',
     generateKey: 'Generate API Key',
     regenerateKey: 'Regenerate',

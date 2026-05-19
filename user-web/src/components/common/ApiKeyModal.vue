@@ -50,7 +50,7 @@ async function fetchKeyInfo() {
     return
   loading.value = true
   try {
-    const { data } = await api.openApiKeyInfo<{ rawKey: string | null, maskedKey: string | null }>(props.type, props.uuid)
+    const { data } = await api.extApiKeyInfo<{ rawKey: string | null, maskedKey: string | null }>(props.type, props.uuid)
     maskedKey.value = data?.maskedKey ?? ''
     rawKey.value = ''
     showingRaw.value = false
@@ -69,7 +69,7 @@ async function fetchKeyInfo() {
 async function handleGenerate() {
   loading.value = true
   try {
-    const { data } = await api.openApiKeyGenerate<{ rawKey: string, maskedKey: string }>(props.type, props.uuid)
+    const { data } = await api.extApiKeyGenerate<{ rawKey: string, maskedKey: string }>(props.type, props.uuid)
     maskedKey.value = data.maskedKey
     rawKey.value = data.rawKey
     justGenerated.value = true
@@ -91,7 +91,7 @@ async function handleReveal() {
   }
   loading.value = true
   try {
-    const { data } = await api.openApiKeyReveal<{ rawKey: string, maskedKey: string }>(props.type, props.uuid)
+    const { data } = await api.extApiKeyReveal<{ rawKey: string, maskedKey: string }>(props.type, props.uuid)
     rawKey.value = data.rawKey
     showingRaw.value = true
   }
@@ -108,7 +108,7 @@ async function handleCopy() {
     return
   try {
     await navigator.clipboard.writeText(rawKey.value)
-    ms.success(t('openApi.copySuccess'))
+    ms.success(t('extApi.copySuccess'))
   }
   catch {
     ms.error(t('common.wrong'))
@@ -117,16 +117,16 @@ async function handleCopy() {
 </script>
 
 <template>
-  <NModal v-model:show="innerShow" :title="`${title} - ${t('openApi.apiAccess')}`" style="width: 90%; max-width: 640px" preset="card" :mask-closable="false">
+  <NModal v-model:show="innerShow" :title="`${title} - ${t('extApi.apiAccess')}`" style="width: 90%; max-width: 640px" preset="card" :mask-closable="false">
     <NSpace vertical :size="16">
       <NAlert v-if="justGenerated" type="warning" :show-icon="true">
-        {{ t('openApi.closeWarning') }}
+        {{ t('extApi.closeWarning') }}
       </NAlert>
 
       <!-- No key yet -->
       <NFlex v-if="!maskedKey" justify="center" :size="12">
         <NButton type="primary" :loading="loading" @click="handleGenerate">
-          {{ t('openApi.generateKey') }}
+          {{ t('extApi.generateKey') }}
         </NButton>
       </NFlex>
 
@@ -135,20 +135,20 @@ async function handleCopy() {
         <NFlex align="center" :size="8">
           <NInput :value="showingRaw ? rawKey : maskedKey" readonly :type="showingRaw ? 'textarea' : 'text'" />
           <NButton v-if="showingRaw" size="small" @click="handleCopy">
-            {{ t('openApi.copyKey') }}
+            {{ t('extApi.copyKey') }}
           </NButton>
         </NFlex>
         <NFlex justify="end" :size="8">
           <NButton size="small" @click="handleReveal">
-            {{ showingRaw ? t('openApi.hideKey') : t('openApi.viewKey') }}
+            {{ showingRaw ? t('extApi.hideKey') : t('extApi.viewKey') }}
           </NButton>
           <NPopconfirm @positive-click="handleGenerate">
             <template #trigger>
               <NButton size="small" type="warning">
-                {{ t('openApi.regenerateKey') }}
+                {{ t('extApi.regenerateKey') }}
               </NButton>
             </template>
-            {{ t('openApi.regenerateConfirm') }}
+            {{ t('extApi.regenerateConfirm') }}
           </NPopconfirm>
         </NFlex>
       </template>

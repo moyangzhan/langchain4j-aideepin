@@ -211,10 +211,10 @@ CREATE TRIGGER trigger_ai_model_update_time
 EXECUTE PROCEDURE update_modified_column();
 
 -- ============================================================
--- Conversation: chat sessions, presets, and messages
+-- Character: persistent personas, presets, and messages
 -- ============================================================
 
-CREATE TABLE adi_conversation_preset
+CREATE TABLE adi_character_preset
 (
     id                bigserial primary key,
     uuid              varchar(32)   default ''                not null,
@@ -227,20 +227,20 @@ CREATE TABLE adi_conversation_preset
     update_time       timestamp     default CURRENT_TIMESTAMP not null,
     is_deleted        boolean       default false             not null
 );
-COMMENT ON TABLE adi_conversation_preset IS '预设角色表 | Preset Character table';
-COMMENT ON COLUMN adi_conversation_preset.title IS '标题 | Title';
-COMMENT ON COLUMN adi_conversation_preset.remark IS '描述 | Description';
-COMMENT ON COLUMN adi_conversation_preset.ai_system_message IS '提供给LLM的系统信息 | System message for LLM';
-COMMENT ON COLUMN adi_conversation_preset.kb_title IS '自动创建的知识库名称,为空则不创建 | Knowledge base title to auto-create, empty means no creation';
-COMMENT ON COLUMN adi_conversation_preset.type IS 'Character类型(technology/creative/education/business/professional/design/marketing/service/administration/utility) | Character type';
+COMMENT ON TABLE adi_character_preset IS '预设角色表 | Preset Character table';
+COMMENT ON COLUMN adi_character_preset.title IS '标题 | Title';
+COMMENT ON COLUMN adi_character_preset.remark IS '描述 | Description';
+COMMENT ON COLUMN adi_character_preset.ai_system_message IS '提供给LLM的系统信息 | System message for LLM';
+COMMENT ON COLUMN adi_character_preset.kb_title IS '自动创建的知识库名称,为空则不创建 | Knowledge base title to auto-create, empty means no creation';
+COMMENT ON COLUMN adi_character_preset.type IS 'Character type (technology/creative/education/business/professional/design/marketing/service/administration/utility)';
 
-create trigger trigger_conversation_preset
+create trigger trigger_character_preset
     before update
-    on adi_conversation_preset
+    on adi_character_preset
     for each row
 execute procedure update_modified_column();
 
-CREATE TABLE adi_conversation
+CREATE TABLE adi_character
 (
     id                        bigserial primary key,
     user_id                   bigint        default 0                 not null,
@@ -264,57 +264,58 @@ CREATE TABLE adi_conversation
     is_deleted                boolean       default false             not null
 );
 
-COMMENT ON TABLE adi_conversation IS '角色表（承载系统中的 Character 概念，即具有长期记忆的持久化人格，而非一次性会话） | Character table (represents a persistent persona with long-term memory, not a one-off session)';
-COMMENT ON COLUMN adi_conversation.user_id IS '用户ID | User ID';
-COMMENT ON COLUMN adi_conversation.title IS '标题，如：狄仁杰 | Title, e.g., Sherlock Holmes';
-COMMENT ON COLUMN adi_conversation.remark IS '备注，如：断案如神，手下能人众多 | Remark, e.g., Brilliant detective with keen observation skills';
-COMMENT ON COLUMN adi_conversation.ai_system_message IS 'Character设定内容，如：你是唐朝的狄仁杰，破了很多大案、疑案 | Character setting content, e.g., You are Sherlock Holmes, a brilliant detective known for your keen observation skills';
-COMMENT ON COLUMN adi_conversation.llm_temperature IS 'LLM响应的创造性/随机性 | LLM response creativity/randomness';
-COMMENT ON COLUMN adi_conversation.mcp_ids IS '启用的MCP服务id,以逗号隔开 | Enabled MCP service IDs, comma-separated';
-COMMENT ON COLUMN adi_conversation.kb_ids IS '关联使用的知识库id列表,以逗号隔开 | Associated knowledge base IDs, comma-separated';
-COMMENT ON COLUMN adi_conversation.answer_content_type IS '设置响应内容类型：1：自动（跟随用户的输入类型，如果用户输入是音频，则响应内容也同样是音频，如果用户输入是文本，则响应内容显示文本），2：文本，3：音频 | Response content display type: 1: Auto (if user input is audio, response content is also audio; if user input is text, response content displays text), 2: Text, 3: Audio';
-COMMENT ON COLUMN adi_conversation.is_autoplay_answer IS '设置聊天时音频类型的响应内容是否自动播放，true: 自动播放，false: 不自动播放 | Whether audio-type response content automatically plays, true: Auto play, false: Do not auto play';
-COMMENT ON COLUMN adi_conversation.is_enable_thinking IS '当前使用的模型如果是推理模式并且支持对思考过程的开关，则本字段生效 | Whether the current model supports reasoning mode and thinking process toggle, if so, this field takes effect';
-COMMENT ON COLUMN adi_conversation.is_enable_web_search IS '是否启用web搜索 | Whether to enable web search';
-COMMENT ON COLUMN adi_conversation.audio_config IS '音频配置，json格式存储，如 {"voice":{"param_name":"longyingda","model":"cosyvoice-v2","platform":"dashscope"}} | Audio configuration, stored in JSON format, e.g., {"voice":{"param_name":"longyingda","model":"cosyvoice-v2","platform":"dashscope"}}';
+COMMENT ON TABLE adi_character IS '角色表（承载系统中的 Character 概念，即具有长期记忆的持久化人格，而非一次性会话） | Character table (represents a persistent persona with long-term memory, not a one-off session)';
+COMMENT ON COLUMN adi_character.user_id IS '用户ID | User ID';
+COMMENT ON COLUMN adi_character.title IS '标题，如：狄仁杰 | Title, e.g., Sherlock Holmes';
+COMMENT ON COLUMN adi_character.remark IS '备注，如：断案如神，手下能人众多 | Remark, e.g., Brilliant detective with keen observation skills';
+COMMENT ON COLUMN adi_character.ai_system_message IS 'Character设定内容，如：你是唐朝的狄仁杰，破了很多大案、疑案 | Character setting content, e.g., You are Sherlock Holmes, a brilliant detective known for your keen observation skills';
+COMMENT ON COLUMN adi_character.llm_temperature IS 'LLM响应的创造性/随机性 | LLM response creativity/randomness';
+COMMENT ON COLUMN adi_character.mcp_ids IS '启用的MCP服务id,以逗号隔开 | Enabled MCP service IDs, comma-separated';
+COMMENT ON COLUMN adi_character.kb_ids IS '关联使用的知识库id列表,以逗号隔开 | Associated knowledge base IDs, comma-separated';
+COMMENT ON COLUMN adi_character.answer_content_type IS '设置响应内容类型：1：自动（跟随用户的输入类型，如果用户输入是音频，则响应内容也同样是音频，如果用户输入是文本，则响应内容显示文本），2：文本，3：音频 | Response content display type: 1: Auto (if user input is audio, response content is also audio; if user input is text, response content displays text), 2: Text, 3: Audio';
+COMMENT ON COLUMN adi_character.is_autoplay_answer IS '设置聊天时音频类型的响应内容是否自动播放，true: 自动播放，false: 不自动播放 | Whether audio-type response content automatically plays, true: Auto play, false: Do not auto play';
+COMMENT ON COLUMN adi_character.is_enable_thinking IS '当前使用的模型如果是推理模式并且支持对思考过程的开关，则本字段生效 | Whether the current model supports reasoning mode and thinking process toggle, if so, this field takes effect';
+COMMENT ON COLUMN adi_character.is_enable_web_search IS '是否启用web搜索 | Whether to enable web search';
+COMMENT ON COLUMN adi_character.audio_config IS '音频配置，json格式存储，如 {"voice":{"param_name":"longyingda","model":"cosyvoice-v2","platform":"dashscope"}} | Audio configuration, stored in JSON format, e.g., {"voice":{"param_name":"longyingda","model":"cosyvoice-v2","platform":"dashscope"}}';
+COMMENT ON COLUMN adi_character.api_key IS '外部系统对接密钥（AES加密存储） | API key for external system integration (AES encrypted)';
 
 
-CREATE TRIGGER trigger_conv_update_time
+CREATE TRIGGER trigger_character_update_time
     BEFORE UPDATE
-    ON adi_conversation
+    ON adi_character
     FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
 
 
-CREATE TABLE adi_conversation_preset_rel
+CREATE TABLE adi_character_preset_rel
 (
-    id             bigserial primary key,
-    uuid           varchar(32) default ''                not null,
-    user_id        bigint      default 0                 not null,
-    preset_conv_id bigint      default 0                 not null,
-    user_conv_id   bigint      default 0                 not null,
-    create_time    timestamp   default CURRENT_TIMESTAMP not null,
-    update_time    timestamp   default CURRENT_TIMESTAMP not null,
-    is_deleted     boolean     default false             not null
+    id                bigserial primary key,
+    uuid              varchar(32) default ''                not null,
+    user_id           bigint      default 0                 not null,
+    preset_character_id bigint    default 0                 not null,
+    user_character_id   bigint    default 0                 not null,
+    create_time       timestamp   default CURRENT_TIMESTAMP not null,
+    update_time       timestamp   default CURRENT_TIMESTAMP not null,
+    is_deleted        boolean     default false             not null
 );
 
-COMMENT ON TABLE adi_conversation_preset_rel IS '预设角色与用户角色关系表 | Preset Character Relation table';
-COMMENT ON COLUMN adi_conversation_preset_rel.user_id IS '用户ID | User ID';
-COMMENT ON COLUMN adi_conversation_preset_rel.preset_conv_id IS '预设会话ID | Preset conversation ID';
-COMMENT ON COLUMN adi_conversation_preset_rel.user_conv_id IS '用户会话ID | User conversation ID';
+COMMENT ON TABLE adi_character_preset_rel IS '预设角色与用户角色关系表 | Preset Character Relation table';
+COMMENT ON COLUMN adi_character_preset_rel.user_id IS '用户ID | User ID';
+COMMENT ON COLUMN adi_character_preset_rel.preset_character_id IS '预设角色ID | Preset character ID';
+COMMENT ON COLUMN adi_character_preset_rel.user_character_id IS '用户角色ID | User character ID';
 
-create trigger trigger_conversation_preset_rel
+create trigger trigger_character_preset_rel
     before update
-    on adi_conversation_preset_rel
+    on adi_character_preset_rel
     for each row
 execute procedure update_modified_column();
 
-CREATE TABLE adi_conversation_message
+CREATE TABLE adi_character_message
 (
     id                              bigserial primary key,
     parent_message_id               bigint        default 0                 not null,
-    conversation_id                 bigint        default 0                 not null,
-    conversation_uuid               varchar(32)   default ''                not null,
+    character_id                    bigint        default 0                 not null,
+    character_uuid                  varchar(32)   default ''                not null,
     content_type                    smallint      default 2                 not null,
     remark                          text          default ''                not null,
     processed_remark                text          default ''                not null,
@@ -336,33 +337,33 @@ CREATE TABLE adi_conversation_message
     is_deleted                      boolean       default false             not null
 );
 
-COMMENT ON TABLE adi_conversation_message IS '角色消息表 | Character Message table';
-COMMENT ON COLUMN adi_conversation_message.parent_message_id IS '父级消息id | Parent message ID';
-COMMENT ON COLUMN adi_conversation_message.conversation_id IS '对话id | Conversation ID';
-COMMENT ON COLUMN adi_conversation_message.conversation_uuid IS '对话的UUID | Conversation UUID';
-COMMENT ON COLUMN adi_conversation_message.remark IS '原始的对话消息，如用户输入的问题，AI产生的回答';
-COMMENT ON COLUMN adi_conversation_message.processed_remark IS '处理过的有效的对话消息，如 1.提供给LLM的内容：用户输入的问题+关联的知识库；2.显示在用户面前的答案：AI产生的回答经过合规校验及过滤、个性化调整后的内容';
-COMMENT ON COLUMN adi_conversation_message.content_type IS '消息内容类型（跟conversation.answer_content_type对应），2：文本，3：音频 | Message content type, 2: Text, 3: Audio';
-COMMENT ON COLUMN adi_conversation_message.uuid IS '唯一标识消息的UUID | Unique identifier for the message';
-COMMENT ON COLUMN adi_conversation_message.audio_uuid IS '语音聊天时产生的音频文件uuid(对应adi_file.uuid) | UUID of the audio file generated during voice chat (corresponds to adi_file.uuid)';
-COMMENT ON COLUMN adi_conversation_message.audio_duration IS '语音聊天时产生的音频文件时长(单位:秒) | Duration of the audio file generated during voice chat (in seconds)';
-COMMENT ON COLUMN adi_conversation_message.message_role IS '产生该消息的角色：1: 用户, 2: 系统, 3: 助手 | Role that generated the message: 1: User, 2: System, 3: Assistant';
-COMMENT ON COLUMN adi_conversation_message.tokens IS '消耗的token数量 | Number of tokens consumed';
-COMMENT ON COLUMN adi_conversation_message.user_id IS '用户ID | User ID';
-COMMENT ON COLUMN adi_conversation_message.ai_model_id IS '模型表的ID | adi_ai_model id';
-COMMENT ON COLUMN adi_conversation_message.understand_context_msg_pair_num IS '上下文消息对数量 | Number of context message pairs';
-COMMENT ON COLUMN adi_conversation_message.attachments IS '附件,存储格式: uuid,uuid | Attachments, stored as: uuid,uuid';
-COMMENT ON COLUMN adi_conversation_message.is_ref_embedding IS '是否引用了向量库知识 | Whether embedding knowledge is referenced';
-COMMENT ON COLUMN adi_conversation_message.is_ref_graph IS '是否引用了图库知识 | Whether graph knowledge is referenced';
-COMMENT ON COLUMN adi_conversation_message.is_ref_memory_embedding IS '是否引用了记忆向量库 | Whether to reference memory vector library';
+COMMENT ON TABLE adi_character_message IS '角色消息表 | Character Message table';
+COMMENT ON COLUMN adi_character_message.parent_message_id IS '父级消息id | Parent message ID';
+COMMENT ON COLUMN adi_character_message.character_id IS '角色id | Character ID';
+COMMENT ON COLUMN adi_character_message.character_uuid IS '角色的UUID | Character UUID';
+COMMENT ON COLUMN adi_character_message.remark IS '原始的对话消息，如用户输入的问题，AI产生的回答';
+COMMENT ON COLUMN adi_character_message.processed_remark IS '处理过的有效的对话消息，如 1.提供给LLM的内容：用户输入的问题+关联的知识库；2.显示在用户面前的答案：AI产生的回答经过合规校验及过滤、个性化调整后的内容';
+COMMENT ON COLUMN adi_character_message.content_type IS '消息内容类型（跟adi_character.answer_content_type对应），2：文本，3：音频 | Message content type, 2: Text, 3: Audio';
+COMMENT ON COLUMN adi_character_message.uuid IS '唯一标识消息的UUID | Unique identifier for the message';
+COMMENT ON COLUMN adi_character_message.audio_uuid IS '语音聊天时产生的音频文件uuid(对应adi_file.uuid) | UUID of the audio file generated during voice chat (corresponds to adi_file.uuid)';
+COMMENT ON COLUMN adi_character_message.audio_duration IS '语音聊天时产生的音频文件时长(单位:秒) | Duration of the audio file generated during voice chat (in seconds)';
+COMMENT ON COLUMN adi_character_message.message_role IS '产生该消息的角色：1: 用户, 2: 系统, 3: 助手 | Role that generated the message: 1: User, 2: System, 3: Assistant';
+COMMENT ON COLUMN adi_character_message.tokens IS '消耗的token数量 | Number of tokens consumed';
+COMMENT ON COLUMN adi_character_message.user_id IS '用户ID | User ID';
+COMMENT ON COLUMN adi_character_message.ai_model_id IS '模型表的ID | adi_ai_model id';
+COMMENT ON COLUMN adi_character_message.understand_context_msg_pair_num IS '上下文消息对数量 | Number of context message pairs';
+COMMENT ON COLUMN adi_character_message.attachments IS '附件,存储格式: uuid,uuid | Attachments, stored as: uuid,uuid';
+COMMENT ON COLUMN adi_character_message.is_ref_embedding IS '是否引用了向量库知识 | Whether embedding knowledge is referenced';
+COMMENT ON COLUMN adi_character_message.is_ref_graph IS '是否引用了图库知识 | Whether graph knowledge is referenced';
+COMMENT ON COLUMN adi_character_message.is_ref_memory_embedding IS '是否引用了记忆向量库 | Whether to reference memory vector library';
 
-CREATE TRIGGER trigger_conv_message_update_time
+CREATE TRIGGER trigger_character_message_update_time
     BEFORE UPDATE
-    ON adi_conversation_message
+    ON adi_character_message
     FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
 
-create table adi_conversation_message_ref_embedding
+create table adi_character_message_ref_embedding
 (
     id           bigserial primary key,
     message_id   bigint        default 0  not null,
@@ -371,13 +372,13 @@ create table adi_conversation_message_ref_embedding
     user_id      bigint        default 0  not null
 );
 
-comment on table adi_conversation_message_ref_embedding is '会话消息-知识库的向量引用 | Conversation-Question Record-Knowledge Base Embedding Reference List';
-comment on column adi_conversation_message_ref_embedding.message_id is '消息id | adi_conversation_message ID';
-comment on column adi_conversation_message_ref_embedding.embedding_id is '根据消息从向量库中获取到的向量uuid | adi_knowledge_base_embedding UUID';
-comment on column adi_conversation_message_ref_embedding.score is '评分 | Score';
-comment on column adi_conversation_message_ref_embedding.user_id is '所属用户 | User ID';
+comment on table adi_character_message_ref_embedding is 'Character message - knowledge base embedding references';
+comment on column adi_character_message_ref_embedding.message_id is 'adi_character_message ID';
+comment on column adi_character_message_ref_embedding.embedding_id is 'Embedding UUID retrieved from vector store';
+comment on column adi_character_message_ref_embedding.score is 'Score';
+comment on column adi_character_message_ref_embedding.user_id is 'User ID';
 
-create table adi_conversation_message_ref_graph
+create table adi_character_message_ref_graph
 (
     id                     bigserial primary key,
     message_id             bigint default 0  not null,
@@ -386,13 +387,13 @@ create table adi_conversation_message_ref_graph
     user_id                bigint default 0  not null
 );
 
-comment on table adi_conversation_message_ref_graph is '会话消息-知识库的图谱引用记录 | Knowledge Base - Question Records - Graph References';
-comment on column adi_conversation_message_ref_graph.message_id is '消息id | adi_conversation_message ID';
-comment on column adi_conversation_message_ref_graph.entities_from_question is '从问题中解析出来的实体: vertexName1,vertexName2 | Graph parsed by LLM: vertexName1,vertexName2';
-comment on column adi_conversation_message_ref_graph.graph_from_store is '根据消息从图数据库中查找到的图谱: {vertices:[{id:"111",name:"vertexName1"},{id:"222",name:"vertexName2"}],edges:[{id:"333",name:"edgeName1",start:"111",end:"222"}] | Graph retrieved from graph database: {vertices:[{id:"111",name:"vertexName1"},{id:"222",name:"vertexName2"}],edges:[{id:"333",name:"edgeName1",start:"111",end:"222"}]';
-comment on column adi_conversation_message_ref_graph.user_id is '所属用户 | adi_user ID';
+comment on table adi_character_message_ref_graph is 'Character message - knowledge base graph references';
+comment on column adi_character_message_ref_graph.message_id is 'adi_character_message ID';
+comment on column adi_character_message_ref_graph.entities_from_question is 'Entities parsed from question: vertexName1,vertexName2';
+comment on column adi_character_message_ref_graph.graph_from_store is 'Graph retrieved from graph database: {vertices:[{id:"111",name:"vertexName1"},{id:"222",name:"vertexName2"}],edges:[{id:"333",name:"edgeName1",start:"111",end:"222"}]';
+comment on column adi_character_message_ref_graph.user_id is 'User ID';
 
-create table adi_conversation_message_ref_memory_embedding
+create table adi_character_message_ref_memory_embedding
 (
     id           bigserial primary key,
     message_id   bigint        default 0  not null,
@@ -400,11 +401,11 @@ create table adi_conversation_message_ref_memory_embedding
     score        numeric(3, 2) default 0  not null,
     user_id      bigint        default 0  not null
 );
-comment on table adi_conversation_message_ref_memory_embedding is '会话消息-知识库的记忆引用 | Conversation-Question Record-Memory References';
-comment on column adi_conversation_message_ref_memory_embedding.message_id is '消息id | adi_conversation_message ID';
-comment on column adi_conversation_message_ref_memory_embedding.embedding_id is '根据消息从记忆向量库中获取到的向量uuid | adi_conversation_memory_embedding UUID';
-comment on column adi_conversation_message_ref_memory_embedding.score is '评分 | Score';
-comment on column adi_conversation_message_ref_memory_embedding.user_id is '所属用户 | User ID';
+comment on table adi_character_message_ref_memory_embedding is 'Character message - memory references';
+comment on column adi_character_message_ref_memory_embedding.message_id is 'adi_character_message ID';
+comment on column adi_character_message_ref_memory_embedding.embedding_id is 'Embedding UUID retrieved from memory vector store';
+comment on column adi_character_message_ref_memory_embedding.score is 'Score';
+comment on column adi_character_message_ref_memory_embedding.user_id is 'User ID';
 
 -- ============================================================
 -- File & Prompt: file storage and prompt templates
@@ -638,6 +639,7 @@ comment on column adi_knowledge_base.owner_name is '所属人名称 | Owner Name
 comment on column adi_knowledge_base.create_time is '创建时间 | Creation Time';
 comment on column adi_knowledge_base.update_time is '更新时间 | Update Time';
 comment on column adi_knowledge_base.is_deleted is '0：未删除；1：已删除 | Deletion Status, 0: Not Deleted; 1: Deleted';
+comment on column adi_knowledge_base.api_key is '外部系统对接密钥（AES加密存储） | API key for external system integration (AES encrypted)';
 
 create trigger trigger_kb_update_time
     before update
@@ -852,6 +854,7 @@ create table adi_workflow
 -- definition
 -- template
 comment on table adi_workflow is '工作流定义（用户定义的工作流）| Workflow Definition (User-defined Workflow)';
+comment on column adi_workflow.api_key is '外部系统对接密钥（AES加密存储） | API key for external system integration (AES encrypted)';
 create trigger trigger_workflow
     before update
     on adi_workflow

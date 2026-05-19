@@ -103,8 +103,8 @@ public class TokenFilter extends OncePerRequestFilter {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             }
         } finally {
-            // Open API requests are cleaned up by OpenApiAuthFilter
-            if (!ThreadContext.isOpenApiRequest()) {
+            // External API requests are cleaned up by ExtApiAuthFilter
+            if (!ThreadContext.isExtApiRequest()) {
                 ThreadContext.unload();
             }
         }

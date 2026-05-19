@@ -10,7 +10,7 @@ import lombok.Data;
 import java.io.Serializable;
 
 @Data
-@TableName("adi_conversation_message_ref_embedding")
+@TableName("adi_character_message_ref_embedding")
 @Schema(title = "角色消息-知识库的向量-引用实体 | Character Message Embedding Reference Entity", description = "角色消息-知识库的向量-引用列表 | Character Message Embedding Reference List")
 public class CharacterMessageRefEmbedding implements Serializable {
 

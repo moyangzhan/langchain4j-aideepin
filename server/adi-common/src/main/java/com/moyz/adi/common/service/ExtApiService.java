@@ -5,6 +5,7 @@ import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.ApiKeyResp;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.entity.Character;
+import com.moyz.adi.common.enums.ExtApiResourceType;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.AesUtil;
 import jakarta.annotation.Resource;
@@ -12,21 +13,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
-import java.util.Set;
-
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 /**
- * OpenAPI Key management service.
+ * External API Key management service.
  * Supports generating, retrieving (masked), revealing, and validating API keys
- * for conversations, knowledge bases, and workflows.
+ * for characters, knowledge bases, and workflows.
  */
 @Slf4j
 @Service
-public class OpenApiService {
+public class ExtApiService {
 
     private static final String KEY_PREFIX = "adi-";
-    private static final Set<String> VALID_TYPES = Set.of("conv", "kb", "wf");
 
     @Resource
     private CharacterService characterService;
@@ -44,18 +42,18 @@ public class OpenApiService {
      * Generate an API key for the specified resource.
      * The caller must be the resource owner or an admin.
      *
-     * @param type resource type: conv / kb / wf
+     * @param type resource type
      * @param uuid resource uuid
      * @return ApiKeyResp containing the raw key and masked key
      */
     public ApiKeyResp generateApiKey(String type, String uuid) {
-        validateType(type);
+        ExtApiResourceType resourceType = parseTypeOrThrow(type);
         User currentUser = ThreadContext.getCurrentUser();
         String rawKey = KEY_PREFIX + AesUtil.generateRandomKey();
         String encryptedValue = AesUtil.encrypt(rawKey);
 
-        switch (type) {
-            case "conv" -> {
+        switch (resourceType) {
+            case CHARACTER -> {
                 Character character = getCharacterOrThrow(uuid);
                 checkOwnership(character.getUserId(), currentUser);
                 characterService.lambdaUpdate()
@@ -63,7 +61,7 @@ public class OpenApiService {
                         .set(Character::getApiKey, encryptedValue)
                         .update();
             }
-            case "kb" -> {
+            case KNOWLEDGE -> {
                 KnowledgeBase kb = getKbOrThrow(uuid);
                 checkOwnership(kb.getOwnerId(), currentUser);
                 knowledgeBaseService.lambdaUpdate()
@@ -71,7 +69,7 @@ public class OpenApiService {
                         .set(KnowledgeBase::getApiKey, encryptedValue)
                         .update();
             }
-            case "wf" -> {
+            case WORKFLOW -> {
                 Workflow wf = getWfOrThrow(uuid);
                 checkOwnership(wf.getUserId(), currentUser);
                 ChainWrappers.lambdaUpdateChain(workflowService.getBaseMapper())
@@ -79,7 +77,6 @@ public class OpenApiService {
                         .set(Workflow::getApiKey, encryptedValue)
                         .update();
             }
-            default -> throw new BaseException(A_PARAMS_ERROR);
         }
 
         log.info("API key generated for {} uuid:{}, userId:{}", type, uuid, currentUser.getId());
@@ -92,33 +89,15 @@ public class OpenApiService {
     /**
      * Get API key info in masked form.
      *
-     * @param type resource type: conv / kb / wf
+     * @param type resource type
      * @param uuid resource uuid
      * @return ApiKeyResp with masked key (rawKey is null), or null if no key set
      */
     public ApiKeyResp getApiKeyInfo(String type, String uuid) {
-        validateType(type);
+        ExtApiResourceType resourceType = parseTypeOrThrow(type);
         User currentUser = ThreadContext.getCurrentUser();
 
-        String encryptedApiKey;
-        switch (type) {
-            case "conv" -> {
-                Character character = getCharacterOrThrow(uuid);
-                checkOwnership(character.getUserId(), currentUser);
-                encryptedApiKey = character.getApiKey();
-            }
-            case "kb" -> {
-                KnowledgeBase kb = getKbOrThrow(uuid);
-                checkOwnership(kb.getOwnerId(), currentUser);
-                encryptedApiKey = kb.getApiKey();
-            }
-            case "wf" -> {
-                Workflow wf = getWfOrThrow(uuid);
-                checkOwnership(wf.getUserId(), currentUser);
-                encryptedApiKey = wf.getApiKey();
-            }
-            default -> throw new BaseException(A_PARAMS_ERROR);
-        }
+        String encryptedApiKey = resolveApiKey(resourceType, uuid, currentUser);
 
         if (StringUtils.isBlank(encryptedApiKey)) {
             return null;
@@ -134,33 +113,15 @@ public class OpenApiService {
      * Reveal the full API key.
      * The caller must be the resource owner or an admin.
      *
-     * @param type resource type: conv / kb / wf
+     * @param type resource type
      * @param uuid resource uuid
      * @return ApiKeyResp containing both raw and masked key
      */
     public ApiKeyResp revealApiKey(String type, String uuid) {
-        validateType(type);
+        ExtApiResourceType resourceType = parseTypeOrThrow(type);
         User currentUser = ThreadContext.getCurrentUser();
 
-        String encryptedApiKey;
-        switch (type) {
-            case "conv" -> {
-                Character character = getCharacterOrThrow(uuid);
-                checkOwnership(character.getUserId(), currentUser);
-                encryptedApiKey = character.getApiKey();
-            }
-            case "kb" -> {
-                KnowledgeBase kb = getKbOrThrow(uuid);
-                checkOwnership(kb.getOwnerId(), currentUser);
-                encryptedApiKey = kb.getApiKey();
-            }
-            case "wf" -> {
-                Workflow wf = getWfOrThrow(uuid);
-                checkOwnership(wf.getUserId(), currentUser);
-                encryptedApiKey = wf.getApiKey();
-            }
-            default -> throw new BaseException(A_PARAMS_ERROR);
-        }
+        String encryptedApiKey = resolveApiKey(resourceType, uuid, currentUser);
 
         if (StringUtils.isBlank(encryptedApiKey)) {
             throw new BaseException(A_API_KEY_NOT_FOUND);
@@ -178,19 +139,19 @@ public class OpenApiService {
      * Encrypts the raw key and searches the corresponding table for a match.
      *
      * @param rawKey the API key from the request header
-     * @param type   resource type: conv / kb / wf
+     * @param type   resource type
      * @return ValidateResult containing the found entity uuid and the owner user
      */
     public ValidateResult validateApiKey(String rawKey, String type) {
-        validateType(type);
+        ExtApiResourceType resourceType = parseTypeOrThrow(type);
         if (StringUtils.isBlank(rawKey) || !rawKey.startsWith(KEY_PREFIX)) {
             throw new BaseException(A_API_KEY_INVALID);
         }
 
         String encryptedValue = AesUtil.encrypt(rawKey);
 
-        switch (type) {
-            case "conv" -> {
+        return switch (resourceType) {
+            case CHARACTER -> {
                 Character character = characterService.lambdaQuery()
                         .eq(Character::getApiKey, encryptedValue)
                         .eq(Character::getIsDeleted, false)
@@ -202,9 +163,9 @@ public class OpenApiService {
                 if (null == owner) {
                     throw new BaseException(A_API_KEY_INVALID);
                 }
-                return new ValidateResult(character.getUuid(), owner);
+                yield new ValidateResult(character.getUuid(), owner);
             }
-            case "kb" -> {
+            case KNOWLEDGE -> {
                 KnowledgeBase kb = knowledgeBaseService.lambdaQuery()
                         .eq(KnowledgeBase::getApiKey, encryptedValue)
                         .eq(KnowledgeBase::getIsDeleted, false)
@@ -216,9 +177,9 @@ public class OpenApiService {
                 if (null == owner) {
                     throw new BaseException(A_API_KEY_INVALID);
                 }
-                return new ValidateResult(kb.getUuid(), owner);
+                yield new ValidateResult(kb.getUuid(), owner);
             }
-            case "wf" -> {
+            case WORKFLOW -> {
                 Workflow wf = ChainWrappers.lambdaQueryChain(workflowService.getBaseMapper())
                         .eq(Workflow::getApiKey, encryptedValue)
                         .eq(Workflow::getIsDeleted, false)
@@ -230,18 +191,42 @@ public class OpenApiService {
                 if (null == owner) {
                     throw new BaseException(A_API_KEY_INVALID);
                 }
-                return new ValidateResult(wf.getUuid(), owner);
+                yield new ValidateResult(wf.getUuid(), owner);
             }
-            default -> throw new BaseException(A_PARAMS_ERROR);
-        }
+        };
     }
 
     // ========== Private helpers ==========
 
-    private void validateType(String type) {
-        if (StringUtils.isBlank(type) || !VALID_TYPES.contains(type)) {
+    private ExtApiResourceType parseTypeOrThrow(String type) {
+        ExtApiResourceType resourceType = ExtApiResourceType.fromValue(type);
+        if (null == resourceType) {
             throw new BaseException(A_PARAMS_ERROR);
         }
+        return resourceType;
+    }
+
+    /**
+     * Resolve the encrypted API key for the given resource, checking ownership.
+     */
+    private String resolveApiKey(ExtApiResourceType resourceType, String uuid, User currentUser) {
+        return switch (resourceType) {
+            case CHARACTER -> {
+                Character character = getCharacterOrThrow(uuid);
+                checkOwnership(character.getUserId(), currentUser);
+                yield character.getApiKey();
+            }
+            case KNOWLEDGE -> {
+                KnowledgeBase kb = getKbOrThrow(uuid);
+                checkOwnership(kb.getOwnerId(), currentUser);
+                yield kb.getApiKey();
+            }
+            case WORKFLOW -> {
+                Workflow wf = getWfOrThrow(uuid);
+                checkOwnership(wf.getUserId(), currentUser);
+                yield wf.getApiKey();
+            }
+        };
     }
 
     private void checkOwnership(Long resourceUserId, User currentUser) {
@@ -268,15 +253,11 @@ public class OpenApiService {
 
     private Workflow getWfOrThrow(String uuid) {
         return workflowService.getByUuid(uuid);
-        // WorkflowService.getByUuid already handles not-found via getOrThrow
     }
 
     /**
      * Generate masked version of the key: "adi-a3f8****f6g7"
      * Keeps the first 8 characters (including prefix) and last 4 characters.
-     *
-     * @param rawKey the plain API key
-     * @return masked key string
      */
     private String maskKey(String rawKey) {
         if (StringUtils.isBlank(rawKey) || rawKey.length() <= 12) {

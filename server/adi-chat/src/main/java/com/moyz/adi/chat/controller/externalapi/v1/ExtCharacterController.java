@@ -2,7 +2,7 @@ package com.moyz.adi.chat.controller.externalapi.v1;
 
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.AskReq;
-import com.moyz.adi.common.dto.openapi.OpenApiChatReq;
+import com.moyz.adi.common.dto.extapi.ExtApiChatReq;
 import com.moyz.adi.common.entity.Character;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.service.CharacterMessageService;
@@ -29,8 +29,8 @@ public class ExtCharacterController {
 
     @Operation(summary = "Chat with a character")
     @PostMapping
-    public Object chatMessages(@RequestBody @Validated OpenApiChatReq req) {
-        String characterUuid = ThreadContext.getOpenApiEntityUuid();
+    public Object chatMessages(@RequestBody @Validated ExtApiChatReq req) {
+        String characterUuid = ThreadContext.getExtApiEntityUuid();
 
         Character character = characterService.lambdaQuery()
                 .eq(Character::getUuid, characterUuid)

@@ -11,7 +11,7 @@ import java.io.Serial;
 import java.io.Serializable;
 
 @Data
-@TableName("adi_conversation_message_ref_memory_embedding")
+@TableName("adi_character_message_ref_memory_embedding")
 @Schema(title = "角色消息-记忆-引用实体 | Character Message Memory Reference Entity", description = "角色消息-记忆-引用列表 | Character Message Memory Reference List")
 public class CharacterMessageRefMemoryEmbedding implements Serializable {
 

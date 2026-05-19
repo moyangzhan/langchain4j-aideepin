@@ -39,6 +39,24 @@ public class PgVectorEmbeddingStoreConfig {
     @Resource
     private AdiProperties adiProperties;
 
+    /**
+     * 根据选定的嵌入模型及其生成向量的维度不同来定义不同的表名，项目启动时只使用其中一种<br/>
+     * 例如：<br/>
+     * adi_knowledge_base_embedding_bge_384（默认）: 本地嵌入模型bge-small-zh-v1.5，维度384<br/>
+     * adi_knowledge_base_embedding: 本地嵌入模型all-minilm-l6-v2，维度384<br/>
+     * adi_knowledge_base_embedding_qwen_1024: 通义千问嵌入模型，维度1024<br/>
+     * adi_knowledge_base_embedding_openai_1536: OpenAI嵌入模型，维度1536<br/>
+     * <p>
+     * Define different table names based on the selected embedding model and its vector dimension.
+     * Only one is used at runtime.<br/>
+     * Examples:<br/>
+     * adi_knowledge_base_embedding_bge_384: bge-small-zh-v1.5, dimension 384 (default)<br/>
+     * adi_knowledge_base_embedding: all-minilm-l6-v2, dimension 384<br/>
+     * adi_knowledge_base_embedding_qwen_1024: Qwen embedding model, dimension 1024<br/>
+     * adi_knowledge_base_embedding_openai_1536: OpenAI embedding model, dimension 1536<br/>
+     *
+     * @return embeddingStore
+     */
     @Bean(name = "kbEmbeddingStore")
     @Primary
     public EmbeddingStore<TextSegment> initKbEmbeddingStore() {
@@ -59,7 +77,7 @@ public class PgVectorEmbeddingStoreConfig {
     @Bean(name = "characterMemoryEmbeddingStore")
     public EmbeddingStore<TextSegment> initCharacterMemoryEmbeddingStore() {
         log.info("Initializing characterMemoryEmbeddingStore...");
-        String tableName = "adi_conversation_memory_embedding";
+        String tableName = "adi_character_memory_embedding";
         Pair<String, Integer> pair = AdiPropertiesUtil.getSuffixAndDimension(adiProperties);
         if (StringUtils.isNotBlank(pair.getLeft())) {
             tableName = tableName + "_" + pair.getLeft();

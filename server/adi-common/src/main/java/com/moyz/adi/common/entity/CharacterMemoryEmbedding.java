@@ -9,7 +9,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
-@TableName("adi_conversation_memory_embedding")
+@TableName("adi_character_memory_embedding")
 @Schema(title = "角色-记忆-嵌入实体 | Character Memory Embedding Entity", description = "角色记忆嵌入表 | Character Memory Embedding Table")
 public class CharacterMemoryEmbedding {
 

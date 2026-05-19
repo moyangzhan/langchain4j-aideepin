@@ -31,10 +31,10 @@
 
     <sql id="getTableName">
         <if test="tableSuffix != null and tableSuffix != ''">
-            adi_conversation_embedding_${tableSuffix}
+            adi_character_memory_embedding_${tableSuffix}
         </if>
         <if test="tableSuffix == null or tableSuffix == ''">
-            adi_conversation_embedding
+            adi_character_memory_embedding
         </if>
     </sql>
 </mapper>

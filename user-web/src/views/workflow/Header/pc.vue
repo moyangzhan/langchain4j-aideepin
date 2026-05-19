@@ -88,7 +88,7 @@ function handleSelect(key: string | number) {
   }
 }
 
-function openApiKey() {
+function extApiKey() {
   if (!authStore.checkLoginOrShow())
     return
   showApiKeyModal.value = true
@@ -125,7 +125,7 @@ function openApiKey() {
             </NTag>
           </div>
         </HoverButton>
-        <HoverButton @click="openApiKey()">
+        <HoverButton @click="extApiKey()">
           <span class="text-xl">
             <SvgIcon icon="carbon:api" />
           </span>

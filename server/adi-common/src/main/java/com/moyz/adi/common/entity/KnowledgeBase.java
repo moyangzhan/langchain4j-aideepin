@@ -88,7 +88,7 @@ public class KnowledgeBase extends BaseEntity {
     @TableField("query_system_message")
     private String querySystemMessage;
 
-    @Schema(title = "OpenAPI密钥 | OpenAPI API Key")
+    @Schema(title = "外部系统对接密钥 | API key for external system integration")
     @TableField("api_key")
     private String apiKey;
 }

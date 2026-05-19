@@ -17,7 +17,7 @@ VALUES ('request_text_rate_limit', '{"times":24,"minutes":3}');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('request_image_rate_limit', '{"times":6,"minutes":3}');
 INSERT INTO adi_sys_config (name, value)
-VALUES ('conversation_max_num', '50');
+VALUES ('character_max_num', '50');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('quota_by_token_daily', '10000');
 INSERT INTO adi_sys_config (name, value)
@@ -92,18 +92,22 @@ INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input
 VALUES ('deepseek-v4-flash', 'DeepSeek-V4-Flash', 'text', 'deepseek', 1000000, 980000, 384000, 'text,json_object', true, true,
         false);
 
--- https://platform.openai.com/docs/models/gpt-5-mini
+-- https://developers.openai.com/api/docs/models/gpt-5-mini (superseded by gpt-5.4-mini)
+-- INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens,
+--                           response_format_types, remark,
+--                           is_enable)
+-- VALUES ('gpt-5-mini', 'gpt-5-mini', 'text', 'openai', 400000, 272000, 128000, 'text,json_object',
+--         'GPT-5 mini is a faster, more cost-efficient version of GPT-5. It''s great for well-defined tasks and precise prompts.',
+--         false);
+
+-- https://developers.openai.com/api/docs/models/gpt-5.4-mini
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens,
                           response_format_types, remark,
                           is_enable)
-VALUES ('gpt-5-mini', 'gpt-5-mini', 'text', 'openai', 400000, 272000, 128000, 'text,json_object',
-        'GPT-5 mini is a faster, more cost-efficient version of GPT-5. It''s great for well-defined tasks and precise prompts.',
+VALUES ('gpt-5.4-mini', 'gpt-5.4-mini', 'text', 'openai', 400000, 272000, 128000, 'text,json_object',
+        'GPT-5.4 mini brings the strengths of GPT-5.4 to a faster, more efficient model designed for high-volume workloads.',
         false);
 
--- use gpt-5-mini in place of GPT-3.5 Turbo
--- https://platform.openai.com/docs/models/gpt-3-5-turbo
--- INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, is_enable)
--- VALUES ('gpt-3.5-turbo', 'gpt3.5', 'text', 'openai', 16385, 12385, 4096, false);
 
 INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
 VALUES ('gpt-image-2', 'GPT-Image-2', 'image', 'openai', false);

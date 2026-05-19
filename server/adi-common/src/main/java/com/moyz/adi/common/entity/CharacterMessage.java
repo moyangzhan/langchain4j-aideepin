@@ -8,7 +8,7 @@ import lombok.EqualsAndHashCode;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-@TableName("adi_conversation_message")
+@TableName("adi_character_message")
 @Schema(title = "CharacterMessage对象")
 public class CharacterMessage extends BaseEntity {
 
@@ -21,11 +21,11 @@ public class CharacterMessage extends BaseEntity {
     private Long parentMessageId;
 
     @Schema(title = "角色id | Character ID")
-    @TableField("conversation_id")
+    @TableField("character_id")
     private Long characterId;
 
     @Schema(title = "角色uuid | Character UUID")
-    @TableField("conversation_uuid")
+    @TableField("character_uuid")
     private String characterUuid;
 
     @Schema(title = "用户id | User ID")

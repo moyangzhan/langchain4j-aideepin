@@ -20,11 +20,11 @@ const endpointInfo = computed(() => {
     return {
       endpoint: `${urlBase}/character/chat-messages`,
       method: 'POST',
-      description: t('openApi.docChatDesc'),
+      description: t('extApi.docChatDesc'),
       params: [
-        { name: 'query', type: 'string', required: t('common.yes'), desc: t('openApi.docParamQuery') },
-        { name: 'user', type: 'string', required: t('common.no'), desc: t('openApi.docParamUser') },
-        { name: 'response_mode', type: 'string', required: t('common.no'), desc: t('openApi.docParamMode') },
+        { name: 'query', type: 'string', required: t('common.yes'), desc: t('extApi.docParamQuery') },
+        { name: 'user', type: 'string', required: t('common.no'), desc: t('extApi.docParamUser') },
+        { name: 'response_mode', type: 'string', required: t('common.no'), desc: t('extApi.docParamMode') },
       ],
       curlExample: `curl -X POST '${urlBase}/character/chat-messages' \\
   -H 'Authorization: YOUR_API_KEY' \\
@@ -40,11 +40,11 @@ const endpointInfo = computed(() => {
     return {
       endpoint: `${urlBase}/knowledge/qa`,
       method: 'POST',
-      description: t('openApi.docKbDesc'),
+      description: t('extApi.docKbDesc'),
       params: [
-        { name: 'query', type: 'string', required: t('common.yes'), desc: t('openApi.docParamQuery') },
-        { name: 'user', type: 'string', required: t('common.no'), desc: t('openApi.docParamUser') },
-        { name: 'response_mode', type: 'string', required: t('common.no'), desc: t('openApi.docParamMode') },
+        { name: 'query', type: 'string', required: t('common.yes'), desc: t('extApi.docParamQuery') },
+        { name: 'user', type: 'string', required: t('common.no'), desc: t('extApi.docParamUser') },
+        { name: 'response_mode', type: 'string', required: t('common.no'), desc: t('extApi.docParamMode') },
       ],
       curlExample: `curl -X POST '${urlBase}/knowledge/qa' \\
   -H 'Authorization: YOUR_API_KEY' \\
@@ -59,11 +59,11 @@ const endpointInfo = computed(() => {
     return {
       endpoint: `${urlBase}/workflow/run`,
       method: 'POST',
-      description: t('openApi.docWfDesc'),
+      description: t('extApi.docWfDesc'),
       params: [
-        { name: 'inputs', type: 'object', required: t('common.no'), desc: t('openApi.docParamInputs') },
-        { name: 'user', type: 'string', required: t('common.no'), desc: t('openApi.docParamUser') },
-        { name: 'response_mode', type: 'string', required: t('common.no'), desc: t('openApi.docParamMode') },
+        { name: 'inputs', type: 'object', required: t('common.no'), desc: t('extApi.docParamInputs') },
+        { name: 'user', type: 'string', required: t('common.no'), desc: t('extApi.docParamUser') },
+        { name: 'response_mode', type: 'string', required: t('common.no'), desc: t('extApi.docParamMode') },
       ],
       curlExample: `curl -X POST '${urlBase}/workflow/run' \\
   -H 'Authorization: YOUR_API_KEY' \\
@@ -81,16 +81,16 @@ const endpointInfo = computed(() => {
   <NSpace vertical :size="12">
     <NDivider style="margin: 4px 0" />
     <NH4 style="margin: 0">
-      {{ t('openApi.docTitle') }}
+      {{ t('extApi.docTitle') }}
     </NH4>
 
     <NCollapse>
-      <NCollapseItem :title="t('openApi.docEndpoint')" name="endpoint">
+      <NCollapseItem :title="t('extApi.docEndpoint')" name="endpoint">
         <NTable :bordered="true" :single-line="false" size="small">
           <tbody>
             <tr>
               <td style="width: 100px; font-weight: 600">
-                {{ t('openApi.docMethod') }}
+                {{ t('extApi.docMethod') }}
               </td>
               <td>{{ endpointInfo.method }}</td>
             </tr>
@@ -112,14 +112,14 @@ const endpointInfo = computed(() => {
         </NTable>
       </NCollapseItem>
 
-      <NCollapseItem :title="t('openApi.docParams')" name="params">
+      <NCollapseItem :title="t('extApi.docParams')" name="params">
         <NTable :bordered="true" :single-line="false" size="small">
           <thead>
             <tr>
-              <th>{{ t('openApi.docParamName') }}</th>
+              <th>{{ t('extApi.docParamName') }}</th>
               <th>Type</th>
               <th>Required</th>
-              <th>{{ t('openApi.docParamDesc') }}</th>
+              <th>{{ t('extApi.docParamDesc') }}</th>
             </tr>
           </thead>
           <tbody>

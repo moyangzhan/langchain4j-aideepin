@@ -4,13 +4,13 @@
 
     <select id="countAllCreated" resultType="Integer">
         select count(1)
-        from adi_conversation
+        from adi_character
         where is_deleted = false
     </select>
 
     <select id="countCreatedByTimePeriod" resultType="Integer">
         select count(1)
-        from adi_conversation
+        from adi_character
         where is_deleted = false
           and create_time between #{beginTime} and #{endTime}
     </select>

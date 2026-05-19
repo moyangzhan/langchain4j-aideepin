@@ -11,7 +11,7 @@ import org.apache.ibatis.type.JdbcType;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-@TableName(value = "adi_conversation", autoResultMap = true)
+@TableName(value = "adi_character", autoResultMap = true)
 @Schema(title = "角色实体 | Character Entity", description = "角色表 | Character Table")
 public class Character extends BaseEntity {
 
@@ -71,7 +71,7 @@ public class Character extends BaseEntity {
     @TableField("is_enable_web_search")
     private Boolean isEnableWebSearch;
 
-    @Schema(title = "OpenAPI密钥 | OpenAPI API Key")
+    @Schema(title = "外部系统对接密钥 | API key for external system integration")
     @TableField("api_key")
     private String apiKey;
 

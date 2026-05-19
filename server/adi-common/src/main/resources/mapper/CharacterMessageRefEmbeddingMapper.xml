@@ -3,8 +3,8 @@
 <mapper namespace="com.moyz.adi.common.mapper.CharacterMessageRefEmbeddingMapper">
     <select id="listByMsgUuid" resultType="com.moyz.adi.common.entity.CharacterMessageRefEmbedding">
         select *
-        from adi_conversation_message_ref_embedding a
-                 inner join adi_conversation_message b on a.message_id = b.id
+        from adi_character_message_ref_embedding a
+                 inner join adi_character_message b on a.message_id = b.id
         where b.uuid = #{uuid}
     </select>
 </mapper>

@@ -3,7 +3,7 @@ package com.moyz.adi.chat.controller.externalapi.v1;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.KbQaDto;
 import com.moyz.adi.common.dto.QARecordReq;
-import com.moyz.adi.common.dto.openapi.OpenApiKbQaReq;
+import com.moyz.adi.common.dto.extapi.ExtApiKbQaReq;
 import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.service.KnowledgeBaseQaService;
@@ -28,9 +28,9 @@ public class ExtKnowledgeBaseController {
 
     @Operation(summary = "Knowledge base Q&A")
     @PostMapping
-    public Object knowledgeBaseQa(@RequestBody @Validated OpenApiKbQaReq req) {
+    public Object knowledgeBaseQa(@RequestBody @Validated ExtApiKbQaReq req) {
         User user = ThreadContext.getCurrentUser();
-        String kbUuid = ThreadContext.getOpenApiEntityUuid();
+        String kbUuid = ThreadContext.getExtApiEntityUuid();
 
         KnowledgeBase knowledgeBase = knowledgeBaseService.getOrThrow(kbUuid);
 

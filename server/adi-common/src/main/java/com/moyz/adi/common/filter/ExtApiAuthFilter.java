@@ -2,7 +2,8 @@ package com.moyz.adi.common.filter;
 
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.entity.User;
-import com.moyz.adi.common.service.OpenApiService;
+import com.moyz.adi.common.enums.ExtApiResourceType;
+import com.moyz.adi.common.service.ExtApiService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -20,7 +21,7 @@ import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
 @Slf4j
 @Component
-public class OpenApiAuthFilter extends OncePerRequestFilter {
+public class ExtApiAuthFilter extends OncePerRequestFilter {
 
     private static final String API_V1_PREFIX = "/api/v1/";
     private static final String KEY_PREFIX = "adi-";
@@ -29,7 +30,7 @@ public class OpenApiAuthFilter extends OncePerRequestFilter {
     private String contextPath;
 
     @Resource
-    private OpenApiService openApiService;
+    private ExtApiService extApiService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
@@ -57,9 +58,9 @@ public class OpenApiAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        OpenApiService.ValidateResult result;
+        ExtApiService.ValidateResult result;
         try {
-            result = openApiService.validateApiKey(rawKey, type);
+            result = extApiService.validateApiKey(rawKey, type);
         } catch (Exception e) {
             log.warn("ExternalAPI: API key validation failed, uri:{}, error:{}", requestUri, e.getMessage());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -68,7 +69,7 @@ public class OpenApiAuthFilter extends OncePerRequestFilter {
 
         User ownerUser = result.ownerUser();
         ThreadContext.setCurrentUser(ownerUser);
-        ThreadContext.setOpenApiContext(true, result.entityUuid(), type);
+        ThreadContext.setExtApiContext(true, result.entityUuid(), type);
 
         try {
             filterChain.doFilter(request, response);
@@ -81,11 +82,12 @@ public class OpenApiAuthFilter extends OncePerRequestFilter {
         String apiPath = contextPath + API_V1_PREFIX;
         String pathAfterPrefix = requestUri.substring(apiPath.length());
         String firstSegment = pathAfterPrefix.split("/")[0];
-        return switch (firstSegment) {
-            case "character" -> "conv";
-            case "knowledge" -> "kb";
-            case "workflow" -> "wf";
+        ExtApiResourceType type = switch (firstSegment) {
+            case "character" -> ExtApiResourceType.CHARACTER;
+            case "knowledge" -> ExtApiResourceType.KNOWLEDGE;
+            case "workflow" -> ExtApiResourceType.WORKFLOW;
             default -> null;
         };
+        return null != type ? type.getValue() : null;
     }
 }

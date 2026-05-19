@@ -24,7 +24,7 @@ function openEditView() {
 function showOrCloseModal(show: boolean) {
   showEditModal.value = show
 }
-function openApiKey() {
+function extApiKey() {
   if (!authStore.checkLoginOrShow())
     return
   showApiKeyModal.value = true
@@ -43,7 +43,7 @@ function openApiKey() {
         </p>
       </div>
       <div v-show="showEditBtn" class="flex items-center space-x-2">
-        <HoverButton @click="openApiKey()">
+        <HoverButton @click="extApiKey()">
           <span class="text-xl">
             <SvgIcon icon="carbon:api" />
           </span>

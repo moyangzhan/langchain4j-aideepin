@@ -15,7 +15,7 @@ import java.util.List;
 @Data
 public class RetrieverWrapper {
     private ContentRetriever retriever;
-    //Retrieve content from: knowledge_base conversation_memory web
+    //Retrieve content from: knowledge_base character_memory web
     private String contentFrom;
     private List<Content> response;
 }

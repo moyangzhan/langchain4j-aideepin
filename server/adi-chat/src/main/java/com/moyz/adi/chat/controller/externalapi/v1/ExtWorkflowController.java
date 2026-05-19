@@ -2,7 +2,7 @@ package com.moyz.adi.chat.controller.externalapi.v1;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.base.ThreadContext;
-import com.moyz.adi.common.dto.openapi.OpenApiWfRunReq;
+import com.moyz.adi.common.dto.extapi.ExtApiWfRunReq;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.workflow.WorkflowStarter;
@@ -25,9 +25,9 @@ public class ExtWorkflowController {
 
     @Operation(summary = "Run a workflow")
     @PostMapping(value = "/run")
-    public Object workflowRun(@RequestBody OpenApiWfRunReq req) {
+    public Object workflowRun(@RequestBody ExtApiWfRunReq req) {
         User user = ThreadContext.getCurrentUser();
-        String wfUuid = ThreadContext.getOpenApiEntityUuid();
+        String wfUuid = ThreadContext.getExtApiEntityUuid();
 
         List<ObjectNode> inputs = convertInputs(req.getInputs());
 

@@ -10,7 +10,7 @@ import lombok.Data;
 import java.io.Serializable;
 
 @Data
-@TableName("adi_conversation_message_ref_graph")
+@TableName("adi_character_message_ref_graph")
 @Schema(title = "角色消息-知识库-图谱引用 | Character Message Knowledge Graph Reference", description = "角色消息-知识库-图谱引用列表 | Character Message Knowledge Graph Reference List")
 public class CharacterMessageRefGraph implements Serializable {
 

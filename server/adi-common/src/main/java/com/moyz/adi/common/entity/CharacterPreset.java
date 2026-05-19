@@ -5,7 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
-@TableName("adi_conversation_preset")
+@TableName("adi_character_preset")
 @Schema(title = "预设角色实体 | Character Preset Entity", description = "预设角色表 | Character Preset Table")
 public class CharacterPreset extends BaseEntity {
     private String uuid;

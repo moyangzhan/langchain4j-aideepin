@@ -28,10 +28,18 @@ public class Neo4jEmbeddingStoreConfig {
     /**
      * 根据选定的嵌入模型及其生成向量的维度不同来定义不同的表名，项目启动时只使用其中一种<br/>
      * 例如：<br/>
-     * adi_knowledge_base_embedding_bge_384（默认）: 存储的数据是本地嵌入模型bge-small-zh-v1.5生成的维度为384的向量<br/>
-     * adi_knowledge_base_embedding: 存储的数据是本地嵌入模型all-minilm-l6-v2生成的维度为384的向量<br/>
-     * adi_knowledge_base_embedding_qwen_1024: 存储的数据是通义千问的嵌入模型生成的维度为1024的向量<br/>
-     * adi_knowledge_base_embedding_openai_1536: 存储的数据是openai的嵌入模型生成的维度为1536的向量<br/>
+     * adi_knowledge_base_embedding_bge_384（默认）: 本地嵌入模型bge-small-zh-v1.5，维度384<br/>
+     * adi_knowledge_base_embedding: 本地嵌入模型all-minilm-l6-v2，维度384<br/>
+     * adi_knowledge_base_embedding_qwen_1024: 通义千问嵌入模型，维度1024<br/>
+     * adi_knowledge_base_embedding_openai_1536: OpenAI嵌入模型，维度1536<br/>
+     * <p>
+     * Define different table names based on the selected embedding model and its vector dimension.
+     * Only one is used at runtime.<br/>
+     * Examples:<br/>
+     * adi_knowledge_base_embedding_bge_384: bge-small-zh-v1.5, dimension 384 (default)<br/>
+     * adi_knowledge_base_embedding: all-minilm-l6-v2, dimension 384<br/>
+     * adi_knowledge_base_embedding_qwen_1024: Qwen embedding model, dimension 1024<br/>
+     * adi_knowledge_base_embedding_openai_1536: OpenAI embedding model, dimension 1536<br/>
      *
      * @return embeddingStore
      */
@@ -59,6 +67,7 @@ public class Neo4jEmbeddingStoreConfig {
     @DependsOn("initializer")
     public EmbeddingStore<TextSegment> initCharacterMemoryEmbeddingStore() {
         log.info("Initializing characterMemoryEmbeddingStore...");
+        // Neo4j label/index names intentionally kept as "conversation" to avoid complex label rename + vector index rebuild
         String tableName = "adi_conversation_memory_embedding";
         String indexName = "conv_memory";
         Pair<String, Integer> pair = AdiPropertiesUtil.getSuffixAndDimension(adiProperties);
