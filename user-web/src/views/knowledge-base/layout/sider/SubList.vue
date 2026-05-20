@@ -78,12 +78,12 @@ onUnmounted(() => {
           <div class="relative flex-1 overflow-hidden break-all text-ellipsis whitespace-nowrap">
             <span>{{ item.title }}</span>
           </div>
-          <div class="absolute z-10 flex visible right-1">
+          <div class="absolute z-10 flex visible right-2">
             <NButton
-              v-show="mouseEnterKbUuid === item.uuid || isMobile" secondary size="tiny"
+              v-show="mouseEnterKbUuid === item.uuid || isMobile" text size="small"
               @click.stop="showKb(item)"
             >
-              <SvgIcon icon="si:align-left-detailed-line" />
+              <SvgIcon icon="carbon:information" />
             </NButton>
           </div>
         </a>

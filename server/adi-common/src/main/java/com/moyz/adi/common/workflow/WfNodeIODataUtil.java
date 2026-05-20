@@ -39,8 +39,13 @@ public class WfNodeIODataUtil {
             throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
         }
         String name = nameObj.asText();
-        Integer type = content.get("type").asInt();
-        String title = content.get("title").asText();
+        JsonNode typeNode = content.get("type");
+        if (null == typeNode) {
+            throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
+        }
+        Integer type = typeNode.asInt();
+        JsonNode titleNode = content.get("title");
+        String title = null != titleNode ? titleNode.asText() : name;
         JsonNode value = content.get("value");
         NodeIOData result = null;
         if (WfIODataTypeEnum.TEXT.getValue().equals(type)) {

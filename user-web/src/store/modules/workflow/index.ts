@@ -289,13 +289,6 @@ export const useWfStore = defineStore('wf-store', {
       })
       this.wfUuidToWfRuntimes.set(wfUuid, wfRuntimes.reverse())
     },
-    updateWfRuntimePrologue(wfRuntimeUuid: string, prologue: string) {
-      const wfRuntime = this.getWfRuntime(wfRuntimeUuid)
-      if (!wfRuntime)
-        return
-      if (prologue)
-        wfRuntime.prologue = prologue
-    },
     setWfRuntimeNodes(wfRuntimeUuid: string, nodes: Workflow.WfRuntimeNode[]) {
       const wfRuntime = this.getWfRuntime(wfRuntimeUuid)
       if (!wfRuntime)

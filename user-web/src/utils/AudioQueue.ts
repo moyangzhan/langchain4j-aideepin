@@ -4,106 +4,91 @@ export default class AudioQueue {
   private isPlaying = false
   private currentSource: AudioBufferSourceNode | null = null
   private startTime = 0
-  private buffer: AudioBuffer | null = null
+  private completing = false
+  private waitingForData = false
 
   constructor(audioContext: AudioContext) {
     this.audioContext = audioContext
   }
 
-  // 添加音频数据到队列
   addChunk(chunk: ArrayBuffer) {
     this.queue.push(chunk)
-    if (!this.isPlaying && this.queue.length > 10)
+    if (this.waitingForData) {
+      this.waitingForData = false
       this.playNext()
+    } else if (!this.isPlaying && this.queue.length >= AudioQueue.BATCH_SIZE) {
+      this.playNext()
+    }
   }
 
-  async chunkToAudioBuffer(chunk: ArrayBuffer) {
-    let frameBuffer = null
-    try {
-      frameBuffer = await this.audioContext.decodeAudioData(chunk)
-    } catch (error) {
-      console.error('Error decoding audio data:', error)
-    }
-    if (!frameBuffer)
-      return
+  private static readonly BATCH_SIZE = 5
 
-    const fadeDuration = 0.1
-    frameBuffer = this.applyFadeIn(frameBuffer, fadeDuration)
-    if (this.currentSource) {
-      // 如果前一个音频还在播放，对其应用淡出效果
-      const prevBuffer = this.currentSource.buffer
-      if (prevBuffer)
-        this.applyFadeOut(prevBuffer, fadeDuration)
-    }
-    return frameBuffer
-  }
-
-  // 播放下一段音频
   private async playNext() {
-    console.log('play next,queue length:', this.queue.length)
     if (this.queue.length === 0) {
       this.isPlaying = false
+      if (this.completing)
+        this.cleanup()
+      else
+        this.waitingForData = true
       return
     }
 
+    this.waitingForData = false
     this.isPlaying = true
     try {
-      // let i = 0
-      // while (this.queue.length > 0) {
-      //   console.log('decode audio data,i:', i++)
-      //   const chunk = this.queue.shift()!
-      //   if (!chunk) {
-      //     console.warn('chunk is null')
-      //     continue;
-      //   }
-      //   await this.chunkToAudioBuffer(chunk)
-      // }
-      const chunk = this.queue.shift()!
-      const bf = await this.chunkToAudioBuffer(chunk)
-      if (!bf) {
+      const batchCount = Math.min(this.queue.length, AudioQueue.BATCH_SIZE)
+      const chunks = this.queue.splice(0, batchCount)
+      const merged = this.mergeChunks(chunks)
+      const buffer = await this.decodeChunk(merged)
+      if (!buffer) {
         this.playNext()
         return
       }
-      this.buffer = bf
-      this.currentSource = this.audioContext.createBufferSource()
-      this.currentSource.connect(this.audioContext.destination)
-      this.currentSource.buffer = this.buffer
-      // 计算准确的播放时间点，确保音频连续
-      const currentTime = this.audioContext.currentTime
+
+      const source = this.audioContext.createBufferSource()
+      const gainNode = this.audioContext.createGain()
+      source.connect(gainNode)
+      gainNode.connect(this.audioContext.destination)
+      source.buffer = buffer
+
+      const now = this.audioContext.currentTime
       if (this.startTime === 0)
-        this.startTime = currentTime
+        this.startTime = now
 
-      const scheduledTime = Math.max(this.startTime, currentTime)
-      this.currentSource.start(scheduledTime)
-      this.startTime = scheduledTime + this.buffer.duration
+      const scheduledTime = Math.max(this.startTime, now)
+      gainNode.gain.setValueAtTime(0, scheduledTime)
+      gainNode.gain.linearRampToValueAtTime(1, scheduledTime + 0.005)
 
-      this.currentSource.onended = () => {
-        this.currentSource = null
-        console.log('audio stream ended, play next, queue length:', this.queue.length)
+      source.start(scheduledTime)
+      this.startTime = scheduledTime + buffer.duration
+
+      this.currentSource = source
+
+      source.onended = () => {
+        if (this.currentSource === source)
+          this.currentSource = null
         this.playNext()
       }
     } catch (error) {
-      console.error('Error decoding audio data:', error)
+      console.error('Error in playNext:', error)
       this.isPlaying = false
     }
   }
 
-  // 播放剩余的内容然后清空队列
-  async complete() {
-    console.log('audio stream complete')
-    if (this.isPlaying) {
-      setTimeout(() => {
-        this.complete()
-      }, 1000)
+  complete() {
+    if (this.completing)
       return
-    } else if (!this.isPlaying && this.queue.length > 0) {
-      await this.playNext()
-      setTimeout(() => {
-        this.complete()
-      }, 1000)
-      return
+    this.completing = true
+    this.waitingForData = false
+    if (!this.isPlaying) {
+      if (this.queue.length > 0)
+        this.playNext()
+      else
+        this.cleanup()
     }
-    await this.playNext()
+  }
+
+  private cleanup() {
     this.queue = []
     if (this.currentSource) {
       this.currentSource.stop()
@@ -111,64 +96,43 @@ export default class AudioQueue {
     }
     this.isPlaying = false
     this.startTime = 0
+    this.completing = false
+    this.waitingForData = false
+  }
+
+  private mergeChunks(chunks: ArrayBuffer[]): ArrayBuffer {
+    const totalLength = chunks.reduce((sum, c) => sum + c.byteLength, 0)
+    const merged = new Uint8Array(totalLength)
+    let offset = 0
+    for (const chunk of chunks) {
+      merged.set(new Uint8Array(chunk), offset)
+      offset += chunk.byteLength
+    }
+    return merged.buffer
+  }
+
+  private async decodeChunk(chunk: ArrayBuffer): Promise<AudioBuffer | null> {
+    try {
+      return await this.audioContext.decodeAudioData(chunk)
+    } catch (error) {
+      console.error('Error decoding audio data:', error)
+      return null
+    }
   }
 
   async mergeAudioBuffers(buffer1: AudioBuffer, buffer2: AudioBuffer): Promise<AudioBuffer> {
-    // 创建新的AudioBuffer，长度为两个buffer之和
     const mergedBuffer = this.audioContext.createBuffer(
       buffer1.numberOfChannels,
       buffer1.length + buffer2.length,
       buffer1.sampleRate,
     )
-
-    // 对每个声道进行合并
     for (let channel = 0; channel < buffer1.numberOfChannels; channel++) {
       const channelData = mergedBuffer.getChannelData(channel)
       const buffer1Data = buffer1.getChannelData(channel)
       const buffer2Data = buffer2.getChannelData(channel)
-
-      // 复制第一个buffer的数据
       channelData.set(buffer1Data, 0)
-      // 复制第二个buffer的数据
       channelData.set(buffer2Data, buffer1.length)
     }
-
     return mergedBuffer
-  }
-
-  // 优化淡入淡出函数
-  private applyFadeIn(buffer: AudioBuffer, fadeDuration: number): AudioBuffer {
-    const fadeSamples = Math.floor(fadeDuration * buffer.sampleRate)
-    const fadeEnd = Math.min(fadeSamples, buffer.length)
-
-    // 使用更平滑的曲线（二次函数）
-    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
-      const channelData = buffer.getChannelData(channel)
-
-      for (let i = 0; i < fadeEnd; i++) {
-        const fadeProgress = i / fadeSamples
-        // 使用二次函数使淡入更平滑
-        channelData[i] *= fadeProgress * fadeProgress
-      }
-    }
-    return buffer
-  }
-
-  private applyFadeOut(buffer: AudioBuffer, fadeDuration: number): AudioBuffer {
-    const fadeSamples = Math.floor(fadeDuration * buffer.sampleRate)
-    const length = buffer.length
-    const fadeStart = Math.max(0, length - fadeSamples)
-
-    // 使用更平滑的曲线（二次函数）
-    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
-      const channelData = buffer.getChannelData(channel)
-
-      for (let i = fadeStart; i < length; i++) {
-        const fadeProgress = (i - fadeStart) / fadeSamples
-        // 使用二次函数使淡出更平滑
-        channelData[i] *= (1 - fadeProgress) * (1 - fadeProgress)
-      }
-    }
-    return buffer
   }
 }

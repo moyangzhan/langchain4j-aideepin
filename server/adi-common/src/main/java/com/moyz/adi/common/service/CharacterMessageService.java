@@ -119,7 +119,7 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
      * Blocking chat: same preparation as SSE but calls ChatModel.chat() instead of streaming.
      * Returns the ChatResponse after persisting messages to DB.
      */
-    public ResponseEntity<Map<String, Object>> blockingAsk(AskReq askReq) {
+    public Map<String, Object> blockingAsk(AskReq askReq) {
         User user = ThreadContext.getExistCurrentUser();
 
         // Validate character exists
@@ -194,8 +194,6 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
         self.saveAfterAiResponse(user, askReq, retrieverWrappers, responseContent, questionMeta, answerMeta, null);
 
         // Build response
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("success", true);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("message_id", questionUuid);
         data.put("answer", chatResponse.aiMessage().text());
@@ -204,8 +202,7 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
         usage.put("completion_tokens", outputTokens);
         usage.put("total_tokens", totalTokens);
         data.put("usage", usage);
-        result.put("data", data);
-        return ResponseEntity.ok(result);
+        return data;
     }
 
     private boolean checkCharacter(SseEmitter sseEmitter, User user, AskReq askReq) {

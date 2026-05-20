@@ -6,5 +6,4 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode
 @Data
 public class StartNodeConfig {
-    private String prologue;
 }

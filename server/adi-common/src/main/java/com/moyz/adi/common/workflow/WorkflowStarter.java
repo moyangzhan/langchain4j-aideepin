@@ -97,7 +97,7 @@ public class WorkflowStarter {
     /**
      * Run a workflow in blocking mode, wait for completion and return the result.
      */
-    public ResponseEntity<Map<String, Object>> blocking(User user, String workflowUuid, List<ObjectNode> userInputs) {
+    public Map<String, Object> blocking(User user, String workflowUuid, List<ObjectNode> userInputs) {
         Workflow workflow = workflowService.getByUuid(workflowUuid);
         if (null == workflow) {
             throw new BaseException(A_WF_NOT_FOUND);

@@ -29,7 +29,7 @@ public class AskReq {
     /**
      * 图片地址，多模态LLM使用，目前只支持本地图片uuid
      */
-    private List<String> imageUrls;
+    private List<String> imageUrls = List.of();
 
     /**
      * If not empty, it means will request AI with the exist prompt, param {@code prompt} is ignored

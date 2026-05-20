@@ -12,4 +12,5 @@ import lombok.NoArgsConstructor;
 public class ApiKeyResp {
     private String rawKey;
     private String maskedKey;
+    private Boolean canManage;
 }

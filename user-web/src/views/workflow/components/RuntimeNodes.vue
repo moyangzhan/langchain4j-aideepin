@@ -16,10 +16,6 @@ interface Props {
 const props = defineProps<Props>()
 const wfStore = useWfStore()
 const authStore = useAuthStore()
-const prologue = computed(() => {
-  const startNode = wfStore.getStartNodeByWfId(props.workflow.id)
-  return (startNode?.nodeConfig as Workflow.NodeConfigStart)?.prologue || ''
-})
 </script>
 
 <template>
@@ -29,9 +25,6 @@ const prologue = computed(() => {
     </div>
     <div v-else-if="nodes.length === 0" class="text-center py-2 text-neutral-400">
       {{ t('common.noContent') }}
-    </div>
-    <div v-show="prologue" class="p-2">
-      {{ prologue }}
     </div>
     <div
       v-for="node in nodes" :key="node.uuid"

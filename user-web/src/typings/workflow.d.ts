@@ -81,7 +81,6 @@ declare namespace Workflow {
 
     wfUuid: string
     nodes: WfRuntimeNode[]
-    prologue: string
   }
 
   interface WfRuntimeNode {
@@ -176,7 +175,6 @@ declare namespace Workflow {
   }
 
   interface NodeConfigStart implements NodeConfig {
-    prologue: string
   }
 
   interface NodeConfigAnswer implements NodeConfig {

@@ -1,8 +1,8 @@
 -- Add kb_title and type columns to adi_conversation_preset table
 ALTER TABLE adi_conversation_preset ADD COLUMN IF NOT EXISTS kb_title varchar(100) DEFAULT '' NOT NULL;
 ALTER TABLE adi_conversation_preset ADD COLUMN IF NOT EXISTS type varchar(45) DEFAULT '' NOT NULL;
-COMMENT ON COLUMN adi_conversation_preset.kb_title IS '自动创建的知识库名称,为空则不创建 | Knowledge base title to auto-create, empty means no creation';
-COMMENT ON COLUMN adi_conversation_preset.type IS '角色类型(technology/creative/education/business/professional/design/marketing/service/administration/utility) | Role type category';
+COMMENT ON COLUMN adi_conversation_preset.kb_title IS 'Knowledge base title to auto-create, empty means no creation';
+COMMENT ON COLUMN adi_conversation_preset.type IS 'Character type (technology/creative/education/business/professional/design/marketing/service/administration/utility)';
 
 -- Update existing presets with optimized content and type
 UPDATE adi_conversation_preset SET remark = 'Full-stack development, proficient in mainstream languages and frameworks', ai_system_message = 'You are an experienced software engineer proficient in Java, Python, JavaScript and other mainstream languages, familiar with Spring Boot, React/Vue and other frameworks. Skilled in coding, debugging, and technical solution design. Provide runnable code examples in your answers.', type = 'technology' WHERE uuid = '26a8f54c560948d6b2d4969f08f3f2fb';

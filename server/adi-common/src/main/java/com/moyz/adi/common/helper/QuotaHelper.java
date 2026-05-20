@@ -1,8 +1,10 @@
 package com.moyz.adi.common.helper;
 
+import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.vo.CostStat;
+import com.moyz.adi.common.service.SysConfigService;
 import com.moyz.adi.common.service.UserDayCostService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -16,40 +18,55 @@ public class QuotaHelper {
     private UserDayCostService userDayCostService;
 
     public ErrorEnum checkTextQuota(User user) {
-        int userQuotaByTokenDay = user.getQuotaByTokenDaily();
-        int userQuotaByTokenMonth = user.getQuotaByTokenMonthly();
-        int userQuotaByRequestDay = user.getQuotaByRequestDaily();
-        int userQuotaByRequestMonth = user.getQuotaByRequestMonthly();
+        int quotaByTokenDay = resolveQuota(user.getQuotaByTokenDaily(), AdiConstant.SysConfigKey.QUOTA_BY_TOKEN_DAILY);
+        int quotaByTokenMonth = resolveQuota(user.getQuotaByTokenMonthly(), AdiConstant.SysConfigKey.QUOTA_BY_TOKEN_MONTHLY);
+        int quotaByRequestDay = resolveQuota(user.getQuotaByRequestDaily(), AdiConstant.SysConfigKey.QUOTA_BY_REQUEST_DAILY);
+        int quotaByRequestMonth = resolveQuota(user.getQuotaByRequestMonthly(), AdiConstant.SysConfigKey.QUOTA_BY_REQUEST_MONTHLY);
+
         CostStat costStat = userDayCostService.costStatByUser(user.getId(), false);
-        if (costStat.getTextTokenCostByDay() >= userQuotaByTokenDay || costStat.getTextRequestTimesByDay() >= userQuotaByRequestDay) {
-            log.warn("Reach limit of a day,userId:{},token:{},request:{},used token:{}, used request:{}", user.getId(), userQuotaByRequestDay, userQuotaByRequestDay, userQuotaByTokenMonth, userQuotaByRequestMonth);
+
+        boolean dailyTokenExceeded = quotaByTokenDay > 0 && costStat.getTextTokenCostByDay() >= quotaByTokenDay;
+        boolean dailyRequestExceeded = quotaByRequestDay > 0 && costStat.getTextRequestTimesByDay() >= quotaByRequestDay;
+        if (dailyTokenExceeded || dailyRequestExceeded) {
+            log.warn("Reach limit of a day,userId:{},token quota:{},request quota:{},used token:{}, used request:{}", user.getId(), quotaByTokenDay, quotaByRequestDay, costStat.getTextTokenCostByDay(), costStat.getTextRequestTimesByDay());
             return ErrorEnum.B_DAILY_QUOTA_USED;
         }
-        if (costStat.getTextTokenCostByMonth() >= user.getQuotaByTokenMonthly() || costStat.getTextRequestTimesByMonth() >= user.getQuotaByRequestMonthly()) {
-            log.warn("Reach limit of a month,userId:{},token:{},request:{},used token:{}, used request:{}", user.getId(), user.getQuotaByTokenMonthly(), user.getQuotaByRequestMonthly(), costStat.getTextTokenCostByMonth(), costStat.getTextRequestTimesByMonth());
+
+        boolean monthlyTokenExceeded = quotaByTokenMonth > 0 && costStat.getTextTokenCostByMonth() >= quotaByTokenMonth;
+        boolean monthlyRequestExceeded = quotaByRequestMonth > 0 && costStat.getTextRequestTimesByMonth() >= quotaByRequestMonth;
+        if (monthlyTokenExceeded || monthlyRequestExceeded) {
+            log.warn("Reach limit of a month,userId:{},token quota:{},request quota:{},used token:{}, used request:{}", user.getId(), quotaByTokenMonth, quotaByRequestMonth, costStat.getTextTokenCostByMonth(), costStat.getTextRequestTimesByMonth());
             return ErrorEnum.B_MONTHLY_QUOTA_USED;
         }
+
+        return null;
+    }
+
+    public ErrorEnum checkImageQuota(User user, boolean isFree) {
+        int dailyQuota = resolveQuota(user.getQuotaByImageDaily(), AdiConstant.SysConfigKey.QUOTA_BY_IMAGE_DAILY);
+        int monthlyQuota = resolveQuota(user.getQuotaByImageMonthly(), AdiConstant.SysConfigKey.QUOTA_BY_IMAGE_MONTHLY);
+
+        CostStat costStat = userDayCostService.costStatByUser(user.getId(), isFree);
+
+        if (dailyQuota > 0 && costStat.getDrawTimesByDay() >= dailyQuota) {
+            log.warn("Generate image reach limit of a day,userId:{},request quota:{},used request times:{}", user.getId(), dailyQuota, costStat.getDrawTimesByDay());
+            return ErrorEnum.B_DAILY_QUOTA_USED;
+        }
+        if (monthlyQuota > 0 && costStat.getDrawTimesByMonth() >= monthlyQuota) {
+            log.warn("Generate image reach limit of a month,userId:{},request quota:{},used request times:{}", user.getId(), monthlyQuota, costStat.getDrawTimesByMonth());
+            return ErrorEnum.B_MONTHLY_QUOTA_USED;
+        }
+
         return null;
     }
 
     /**
-     * Check the generate image request if it can be accepted
-     *
-     * @param user 要检查的用户 / User to check
-     * @return 错误码 / Error code
+     * Resolve quota: use user-specific value if set (>0), otherwise fall back to system default.
      */
-    public ErrorEnum checkImageQuota(User user, boolean isFree) {
-        int userDailyQuota = user.getQuotaByImageDaily();
-        int userMonthlyQuota = user.getQuotaByImageMonthly();
-        CostStat costStat = userDayCostService.costStatByUser(user.getId(), isFree);
-        if (costStat.getDrawTimesByDay() >= userDailyQuota) {
-            log.warn("Generate image reach limit of a day,userId:{},request quota:{},used request times:{}", user.getId(), userDailyQuota, costStat.getDrawTimesByDay());
-            return ErrorEnum.B_DAILY_QUOTA_USED;
+    private int resolveQuota(int userQuota, String sysConfigKey) {
+        if (userQuota > 0) {
+            return userQuota;
         }
-        if (costStat.getDrawTimesByMonth() >= userMonthlyQuota) {
-            log.warn("Generate image reach limit of a month,userId:{},request quota:{},used request times:{}", user.getId(), user.getQuotaByImageMonthly(), costStat.getDrawTimesByMonth());
-            return ErrorEnum.B_MONTHLY_QUOTA_USED;
-        }
-        return null;
+        return SysConfigService.getIntByKey(sysConfigKey, 0);
     }
 }

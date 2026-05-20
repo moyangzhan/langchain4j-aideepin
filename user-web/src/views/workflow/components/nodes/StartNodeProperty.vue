@@ -34,7 +34,6 @@ const tmpItem = reactive<Workflow.NodeIODefinition>({
   limit: 10,
   multiple: false,
 })
-// const tmpPrologue = ref<string>((props.wfNode.nodeConfig as Workflow.NodeConfigStart).prologue || '')
 const options = [
   {
     label: t('workflow.variableTypeText'),
@@ -145,15 +144,6 @@ function submitForm() {
 
 <template>
   <div class="flex flex-col w-full space-y-1">
-    <div>
-      <div class="text-xl mb-1">
-        {{ t('workflow.openingStatement') }}
-      </div>
-      <div>
-        <NInput v-model:value="(wfNode.nodeConfig as Workflow.NodeConfigStart).prologue" type="textarea" :autosize="{ minRows: 2, maxRows: 6 }" />
-      </div>
-    </div>
-    <br>
     <NCollapse :default-expanded-names="['1']">
       <NCollapseItem name="1" class="border border-gray-200 rounded-md m-2 px-3 pb-3">
         <template #header>

@@ -212,7 +212,7 @@ export const useChatStore = defineStore('chat-store', {
       if (!hit)
         tail ? this.chats[chatIndex].data.push(message) : this.chats[chatIndex].data.unshift(message)
 
-      if (this.characters.find(item => item.uuid === uuid)?.title === 'New Chat')
+      if (this.characters.find(item => item.uuid === uuid)?.title === 'New Character')
         this.characters[chatIndex].title = message.remark
     },
 

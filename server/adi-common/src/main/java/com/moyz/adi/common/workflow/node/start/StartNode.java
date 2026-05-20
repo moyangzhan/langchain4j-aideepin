@@ -11,14 +11,10 @@ import com.moyz.adi.common.workflow.WfNodeState;
 import com.moyz.adi.common.workflow.WfState;
 import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
-import com.moyz.adi.common.workflow.node.keywordextractor.KeywordExtractorNodeConfig;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 
-import static com.moyz.adi.common.cosntant.AdiConstant.WorkflowConstant.DEFAULT_OUTPUT_PARAM_NAME;
-import static com.moyz.adi.common.enums.ErrorEnum.A_WF_NODE_CONFIG_ERROR;
 import static com.moyz.adi.common.enums.ErrorEnum.A_WF_NODE_CONFIG_NOT_FOUND;
 
 @Slf4j
@@ -34,17 +30,7 @@ public class StartNode extends AbstractWfNode {
         if (null == objectConfig) {
             throw new BaseException(A_WF_NODE_CONFIG_NOT_FOUND);
         }
-        List<NodeIOData> result;
-        StartNodeConfig nodeConfigObj = JsonUtil.fromJson(objectConfig, StartNodeConfig.class);
-        if (null == nodeConfigObj) {
-            log.warn("Start node configuration not found");
-            throw new BaseException(A_WF_NODE_CONFIG_ERROR);
-        }
-        if (StringUtils.isNotBlank(nodeConfigObj.getPrologue())) {
-            result = List.of(NodeIOData.createByText(DEFAULT_OUTPUT_PARAM_NAME, "default", nodeConfigObj.getPrologue()));
-        } else {
-            result = WfNodeIODataUtil.changeInputsToOutputs(state.getInputs());
-        }
+        List<NodeIOData> result = WfNodeIODataUtil.changeInputsToOutputs(state.getInputs());
         return NodeProcessResult.builder().content(result).build();
     }
 

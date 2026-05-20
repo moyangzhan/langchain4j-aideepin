@@ -323,7 +323,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
      * @param qaDto         QA record DTO
      * @return JSON response with answer
      */
-    public ResponseEntity<Map<String, Object>> blockingAsk(User user, KnowledgeBase knowledgeBase, KbQaDto qaDto) {
+    public Map<String, Object> blockingAsk(User user, KnowledgeBase knowledgeBase, KbQaDto qaDto) {
         checkRequestTimesOrThrow();
         KnowledgeBaseQa qaRecord = knowledgeBaseQaRecordService.getOrThrow(qaDto.getUuid());
         AiModel aiModel = qaRecord.getAiModelId() > 0
@@ -373,7 +373,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
         // Call LLM in blocking mode
         String uuid = UuidUtil.createShort();
-        AbstractLLMService llmService = LLMContext.getServiceOrDefault(null, null);
+        AbstractLLMService llmService = aiModel != null
+                ? LLMContext.getServiceOrDefault(null, aiModel.getName())
+                : LLMContext.getServiceOrDefault(null, null);
         ChatModelBuilderProperties modelProperties = ChatModelBuilderProperties.builder()
                 .temperature(knowledgeBase.getQueryLlmTemperature())
                 .build();
@@ -411,8 +413,6 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         }
 
         // Build response
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("success", true);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("message_id", uuid);
         data.put("answer", chatResponse.aiMessage().text());
@@ -423,8 +423,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             usage.put("total_tokens", chatResponse.metadata().tokenUsage().totalTokenCount());
             data.put("usage", usage);
         }
-        result.put("data", data);
-        return ResponseEntity.ok(result);
+        return data;
     }
 
     /**

@@ -2,7 +2,7 @@
 
 > **[🇨🇳 中文文档](README.zh-CN.md)** | English
 
-**LangChain4j-AIDeepin — Enterprise-grade AI application platform.**
+**LangChain4j-AIDeepin — AI application platform.**
 
 Integrates AI chat, knowledge base (RAG), workflow orchestration, long/short-term memory, MCP tools, and more — for rapidly building intelligent business assistants.
 
@@ -30,12 +30,13 @@ See [docker/README.md](docker/README.md) or each sub-project's README for detail
 | ASR & TTS | Flexible text/voice input and output combinations (text⇄text, text⇄voice, voice⇄text, voice⇄voice), with selectable AI voice tones |
 | Short & Long-term Memory | Automatically extracts and stores key information from conversations for personalized responses based on historical context |
 | Storage | Local file storage, Alibaba Cloud OSS integration |
+| Open API | RESTful API for Characters, Knowledge Bases, and Workflows — generate API keys and integrate with external systems. Supports streaming and blocking response modes |
 
 ## Integrated Platform Features
 
 | Model Platform | Chat | Image Generation | Image Recognition | Text-to-Speech | Speech Recognition |
 |:---------------|:----:|:----------------:|:-----------------:|:--------------:|:------------------:|
-| OpenAI         |  ✓   |        ✓         |                   |                |                    |
+| OpenAI         |  ✓   |        ✓        |          ✓       |        ✓      |     ✓              |
 | Qwen      |  ✓   |        ✓         |         ✓         |       ✓        |         ✓          |
 | SiliconFlow    |  ✓   |        ✓         |         ✓         |       ✓        |         ✓          |
 | Ollama         |  ✓   |                  |                   |                |                    |

@@ -2,8 +2,8 @@
 
 -- noinspection SqlNoDataSourceInspectionForFile
 
--- 安装pgvector扩展（https://github.com/pgvector/pgvector）
--- 安装Apache AGE扩展（https://github.com/apache/age）
+-- Install pgvector extension (https://github.com/pgvector/pgvector)
+-- Install Apache AGE extension (https://github.com/apache/age)
 -- CREATE EXTENSION IF NOT EXISTS vector;
 -- CREATE EXTENSION IF NOT EXISTS age;
 
@@ -26,7 +26,7 @@ $$ language 'plpgsql';
 -- Drawing: AI image generation and gallery
 -- ============================================================
 
--- 原表名: adi_ai_image
+-- Original table name: adi_ai_image
 CREATE TABLE adi_draw
 (
     id                    bigserial primary key,
@@ -60,28 +60,28 @@ CREATE TABLE adi_draw
 );
 ALTER TABLE ONLY adi_draw
     ADD CONSTRAINT udx_uuid UNIQUE (uuid);
-COMMENT ON TABLE adi_draw IS '绘图任务 | Image generation task';
-COMMENT ON COLUMN adi_draw.user_id IS '用户ID | User ID';
-COMMENT ON COLUMN adi_draw.uuid IS '绘图任务的UUID | UUID of the request of generated images';
-COMMENT ON COLUMN adi_draw.ai_model_name IS '图像模型名称 | Image model name';
-COMMENT ON COLUMN adi_draw.prompt IS '生成图片的提示词 | The prompt for generating images';
-COMMENT ON COLUMN adi_draw.generate_size IS '生成图片的尺寸 | Image generation size';
-COMMENT ON COLUMN adi_draw.generate_quality IS '生成图片的质量 | Image generation quality';
-COMMENT ON COLUMN adi_draw.generate_number IS '生成图片的数量，必须在1到10之间，默认为1 | The number of images to generate. Must be between 1 and 10. Defaults to 1.';
-COMMENT ON COLUMN adi_draw.generate_seed IS '生成图片的随机种子，如果希望生成内容保持相对稳定，请使用相同的seed参数值 | The random seed of the generated image. If you want the generated content to remain relatively stable, use the same seed parameter value';
-COMMENT ON COLUMN adi_draw.original_image IS '原始图片的UUID，交互方式必须为2或3 | The UUID of the original image, interacting method must be 2 or 3';
-COMMENT ON COLUMN adi_draw.mask_image IS '遮罩图片的UUID，交互方式必须为2 | The UUID of the mask image, interacting method must be 2';
-COMMENT ON COLUMN adi_draw.resp_images_path IS '从OpenAI响应生成图片的URL，逗号隔开 | The URL of the generated images from OpenAI response, separated by commas';
-COMMENT ON COLUMN adi_draw.generated_images IS '生成的多张图片文件UUID，逗号隔开 | The UUID of the generated images, separated by commas';
-COMMENT ON COLUMN adi_draw.interacting_method IS '交互方式：1：文本生成图片；2：图片编辑；3：图片生成图片；4：背景生成；5：扩大图片；6：风格转化 | Image generation task type: 1: Text to Image; 2: Image Editing; 3: Image to Image; 4: Background Generation; 5: Style Transfer';
-COMMENT ON COLUMN adi_draw.process_status IS '任务执行状态，1：进行中，2：失败，3：成功 | Task execution status, 1: In progress, 2: Failed, 3: Success';
-COMMENT ON COLUMN adi_draw.process_status_remark IS '生成图片状态备注 | Image generation status remark';
-COMMENT ON COLUMN adi_draw.is_public IS '是否公开 | Is public';
-COMMENT ON COLUMN adi_draw.with_watermark IS '是否带水印 | With watermark';
-COMMENT ON COLUMN adi_draw.star_count IS '点赞数 | Number of Likes';
-COMMENT ON COLUMN adi_draw.create_time IS '记录创建的时间戳 | Timestamp of record creation';
-COMMENT ON COLUMN adi_draw.update_time IS '记录最后更新的时间戳，自动更新 | Timestamp of record last update, automatically updated on each update';
-COMMENT ON COLUMN adi_draw.is_deleted IS '记录是否被删除的标志（0：未删除，1：已删除） | Flag indicating whether the record is deleted (0: not deleted, 1: deleted)';
+COMMENT ON TABLE adi_draw IS 'Image generation task';
+COMMENT ON COLUMN adi_draw.user_id IS 'User ID';
+COMMENT ON COLUMN adi_draw.uuid IS 'UUID of the request of generated images';
+COMMENT ON COLUMN adi_draw.ai_model_name IS 'Image model name';
+COMMENT ON COLUMN adi_draw.prompt IS 'The prompt for generating images';
+COMMENT ON COLUMN adi_draw.generate_size IS 'Image generation size';
+COMMENT ON COLUMN adi_draw.generate_quality IS 'Image generation quality';
+COMMENT ON COLUMN adi_draw.generate_number IS 'Number of images to generate (1-10)';
+COMMENT ON COLUMN adi_draw.generate_seed IS 'Random seed for reproducible generation';
+COMMENT ON COLUMN adi_draw.original_image IS 'Original image UUID (required for interacting method 2 or 3)';
+COMMENT ON COLUMN adi_draw.mask_image IS 'Deprecated. The UUID of the mask image for editing (interacting method 2)';
+COMMENT ON COLUMN adi_draw.resp_images_path IS 'URLs of generated images from API response, comma-separated';
+COMMENT ON COLUMN adi_draw.generated_images IS 'The UUID of the generated images, separated by commas';
+COMMENT ON COLUMN adi_draw.interacting_method IS 'Image generation type: 1=Text to Image, 2=Image Editing, 3=Image to Image, 4=Background Generation, 5=Style Transfer';
+COMMENT ON COLUMN adi_draw.process_status IS 'Task status: 1=In progress, 2=Failed, 3=Success';
+COMMENT ON COLUMN adi_draw.process_status_remark IS 'Image generation status remark';
+COMMENT ON COLUMN adi_draw.is_public IS 'Whether the image is publicly visible';
+COMMENT ON COLUMN adi_draw.with_watermark IS 'Whether the image has a watermark';
+COMMENT ON COLUMN adi_draw.star_count IS 'Like count';
+COMMENT ON COLUMN adi_draw.create_time IS 'Creation time';
+COMMENT ON COLUMN adi_draw.update_time IS 'Last update time';
+COMMENT ON COLUMN adi_draw.is_deleted IS 'Whether the record is soft-deleted';
 
 CREATE TRIGGER trigger_draw_update_time
     BEFORE UPDATE
@@ -125,9 +125,8 @@ EXECUTE PROCEDURE update_modified_column();
 -- Model Platform & AI Model: model provider and model configuration
 -- ============================================================
 
--- 旧版本（3.15.0及以下）中本表 adi_model_platform 的数据位于 adi_sys_config 中
--- 需要手动将 adi_sys_config 中对应的模型平台配置项移动到 adi_model_platform 表中
--- 需要迁移的配置为：deepseek_setting、openai_setting、dashscope_setting、ollama_setting、siliconflow_setting
+-- In versions 3.15.0 and below, model platform data was stored in adi_sys_config
+-- Manually migrate these config items: deepseek_setting, openai_setting, dashscope_setting, ollama_setting, siliconflow_setting
 CREATE TABLE adi_model_platform
 (
     id                       bigserial primary key,
@@ -144,15 +143,15 @@ CREATE TABLE adi_model_platform
     is_deleted               boolean       default false             not null
 );
 
-COMMENT ON TABLE adi_model_platform IS '模型平台表（模型供应商表） | Model platform (model provider)';
-COMMENT ON COLUMN adi_model_platform.name IS '模型平台名称，如openai, dashscope, ollama | Model provider name, e.g., openai, dashscope, ollama';
-COMMENT ON COLUMN adi_model_platform.title IS '模型平台标题，可读性更高的名称，如: OpenAI，DeepSeek深度求索 | Model provider title, a more readable name, e.g., OpenAI, DeepSeek';
-COMMENT ON COLUMN adi_model_platform.base_url IS '模型平台的API请求地址 | API base URL of the model provider';
-COMMENT ON COLUMN adi_model_platform.api_key IS '模型平台的API Key | API Key of the model provider';
-COMMENT ON COLUMN adi_model_platform.secret_key IS '已废弃，仅千帆平台使用，千帆已停用 | Deprecated, only used by Qianfan which is no longer supported';
-COMMENT ON COLUMN adi_model_platform.is_proxy_enable IS '是否通过代理访问模型平台的API | Whether to access the model provider API through a proxy';
-COMMENT ON COLUMN adi_model_platform.is_openai_api_compatible IS '是否兼容OpenAI的API，如果是，则可以使用OpenAI的API请求格式 | Whether it is compatible with OpenAI API, if true, OpenAI API request format can be used';
-COMMENT ON COLUMN adi_model_platform.remark IS '备注 | Additional remarks about the model provider';
+COMMENT ON TABLE adi_model_platform IS 'Model platform (model provider)';
+COMMENT ON COLUMN adi_model_platform.name IS 'Model provider name, e.g., openai, dashscope, ollama';
+COMMENT ON COLUMN adi_model_platform.title IS 'Model provider title, a more readable name, e.g., OpenAI, DeepSeek';
+COMMENT ON COLUMN adi_model_platform.base_url IS 'API base URL of the model provider';
+COMMENT ON COLUMN adi_model_platform.api_key IS 'API Key of the model provider';
+COMMENT ON COLUMN adi_model_platform.secret_key IS 'Deprecated, only used by Qianfan which is no longer supported';
+COMMENT ON COLUMN adi_model_platform.is_proxy_enable IS 'Whether to access the model provider API through a proxy';
+COMMENT ON COLUMN adi_model_platform.is_openai_api_compatible IS 'Whether compatible with OpenAI API format';
+COMMENT ON COLUMN adi_model_platform.remark IS 'Additional remarks about the model provider';
 
 CREATE TRIGGER trigger_model_platform_update_time
     BEFORE UPDATE
@@ -185,24 +184,24 @@ CREATE TABLE adi_ai_model
     is_deleted            boolean       default false             not null
 );
 
-COMMENT ON TABLE adi_ai_model IS 'AI模型 | AI model';
-COMMENT ON COLUMN adi_ai_model.type IS '模型类型, e.g., text, image, vision, embedding, rerank, asr, tts, multimodality(GPT-4o) | Model type, e.g., text, image, vision, embedding, rerank, multimodality(GPT-4o)';
-COMMENT ON COLUMN adi_ai_model.name IS '模型名称，传到接口中请求响应的参数名，需跟模型提供方指定的模型名称一模一样 | Model name, the parameter name passed to the interface for requesting a response, must be exactly the same as the model name specified by the model provider';
-COMMENT ON COLUMN adi_ai_model.title IS '模型标题，可读性更高的名称，如: openai-gpt3 | Model title, a more readable name, e.g., openai-gpt3';
-COMMENT ON COLUMN adi_ai_model.setting IS 'json format, e.g., {voice_for_group1: "v1", voice_for_group2: "v2"}';
-COMMENT ON COLUMN adi_ai_model.properties IS 'e.g., { "dimension": 1536 } for embedding model,{"voices":["v1","v2","v3"]} for tts model';
-COMMENT ON COLUMN adi_ai_model.remark IS '备注 | Additional remarks about the AI model';
-COMMENT ON COLUMN adi_ai_model.platform IS '平台，对应了 adi_model_platform.name | Model platform (as model provider): openai, dashscope, ollama';
-COMMENT ON COLUMN adi_ai_model.context_window IS '上下文窗口 | LLM context window';
-COMMENT ON COLUMN adi_ai_model.input_types IS '输入类型 | Input types: text, image, audio, video';
-COMMENT ON COLUMN adi_ai_model.response_format_types IS '回复格式: text, json_object, json_schema | Response format: text, json_object, json_schema';
-COMMENT ON COLUMN adi_ai_model.is_support_web_search IS '是否支持网络搜索 | Whether web search is supported';
-COMMENT ON COLUMN adi_ai_model.is_reasoner IS 'true: 推理模型如deepseek-r1, false: 非推理模型如deepseek-v3 | true: Reasoning model, false: Non-reasoning model';
-COMMENT ON COLUMN adi_ai_model.is_thinking_closable IS '思考过程是否可以关闭，Qwen3可以开启或关闭思考过程，而deepseek-r1无法关闭 | Whether the thinking process can be closed, Qwen3 can enable or disable the thinking process, while deepseek-r1 cannot disable it';
-COMMENT ON COLUMN adi_ai_model.is_enable IS '是否启用 | True: Normal usage, false: Not available';
-COMMENT ON COLUMN adi_ai_model.is_free IS '是否免费 | Is free, true: free, false: paid';
-COMMENT ON COLUMN adi_ai_model.create_time IS '创建时间 | Timestamp of record creation';
-COMMENT ON COLUMN adi_ai_model.update_time IS '更新时间 | Timestamp of record last update, automatically updated on each update';
+COMMENT ON TABLE adi_ai_model IS 'AI model';
+COMMENT ON COLUMN adi_ai_model.type IS 'Model type: text, image, vision, embedding, rerank, multimodality';
+COMMENT ON COLUMN adi_ai_model.name IS 'Model name as defined by the provider, must match exactly';
+COMMENT ON COLUMN adi_ai_model.title IS 'Model title, a more readable name, e.g., openai-gpt3';
+COMMENT ON COLUMN adi_ai_model.setting IS 'JSON format, e.g., {"voice_for_group1":"v1","voice_for_group2":"v2"}';
+COMMENT ON COLUMN adi_ai_model.properties IS 'JSON, e.g., {"dimension":1536} for embedding model, {"voices":["v1","v2","v3"]} for TTS model';
+COMMENT ON COLUMN adi_ai_model.remark IS 'Additional remarks about the AI model';
+COMMENT ON COLUMN adi_ai_model.platform IS 'Model platform (as model provider): openai, dashscope, ollama';
+COMMENT ON COLUMN adi_ai_model.context_window IS 'LLM context window';
+COMMENT ON COLUMN adi_ai_model.input_types IS 'Input types: text, image, audio, video';
+COMMENT ON COLUMN adi_ai_model.response_format_types IS 'Response format: text, json_object, json_schema';
+COMMENT ON COLUMN adi_ai_model.is_support_web_search IS 'Whether web search is supported';
+COMMENT ON COLUMN adi_ai_model.is_reasoner IS 'Whether the model is a reasoning model';
+COMMENT ON COLUMN adi_ai_model.is_thinking_closable IS 'Whether the thinking process can be toggled off (e.g., Qwen3 yes, DeepSeek-R1 no)';
+COMMENT ON COLUMN adi_ai_model.is_enable IS 'Whether the model is available for use';
+COMMENT ON COLUMN adi_ai_model.is_free IS 'Whether the model is free to use';
+COMMENT ON COLUMN adi_ai_model.create_time IS 'Creation time';
+COMMENT ON COLUMN adi_ai_model.update_time IS 'Last update time';
 
 CREATE TRIGGER trigger_ai_model_update_time
     BEFORE UPDATE
@@ -227,11 +226,11 @@ CREATE TABLE adi_character_preset
     update_time       timestamp     default CURRENT_TIMESTAMP not null,
     is_deleted        boolean       default false             not null
 );
-COMMENT ON TABLE adi_character_preset IS '预设角色表 | Preset Character table';
-COMMENT ON COLUMN adi_character_preset.title IS '标题 | Title';
-COMMENT ON COLUMN adi_character_preset.remark IS '描述 | Description';
-COMMENT ON COLUMN adi_character_preset.ai_system_message IS '提供给LLM的系统信息 | System message for LLM';
-COMMENT ON COLUMN adi_character_preset.kb_title IS '自动创建的知识库名称,为空则不创建 | Knowledge base title to auto-create, empty means no creation';
+COMMENT ON TABLE adi_character_preset IS 'Preset Character table';
+COMMENT ON COLUMN adi_character_preset.title IS 'Title';
+COMMENT ON COLUMN adi_character_preset.remark IS 'Description';
+COMMENT ON COLUMN adi_character_preset.ai_system_message IS 'System message for LLM';
+COMMENT ON COLUMN adi_character_preset.kb_title IS 'Knowledge base title to auto-create, empty means no creation';
 COMMENT ON COLUMN adi_character_preset.type IS 'Character type (technology/creative/education/business/professional/design/marketing/service/administration/utility)';
 
 create trigger trigger_character_preset
@@ -264,20 +263,20 @@ CREATE TABLE adi_character
     is_deleted                boolean       default false             not null
 );
 
-COMMENT ON TABLE adi_character IS '角色表（承载系统中的 Character 概念，即具有长期记忆的持久化人格，而非一次性会话） | Character table (represents a persistent persona with long-term memory, not a one-off session)';
-COMMENT ON COLUMN adi_character.user_id IS '用户ID | User ID';
-COMMENT ON COLUMN adi_character.title IS '标题，如：狄仁杰 | Title, e.g., Sherlock Holmes';
-COMMENT ON COLUMN adi_character.remark IS '备注，如：断案如神，手下能人众多 | Remark, e.g., Brilliant detective with keen observation skills';
-COMMENT ON COLUMN adi_character.ai_system_message IS 'Character设定内容，如：你是唐朝的狄仁杰，破了很多大案、疑案 | Character setting content, e.g., You are Sherlock Holmes, a brilliant detective known for your keen observation skills';
-COMMENT ON COLUMN adi_character.llm_temperature IS 'LLM响应的创造性/随机性 | LLM response creativity/randomness';
-COMMENT ON COLUMN adi_character.mcp_ids IS '启用的MCP服务id,以逗号隔开 | Enabled MCP service IDs, comma-separated';
-COMMENT ON COLUMN adi_character.kb_ids IS '关联使用的知识库id列表,以逗号隔开 | Associated knowledge base IDs, comma-separated';
-COMMENT ON COLUMN adi_character.answer_content_type IS '设置响应内容类型：1：自动（跟随用户的输入类型，如果用户输入是音频，则响应内容也同样是音频，如果用户输入是文本，则响应内容显示文本），2：文本，3：音频 | Response content display type: 1: Auto (if user input is audio, response content is also audio; if user input is text, response content displays text), 2: Text, 3: Audio';
-COMMENT ON COLUMN adi_character.is_autoplay_answer IS '设置聊天时音频类型的响应内容是否自动播放，true: 自动播放，false: 不自动播放 | Whether audio-type response content automatically plays, true: Auto play, false: Do not auto play';
-COMMENT ON COLUMN adi_character.is_enable_thinking IS '当前使用的模型如果是推理模式并且支持对思考过程的开关，则本字段生效 | Whether the current model supports reasoning mode and thinking process toggle, if so, this field takes effect';
-COMMENT ON COLUMN adi_character.is_enable_web_search IS '是否启用web搜索 | Whether to enable web search';
-COMMENT ON COLUMN adi_character.audio_config IS '音频配置，json格式存储，如 {"voice":{"param_name":"longyingda","model":"cosyvoice-v2","platform":"dashscope"}} | Audio configuration, stored in JSON format, e.g., {"voice":{"param_name":"longyingda","model":"cosyvoice-v2","platform":"dashscope"}}';
-COMMENT ON COLUMN adi_character.api_key IS '外部系统对接密钥（AES加密存储） | API key for external system integration (AES encrypted)';
+COMMENT ON TABLE adi_character IS 'Character table (represents a persistent persona with long-term memory, not a one-off session)';
+COMMENT ON COLUMN adi_character.user_id IS 'User ID';
+COMMENT ON COLUMN adi_character.title IS 'Title, e.g., Sherlock Holmes';
+COMMENT ON COLUMN adi_character.remark IS 'Remark, e.g., Brilliant detective with keen observation skills';
+COMMENT ON COLUMN adi_character.ai_system_message IS 'Character setting content, e.g., You are Sherlock Holmes, a brilliant detective known for your keen observation skills';
+COMMENT ON COLUMN adi_character.llm_temperature IS 'LLM response creativity/randomness';
+COMMENT ON COLUMN adi_character.mcp_ids IS 'Enabled MCP service IDs, comma-separated';
+COMMENT ON COLUMN adi_character.kb_ids IS 'Associated knowledge base IDs, comma-separated';
+COMMENT ON COLUMN adi_character.answer_content_type IS 'Response content type: 1=Auto, 2=Text, 3=Audio';
+COMMENT ON COLUMN adi_character.is_autoplay_answer IS 'Whether audio responses play automatically';
+COMMENT ON COLUMN adi_character.is_enable_thinking IS 'Whether thinking/reasoning process is enabled (effective only if the model supports it)';
+COMMENT ON COLUMN adi_character.is_enable_web_search IS 'Whether to enable web search';
+COMMENT ON COLUMN adi_character.audio_config IS 'Audio configuration, stored in JSON format, e.g., {"voice":{"param_name":"longyingda","model":"cosyvoice-v2","platform":"dashscope"}}';
+COMMENT ON COLUMN adi_character.api_key IS 'API key for external system integration (AES encrypted)';
 
 
 CREATE TRIGGER trigger_character_update_time
@@ -299,10 +298,10 @@ CREATE TABLE adi_character_preset_rel
     is_deleted        boolean     default false             not null
 );
 
-COMMENT ON TABLE adi_character_preset_rel IS '预设角色与用户角色关系表 | Preset Character Relation table';
-COMMENT ON COLUMN adi_character_preset_rel.user_id IS '用户ID | User ID';
-COMMENT ON COLUMN adi_character_preset_rel.preset_character_id IS '预设角色ID | Preset character ID';
-COMMENT ON COLUMN adi_character_preset_rel.user_character_id IS '用户角色ID | User character ID';
+COMMENT ON TABLE adi_character_preset_rel IS 'Preset Character Relation table';
+COMMENT ON COLUMN adi_character_preset_rel.user_id IS 'User ID';
+COMMENT ON COLUMN adi_character_preset_rel.preset_character_id IS 'Preset character ID';
+COMMENT ON COLUMN adi_character_preset_rel.user_character_id IS 'User character ID';
 
 create trigger trigger_character_preset_rel
     before update
@@ -337,25 +336,25 @@ CREATE TABLE adi_character_message
     is_deleted                      boolean       default false             not null
 );
 
-COMMENT ON TABLE adi_character_message IS '角色消息表 | Character Message table';
-COMMENT ON COLUMN adi_character_message.parent_message_id IS '父级消息id | Parent message ID';
-COMMENT ON COLUMN adi_character_message.character_id IS '角色id | Character ID';
-COMMENT ON COLUMN adi_character_message.character_uuid IS '角色的UUID | Character UUID';
-COMMENT ON COLUMN adi_character_message.remark IS '原始的对话消息，如用户输入的问题，AI产生的回答';
-COMMENT ON COLUMN adi_character_message.processed_remark IS '处理过的有效的对话消息，如 1.提供给LLM的内容：用户输入的问题+关联的知识库；2.显示在用户面前的答案：AI产生的回答经过合规校验及过滤、个性化调整后的内容';
-COMMENT ON COLUMN adi_character_message.content_type IS '消息内容类型（跟adi_character.answer_content_type对应），2：文本，3：音频 | Message content type, 2: Text, 3: Audio';
-COMMENT ON COLUMN adi_character_message.uuid IS '唯一标识消息的UUID | Unique identifier for the message';
-COMMENT ON COLUMN adi_character_message.audio_uuid IS '语音聊天时产生的音频文件uuid(对应adi_file.uuid) | UUID of the audio file generated during voice chat (corresponds to adi_file.uuid)';
-COMMENT ON COLUMN adi_character_message.audio_duration IS '语音聊天时产生的音频文件时长(单位:秒) | Duration of the audio file generated during voice chat (in seconds)';
-COMMENT ON COLUMN adi_character_message.message_role IS '产生该消息的角色：1: 用户, 2: 系统, 3: 助手 | Role that generated the message: 1: User, 2: System, 3: Assistant';
-COMMENT ON COLUMN adi_character_message.tokens IS '消耗的token数量 | Number of tokens consumed';
-COMMENT ON COLUMN adi_character_message.user_id IS '用户ID | User ID';
-COMMENT ON COLUMN adi_character_message.ai_model_id IS '模型表的ID | adi_ai_model id';
-COMMENT ON COLUMN adi_character_message.understand_context_msg_pair_num IS '上下文消息对数量 | Number of context message pairs';
-COMMENT ON COLUMN adi_character_message.attachments IS '附件,存储格式: uuid,uuid | Attachments, stored as: uuid,uuid';
-COMMENT ON COLUMN adi_character_message.is_ref_embedding IS '是否引用了向量库知识 | Whether embedding knowledge is referenced';
-COMMENT ON COLUMN adi_character_message.is_ref_graph IS '是否引用了图库知识 | Whether graph knowledge is referenced';
-COMMENT ON COLUMN adi_character_message.is_ref_memory_embedding IS '是否引用了记忆向量库 | Whether to reference memory vector library';
+COMMENT ON TABLE adi_character_message IS 'Character Message table';
+COMMENT ON COLUMN adi_character_message.parent_message_id IS 'Parent message ID';
+COMMENT ON COLUMN adi_character_message.character_id IS 'Character ID';
+COMMENT ON COLUMN adi_character_message.character_uuid IS 'Character UUID';
+COMMENT ON COLUMN adi_character_message.remark IS 'Original message (e.g., user question, AI answer)';
+COMMENT ON COLUMN adi_character_message.processed_remark IS 'Processed message (e.g., user question + knowledge base context for LLM input, or AI response after compliance filtering)';
+COMMENT ON COLUMN adi_character_message.content_type IS 'Message content type: 2=Text, 3=Audio';
+COMMENT ON COLUMN adi_character_message.uuid IS 'Unique identifier for the message';
+COMMENT ON COLUMN adi_character_message.audio_uuid IS 'Audio file UUID (references adi_file.uuid)';
+COMMENT ON COLUMN adi_character_message.audio_duration IS 'Audio duration in seconds';
+COMMENT ON COLUMN adi_character_message.message_role IS 'Message role: 1=User, 2=System, 3=Assistant';
+COMMENT ON COLUMN adi_character_message.tokens IS 'Number of tokens consumed';
+COMMENT ON COLUMN adi_character_message.user_id IS 'User ID';
+COMMENT ON COLUMN adi_character_message.ai_model_id IS 'adi_ai_model id';
+COMMENT ON COLUMN adi_character_message.understand_context_msg_pair_num IS 'Number of context message pairs';
+COMMENT ON COLUMN adi_character_message.attachments IS 'Attachments, stored as: uuid,uuid';
+COMMENT ON COLUMN adi_character_message.is_ref_embedding IS 'Whether knowledge base embeddings are referenced';
+COMMENT ON COLUMN adi_character_message.is_ref_graph IS 'Whether knowledge graph is referenced';
+COMMENT ON COLUMN adi_character_message.is_ref_memory_embedding IS 'Whether memory embeddings are referenced';
 
 CREATE TRIGGER trigger_character_message_update_time
     BEFORE UPDATE
@@ -375,7 +374,7 @@ create table adi_character_message_ref_embedding
 comment on table adi_character_message_ref_embedding is 'Character message - knowledge base embedding references';
 comment on column adi_character_message_ref_embedding.message_id is 'adi_character_message ID';
 comment on column adi_character_message_ref_embedding.embedding_id is 'Embedding UUID retrieved from vector store';
-comment on column adi_character_message_ref_embedding.score is 'Score';
+comment on column adi_character_message_ref_embedding.score is 'Similarity score';
 comment on column adi_character_message_ref_embedding.user_id is 'User ID';
 
 create table adi_character_message_ref_graph
@@ -404,7 +403,7 @@ create table adi_character_message_ref_memory_embedding
 comment on table adi_character_message_ref_memory_embedding is 'Character message - memory references';
 comment on column adi_character_message_ref_memory_embedding.message_id is 'adi_character_message ID';
 comment on column adi_character_message_ref_memory_embedding.embedding_id is 'Embedding UUID retrieved from memory vector store';
-comment on column adi_character_message_ref_memory_embedding.score is 'Score';
+comment on column adi_character_message_ref_memory_embedding.score is 'Similarity score';
 comment on column adi_character_message_ref_memory_embedding.user_id is 'User ID';
 
 -- ============================================================
@@ -427,18 +426,18 @@ CREATE TABLE adi_file
     sha256           varchar(64)  default ''                not null
 );
 
-COMMENT ON TABLE adi_file IS '文件 | File';
-COMMENT ON COLUMN adi_file.name IS '文件名 | File name';
-COMMENT ON COLUMN adi_file.uuid IS '文件的UUID | UUID of the file';
-COMMENT ON COLUMN adi_file.ext IS '文件扩展名 | File extension';
-COMMENT ON COLUMN adi_file.user_id IS '用户ID，0: 系统；其他: 用户 | User ID, 0: System; Other: User';
-COMMENT ON COLUMN adi_file.path IS '文件路径或对象名称(OSS)，如https://*.png 或 123.png | File path or object name, e.g., httts://*.png or 123.png(name in OSS bucket)';
-COMMENT ON COLUMN adi_file.storage_location IS '存储位置，1：本地存储，2：阿里云OSS | Storage Location: 1 - Local Storage, 2 - Alibaba Cloud OSS';
-COMMENT ON COLUMN adi_file.ref_count IS '引用此文件的次数 | The number of references to this file';
-COMMENT ON COLUMN adi_file.create_time IS '记录创建的时间戳 | Timestamp of record creation';
-COMMENT ON COLUMN adi_file.update_time IS '记录最后更新的时间戳，自动更新 | Timestamp of record last update, automatically updated on each update';
-COMMENT ON COLUMN adi_file.is_deleted IS '是否删除，0: 正常；1: 删除 | Deletion status, 0: Normal; 1: Deleted';
-COMMENT ON COLUMN adi_file.sha256 IS '文件的哈希值 | Hash of the file';
+COMMENT ON TABLE adi_file IS 'File';
+COMMENT ON COLUMN adi_file.name IS 'File name';
+COMMENT ON COLUMN adi_file.uuid IS 'UUID of the file';
+COMMENT ON COLUMN adi_file.ext IS 'File extension';
+COMMENT ON COLUMN adi_file.user_id IS 'User ID, 0: System; Other: User';
+COMMENT ON COLUMN adi_file.path IS 'File path or object name, e.g., https://*.png or 123.png (name in OSS bucket)';
+COMMENT ON COLUMN adi_file.storage_location IS 'Storage Location: 1 - Local Storage, 2 - Alibaba Cloud OSS';
+COMMENT ON COLUMN adi_file.ref_count IS 'The number of references to this file';
+COMMENT ON COLUMN adi_file.create_time IS 'Creation time';
+COMMENT ON COLUMN adi_file.update_time IS 'Last update time';
+COMMENT ON COLUMN adi_file.is_deleted IS 'Whether the record is soft-deleted';
+COMMENT ON COLUMN adi_file.sha256 IS 'Hash of the file';
 CREATE TRIGGER trigger_file_update_time
     BEFORE UPDATE
     ON adi_file
@@ -456,19 +455,19 @@ CREATE TABLE adi_prompt
     is_deleted  boolean                default false             not null
 );
 
-COMMENT ON TABLE adi_prompt IS '提示词';
+COMMENT ON TABLE adi_prompt IS 'Prompt template';
 
-COMMENT ON COLUMN adi_prompt.user_id IS '所属用户(0: system)';
+COMMENT ON COLUMN adi_prompt.user_id IS 'Owner user ID (0: system)';
 
-COMMENT ON COLUMN adi_prompt.act IS '提示词标题';
+COMMENT ON COLUMN adi_prompt.act IS 'Prompt title';
 
-COMMENT ON COLUMN adi_prompt.prompt IS '提示词内容';
+COMMENT ON COLUMN adi_prompt.prompt IS 'Prompt content';
 
-COMMENT ON COLUMN adi_prompt.create_time IS 'Timestamp of record creation';
+COMMENT ON COLUMN adi_prompt.create_time IS 'Creation time';
 
-COMMENT ON COLUMN adi_prompt.update_time IS 'Timestamp of record last update, automatically updated on each update';
+COMMENT ON COLUMN adi_prompt.update_time IS 'Last update time';
 
-COMMENT ON COLUMN adi_prompt.is_deleted IS '0:未删除；1：已删除';
+COMMENT ON COLUMN adi_prompt.is_deleted IS 'Whether the record is soft-deleted';
 
 CREATE TRIGGER trigger_prompt_update_time
     BEFORE UPDATE
@@ -490,12 +489,12 @@ CREATE TABLE adi_sys_config
     is_deleted  boolean                 default false          not null
 );
 
-COMMENT ON TABLE adi_sys_config IS '系统配置表 | System configuration table';
-COMMENT ON COLUMN adi_sys_config.name IS '配置项名称 | Configuration item name';
-COMMENT ON COLUMN adi_sys_config.value IS '配置项值 | Configuration item value';
-COMMENT ON COLUMN adi_sys_config.create_time IS '记录创建的时间戳 | Timestamp of record creation';
-COMMENT ON COLUMN adi_sys_config.update_time IS '记录最后更新的时间戳，自动更新 | Timestamp of record last update, automatically updated on each update';
-COMMENT ON COLUMN adi_sys_config.is_deleted IS '是否删除，0：未删除；1：已删除 | Deletion status, 0: Not deleted; 1: Deleted';
+COMMENT ON TABLE adi_sys_config IS 'System configuration table';
+COMMENT ON COLUMN adi_sys_config.name IS 'Configuration item name';
+COMMENT ON COLUMN adi_sys_config.value IS 'Configuration item value';
+COMMENT ON COLUMN adi_sys_config.create_time IS 'Creation time';
+COMMENT ON COLUMN adi_sys_config.update_time IS 'Last update time';
+COMMENT ON COLUMN adi_sys_config.is_deleted IS 'Whether the record is soft-deleted';
 
 CREATE TRIGGER trigger_sys_config_update_time
     BEFORE UPDATE
@@ -527,25 +526,25 @@ CREATE TABLE adi_user
     is_deleted                      boolean                default false             not null
 );
 
-COMMENT ON TABLE adi_user IS '用户表 | User table';
-COMMENT ON COLUMN adi_user.name IS '用户名 | Username';
-COMMENT ON COLUMN adi_user.password IS '密码 | Password';
-COMMENT ON COLUMN adi_user.uuid IS '用户的UUID | UUID of the user';
-COMMENT ON COLUMN adi_user.email IS '用户邮箱 | User email';
-COMMENT ON COLUMN adi_user.active_time IS '激活时间 | Activation time';
-COMMENT ON COLUMN adi_user.create_time IS '记录创建的时间戳 | Timestamp of record creation';
-COMMENT ON COLUMN adi_user.update_time IS '记录最后更新的时间戳，自动更新 | Timestamp of record last update, automatically updated on each update';
-COMMENT ON COLUMN adi_user.user_status IS '用户状态，1：待验证；2：正常；3：冻结 | User status, 1: Pending verification; 2: Active; 3: Frozen';
-COMMENT ON COLUMN adi_user.is_admin IS '是否管理员，0：否；1：是 | Is admin, 0: No; 1: Yes';
-COMMENT ON COLUMN adi_user.is_deleted IS '是否删除，0：未删除；1：已删除 | Deletion status, 0: Not deleted; 1: Deleted';
-COMMENT ON COLUMN adi_user.quota_by_token_daily IS '每日token配额 | Daily token quota';
-COMMENT ON COLUMN adi_user.quota_by_token_monthly IS '每月token配额 | Monthly token quota';
-COMMENT ON COLUMN adi_user.quota_by_request_daily IS '每日请求配额 | Daily request quota';
-COMMENT ON COLUMN adi_user.quota_by_request_monthly IS '每月请求配额 | Monthly request quota';
-COMMENT ON COLUMN adi_user.understand_context_enable IS '上下文理解开关 | Context understanding switch';
-COMMENT ON COLUMN adi_user.understand_context_msg_pair_num IS '上下文消息对数量 | Number of context message pairs';
-COMMENT ON COLUMN adi_user.quota_by_image_daily IS '每日图片配额 | Daily image quota';
-COMMENT ON COLUMN adi_user.quota_by_image_monthly IS '每月图片配额 | Monthly image quota';
+COMMENT ON TABLE adi_user IS 'User table';
+COMMENT ON COLUMN adi_user.name IS 'Username';
+COMMENT ON COLUMN adi_user.password IS 'Password';
+COMMENT ON COLUMN adi_user.uuid IS 'UUID of the user';
+COMMENT ON COLUMN adi_user.email IS 'User email';
+COMMENT ON COLUMN adi_user.active_time IS 'Activation time';
+COMMENT ON COLUMN adi_user.create_time IS 'Creation time';
+COMMENT ON COLUMN adi_user.update_time IS 'Last update time';
+COMMENT ON COLUMN adi_user.user_status IS 'User status: 1=Pending verification, 2=Active, 3=Frozen';
+COMMENT ON COLUMN adi_user.is_admin IS 'Whether the user is an admin';
+COMMENT ON COLUMN adi_user.is_deleted IS 'Whether the record is soft-deleted';
+COMMENT ON COLUMN adi_user.quota_by_token_daily IS 'Daily token quota';
+COMMENT ON COLUMN adi_user.quota_by_token_monthly IS 'Monthly token quota';
+COMMENT ON COLUMN adi_user.quota_by_request_daily IS 'Daily request quota';
+COMMENT ON COLUMN adi_user.quota_by_request_monthly IS 'Monthly request quota';
+COMMENT ON COLUMN adi_user.understand_context_enable IS 'Context understanding switch';
+COMMENT ON COLUMN adi_user.understand_context_msg_pair_num IS 'Number of context message pairs';
+COMMENT ON COLUMN adi_user.quota_by_image_daily IS 'Daily image quota';
+COMMENT ON COLUMN adi_user.quota_by_image_monthly IS 'Monthly image quota';
 
 CREATE TRIGGER trigger_user_update_time
     BEFORE UPDATE
@@ -567,15 +566,15 @@ CREATE TABLE adi_user_day_cost
     is_deleted    boolean   default false             not null
 );
 
-COMMENT ON TABLE adi_user_day_cost IS '用户每天消耗总量表 | User daily consumption table';
-COMMENT ON COLUMN adi_user_day_cost.user_id IS '用户ID | User ID';
-COMMENT ON COLUMN adi_user_day_cost.day IS '日期，用7位整数表示，如20230901 | Date, represented as a 7-digit integer, e.g., 20230901';
-COMMENT ON COLUMN adi_user_day_cost.request_times IS '请求数量 | Number of requests';
-COMMENT ON COLUMN adi_user_day_cost.tokens IS '消耗的token数量 | Number of tokens consumed';
-COMMENT ON COLUMN adi_user_day_cost.is_free IS '是：免费额度(即该行统计的是免费模型消耗的额度)；否：收费额度(即该行统计的是收费模型消耗的额度) | Yes: Free quota (the row counts the consumption of free models); No: Paid quota (the row counts the consumption of paid models)';
-COMMENT ON COLUMN adi_user_day_cost.create_time IS '记录创建的时间戳 | Timestamp of record creation';
-COMMENT ON COLUMN adi_user_day_cost.update_time IS '记录最后更新的时间戳，自动更新 | Timestamp of record last update, automatically updated on each update';
-COMMENT ON COLUMN adi_user_day_cost.draw_times IS '图片数量 | Number of images';
+COMMENT ON TABLE adi_user_day_cost IS 'User daily consumption table';
+COMMENT ON COLUMN adi_user_day_cost.user_id IS 'User ID';
+COMMENT ON COLUMN adi_user_day_cost.day IS 'Date as an 8-digit integer, e.g., 20230901';
+COMMENT ON COLUMN adi_user_day_cost.request_times IS 'Number of requests';
+COMMENT ON COLUMN adi_user_day_cost.tokens IS 'Number of tokens consumed';
+COMMENT ON COLUMN adi_user_day_cost.is_free IS 'Whether this row tracks free model usage (true) or paid model usage (false)';
+COMMENT ON COLUMN adi_user_day_cost.create_time IS 'Creation time';
+COMMENT ON COLUMN adi_user_day_cost.update_time IS 'Last update time';
+COMMENT ON COLUMN adi_user_day_cost.draw_times IS 'Number of images';
 
 CREATE TRIGGER trigger_user_day_cost_update_time
     BEFORE UPDATE
@@ -616,30 +615,30 @@ create table adi_knowledge_base
     is_deleted             boolean       default false             not null
 );
 
-comment on table adi_knowledge_base is '知识库 | Knowledge Base';
-comment on column adi_knowledge_base.title is '知识库名称 | Knowledge Base Title';
-comment on column adi_knowledge_base.remark is '知识库描述 | Knowledge Base Description';
-comment on column adi_knowledge_base.is_public is '是否公开 | Is Public';
-comment on column adi_knowledge_base.is_strict is '是否严格模式,严格模式：严格匹配知识库，知识库中如无搜索结果，直接返回无答案;非严格模式：非严格匹配知识库，知识库中如无搜索结果，将用户提问传给LLM继续请求答案 | Is Strict Mode: Strict mode strictly matches the knowledge base, if there are no search results in the knowledge base, it directly returns no answer; Non-strict mode: Non-strictly matches the knowledge base, if there are no search results in the knowledge base, the question is passed to the LLM for further answers';
-comment on column adi_knowledge_base.ingest_max_overlap is '设置文档切块时重叠的最大数量（按token来计），对完整句子切割时才考虑重叠 | Maximum overlap when chunking documents (measured in tokens), only considered when cutting complete sentences';
-comment on column adi_knowledge_base.ingest_model_name is '索引(图谱化)文档时使用的LLM,不指定时使用第1个可用的LLM | LLM used when indexing (graphing) documents, if not specified, the first available LLM is used';
-comment on column adi_knowledge_base.ingest_model_id is '索引(图谱化)文档时使用的LLM,不指定时使用第1个可用的LLM | LLM ID used when indexing (graphing) documents, if not specified, the first available LLM is used';
-comment on column adi_knowledge_base.ingest_token_estimator is '文档切片时需要用到的token数量估计器,默认使用OpenAiTokenizer | Token count estimator, default is OpenAiTokenizer';
-comment on column adi_knowledge_base.ingest_embedding_model is '对文档向量化时使用的模型,默认使用all-minilm-l6-v2 | Embedding model for document embedding, default is all-minilm-l6-v2';
-comment on column adi_knowledge_base.retrieve_max_results is '设置召回向量最大数量,默认为0,表示由系统根据模型的contentWindow自动调整 | Set the maximum number of recall vectors, default is 0, meaning the system automatically adjusts based on the model''s content window';
-comment on column adi_knowledge_base.retrieve_min_score is '设置向量搜索时命中所需的最低分数,为0表示使用默认 | Set the minimum score required for a hit in vector search, 0 means using the default';
-comment on column adi_knowledge_base.query_llm_temperature is '用户查询时指定LLM响应时的创造性/随机性 | LLM response creativity/randomness specified during user query';
-COMMENT ON COLUMN adi_knowledge_base.query_system_message IS '提供给LLM的系统信息 | System message for LLM';
-comment on column adi_knowledge_base.star_count is '点赞数 | Number of Likes';
-comment on column adi_knowledge_base.item_count is '知识点数量 | Number of Knowledge Items';
-comment on column adi_knowledge_base.embedding_count is '向量数 | Number of Embeddings';
-comment on column adi_knowledge_base.owner_id is '所属人id | Owner ID';
-comment on column adi_knowledge_base.owner_uuid is '所属人uuid | Owner UUID';
-comment on column adi_knowledge_base.owner_name is '所属人名称 | Owner Name';
-comment on column adi_knowledge_base.create_time is '创建时间 | Creation Time';
-comment on column adi_knowledge_base.update_time is '更新时间 | Update Time';
-comment on column adi_knowledge_base.is_deleted is '0：未删除；1：已删除 | Deletion Status, 0: Not Deleted; 1: Deleted';
-comment on column adi_knowledge_base.api_key is '外部系统对接密钥（AES加密存储） | API key for external system integration (AES encrypted)';
+comment on table adi_knowledge_base is 'Knowledge Base';
+comment on column adi_knowledge_base.title is 'Knowledge Base Title';
+comment on column adi_knowledge_base.remark is 'Knowledge Base Description';
+comment on column adi_knowledge_base.is_public is 'Is Public';
+comment on column adi_knowledge_base.is_strict is 'Strict mode: return no answer if no results found in knowledge base; Non-strict: fall back to LLM if no results';
+comment on column adi_knowledge_base.ingest_max_overlap is 'Max overlap (in tokens) when chunking documents, only used when cutting complete sentences';
+comment on column adi_knowledge_base.ingest_model_name is 'LLM used for indexing/graphing documents, defaults to first available LLM';
+comment on column adi_knowledge_base.ingest_model_id is 'LLM ID for indexing/graphing, defaults to first available LLM';
+comment on column adi_knowledge_base.ingest_token_estimator is 'Token count estimator, default is OpenAiTokenizer';
+comment on column adi_knowledge_base.ingest_embedding_model is 'Embedding model for document embedding, default is all-minilm-l6-v2';
+comment on column adi_knowledge_base.retrieve_max_results is 'Max number of recall vectors, 0 means auto-adjust based on model context window';
+comment on column adi_knowledge_base.retrieve_min_score is 'Min score for vector search hits, 0 means use default';
+comment on column adi_knowledge_base.query_llm_temperature is 'LLM response creativity/randomness specified during user query';
+COMMENT ON COLUMN adi_knowledge_base.query_system_message IS 'System message for LLM';
+comment on column adi_knowledge_base.star_count is 'Number of Likes';
+comment on column adi_knowledge_base.item_count is 'Number of Knowledge Items';
+comment on column adi_knowledge_base.embedding_count is 'Number of embeddings';
+comment on column adi_knowledge_base.owner_id is 'Owner ID';
+comment on column adi_knowledge_base.owner_uuid is 'Owner UUID';
+comment on column adi_knowledge_base.owner_name is 'Owner Name';
+comment on column adi_knowledge_base.create_time is 'Creation time';
+comment on column adi_knowledge_base.update_time is 'Last update time';
+comment on column adi_knowledge_base.is_deleted is 'Whether the record is soft-deleted';
+comment on column adi_knowledge_base.api_key is 'API key for external system integration (AES encrypted)';
 
 create trigger trigger_kb_update_time
     before update
@@ -666,19 +665,19 @@ create table adi_knowledge_base_item
     is_deleted                   boolean      default false             not null
 );
 
-comment on table adi_knowledge_base_item is '知识库-条目 | Knowledge Base Item';
-comment on column adi_knowledge_base_item.kb_id is '所属知识库id | Knowledge Base ID';
-comment on column adi_knowledge_base_item.source_file_id is '来源文件id | Source File ID';
-comment on column adi_knowledge_base_item.title is '条目标题 | Item Title';
-comment on column adi_knowledge_base_item.brief is '条目内容摘要 | Item Brief';
-comment on column adi_knowledge_base_item.remark is '条目内容 | Item Content';
-comment on column adi_knowledge_base_item.embedding_status is '向量化状态, 1:未向量化,2:正在向量化,3:已向量化,4:失败 | Embedding Status, 1: Not Embedded, 2: Embedding, 3: Embedded, 4: Failed';
-comment on column adi_knowledge_base_item.embedding_status_change_time is '向量化状态变更时间 | Embedding Status Change Time';
-comment on column adi_knowledge_base_item.graphical_status is '图谱化状态, 1:未图谱化,2:正在图谱化;3:已图谱化,4:失败 | Graphical Status, 1: Not Graphical, 2: Graphing, 3: Graphed, 4: Failed';
-comment on column adi_knowledge_base_item.graphical_status_change_time is '图谱化状态变更时间 | Graphical Status Change Time';
-comment on column adi_knowledge_base_item.create_time is '创建时间 | Creation Time';
-comment on column adi_knowledge_base_item.update_time is '更新时间 | Update Time';
-comment on column adi_knowledge_base_item.is_deleted is '0：未删除；1：已删除 | Deletion Status, 0: Not Deleted; 1: Deleted';
+comment on table adi_knowledge_base_item is 'Knowledge Base Item';
+comment on column adi_knowledge_base_item.kb_id is 'Knowledge Base ID';
+comment on column adi_knowledge_base_item.source_file_id is 'Source File ID';
+comment on column adi_knowledge_base_item.title is 'Item Title';
+comment on column adi_knowledge_base_item.brief is 'Item Brief';
+comment on column adi_knowledge_base_item.remark is 'Item Content';
+comment on column adi_knowledge_base_item.embedding_status is 'Embedding status: 1=Not embedded, 2=Embedding, 3=Embedded, 4=Failed';
+comment on column adi_knowledge_base_item.embedding_status_change_time is 'Last embedding status change time';
+comment on column adi_knowledge_base_item.graphical_status is 'Graphical status: 1=Not graphed, 2=Graphing, 3=Graphed, 4=Failed';
+comment on column adi_knowledge_base_item.graphical_status_change_time is 'Last graphical status change time';
+comment on column adi_knowledge_base_item.create_time is 'Creation time';
+comment on column adi_knowledge_base_item.update_time is 'Last update time';
+comment on column adi_knowledge_base_item.is_deleted is 'Whether the record is soft-deleted';
 
 create trigger trigger_kb_item_update_time
     before update
@@ -699,14 +698,14 @@ create table adi_knowledge_base_star
     UNIQUE (kb_id, user_id)
 );
 
-comment on table adi_knowledge_base_star is '知识库-点赞记录 | Knowledge Base - Like Records';
-comment on column adi_knowledge_base_star.kb_id is '知识库ID | adi_knowledge_base id';
-comment on column adi_knowledge_base_star.kb_uuid is '知识库UUID | adi_knowledge_base uuid';
-comment on column adi_knowledge_base_star.user_id is '用户ID | adi_user id';
-comment on column adi_knowledge_base_star.user_uuid is '用户UUID | adi_user uuid';
-comment on column adi_knowledge_base_star.create_time is '创建时间 | Creation Time';
-comment on column adi_knowledge_base_star.update_time is '更新时间 | Update Time';
-comment on column adi_knowledge_base_star.is_deleted is '是否删除，0: 正常；1: 删除 | Deletion status, 0: Normal; 1: Deleted';
+comment on table adi_knowledge_base_star is 'Knowledge Base - Like Records';
+comment on column adi_knowledge_base_star.kb_id is 'adi_knowledge_base id';
+comment on column adi_knowledge_base_star.kb_uuid is 'adi_knowledge_base uuid';
+comment on column adi_knowledge_base_star.user_id is 'adi_user id';
+comment on column adi_knowledge_base_star.user_uuid is 'adi_user uuid';
+comment on column adi_knowledge_base_star.create_time is 'Creation time';
+comment on column adi_knowledge_base_star.update_time is 'Last update time';
+comment on column adi_knowledge_base_star.is_deleted is 'Whether the record is soft-deleted';
 
 create trigger trigger_kb_star_update_time
     before update
@@ -733,19 +732,19 @@ create table adi_knowledge_base_qa
     is_deleted      boolean       default false             not null
 );
 
-comment on table adi_knowledge_base_qa is '知识库-提问记录 | Knowledge Base - Question Records';
-comment on column adi_knowledge_base_qa.kb_id is '所属知识库id | adi_knowledge_base ID';
-comment on column adi_knowledge_base_qa.kb_uuid is '所属知识库uuid | adi_knowledge_base UUID';
-comment on column adi_knowledge_base_qa.question is '用户的原始问题 | User''s original question';
-comment on column adi_knowledge_base_qa.prompt is '提供给LLM的提示词 | Prompt provided to LLM';
-comment on column adi_knowledge_base_qa.prompt_tokens is '提示词消耗的token | Tokens consumed by the prompt';
-comment on column adi_knowledge_base_qa.answer is '答案 | Answer';
-comment on column adi_knowledge_base_qa.answer_tokens is '答案消耗的token | Tokens consumed by the answer';
-comment on column adi_knowledge_base_qa.source_file_ids is '来源文档id,以逗号隔开 | Source file IDs, separated by commas';
-comment on column adi_knowledge_base_qa.user_id is '提问用户id | User ID of the questioner';
-comment on column adi_knowledge_base_qa.create_time is '创建时间 | Creation Time';
-comment on column adi_knowledge_base_qa.update_time is '更新时间 | Update Time';
-comment on column adi_knowledge_base_qa.is_deleted is '0：未删除；1：已删除 | Deletion Status, 0: Not Deleted; 1: Deleted';
+comment on table adi_knowledge_base_qa is 'Knowledge Base - Question Records';
+comment on column adi_knowledge_base_qa.kb_id is 'adi_knowledge_base ID';
+comment on column adi_knowledge_base_qa.kb_uuid is 'adi_knowledge_base UUID';
+comment on column adi_knowledge_base_qa.question is 'User''s original question';
+comment on column adi_knowledge_base_qa.prompt is 'Prompt provided to LLM';
+comment on column adi_knowledge_base_qa.prompt_tokens is 'Tokens consumed by the prompt';
+comment on column adi_knowledge_base_qa.answer is 'Answer';
+comment on column adi_knowledge_base_qa.answer_tokens is 'Tokens consumed by the answer';
+comment on column adi_knowledge_base_qa.source_file_ids is 'Source file IDs, separated by commas';
+comment on column adi_knowledge_base_qa.user_id is 'User ID of the questioner';
+comment on column adi_knowledge_base_qa.create_time is 'Creation time';
+comment on column adi_knowledge_base_qa.update_time is 'Last update time';
+comment on column adi_knowledge_base_qa.is_deleted is 'Whether the record is soft-deleted';
 
 create trigger trigger_kb_qa_update_time
     before update
@@ -762,11 +761,11 @@ create table adi_knowledge_base_qa_ref_embedding
     user_id      bigint        default 0  not null
 );
 
-comment on table adi_knowledge_base_qa_ref_embedding is '知识库-提问记录-向量引用列表 | Knowledge Base - Question Records - Embedding References';
-comment on column adi_knowledge_base_qa_ref_embedding.qa_record_id is '提问记录id | adi_knowledge_base_qa ID';
-comment on column adi_knowledge_base_qa_ref_embedding.embedding_id is '由消息从向量库中获取到的向量uuid | adi_knowledge_base_embedding UUID';
-comment on column adi_knowledge_base_qa_ref_embedding.score is '评分 | Score';
-comment on column adi_knowledge_base_qa_ref_embedding.user_id is '所属用户 | User ID';
+comment on table adi_knowledge_base_qa_ref_embedding is 'Knowledge Base - Question Records - Embedding References';
+comment on column adi_knowledge_base_qa_ref_embedding.qa_record_id is 'adi_knowledge_base_qa ID';
+comment on column adi_knowledge_base_qa_ref_embedding.embedding_id is 'adi_knowledge_base_embedding UUID';
+comment on column adi_knowledge_base_qa_ref_embedding.score is 'Similarity score';
+comment on column adi_knowledge_base_qa_ref_embedding.user_id is 'User ID';
 
 -- Graph RAG
 create table adi_knowledge_base_graph_segment
@@ -782,15 +781,15 @@ create table adi_knowledge_base_graph_segment
     is_deleted   boolean     default false             not null
 );
 
-comment on table adi_knowledge_base_graph_segment is '知识库-图谱-文本块 | Knowledge Base - Graph Segment';
-comment on column adi_knowledge_base_graph_segment.uuid is '唯一标识 | Unique identifier';
-comment on column adi_knowledge_base_graph_segment.kb_uuid is '所属知识库uuid |adi_knowledge_base UUID';
-comment on column adi_knowledge_base_graph_segment.kb_item_uuid is '所属知识点uuid | adi_knowledge_base_item UUID';
-comment on column adi_knowledge_base_graph_segment.remark is '内容 | Content';
-comment on column adi_knowledge_base_graph_segment.user_id is '所属用户 | adi_user ID';
-comment on column adi_knowledge_base_graph_segment.create_time is '创建时间 | Creation Time';
-comment on column adi_knowledge_base_graph_segment.update_time is '更新时间 | Update Time';
-comment on column adi_knowledge_base_graph_segment.is_deleted is '是否删除，0：未删除；1：已删除 | Deletion Status, 0: Not Deleted; 1: Deleted';
+comment on table adi_knowledge_base_graph_segment is 'Knowledge Base - Graph Segment';
+comment on column adi_knowledge_base_graph_segment.uuid is 'Unique identifier';
+comment on column adi_knowledge_base_graph_segment.kb_uuid is 'adi_knowledge_base UUID';
+comment on column adi_knowledge_base_graph_segment.kb_item_uuid is 'adi_knowledge_base_item UUID';
+comment on column adi_knowledge_base_graph_segment.remark is 'Content';
+comment on column adi_knowledge_base_graph_segment.user_id is 'adi_user ID';
+comment on column adi_knowledge_base_graph_segment.create_time is 'Creation time';
+comment on column adi_knowledge_base_graph_segment.update_time is 'Last update time';
+comment on column adi_knowledge_base_graph_segment.is_deleted is 'Whether the record is soft-deleted';
 
 create trigger trigger_kb_graph_segment_update_time
     before update
@@ -802,16 +801,16 @@ create table adi_knowledge_base_qa_ref_graph
 (
     id                     bigserial primary key,
     qa_record_id           bigint default 0  not null,
-    entities_from_question text   default '' not null, -- 原字段名 graph_from_llm
+    entities_from_question text   default '' not null, -- formerly graph_from_llm
     graph_from_store       text   default '' not null,
     user_id                bigint default 0  not null
 );
 
-comment on table adi_knowledge_base_qa_ref_graph is '知识库-提问记录-图谱引用记录 | Knowledge Base - Question Records - Graph References';
-comment on column adi_knowledge_base_qa_ref_graph.qa_record_id is '提问记录id | adi_knowledge_base_qa ID';
-comment on column adi_knowledge_base_qa_ref_graph.entities_from_question is '从用户问题中解析出来的实体: vertexName1,vertexName2 | Graph parsed by LLM: vertexName1,vertexName2';
-comment on column adi_knowledge_base_qa_ref_graph.graph_from_store is '从图数据库中查找得到的图谱: {vertices:[{id:"111",name:"vertexName1"},{id:"222",name:"vertexName2"}],edges:[{id:"333",name:"edgeName1",start:"111",end:"222"}] | Graph retrieved from graph database: {vertices:[{id:"111",name:"vertexName1"},{id:"222",name:"vertexName2"}],edges:[{id:"333",name:"edgeName1",start:"111",end:"222"}]';
-comment on column adi_knowledge_base_qa_ref_graph.user_id is '所属用户 | adi_user ID';
+comment on table adi_knowledge_base_qa_ref_graph is 'Knowledge Base - Question Records - Graph References';
+comment on column adi_knowledge_base_qa_ref_graph.qa_record_id is 'adi_knowledge_base_qa ID';
+comment on column adi_knowledge_base_qa_ref_graph.entities_from_question is 'Graph parsed by LLM: vertexName1,vertexName2';
+comment on column adi_knowledge_base_qa_ref_graph.graph_from_store is 'Graph retrieved from graph database: {vertices:[{id:"111",name:"vertexName1"},{id:"222",name:"vertexName2"}],edges:[{id:"333",name:"edgeName1",start:"111",end:"222"}]';
+comment on column adi_knowledge_base_qa_ref_graph.user_id is 'adi_user ID';
 
 -- ============================================================
 -- Workflow: workflow definitions, components, runtime
@@ -836,7 +835,7 @@ create trigger trigger_workflow_component
     for each row
 execute procedure update_modified_column();
 
--- 工作流定义（用户定义的工作流）| Workflow Definition (User-defined Workflow)
+-- Workflow Definition (User-defined Workflow)
 create table adi_workflow
 (
     id          bigserial primary key,
@@ -853,8 +852,8 @@ create table adi_workflow
 );
 -- definition
 -- template
-comment on table adi_workflow is '工作流定义（用户定义的工作流）| Workflow Definition (User-defined Workflow)';
-comment on column adi_workflow.api_key is '外部系统对接密钥（AES加密存储） | API key for external system integration (AES encrypted)';
+comment on table adi_workflow is 'Workflow Definition (User-defined Workflow)';
+comment on column adi_workflow.api_key is 'API key for external system integration (AES encrypted)';
 create trigger trigger_workflow
     before update
     on adi_workflow
@@ -878,7 +877,7 @@ create table adi_workflow_node
     update_time           timestamp        default CURRENT_TIMESTAMP not null,
     is_deleted            boolean          default false             not null
 );
-comment on table adi_workflow_node is '工作流定义的节点 | Node of Workflow Definition';
+comment on table adi_workflow_node is 'Node of Workflow Definition';
 comment on column adi_workflow_node.input_config is '{"params":[{"name":"user_define_param01","type":"string"}]}';
 comment on column adi_workflow_node.node_config is '{"params":[{"prompt":"Summarize the following content:{user_define_param01}"}]}';
 create trigger trigger_workflow_node
@@ -905,7 +904,7 @@ create trigger trigger_workflow_edge
     for each row
 execute procedure update_modified_column();
 
--- 工作流实例（运行时）| Workflow Runtime
+-- Workflow Runtime
 create table adi_workflow_runtime
 (
     id            bigserial primary key,
@@ -921,15 +920,15 @@ create table adi_workflow_runtime
     is_deleted    boolean      default false             not null
 );
 COMMENT ON COLUMN adi_workflow_runtime.input IS '{"userInput01":"text01","userInput02":true,"userInput03":10,"userInput04":["selectedA","selectedB"],"userInput05":["https://a.com/a.xlxs","https://a.com/b.png"]}';
-COMMENT ON COLUMN adi_workflow_runtime.status IS '执行状态，1：就绪，2：执行中，3：成功，4：失败 | Execution status, 1: Ready, 2: In progress, 3: Success, 4: Failed';
-COMMENT ON COLUMN adi_workflow_runtime.status_remark IS '状态备注 | Status remark';
+COMMENT ON COLUMN adi_workflow_runtime.status IS 'Execution status: 1=Ready, 2=In progress, 3=Success, 4=Failed';
+COMMENT ON COLUMN adi_workflow_runtime.status_remark IS 'Status remark';
 create trigger trigger_workflow_runtime
     before update
     on adi_workflow_runtime
     for each row
 execute procedure update_modified_column();
 
--- 工作流实例（运行时）- 节点| Workflow Runtime - node
+-- Workflow Runtime - Node
 create table adi_workflow_runtime_node
 (
     id                  bigserial primary key,
@@ -945,8 +944,8 @@ create table adi_workflow_runtime_node
     update_time         timestamp    default CURRENT_TIMESTAMP not null,
     is_deleted          boolean      default false             not null
 );
-COMMENT ON COLUMN adi_workflow_runtime_node.status IS '执行状态，1：进行中，2：失败，3：成功 | Execution status, 1: In progress, 2: Failed, 3: Success';
-COMMENT ON COLUMN adi_workflow_runtime_node.status_remark IS '状态备注 | Status remark';
+COMMENT ON COLUMN adi_workflow_runtime_node.status IS 'Execution status: 1=In progress, 2=Failed, 3=Success';
+COMMENT ON COLUMN adi_workflow_runtime_node.status_remark IS 'Status remark';
 create trigger trigger_workflow_runtime_node
     before update
     on adi_workflow_runtime_node
@@ -977,13 +976,13 @@ create table adi_mcp
     update_time                  timestamp     default CURRENT_TIMESTAMP not null,
     is_deleted                   boolean       default false             not null
 );
-COMMENT ON TABLE adi_mcp is 'MCP server模板定义 | MCP server template';
-COMMENT ON COLUMN adi_mcp.transport_type IS '传输类型：1:sse、2:stdio | Transport type: 1:sse、2:stdio';
-COMMENT ON COLUMN adi_mcp.preset_params IS '由系统管理员预设的参数,如:[{"name":"BAIDU_MAP_API_KEY","title":"百度地图服务","value":"111111","require_encrypt":true,"encrypted":true}] | Parameters preset by the system administrator, e.g., [{"name":"BAIDU_MAP_API_KEY","title":"Baidu Map Service","value":"111111","require_encrypt":true,"encrypted":true}]';
-COMMENT ON COLUMN adi_mcp.customized_param_definitions IS '待用户设置的参数定义,用户设置后与preset_params合并做为mcp的启动参数,格式:[{"name":"GITHUB_PERSONAL_ACCESS_TOKEN","title":"github access token","require_encrypt":true}] | Parameters to be set by the user, after user settings, merged with preset_params as MCP startup parameters, format: [{"name":"GITHUB_PERSONAL_ACCESS_TOKEN","title":"github access token","require_encrypt":true}]';
-COMMENT ON COLUMN adi_mcp.install_type IS 'mcp server的安装方式, 1:docker、2:local、3:remote、4:wasm | Installation type of mcp server: 1:docker, 2:local, 3:remote, 4:wasm';
-COMMENT ON COLUMN adi_mcp.remark IS '描述，支持markdown格式 | Supports markdown format';
-COMMENT ON COLUMN adi_mcp.website IS '官网地址 | Official website';
+COMMENT ON TABLE adi_mcp is 'MCP server template';
+COMMENT ON COLUMN adi_mcp.transport_type IS 'Transport type: 1:sse, 2:stdio';
+COMMENT ON COLUMN adi_mcp.preset_params IS 'Admin-preset parameters, e.g., [{"name":"BAIDU_MAP_API_KEY","title":"Baidu Map Service","value":"111111","require_encrypt":true,"encrypted":true}]';
+COMMENT ON COLUMN adi_mcp.customized_param_definitions IS 'User-configurable parameter definitions, merged with preset_params at runtime, e.g., [{"name":"GITHUB_TOKEN","title":"GitHub access token","require_encrypt":true}]';
+COMMENT ON COLUMN adi_mcp.install_type IS 'Installation type: docker, local, remote, wasm';
+COMMENT ON COLUMN adi_mcp.remark IS 'Supports markdown format';
+COMMENT ON COLUMN adi_mcp.website IS 'Official website';
 
 create trigger trigger_mcp
     before update
@@ -1003,8 +1002,8 @@ create table adi_user_mcp
     update_time           timestamp   default CURRENT_TIMESTAMP not null,
     is_deleted            boolean     default false             not null
 );
-comment on table adi_user_mcp is '用户启用的mcp server及配置 | User-enabled MCP server and configuration';
-COMMENT ON COLUMN adi_user_mcp.mcp_customized_params IS '用户设置的mcp参数(个性化配置)，对应了adi_mcp.customized_param_definitions中定义的参数，格式：[{"name","BAIDU_MAP_API_KEY","value":"111111",encrypted:true}] | User-defined MCP variables, corresponding to the variables defined in adi_mcp.customized_param_definitions, format: [{"name","BAIDU_MAP_API_KEY","value":"111111",encrypted:true}]';
+comment on table adi_user_mcp is 'User-enabled MCP server and configuration';
+COMMENT ON COLUMN adi_user_mcp.mcp_customized_params IS 'User-defined MCP variables matching adi_mcp.customized_param_definitions, e.g., [{"name":"BAIDU_MAP_API_KEY","value":"111111","encrypted":true}]';
 
 create trigger trigger_user_mcp
     before update

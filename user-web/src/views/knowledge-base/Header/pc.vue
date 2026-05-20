@@ -1,7 +1,9 @@
 <script lang="ts" setup>
-import { ref } from 'vue'
-import { HoverButton, SvgIcon, ApiKeyModal } from '@/components/common'
+import { h, ref } from 'vue'
+import { NDropdown } from 'naive-ui'
+import { SvgIcon, ApiKeyModal } from '@/components/common'
 import { useAuthStore } from '@/store'
+import { t } from '@/locales'
 import { knowledgeBaseEmptyInfo } from '@/utils/functions'
 import KbInfo from '@/views/knowledge-base/Header/KbInfo.vue'
 
@@ -15,16 +17,29 @@ const showEditModal = ref(false)
 const showApiKeyModal = ref(false)
 const authStore = useAuthStore()
 
-function openEditView() {
-  showEditModal.value = true
+const options = [
+  {
+    label: t('common.detail'),
+    key: 'detail',
+    icon: () => h(SvgIcon, { icon: 'carbon:information', class: 'text-base cursor-pointer' }),
+  },
+  {
+    label: 'API',
+    key: 'api',
+    icon: () => h(SvgIcon, { icon: 'carbon:api', class: 'text-base cursor-pointer' }),
+  },
+]
+
+function handleSelect(key: string) {
+  if (!authStore.checkLoginOrShow())
+    return
+  if (key === 'detail')
+    showEditModal.value = true
+  else if (key === 'api')
+    showApiKeyModal.value = true
 }
 function showOrCloseModal(show: boolean) {
   showEditModal.value = show
-}
-function extApiKey() {
-  if (!authStore.checkLoginOrShow())
-    return
-  showApiKeyModal.value = true
 }
 </script>
 
@@ -38,20 +53,11 @@ function extApiKey() {
           {{ knowledgeBase?.title ?? '' }}
         </p>
       </div>
-      <div class="flex items-center space-x-2">
-        <HoverButton @click="extApiKey()">
-          <span class="text-xl">
-            <SvgIcon icon="carbon:api" />
-          </span>
-        </HoverButton>
-        <HoverButton @click="openEditView()">
-          <span class="text-xl">
-            <SvgIcon icon="si:align-left-detailed-line" />
-          </span>
-        </HoverButton>
-      </div>
+      <NDropdown :options="options" @select="handleSelect">
+        <SvgIcon class="w-6 cursor-pointer" icon="ri:more-fill" />
+      </NDropdown>
     </div>
     <KbInfo v-if="knowledgeBase && knowledgeBase.uuid" :show-modal="showEditModal" :knowledge-base="knowledgeBase" @showModal="showOrCloseModal" />
-    <ApiKeyModal v-model:show="showApiKeyModal" type="kb" :uuid="knowledgeBase.uuid" :title="knowledgeBase.title" />
+    <ApiKeyModal v-if="knowledgeBase" v-model:show="showApiKeyModal" type="knowledge" :uuid="knowledgeBase.uuid" :title="knowledgeBase.title" />
   </header>
 </template>

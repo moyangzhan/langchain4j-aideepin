@@ -24,7 +24,7 @@ import static com.moyz.adi.common.enums.ErrorEnum.*;
 @Service
 public class ExtApiService {
 
-    private static final String KEY_PREFIX = "adi-";
+    private static final String KEY_PREFIX = "ext-";
 
     @Resource
     private CharacterService characterService;
@@ -97,15 +97,17 @@ public class ExtApiService {
         ExtApiResourceType resourceType = parseTypeOrThrow(type);
         User currentUser = ThreadContext.getCurrentUser();
 
-        String encryptedApiKey = resolveApiKey(resourceType, uuid, currentUser);
+        String encryptedApiKey = resolveApiKeyNoAuth(resourceType, uuid);
+        boolean canManage = checkOwnershipSilent(resourceType, uuid, currentUser);
 
         if (StringUtils.isBlank(encryptedApiKey)) {
-            return null;
+            return ApiKeyResp.builder().canManage(canManage).build();
         }
         String rawKey = AesUtil.decrypt(encryptedApiKey);
         return ApiKeyResp.builder()
                 .rawKey(null)
                 .maskedKey(maskKey(rawKey))
+                .canManage(canManage)
                 .build();
     }
 
@@ -235,6 +237,26 @@ public class ExtApiService {
         }
     }
 
+    private boolean checkOwnershipSilent(ExtApiResourceType resourceType, String uuid, User currentUser) {
+        if (currentUser.getIsAdmin()) {
+            return true;
+        }
+        Long resourceUserId = switch (resourceType) {
+            case CHARACTER -> getCharacterOrThrow(uuid).getUserId();
+            case KNOWLEDGE -> getKbOrThrow(uuid).getOwnerId();
+            case WORKFLOW -> getWfOrThrow(uuid).getUserId();
+        };
+        return currentUser.getId().equals(resourceUserId);
+    }
+
+    private String resolveApiKeyNoAuth(ExtApiResourceType resourceType, String uuid) {
+        return switch (resourceType) {
+            case CHARACTER -> getCharacterOrThrow(uuid).getApiKey();
+            case KNOWLEDGE -> getKbOrThrow(uuid).getApiKey();
+            case WORKFLOW -> getWfOrThrow(uuid).getApiKey();
+        };
+    }
+
     private Character getCharacterOrThrow(String uuid) {
         return characterService.lambdaQuery()
                 .eq(Character::getUuid, uuid)
@@ -256,7 +278,7 @@ public class ExtApiService {
     }
 
     /**
-     * Generate masked version of the key: "adi-a3f8****f6g7"
+     * Generate masked version of the key: "ext-a3f8****f6g7"
      * Keeps the first 8 characters (including prefix) and last 4 characters.
      */
     private String maskKey(String rawKey) {

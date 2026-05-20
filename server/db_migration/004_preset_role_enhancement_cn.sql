@@ -2,7 +2,7 @@
 ALTER TABLE adi_conversation_preset ADD COLUMN IF NOT EXISTS kb_title varchar(100) DEFAULT '' NOT NULL;
 ALTER TABLE adi_conversation_preset ADD COLUMN IF NOT EXISTS type varchar(45) DEFAULT '' NOT NULL;
 COMMENT ON COLUMN adi_conversation_preset.kb_title IS '自动创建的知识库名称,为空则不创建 | Knowledge base title to auto-create, empty means no creation';
-COMMENT ON COLUMN adi_conversation_preset.type IS '角色类型(technology/creative/education/business/professional/design/marketing/service/administration/utility) | Role type category';
+COMMENT ON COLUMN adi_conversation_preset.type IS '角色类型(technology/creative/education/business/professional/design/marketing/service/administration/utility)';
 
 -- Update existing presets with optimized content and type
 UPDATE adi_conversation_preset SET remark = '全栈开发,精通主流编程语言与框架', ai_system_message = '你是一个经验丰富的开发工程师,精通 Java、Python、JavaScript 等主流编程语言,熟悉 Spring Boot、React/Vue 等框架。擅长代码编写、调试排错和技术方案设计,回答时给出可直接运行的代码示例。', type = 'technology' WHERE uuid = '26a8f54c560948d6b2d4969f08f3f2fb';

@@ -23,6 +23,11 @@ const userStore = useUserStore()
 const showViewType = ref<string>('instanceList')
 const submitting = ref<boolean>(false)
 const showApiKeyModal = ref(false)
+
+const startNodeUserInputs = computed(() => {
+  const startNode = props.workflow.nodes?.find(n => n.wfComponent?.name === 'Start')
+  return startNode?.inputConfig?.user_inputs ?? []
+})
 const options = computed(() => {
   const mine = props.workflow.userUuid === userStore.userInfo.uuid
   const common = [
@@ -37,6 +42,13 @@ const options = computed(() => {
       label: t('workflow.copyLabel'),
       key: 'copy',
       icon: renderIcon('ri:file-copy-2-line'),
+    })
+  }
+  if (authStore.token) {
+    common.push({
+      label: 'API',
+      key: 'api',
+      icon: renderIcon('carbon:api'),
     })
   }
   return common
@@ -81,6 +93,8 @@ function handleSelect(key: string | number) {
       showEditView()
     else if (key === 'copy')
       onCopy()
+    else if (key === 'api')
+      extApiKey()
   } catch (e: any) {
     ms.error(e)
   } finally {
@@ -125,16 +139,11 @@ function extApiKey() {
             </NTag>
           </div>
         </HoverButton>
-        <HoverButton @click="extApiKey()">
-          <span class="text-xl">
-            <SvgIcon icon="carbon:api" />
-          </span>
-        </HoverButton>
         <NDropdown :options="options" class="mr-2" @select="handleSelect">
           <SvgIcon class="w-6 ml-2 cursor-pointer" icon="ri:more-fill" />
         </NDropdown>
       </div>
     </div>
-    <ApiKeyModal v-model:show="showApiKeyModal" type="wf" :uuid="workflow.uuid" :title="workflow.title" />
+    <ApiKeyModal v-model:show="showApiKeyModal" type="workflow" :uuid="workflow.uuid" :title="workflow.title" :wf-input-defs="startNodeUserInputs" />
   </header>
 </template>

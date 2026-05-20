@@ -26,7 +26,7 @@ langchain4j-aideepin/
   - Platform Configuration: Manage API Keys, Base URLs, and other parameters for AI platforms (OpenAI, DeepSeek, DashScope, SiliconFlow, Ollama, etc.)
   - Model List: Configure specific models under each platform, including enable/disable, set as free model, sorting, etc.
 - **Knowledge Base Management** — View all knowledge bases in the system with document counts, vectorization status, and enable/disable management
-- **Conversation Management** — View all user conversations with message history; manage preset conversations (system-predefined AI role templates)
+- **Character Management** — View all user characters with message history; manage preset characters (system-predefined AI role templates)
 - **Workflow Management** — Manage AI workflow components and process lists, support enabling/disabling workflows
 - **MCP Management** — Manage MCP (Model Context Protocol) servers, configure SSE/stdio type MCP services
 - **System Configuration**

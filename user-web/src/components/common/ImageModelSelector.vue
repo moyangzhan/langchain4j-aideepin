@@ -18,7 +18,7 @@ function handleSelect(key: string | number) {
     <NFlex>
       {{ t('draw.currentModel') }}
       <NButton icon-placement="right" text tag="a" type="primary">
-        {{ appStore.selectedImageModel.modelTitle || appStore.selectedImageModel.modelName }}
+        {{ appStore.selectedImageModel?.modelTitle || appStore.selectedImageModel?.modelName || t('draw.noModel') }}
       </NButton>
     </NFlex>
   </NDropdown>

@@ -247,7 +247,10 @@ watch(() => props.loading, (loading) => {
           v-else class="bg bg-[#d2f9d1] rounded-md py-1 px-2 mb-2 cursor-pointer flex items-center"
           @click="playAudioByClick"
         >
-          <SvgIcon class="text-2xl cursor-pointer custom-hover mr-2" icon="mingcute:voice-2-line" />
+          <div v-if="audioPlayState.playing || loading" class="audio-bars mr-2">
+            <span /><span /><span /><span />
+          </div>
+          <SvgIcon v-else class="text-2xl cursor-pointer custom-hover mr-2" icon="mingcute:voice-2-line" />
           <span v-if="props.audioPlayState.playDuration && duration > 0" class="text-xs pl-2">{{
             props.audioPlayState.playDuration
           }}/{{ duration }}</span>
@@ -269,3 +272,50 @@ watch(() => props.loading, (loading) => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.audio-bars {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 24px;
+  width: 28px;
+}
+
+.audio-bars span {
+  display: inline-block;
+  width: 3px;
+  border-radius: 2px;
+  background-color: currentColor;
+  animation: audio-bar 0.8s ease-in-out infinite;
+}
+
+.audio-bars span:nth-child(1) {
+  height: 8px;
+  animation-delay: 0s;
+}
+
+.audio-bars span:nth-child(2) {
+  height: 16px;
+  animation-delay: 0.15s;
+}
+
+.audio-bars span:nth-child(3) {
+  height: 12px;
+  animation-delay: 0.3s;
+}
+
+.audio-bars span:nth-child(4) {
+  height: 18px;
+  animation-delay: 0.45s;
+}
+
+@keyframes audio-bar {
+  0%, 100% {
+    transform: scaleY(0.4);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+</style>

@@ -23,8 +23,8 @@ import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 @Component
 public class ExtApiAuthFilter extends OncePerRequestFilter {
 
-    private static final String API_V1_PREFIX = "/api/v1/";
-    private static final String KEY_PREFIX = "adi-";
+    private static final String API_V1_PREFIX = "/ext/v1/";
+    private static final String KEY_PREFIX = "ext-";
 
     @Value("${server.servlet.context-path:}")
     private String contextPath;

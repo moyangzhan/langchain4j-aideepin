@@ -174,7 +174,7 @@ public class WorkflowEngine {
      * Blocking execution: build the workflow graph, run it synchronously,
      * and return the final output as a JSON response.
      */
-    public ResponseEntity<Map<String, Object>> blockingRun(User user, List<ObjectNode> userInputs) {
+    public Map<String, Object> blockingRun(User user, List<ObjectNode> userInputs) {
         this.user = user;
         // Create a dummy SseEmitter and mark it completed via sendComplete,
         // so all SSE send operations in runNode silently skip (COMPLETED_SSE cache check)
@@ -219,28 +219,29 @@ public class WorkflowEngine {
             // Synchronous invoke instead of streaming
             app.invoke(Map.of(), invokeConfig);
 
-            // Collect results from completed nodes
+            // Collect output from the last completed node (end node or final node)
+            List<AbstractWfNode> completedNodes = wfState.getCompletedNodes();
+            if (!completedNodes.isEmpty()) {
+                wfState.setOutput(completedNodes.get(completedNodes.size() - 1).getState().getOutputs());
+            }
+
             WorkflowRuntime updatedRuntime = workflowRuntimeService.updateOutput(wfRuntimeResp.getId(), wfState);
 
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put("success", true);
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("task_id", runtimeUuid);
             data.put("status", "completed");
             if (null != updatedRuntime) {
                 data.put("outputs", updatedRuntime.getOutput());
             }
-            result.put("data", data);
-            return ResponseEntity.ok(result);
+            return data;
         } catch (Throwable e) {
             log.error("blockingRun execution exception, workflowUuid:{}", workflow.getUuid(), e);
             String errorMsg = e.getMessage();
             workflowRuntimeService.updateStatus(wfRuntimeResp.getId(), WORKFLOW_PROCESS_STATUS_FAIL, errorMsg);
 
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put("success", false);
-            result.put("message", errorMsg);
-            return ResponseEntity.internalServerError().body(result);
+            Map<String, Object> errorResult = new LinkedHashMap<>();
+            errorResult.put("message", errorMsg);
+            return errorResult;
         }
     }
 

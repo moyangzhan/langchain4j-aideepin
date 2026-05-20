@@ -5,35 +5,21 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.ModelPlatform;
-import com.moyz.adi.common.file.FileOperatorContext;
 import com.moyz.adi.common.languagemodel.data.TtsJobData;
 import com.moyz.adi.common.languagemodel.data.SiliconflowTtsReq;
 import com.moyz.adi.common.util.JsonUtil;
-import com.moyz.adi.common.util.LocalDateTimeUtil;
-import com.moyz.adi.common.util.UuidUtil;
+import com.moyz.adi.common.util.TtsUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.web.client.ResponseExtractor;
-import org.springframework.web.client.RestTemplate;
 
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.TtsConstant.SILICONFLOW_DEFAULT_VOICE;
-import static com.moyz.adi.common.util.LocalDateTimeUtil.PATTERN_YYYYMMDDMMHHSS;
 
 /**
  * 硅基流动的 TTS 服务，对应的接口不能流式输入，只能流式输出
@@ -102,53 +88,10 @@ public class SiliconflowTtsService extends AbstractTtsModelService {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("Authorization", "Bearer " + platform.getApiKey());
-        RestTemplate restTemplate = new RestTemplate();
         String url = platform.getBaseUrl() + "/audio/speech";
-// Use streaming processing
-        // 使用流式处理
-        ResponseExtractor<Void> responseExtractor = response -> {
-            try (InputStream inputStream = response.getBody()) {
-                String datetime = LocalDateTimeUtil.format(LocalDateTime.now(), PATTERN_YYYYMMDDMMHHSS);
-                String fileName = aiModel.getName().toLowerCase().replace("/", "-") + "-" + datetime + "-" + UuidUtil.createShort().substring(0, 6) + ".mp3";
-// Create temporary file
-                // 创建临时文件
-                Path tempFile = Files.createTempFile("tmp-tts-" + datetime, ".mp3");
-                ByteArrayOutputStream sendBuffer = new ByteArrayOutputStream();
-                final int MIN_BUFFER_SIZE = 16 * 1024; // 最小缓冲大小
-// Use buffered stream to write file
-                // 使用缓冲流写入文件
-                try (OutputStream outputStream = Files.newOutputStream(tempFile);
-                     BufferedOutputStream bufferedOutput = new BufferedOutputStream(outputStream)) {
-                    byte[] buffer = new byte[2048];
-                    int bytesRead;
-                    while ((bytesRead = inputStream.read(buffer)) != -1) {
-                        bufferedOutput.write(buffer, 0, bytesRead);
-                        sendBuffer.write(buffer, 0, bytesRead);
-                        if (sendBuffer.size() >= MIN_BUFFER_SIZE) {
-// Send buffer content
-                            // 发送缓冲区内容
-                            jobData.getProcessCallback().accept(ByteBuffer.wrap(sendBuffer.toByteArray()));
-                            // 重置缓冲区
-                            sendBuffer.reset();
-                        }
-                    }
-                    if (sendBuffer.size() > 0) {
-                        jobData.getProcessCallback().accept(ByteBuffer.wrap(sendBuffer.toByteArray()));
-                    }
-                }
-                Pair<String, String> pair = new FileOperatorContext().save(Files.readAllBytes(tempFile), false, fileName);
-                log.info("File saved successfully, path: " + pair.getLeft());
-                jobData.getCompleteCallback().accept(pair.getLeft());
-// Delete temporary file
-                // 删除临时文件
-                Files.deleteIfExists(tempFile);
-            }
-            return null;
-        };
-        restTemplate.execute(url, HttpMethod.POST, requestCallback -> {
-            requestCallback.getHeaders().putAll(headers);
-            requestCallback.getBody().write(JsonUtil.toJson(requestBuilder.build()).getBytes());
-        }, responseExtractor);
+        String modelName = aiModel.getName().toLowerCase().replace("/", "-");
 
+        TtsUtil.executeAndSave(url, headers, JsonUtil.toJson(requestBuilder.build()).getBytes(),
+                modelName, jobData.getProcessCallback(), jobData.getCompleteCallback());
     }
 }
