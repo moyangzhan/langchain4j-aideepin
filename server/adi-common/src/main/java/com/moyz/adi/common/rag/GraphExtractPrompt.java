@@ -28,7 +28,7 @@ public class GraphExtractPrompt {
             - relationship_strength: a numeric score indicating strength of the relationship between the source entity and target entity
             Format each relationship as ("relationship"{tuple_delimiter}<source_entity>{tuple_delimiter}<target_entity>{tuple_delimiter}<relationship_description>{tuple_delimiter}<relationship_strength>)
             
-            3. Return output in English as a single list of all the entities and relationships identified in steps 1 and 2. Use **{record_delimiter}** as the list delimiter.
+            3. Return output in the same language as the input text as a single list of all the entities and relationships identified in steps 1 and 2. Use **{record_delimiter}** as the list delimiter.
             
             4. When finished, output {completion_delimiter}
             
@@ -153,7 +153,7 @@ public class GraphExtractPrompt {
             - relationship_strength：一个表示源实体和目标实体之间关系强度的数字分数
             将每个关系格式化为 ("relationship"{tuple_delimiter}<source_entity>{tuple_delimiter}<target_entity>{tuple_delimiter}<relationship_description>{tuple_delimiter}<relationship_strength>)
                         
-            3. 以英文返回输出，作为所有在步骤1和步骤2中识别的实体和关系的列表。使用 **{record_delimiter}** 作为列表分隔符。
+            3. 以与输入文本相同的语言返回输出，作为所有在步骤1和步骤2中识别的实体和关系的列表。使用 **{record_delimiter}** 作为列表分隔符。
                         
             4. 完成时，输出 {completion_delimiter}
                         
@@ -260,5 +260,5 @@ public class GraphExtractPrompt {
             .replace("{completion_delimiter}", AdiConstant.GRAPH_COMPLETION_DELIMITER)
             .replace("{record_delimiter}", AdiConstant.GRAPH_RECORD_DELIMITER);
     public static final String CONTINUE_PROMPT = "MANY entities and relationships were missed in the last extraction. Remember to ONLY emit entities that match any of the previously extracted types. Add them below using the same format:\n";
-    public static final String LOOP_PROMPT = "It appears some entities and relationships may have still been missed.  Answer YES | NO if there are still entities or relationships that need to be added.\n";
+    public static final String LOOP_PROMPT = "It appears some entities and relationships may have still been missed. Answer Y if there are still entities or relationships that need to be added, or N if there are none. Please answer with a single letter Y or N.\n";
 }
