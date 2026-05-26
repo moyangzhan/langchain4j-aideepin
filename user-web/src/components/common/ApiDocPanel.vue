@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import { computed, ref } from 'vue'
-import { NButton, NCollapse, NCollapseItem, NDivider, NFlex, NH4, NTable, NSpace, useMessage } from 'naive-ui'
+import { NButton, NCollapse, NCollapseItem, NDivider, NFlex, NH4, NSpace, NTable, useMessage } from 'naive-ui'
 import { t } from '@/locales'
 import { useCharacterDoc } from '@/hooks/api-doc/useCharacterDoc'
 import { useKnowledgeDoc } from '@/hooks/api-doc/useKnowledgeDoc'
@@ -14,13 +14,6 @@ interface Props {
 const props = defineProps<Props>()
 const ms = useMessage()
 const copied = ref(false)
-
-function handleCopyCurl() {
-  navigator.clipboard.writeText(endpointInfo.value.curlExample).then(() => {
-    copied.value = true
-    setTimeout(() => copied.value = false, 2000)
-  }).catch(() => ms.error(t('common.wrong')))
-}
 
 const baseUrl = computed(() => {
   const apiBase = import.meta.env.VITE_GLOB_API_URL || ''
@@ -36,6 +29,13 @@ const endpointInfo = computed(() => {
     return useKnowledgeDoc(urlBase)
   return useWorkflowDoc(urlBase, props.wfInputDefs)
 })
+
+function handleCopyCurl() {
+  navigator.clipboard.writeText(endpointInfo.value.curlExample).then(() => {
+    copied.value = true
+    setTimeout(() => copied.value = false, 2000)
+  }).catch(() => ms.error(t('common.wrong')))
+}
 </script>
 
 <template>
@@ -77,9 +77,15 @@ const endpointInfo = computed(() => {
         <NTable :bordered="true" :single-line="false" size="small">
           <thead>
             <tr>
-              <th style="min-width: 120px">{{ t('extApi.docParamName') }}</th>
-              <th style="min-width: 60px">Type</th>
-              <th style="min-width: 70px">Required</th>
+              <th style="min-width: 120px">
+                {{ t('extApi.docParamName') }}
+              </th>
+              <th style="min-width: 60px">
+                Type
+              </th>
+              <th style="min-width: 70px">
+                Required
+              </th>
               <th>{{ t('extApi.docParamDesc') }}</th>
             </tr>
           </thead>
@@ -98,8 +104,12 @@ const endpointInfo = computed(() => {
         <NTable v-if="endpointInfo.responseFields.length > 0" :bordered="true" :single-line="false" size="small" style="margin-bottom: 8px">
           <thead>
             <tr>
-              <th style="min-width: 120px">{{ t('extApi.docParamName') }}</th>
-              <th style="min-width: 60px">Type</th>
+              <th style="min-width: 120px">
+                {{ t('extApi.docParamName') }}
+              </th>
+              <th style="min-width: 60px">
+                Type
+              </th>
               <th>{{ t('extApi.docParamDesc') }}</th>
             </tr>
           </thead>

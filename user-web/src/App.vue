@@ -142,21 +142,6 @@ const menuOptions: MenuOption[] = [
         { default: () => t('menu.mcp') },
       ),
   },
-  // TODO: 网络搜索 RAG 功能已由聊天中模型原生 web search 替代，下个版本将删除该功能及所有相关代码
-  // {
-  //   key: 'menu-aisearch',
-  //   icon: renderIcon(SearchOutline),
-  //   label: () =>
-  //     h(
-  //       RouterLink,
-  //       {
-  //         to: {
-  //           name: 'AiSearch',
-  //         },
-  //       },
-  //       { default: () => '搜索' },
-  //     ),
-  // },
 ]
 function renderIcon(icon: Component) {
   return () => h(NIcon, null, { default: () => h(icon) })
@@ -164,7 +149,7 @@ function renderIcon(icon: Component) {
 
 watch(
   () => route.name, // 监听 path 变化
-  (newName, oldName) => {
+  (newName, _oldName) => {
     // 代码中使用router.push()方法跳转到不同菜单的路径时，route.name会发生变化，activeKey不会变化，如果做以下处理，activeKey会是上一个路由的值，导致菜单高亮错误
     // 这里可以根据 newName 来判断当前路由，并设置 activeKey 的值
     menuKeyToRouteNames.forEach((val, key) => {
@@ -193,7 +178,7 @@ onMounted(async () => {
   appStore.setSysConfig(sysConfig.data)
   const locale = authStore.token
     ? sysConfig.data.defaultLocale
-    : detectBrowserLocale() || sysConfig.data.defaultLocale
+    : (detectBrowserLocale() || sysConfig.data.defaultLocale)
   appStore.initLocale(locale)
 })
 </script>
@@ -241,9 +226,9 @@ onMounted(async () => {
           <!-- <KeepAlive>
             <RouterView :key="routePath" />
           </KeepAlive> -->
-          <RouterView v-slot="{ Component, route }">
+          <RouterView v-slot="{ Component: RouteComponent, route: viewRoute }">
             <KeepAlive>
-              <component :is="Component" :key="route.fullPath" />
+              <component :is="RouteComponent" :key="viewRoute.fullPath" />
             </KeepAlive>
           </RouterView>
         </NLayout>
