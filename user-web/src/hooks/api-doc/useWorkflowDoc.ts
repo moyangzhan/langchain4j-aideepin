@@ -1,5 +1,5 @@
-import { t } from '@/locales'
 import type { ApiEndpointInfo } from './types'
+import { t } from '@/locales'
 
 const TYPE_MAP: Record<number, string> = { 1: 'Text', 2: 'Number', 3: 'Options', 4: 'Files', 5: 'Bool' }
 

@@ -8,7 +8,7 @@ import { ApiKeyModal } from '@/components/common'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
 import { useAppStore, useAuthStore, useKbStore } from '@/store'
 import { knowledgeBaseEmptyInfo } from '@/utils/functions'
-import { TOKEN_ESTIMATOR, SPLIT_STRATEGY } from '@/utils/constant'
+import { SPLIT_STRATEGY, TOKEN_ESTIMATOR } from '@/utils/constant'
 import { t } from '@/locales'
 import api from '@/api'
 
@@ -346,7 +346,7 @@ watch(
                 <div>{{ t('knowledgeBase.splitStrategy') }}</div>
                 <NSelect v-model:value="tmpKb.ingestSplitStrategy" :options="SPLIT_STRATEGY" />
               </div>
-              <div v-if="tmpKb.ingestSplitStrategy === 'custom'" >
+              <div v-if="tmpKb.ingestSplitStrategy === 'custom'">
                 <div>{{ t('knowledgeBase.customSeparator') }}</div>
                 <NInput v-model:value="tmpKb.ingestCustomSeparator" :placeholder="t('knowledgeBase.customSeparatorPlaceholder')" />
               </div>

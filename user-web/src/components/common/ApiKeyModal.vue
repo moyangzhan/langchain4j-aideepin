@@ -1,9 +1,9 @@
 <script setup lang='ts'>
 import { ref, watch } from 'vue'
 import { NAlert, NButton, NFlex, NH4, NInput, NModal, NPopconfirm, NSpace, useMessage } from 'naive-ui'
+import ApiDocPanel from './ApiDocPanel.vue'
 import api from '@/api'
 import { t } from '@/locales'
-import ApiDocPanel from './ApiDocPanel.vue'
 
 interface Props {
   show: boolean
@@ -52,19 +52,17 @@ async function fetchKeyInfo() {
     return
   loading.value = true
   try {
-    const { data } = await api.extApiKeyInfo<{ rawKey: string | null, maskedKey: string | null, canManage: boolean }>(props.type, props.uuid)
+    const { data } = await api.extApiKeyInfo<{ rawKey: string | null; maskedKey: string | null; canManage: boolean }>(props.type, props.uuid)
     maskedKey.value = data?.maskedKey ?? ''
     canManage.value = data?.canManage ?? false
     rawKey.value = ''
     showingRaw.value = false
     justGenerated.value = false
-  }
-  catch {
+  } catch {
     maskedKey.value = ''
     rawKey.value = ''
     ms.error(t('common.wrong'))
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -72,16 +70,14 @@ async function fetchKeyInfo() {
 async function handleGenerate() {
   loading.value = true
   try {
-    const { data } = await api.extApiKeyGenerate<{ rawKey: string, maskedKey: string }>(props.type, props.uuid)
+    const { data } = await api.extApiKeyGenerate<{ rawKey: string; maskedKey: string }>(props.type, props.uuid)
     maskedKey.value = data.maskedKey
     rawKey.value = data.rawKey
     justGenerated.value = true
     showingRaw.value = true
-  }
-  catch {
+  } catch {
     ms.error(t('common.wrong'))
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -94,14 +90,12 @@ async function handleReveal() {
   }
   loading.value = true
   try {
-    const { data } = await api.extApiKeyReveal<{ rawKey: string, maskedKey: string }>(props.type, props.uuid)
+    const { data } = await api.extApiKeyReveal<{ rawKey: string; maskedKey: string }>(props.type, props.uuid)
     rawKey.value = data.rawKey
     showingRaw.value = true
-  }
-  catch {
+  } catch {
     ms.error(t('common.wrong'))
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -112,8 +106,7 @@ async function handleCopy() {
   try {
     await navigator.clipboard.writeText(rawKey.value)
     ms.success(t('extApi.copySuccess'))
-  }
-  catch {
+  } catch {
     ms.error(t('common.wrong'))
   }
 }

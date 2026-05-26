@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { computed } from 'vue'
 import { NImage, NImageGroup } from 'naive-ui'
 import { SvgIcon } from '@/components/common'
 import { getIconByComponentName, getIconClassByComponentName } from '@/utils/workflow-util'

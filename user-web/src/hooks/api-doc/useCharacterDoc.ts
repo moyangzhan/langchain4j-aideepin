@@ -1,5 +1,5 @@
-import { t } from '@/locales'
 import type { ApiEndpointInfo } from './types'
+import { t } from '@/locales'
 
 export function useCharacterDoc(urlBase: string): ApiEndpointInfo {
   return {

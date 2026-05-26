@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { getDefaultCharacter, defaultState, findMessageFromCharacter } from './helper'
+import { defaultState, findMessageFromCharacter, getDefaultCharacter } from './helper'
 import { router } from '@/router'
 import { emptyAudioPlayState } from '@/utils/functions'
 import { CHAT_MESSAGE_CONTENT_TYPE } from '@/utils/constant'

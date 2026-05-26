@@ -1,5 +1,5 @@
-import { t } from '@/locales'
 import type { ApiEndpointInfo } from './types'
+import { t } from '@/locales'
 
 export function useKnowledgeDoc(urlBase: string): ApiEndpointInfo {
   return {

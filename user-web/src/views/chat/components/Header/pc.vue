@@ -2,7 +2,7 @@
 import { h, ref } from 'vue'
 import { NDropdown } from 'naive-ui'
 import EditConv from './EditConv.vue'
-import { SvgIcon, ApiKeyModal } from '@/components/common'
+import { ApiKeyModal, SvgIcon } from '@/components/common'
 import { useAuthStore } from '@/store'
 import { t } from '@/locales'
 import { emptyCharacter } from '@/utils/functions'

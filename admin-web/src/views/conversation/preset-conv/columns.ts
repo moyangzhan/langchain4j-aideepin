@@ -41,7 +41,7 @@ export function getColumns(): BasicColumn<CharacterPreset>[] {
       width: 120,
       render: (row) => {
         const label = typeLabels[row.type]
-        return h(NTag, { size: 'small', type: 'info' }, () => label ? t(label) : row.type)
+        return h(NTag, { size: 'small', type: 'info' }, () => (label ? t(label) : row.type))
       },
     },
     {

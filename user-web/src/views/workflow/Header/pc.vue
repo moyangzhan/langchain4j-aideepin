@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, h, ref } from 'vue'
 import { NDropdown, NTag, useMessage } from 'naive-ui'
-import { HoverButton, SvgIcon, ApiKeyModal } from '@/components/common'
+import { ApiKeyModal, HoverButton, SvgIcon } from '@/components/common'
 import { emptyWorkflowInfo } from '@/utils/functions'
 import { useAuthStore, useUserStore, useWfStore } from '@/store'
 import api from '@/api'

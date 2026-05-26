@@ -152,7 +152,7 @@ const fetchChatAPIOnce = async (regenerateQuestionUuid: string, childAudioPlaySt
   api.sseProcess({
     options: {
       prompt: '',
-      characterUuid: characterUuid,
+      characterUuid,
       regenerateQuestionUuid,
       modelPlatform: appStore.selectedLLM.modelPlatform,
       modelName: appStore.selectedLLM.modelName,
@@ -652,7 +652,7 @@ onDeactivated(() => {
                 v-if="qaMessage.state && qaMessage.state.get('remark')"
                 class="my-2 text-sm bg-gray-200 px-2 py-1 rounded-md"
               >
-                {{ qaMessage.state.get('remark')!.startsWith('state.') ? t('chat.' + qaMessage.state.get('remark')!) : qaMessage.state.get('remark') }}
+                {{ qaMessage.state.get('remark')!.startsWith('state.') ? t(`chat.${qaMessage.state.get('remark')!}`) : qaMessage.state.get('remark') }}
               </div>
             </div>
           </template>

@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import { computed, onMounted, ref, watch } from 'vue'
-import { NButton, NDivider, NList, NListItem, NModal, NScrollbar, NTabPane, NTabs, NThing, NTag, NTooltip, useMessage } from 'naive-ui'
+import { NButton, NDivider, NList, NListItem, NModal, NScrollbar, NTabPane, NTabs, NTag, NThing, NTooltip, useMessage } from 'naive-ui'
 import { useAuthStore, useChatStore } from '@/store'
 import { emptyCharacter } from '@/utils/functions'
 import EditConvDetail from '@/views/chat/components/Header/EditConvDetail.vue'

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { h, ref } from 'vue'
 import { NDropdown } from 'naive-ui'
-import { SvgIcon, ApiKeyModal } from '@/components/common'
+import { ApiKeyModal, SvgIcon } from '@/components/common'
 import { useAuthStore } from '@/store'
 import { t } from '@/locales'
 import { knowledgeBaseEmptyInfo } from '@/utils/functions'
