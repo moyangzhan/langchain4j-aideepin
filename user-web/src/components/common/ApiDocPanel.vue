@@ -2,9 +2,9 @@
 import { computed, ref } from 'vue'
 import { NButton, NCollapse, NCollapseItem, NDivider, NFlex, NH4, NTable, NSpace, useMessage } from 'naive-ui'
 import { t } from '@/locales'
-import { useCharacterDoc } from './api-doc/useCharacterDoc'
-import { useKnowledgeDoc } from './api-doc/useKnowledgeDoc'
-import { useWorkflowDoc } from './api-doc/useWorkflowDoc'
+import { useCharacterDoc } from '@/hooks/api-doc/useCharacterDoc'
+import { useKnowledgeDoc } from '@/hooks/api-doc/useKnowledgeDoc'
+import { useWorkflowDoc } from '@/hooks/api-doc/useWorkflowDoc'
 
 interface Props {
   type: string

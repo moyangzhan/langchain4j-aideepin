@@ -6,7 +6,6 @@ import com.moyz.adi.common.vo.InputAdaptorMsg;
 import com.moyz.adi.common.vo.RetrieverCreateParam;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
-import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -44,9 +43,9 @@ public class EmbeddingRag implements IRAGService {
      * @param overlap  重叠token数
      */
     @Override
-    public void ingest(Document document, int overlap, String tokenEstimator, ChatModel ChatModel) {
-        log.info("EmbeddingRag ingest,TokenCountEstimator:{}", tokenEstimator);
-        DocumentSplitter documentSplitter = DocumentSplitters.recursive(RAG_MAX_SEGMENT_SIZE_IN_TOKENS, overlap, TokenEstimatorFactory.create(tokenEstimator));
+    public void ingest(Document document, int overlap, String strategy, int maxSegmentSize, String customSeparator, String tokenEstimator, ChatModel ChatModel) {
+        log.info("EmbeddingRag ingest, strategy:{}, maxSegmentSize:{}, TokenCountEstimator:{}", strategy, maxSegmentSize, tokenEstimator);
+        DocumentSplitter documentSplitter = DocumentSplitterFactory.create(strategy, maxSegmentSize, overlap, customSeparator, TokenEstimatorFactory.create(tokenEstimator));
         EmbeddingStoreIngestor embeddingStoreIngestor = EmbeddingStoreIngestor.builder()
                 .documentSplitter(documentSplitter)
                 .embeddingModel(embeddingModel)

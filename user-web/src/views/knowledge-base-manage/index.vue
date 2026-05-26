@@ -4,10 +4,11 @@ import { computed, h, reactive, ref, watch } from 'vue'
 import { NBreadcrumb, NBreadcrumbItem, NButton, NCollapse, NCollapseItem, NDataTable, NIcon, NInput, NInputNumber, NModal, NRadio, NRadioGroup, NSelect, NTooltip, useDialog, useMessage } from 'naive-ui'
 import { RouterLink, useRouter } from 'vue-router'
 import { QuestionCircle16Regular } from '@vicons/fluent'
+import { ApiKeyModal } from '@/components/common'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
 import { useAppStore, useAuthStore, useKbStore } from '@/store'
 import { knowledgeBaseEmptyInfo } from '@/utils/functions'
-import { TOKEN_ESTIMATOR } from '@/utils/constant'
+import { TOKEN_ESTIMATOR, SPLIT_STRATEGY } from '@/utils/constant'
 import { t } from '@/locales'
 import api from '@/api'
 
@@ -32,7 +33,9 @@ const { isMobile } = useBasicLayout()
 const authStore = useAuthStore()
 const kbStore = useKbStore()
 const token = ref<string>(authStore.token)
-const itemBoxClass = 'bg-gray-100 rounded-md px-2 pt-1 pb-2 space-y-1'
+const itemBoxClass = 'space-y-1'
+const showApiKeyModal = ref(false)
+const activeKb = ref<KnowledgeBase.Info>(knowledgeBaseEmptyInfo())
 
 const changeShowModal = (selected: KnowledgeBase.Info = knowledgeBaseEmptyInfo()) => {
   Object.assign(tmpKb, selected)
@@ -95,42 +98,58 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Info> => {
     {
       title: t('common.action'),
       key: 'actions',
-      width: 120,
+      width: 100,
       align: 'center',
       render(row) {
         return h('div', { class: 'grid gap-1' }, {
           default: () => [
-            h(
-              NButton,
-              {
-                tertiary: true,
-                size: 'tiny',
-                type: 'info',
-                class: 'col-span-2',
-                onClick: () => router.push({ name: 'KnowledgeBaseManageDetail', params: { kbUuid: row.uuid } }),
-              },
-              { default: () => t('knowledgeBase.enterKnowledgeBase') },
-            ),
-            h(
-              NButton,
-              {
-                tertiary: true,
-                size: 'tiny',
-                type: 'info',
-                onClick: () => changeShowModal(row),
-              },
-              { default: () => t('common.edit') },
-            ),
-            h(
-              NButton,
-              {
-                tertiary: true,
-                size: 'tiny',
-                type: 'error',
-                onClick: () => deleteKb(row),
-              },
-              { default: () => t('common.delete') },
-            ),
+            h('div', { class: 'flex gap-1' }, [
+              h(
+                NButton,
+                {
+                  tertiary: true,
+                  size: 'tiny',
+                  type: 'info',
+                  onClick: () => router.push({ name: 'KnowledgeBaseManageDetail', params: { kbUuid: row.uuid } }),
+                },
+                { default: () => t('common.view') },
+              ),
+              h(
+                NButton,
+                {
+                  tertiary: true,
+                  size: 'tiny',
+                  type: 'info',
+                  onClick: () => {
+                    activeKb.value = row
+                    showApiKeyModal.value = true
+                  },
+                },
+                { default: () => 'API' },
+              ),
+            ]),
+            h('div', { class: 'flex gap-1' }, [
+              h(
+                NButton,
+                {
+                  tertiary: true,
+                  size: 'tiny',
+                  type: 'info',
+                  onClick: () => changeShowModal(row),
+                },
+                { default: () => t('common.edit') },
+              ),
+              h(
+                NButton,
+                {
+                  tertiary: true,
+                  size: 'tiny',
+                  type: 'error',
+                  onClick: () => deleteKb(row),
+                },
+                { default: () => t('common.delete') },
+              ),
+            ]),
           ],
         })
       },
@@ -170,6 +189,10 @@ async function search(currentPage: number) {
 }
 
 async function saveOrUpdateKb() {
+  if (tmpKb.ingestSplitStrategy === 'custom' && !tmpKb.ingestCustomSeparator?.trim()) {
+    ms.warning(t('knowledgeBase.customSeparatorRequired'))
+    return
+  }
   try {
     submitting.value = true
     const res = await api.knowledgeBaseSaveOrUpdate<KnowledgeBase.Info>(tmpKb)
@@ -314,12 +337,24 @@ watch(
         </div>
         <NCollapse>
           <NCollapseItem :title="t('knowledgeBase.docIndexSettingVector')">
-            <div class="flex flex-col space-y-2">
-              <div :class="itemBoxClass">
+            <div class="flex flex-col space-y-2" :class="itemBoxClass">
+              <div>
                 <div>{{ t('knowledgeBase.docOverlapCount') }}</div>
                 <NInputNumber v-model:value="tmpKb.ingestMaxOverlap" />
               </div>
-              <div :class="itemBoxClass">
+              <div>
+                <div>{{ t('knowledgeBase.splitStrategy') }}</div>
+                <NSelect v-model:value="tmpKb.ingestSplitStrategy" :options="SPLIT_STRATEGY" />
+              </div>
+              <div v-if="tmpKb.ingestSplitStrategy === 'custom'" >
+                <div>{{ t('knowledgeBase.customSeparator') }}</div>
+                <NInput v-model:value="tmpKb.ingestCustomSeparator" :placeholder="t('knowledgeBase.customSeparatorPlaceholder')" />
+              </div>
+              <div>
+                <div>{{ t('knowledgeBase.maxSegmentSize') }}</div>
+                <NInputNumber v-model:value="tmpKb.ingestMaxSegmentSize" :min="100" />
+              </div>
+              <div>
                 <div>
                   {{ t('knowledgeBase.tokenCounter') }}
                 </div>
@@ -389,4 +424,6 @@ watch(
       </div>
     </template>
   </NModal>
+
+  <ApiKeyModal v-model:show="showApiKeyModal" type="knowledge" :uuid="activeKb.uuid" :title="activeKb.title" />
 </template>

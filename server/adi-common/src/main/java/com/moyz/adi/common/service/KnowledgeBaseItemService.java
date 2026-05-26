@@ -177,7 +177,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                     .set(KnowledgeBaseItem::getEmbeddingStatusChangeTime, LocalDateTime.now())
                     .set(KnowledgeBaseItem::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
                     .update();
-            EmbeddingRagContext.get(KNOWLEDGE_BASE).ingest(document, knowledgeBase.getIngestMaxOverlap(), knowledgeBase.getIngestTokenEstimator(), null);
+            EmbeddingRagContext.get(KNOWLEDGE_BASE).ingest(document, knowledgeBase.getIngestMaxOverlap(), knowledgeBase.getIngestSplitStrategy(), knowledgeBase.getIngestMaxSegmentSize(), knowledgeBase.getIngestCustomSeparator(), knowledgeBase.getIngestTokenEstimator(), null);
             ChainWrappers.lambdaUpdateChain(baseMapper)
                     .eq(KnowledgeBaseItem::getId, kbItem.getId())
                     .set(KnowledgeBaseItem::getEmbeddingStatus, EmbeddingStatusEnum.DONE)
@@ -212,6 +212,9 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                             .user(user)
                             .document(document)
                             .overlap(knowledgeBase.getIngestMaxOverlap())
+                            .strategy(knowledgeBase.getIngestSplitStrategy())
+                            .maxSegmentSize(knowledgeBase.getIngestMaxSegmentSize())
+                            .customSeparator(knowledgeBase.getIngestCustomSeparator())
                             .tokenEstimator(knowledgeBase.getIngestTokenEstimator())
                             .ChatModel(ChatModel)
                             .identifyColumns(List.of(AdiConstant.MetadataKey.KB_UUID))

@@ -397,7 +397,7 @@ watch(
   </div>
 
   <NModal
-    v-model:show="showItemEditModal" :style="`width: 90%; min-height:500px; max-height: ${modalMainHeight}px`" preset="card"
+    v-model:show="showItemEditModal" style="width: 90%" preset="card"
     :title="t('knowledgeBase.knowledgeItemAddEdit')"
   >
     <NSpace vertical>
@@ -406,13 +406,15 @@ watch(
       {{ t('knowledgeBase.brief') }}
       <NInput v-model:value="tmpItem.brief" type="textarea" show-count :autosize="{ minRows: 2, maxRows: 5 }" />
       {{ t('common.content') }}
-      <NInput v-model:value="tmpItem.remark" type="textarea" show-count :autosize="{ minRows: 5, maxRows: 20 }" />
-      <div class="flex juestify-end">
+      <NInput v-model:value="tmpItem.remark" type="textarea" show-count :rows="10" />
+    </NSpace>
+    <template #footer>
+      <div class="flex justify-end">
         <NButton type="primary" :disabled="inputStatus" @click="() => { saveOrUpdate() }">
           {{ t('common.confirm') }}
         </NButton>
       </div>
-    </NSpace>
+    </template>
   </NModal>
 
   <!-- Upload files -->

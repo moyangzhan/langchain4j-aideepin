@@ -16,7 +16,9 @@
 | admin-web/ | 管理端 WEB（[Vue 3](https://github.com/vuejs/core) + [Naive UI](https://github.com/tusen-ai/naive-ui)） | [README](admin-web/README.zh-CN.md) |
 | user-web/ | 用户端 WEB（[Vue 3](https://github.com/vuejs/core) + [Naive UI](https://github.com/tusen-ai/naive-ui)） | [README](user-web/README.md) |
 
-**部署**说明详见 [docker/README.zh-CN.md](docker/README.zh-CN.md) 或各子项目的 README。
+## 快速开始
+
+二次开发见 [开发文档](docs/cn/index.md)，部署说明详见 [docker/README.zh-CN.md](docker/README.zh-CN.md) 或各子项目的 README。
 
 ## 功能点
 

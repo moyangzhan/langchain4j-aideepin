@@ -161,7 +161,7 @@ public class LongTermMemoryService {
                 } else if (AdiConstant.MemoryEvent.ADD.equalsIgnoreCase(actionMemory.getEvent())) {
                     Metadata metadata = new Metadata(Map.of(CHARACTER_ID, characterId));
                     Document document = new DefaultDocument(actionMemory.getText(), metadata);
-                    EmbeddingRagContext.get(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY).ingest(document, 20, null, null);
+                    EmbeddingRagContext.get(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY).ingest(document, 20, AdiConstant.SplitStrategy.RECURSIVE, AdiConstant.RAG_MAX_SEGMENT_SIZE_IN_TOKENS, "", null, null);
                 }
             }
         }

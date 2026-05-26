@@ -66,6 +66,20 @@ export function getColumns(): BasicColumn<KbInfoData>[] {
       },
     },
     {
+      key: 'ingestSplitStrategy',
+      width: 100,
+      title(column) {
+        return wrapTableTitle(t('columns.ingestSplitStrategy'))
+      },
+    },
+    {
+      key: 'ingestMaxSegmentSize',
+      width: 100,
+      title(column) {
+        return wrapTableTitle(t('columns.ingestMaxSegmentSize'))
+      },
+    },
+    {
       key: 'ingestModelName',
       width: 160,
       title(column) {

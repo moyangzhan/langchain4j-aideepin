@@ -301,6 +301,14 @@ public class AdiConstant {
      */
     public static final int RAG_MAX_SEGMENT_SIZE_IN_TOKENS = 1000;
 
+    public static final class SplitStrategy {
+        public static final String RECURSIVE = "recursive";
+        public static final String PARAGRAPH = "paragraph";
+        public static final String LINE = "line";
+        public static final String SENTENCE = "sentence";
+        public static final String CUSTOM = "custom";
+    }
+
     /**
      * 文档召回默认数量
      */
@@ -448,9 +456,9 @@ public class AdiConstant {
         public static final String SYNTHESIZER_SERVER = "server";
 
         /**
-         * 通义默认语音音色-龙应严(义正严辞女声)
+         * 通义默认语音音色-龙小淳(知性积极女)
          */
-        public static final String DASHSCOPE_DEFAULT_VOICE = "longyingyan";
+        public static final String DASHSCOPE_DEFAULT_VOICE = "longxiaochun_v3";
         public static final String SILICONFLOW_DEFAULT_VOICE = "FunAudioLLM/CosyVoice2-0.5B:alex";
         public static final String OPENAI_DEFAULT_VOICE = "alloy";
     }

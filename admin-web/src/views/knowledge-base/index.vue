@@ -53,6 +53,34 @@
             class="flex-grow"
           />
         </n-form-item>
+        <n-form-item :label="t('knowledgeBase.ingestSplitStrategy')" path="ingestSplitStrategy">
+          <n-select
+            :placeholder="t('knowledgeBase.ingestSplitStrategy')"
+            :options="splitStrategyOpts"
+            v-model:value="editFormParams.ingestSplitStrategy"
+          />
+        </n-form-item>
+        <n-form-item :label="t('knowledgeBase.ingestMaxSegmentSize')" path="ingestMaxSegmentSize">
+          <n-input-number
+            :placeholder="t('knowledgeBase.ingestMaxSegmentSize')"
+            v-model:value="editFormParams.ingestMaxSegmentSize"
+            :min="100"
+            class="flex-grow"
+          />
+        </n-form-item>
+        <n-form-item
+          v-if="editFormParams.ingestSplitStrategy === 'custom'"
+          :label="t('knowledgeBase.ingestCustomSeparator')"
+          path="ingestCustomSeparator"
+        >
+          <n-select
+            :placeholder="t('knowledgeBase.ingestCustomSeparatorPlaceholder')"
+            :options="customSeparatorOpts"
+            v-model:value="editFormParams.ingestCustomSeparator"
+            filterable
+            tag
+          />
+        </n-form-item>
         <n-form-item :label="t('knowledgeBase.ingestModelName')" path="ingestModelName">
           <n-select
             :placeholder="t('knowledgeBase.ingestModelNamePlaceholder')"
@@ -142,6 +170,9 @@
     isPublic: false,
     isStrict: false,
     ingestMaxOverlap: 0,
+    ingestSplitStrategy: 'recursive',
+    ingestMaxSegmentSize: 1000,
+    ingestCustomSeparator: '',
     ingestModelId: 0,
     ingestTokenEstimator: '',
     retrieveMaxResults: 0,
@@ -163,6 +194,17 @@
     { label: 'OpenAI', value: 'openai' },
     { label: 'HuggingFace', value: 'huggingface' },
     { label: 'Qwen', value: 'qwen' },
+  ]
+  const splitStrategyOpts = [
+    { label: t('knowledgeBase.splitStrategyRecursive'), value: 'recursive' },
+    { label: t('knowledgeBase.splitStrategyParagraph'), value: 'paragraph' },
+    { label: t('knowledgeBase.splitStrategyLine'), value: 'line' },
+    { label: t('knowledgeBase.splitStrategySentence'), value: 'sentence' },
+    { label: t('knowledgeBase.splitStrategyCustom'), value: 'custom' },
+  ]
+  const customSeparatorOpts = [
+    { label: t('knowledgeBase.separatorParagraph'), value: '\n\n' },
+    { label: t('knowledgeBase.separatorLine'), value: '\n' },
   ]
   const aiModelOpts = ref<SelectOpt[]>([])
   const dialog = useDialog()

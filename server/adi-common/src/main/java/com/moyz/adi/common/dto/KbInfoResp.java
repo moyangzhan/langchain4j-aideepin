@@ -14,6 +14,9 @@ public class KbInfoResp {
     private Boolean isStrict;
     private Integer starCount;
     private Integer ingestMaxOverlap;
+    private String ingestSplitStrategy;
+    private Integer ingestMaxSegmentSize;
+    private String ingestCustomSeparator;
     private String ingestModelName;
     private Long ingestModelId;
     private String ingestTokenEstimator;

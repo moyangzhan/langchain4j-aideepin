@@ -60,6 +60,18 @@ public class KnowledgeBase extends BaseEntity {
     @TableField("ingest_max_overlap")
     private Integer ingestMaxOverlap;
 
+    @Schema(title = "分段策略: recursive/paragraph/line/sentence/custom | Split strategy")
+    @TableField("ingest_split_strategy")
+    private String ingestSplitStrategy;
+
+    @Schema(title = "每段最大token数 | Max segment size in tokens")
+    @TableField("ingest_max_segment_size")
+    private Integer ingestMaxSegmentSize;
+
+    @Schema(title = "自定义分隔符,仅custom策略生效 | Custom separator, only used when strategy is custom")
+    @TableField("ingest_custom_separator")
+    private String ingestCustomSeparator;
+
     @Schema(title = "索引(图谱化)文档时使用的LLM,如不指定的话则使用第1个可用的LLM | LLM Used for Indexing (Graph) - Defaults to First Available")
     @TableField("ingest_model_name")
     private String ingestModelName;

@@ -139,7 +139,7 @@ async function handleCopy() {
 
         <!-- Key exists -->
         <template v-else>
-          <NInput :value="showingRaw ? rawKey : maskedKey" readonly :style="{ backgroundColor: 'var(--n-color-disabled)' }" />
+          <NInput :value="showingRaw ? rawKey : maskedKey" readonly :style="{ backgroundColor: 'var(--n-color-disabled)', marginBottom: '8px' }" />
           <NFlex justify="end" :size="8">
             <NButton v-if="showingRaw" size="small" @click="handleCopy">
               {{ t('extApi.copyKey') }}

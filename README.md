@@ -16,7 +16,9 @@ Demo: [http://www.aideepin.com](http://www.aideepin.com/)
 | admin-web/ | Admin dashboard ([Vue 3](https://github.com/vuejs/core) + [Naive UI](https://github.com/tusen-ai/naive-ui)) | [README](admin-web/README.md) |
 | user-web/ | User-facing web app ([Vue 3](https://github.com/vuejs/core) + [Naive UI](https://github.com/tusen-ai/naive-ui)) | [README](user-web/README.md) |
 
-See [docker/README.md](docker/README.md) or each sub-project's README for detailed **deployment** instructions.
+## Quick Start
+
+See [Development Guide](docs/en/index.md) for secondary development. For deployment, see [docker/README.md](docker/README.md) or each sub-project's README.
 
 ## Features
 

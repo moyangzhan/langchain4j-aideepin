@@ -14,6 +14,9 @@ public class GraphIngestParams {
     private User user;
     private Document document;
     private int overlap;
+    private String strategy;
+    private int maxSegmentSize;
+    private String customSeparator;
     private String tokenEstimator;
     private ChatModel ChatModel;
     private List<String> identifyColumns;

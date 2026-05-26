@@ -13,6 +13,9 @@ declare namespace KnowledgeBase {
     itemCount: number
     embeddingCount: number
     ingestMaxOverlap: number
+    ingestSplitStrategy: string
+    ingestMaxSegmentSize: number
+    ingestCustomSeparator: string
     ingestModelId: string
     ingestTokenEstimator: string
     retrieveMaxResults: number

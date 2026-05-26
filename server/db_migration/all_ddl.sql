@@ -595,6 +595,9 @@ create table adi_knowledge_base
     is_public              boolean       default false             not null,
     is_strict              boolean       default true              not null,
     ingest_max_overlap     int           default 0                 not null,
+    ingest_split_strategy  varchar(20)   default 'recursive'       not null,
+    ingest_max_segment_size int          default 1000              not null,
+    ingest_custom_separator varchar(100) default ''                not null,
     ingest_model_name      varchar(45)   default ''                not null,
     ingest_model_id        bigint        default 0                 not null,
     ingest_token_estimator varchar(45)   default ''                not null,
@@ -621,6 +624,9 @@ comment on column adi_knowledge_base.remark is 'Knowledge Base Description';
 comment on column adi_knowledge_base.is_public is 'Is Public';
 comment on column adi_knowledge_base.is_strict is 'Strict mode: return no answer if no results found in knowledge base; Non-strict: fall back to LLM if no results';
 comment on column adi_knowledge_base.ingest_max_overlap is 'Max overlap (in tokens) when chunking documents, only used when cutting complete sentences';
+comment on column adi_knowledge_base.ingest_split_strategy is 'Split strategy: recursive/paragraph/line/sentence/custom';
+comment on column adi_knowledge_base.ingest_max_segment_size is 'Max segment size in tokens when chunking documents';
+comment on column adi_knowledge_base.ingest_custom_separator is 'Custom separator for splitting, only used when strategy is custom';
 comment on column adi_knowledge_base.ingest_model_name is 'LLM used for indexing/graphing documents, defaults to first available LLM';
 comment on column adi_knowledge_base.ingest_model_id is 'LLM ID for indexing/graphing, defaults to first available LLM';
 comment on column adi_knowledge_base.ingest_token_estimator is 'Token count estimator, default is OpenAiTokenizer';

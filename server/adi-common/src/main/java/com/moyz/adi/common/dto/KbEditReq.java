@@ -27,6 +27,12 @@ public class KbEditReq {
 
     private Integer ingestMaxOverlap;
 
+    private String ingestSplitStrategy;
+
+    private Integer ingestMaxSegmentSize;
+
+    private String ingestCustomSeparator;
+
     private Long ingestModelId;
 
     private String ingestTokenEstimator;

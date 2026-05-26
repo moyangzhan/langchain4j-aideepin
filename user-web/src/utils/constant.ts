@@ -3,6 +3,14 @@ export const TOKEN_ESTIMATOR = [
   { label: '通义千问', value: 'qwen' },
   { label: 'Huggingface', value: 'huggingface' },
 ]
+
+export const SPLIT_STRATEGY = [
+  { label: '递归分段', value: 'recursive' },
+  { label: '按段落', value: 'paragraph' },
+  { label: '按行', value: 'line' },
+  { label: '按句', value: 'sentence' },
+  { label: '自定义分隔符', value: 'custom' },
+]
 export const OPENAI_IMAGE_SIZE_OPTIONS = [
   { label: '方(1024x1024)', value: '1024x1024' },
   { label: '竖屏(1024x1536)', value: '1024x1536' },

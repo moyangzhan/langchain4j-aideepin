@@ -12,7 +12,6 @@ import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.GraphIngestParams;
 import com.moyz.adi.common.vo.RetrieverCreateParam;
 import dev.langchain4j.data.document.DocumentSplitter;
-import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -23,8 +22,6 @@ import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.moyz.adi.common.cosntant.AdiConstant.RAG_MAX_SEGMENT_SIZE_IN_TOKENS;
 
 /**
  * 知识图谱RAG，基于图谱存储进行问答增强
@@ -57,7 +54,12 @@ public class GraphRag {
     public void ingest(GraphIngestParams graphIngestParams) {
         log.info("GraphRag ingest");
         User user = graphIngestParams.getUser();
-        DocumentSplitter documentSplitter = DocumentSplitters.recursive(RAG_MAX_SEGMENT_SIZE_IN_TOKENS, graphIngestParams.getOverlap(), TokenEstimatorFactory.create(graphIngestParams.getTokenEstimator()));
+        DocumentSplitter documentSplitter = DocumentSplitterFactory.create(
+                graphIngestParams.getStrategy(),
+                graphIngestParams.getMaxSegmentSize(),
+                graphIngestParams.getOverlap(),
+                graphIngestParams.getCustomSeparator(),
+                TokenEstimatorFactory.create(graphIngestParams.getTokenEstimator()));
         GraphStoreIngestor ingestor = GraphStoreIngestor.builder()
                 .documentSplitter(documentSplitter)
                 .segmentsFunction(segments -> {
