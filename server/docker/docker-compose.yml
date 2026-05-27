@@ -40,6 +40,6 @@ services:
     ports:
       - 9999:9999
     volumes:
-      - /data/aideepin/logs:/data/logs
+      - /data/aideepin-logs:/data/aideepin-logs
     depends_on:
       - redis

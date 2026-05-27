@@ -29,6 +29,7 @@ const typeLabelMap = computed<Record<string, string>>(() => ({
 const authStore = useAuthStore()
 const authStoreRef = ref<AuthState>(authStore)
 const savingUuids = ref<Set<string>>(new Set())
+const expandedUuids = ref<Set<string>>(new Set())
 const loadingPresetCharacters = ref<boolean>(false)
 const loadingRels = ref<boolean>(false)
 const tmpCharacter = ref<Chat.Character>(emptyCharacter())
@@ -133,6 +134,13 @@ onMounted(async () => {
 function toggleModal() {
   showModal.value = !showModal.value
 }
+
+function toggleExpand(uuid: string) {
+  if (expandedUuids.value.has(uuid))
+    expandedUuids.value.delete(uuid)
+  else
+    expandedUuids.value.add(uuid)
+}
 defineExpose({ toggleModal })
 </script>
 
@@ -149,7 +157,7 @@ defineExpose({ toggleModal })
               {{ typeLabelMap[type] || type }}
             </NDivider>
             <NList hoverable bordered>
-              <NListItem v-for="presetCharacter in presets" :key="presetCharacter.id">
+              <NListItem v-for="presetCharacter in presets" :key="presetCharacter.id" style="cursor: pointer;" @click="toggleExpand(presetCharacter.uuid)">
                 <NThing content-style="margin-top: 6px;">
                   <template #header>
                     {{ presetCharacter.title }}
@@ -166,9 +174,17 @@ defineExpose({ toggleModal })
                     </NTooltip>
                   </template>
                   {{ presetCharacter.remark }}
+                  <div v-if="expandedUuids.has(presetCharacter.uuid)" @click.stop style="cursor: default;">
+                    <NDivider title-placement="left" style="margin: 8px 0; font-size: 12px;">
+                      {{ t('chat.roleSetting') }}
+                    </NDivider>
+                    <div style="max-height: 200px; overflow-y: auto; white-space: pre-wrap; font-size: 13px;">
+                      {{ presetCharacter.aiSystemMessage }}
+                    </div>
+                  </div>
                 </NThing>
                 <template #suffix>
-                  <NButton size="small" :loading="savingUuids.has(presetCharacter.uuid)" :disabled="savingUuids.has(presetCharacter.uuid)" @click="handleUsePresetCharacter(presetCharacter)">
+                  <NButton size="small" :loading="savingUuids.has(presetCharacter.uuid)" :disabled="savingUuids.has(presetCharacter.uuid)" @click.stop="handleUsePresetCharacter(presetCharacter)">
                     {{ savingUuids.has(presetCharacter.uuid) ? t('chat.copying') : t('chat.use') }}
                   </NButton>
                 </template>

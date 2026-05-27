@@ -28,14 +28,14 @@
     </appender>
     <!-- 按照每天生成常规日志文件 -->
     <appender name="FileAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_PATH:-/data/logs}/adi.log</file>
+        <file>${LOG_PATH:-/data/aideepin-logs}/app.log</file>
         <encoder>
             <pattern>${CONSOLE_LOG_PATTERN_NO_COLOR}</pattern>
             <charset>UTF-8</charset>
         </encoder>
         <!-- 基于时间的分包策略 -->
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_PATH:-/data/logs}/%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${LOG_PATH:-/data/aideepin-logs}/%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <!--保留时间,单位:天-->
             <maxHistory>${LOG_FILEMAXDAY}</maxHistory>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">

@@ -125,6 +125,7 @@ export default {
     kbCreated: 'Knowledge base "{kbTitle}" created',
     kbAutoCreateTip: 'A new dedicated knowledge base will be created automatically',
     kbAttached: 'With KB',
+    roleSetting: 'Role Setting',
     presetTypeTechnology: 'Technology',
     presetTypeCreative: 'Creative',
     presetTypeEducation: 'Education',

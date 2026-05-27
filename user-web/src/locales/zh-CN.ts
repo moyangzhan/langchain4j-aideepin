@@ -125,6 +125,7 @@ export default {
     kbCreated: '知识库「{kbTitle}」已创建',
     kbAutoCreateTip: '复制时会自动创建一个新的专用知识库',
     kbAttached: '含知识库',
+    roleSetting: '角色设定',
     presetTypeTechnology: '技术/工程',
     presetTypeCreative: '内容/创意',
     presetTypeEducation: '教育/学术',

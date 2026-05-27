@@ -41,6 +41,7 @@ services:
       # ADI_NEO4J_DATABASE: ${ADI_NEO4J_DATABASE}
     volumes:
       - /data/aideepin:/data/aideepin
+      - /data/aideepin-logs:/data/aideepin-logs
     depends_on:
       - redis
 

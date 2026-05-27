@@ -52,10 +52,6 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
 
-logging:
-  file:
-    name: ${local.base-data-path}/logs/app.log
-
 adi:
   host: ${ADI_HOST:aideepin.com}
   frontend-url: http://www.${adi.host}
