@@ -2,7 +2,7 @@
 import { NImage, NImageGroup } from 'naive-ui'
 import { SvgIcon } from '@/components/common'
 import { getIconByComponentName, getIconClassByComponentName } from '@/utils/workflow-util'
-import { useAuthStore, useWfStore } from '@/store'
+import { useAuthStore } from '@/store'
 import { t } from '@/locales'
 import { getRealFileUrl } from '@/utils/functions'
 import TextComponent from '@/views/chat/components/Message/Text.vue'
@@ -12,8 +12,7 @@ interface Props {
   workflow: Workflow.WorkflowInfo
   errorMsg: string
 }
-const props = defineProps<Props>()
-const wfStore = useWfStore()
+defineProps<Props>()
 const authStore = useAuthStore()
 </script>
 
