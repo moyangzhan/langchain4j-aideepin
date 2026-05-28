@@ -1,5 +1,5 @@
 <script setup lang='ts'>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { NAlert, NButton, NFlex, NH4, NInput, NModal, NPopconfirm, NSpace, useMessage } from 'naive-ui'
 import ApiDocPanel from './ApiDocPanel.vue'
 import api from '@/api'
@@ -32,9 +32,12 @@ const showingRaw = ref(false)
 const justGenerated = ref(false)
 const canManage = ref(false)
 
+// 判断是否为用户级 API Key 类型
+const isUserLevelType = computed(() => ['draw', 'mcp'].includes(props.type))
+
 watch(() => props.show, (val) => {
   innerShow.value = val
-  if (val && props.uuid)
+  if (val)
     fetchKeyInfo()
 })
 
@@ -52,7 +55,11 @@ async function fetchKeyInfo() {
     return
   loading.value = true
   try {
-    const { data } = await api.extApiKeyInfo<{ rawKey: string | null; maskedKey: string | null; canManage: boolean }>(props.type, props.uuid)
+    let data
+    if (isUserLevelType.value)
+      data = (await api.extApiKeyUserInfo(props.type)).data
+    else
+      data = (await api.extApiKeyInfo(props.type, props.uuid)).data
     maskedKey.value = data?.maskedKey ?? ''
     canManage.value = data?.canManage ?? false
     rawKey.value = ''
@@ -70,7 +77,11 @@ async function fetchKeyInfo() {
 async function handleGenerate() {
   loading.value = true
   try {
-    const { data } = await api.extApiKeyGenerate<{ rawKey: string; maskedKey: string }>(props.type, props.uuid)
+    let data
+    if (isUserLevelType.value)
+      data = (await api.extApiKeyUserGenerate(props.type)).data
+    else
+      data = (await api.extApiKeyGenerate(props.type, props.uuid)).data
     maskedKey.value = data.maskedKey
     rawKey.value = data.rawKey
     justGenerated.value = true
@@ -90,7 +101,11 @@ async function handleReveal() {
   }
   loading.value = true
   try {
-    const { data } = await api.extApiKeyReveal<{ rawKey: string; maskedKey: string }>(props.type, props.uuid)
+    let data
+    if (isUserLevelType.value)
+      data = (await api.extApiKeyUserReveal(props.type)).data
+    else
+      data = (await api.extApiKeyReveal(props.type, props.uuid)).data
     rawKey.value = data.rawKey
     showingRaw.value = true
   } catch {
@@ -113,7 +128,7 @@ async function handleCopy() {
 </script>
 
 <template>
-  <NModal v-model:show="innerShow" :title="`${title} - ${t('extApi.apiAccess')}`" style="width: 90%; max-width: 640px" preset="card" :mask-closable="false" :auto-focus="false" content-style="max-height: 80vh; overflow-y: auto;">
+  <NModal v-model:show="innerShow" :title="`${title} - ${t('extApi.apiAccess')}`" style="width: 90%; max-width: 900px" preset="card" :mask-closable="false" :auto-focus="false" content-style="max-height: 80vh; overflow-y: auto;">
     <NSpace vertical :size="16">
       <NH4 v-if="canManage" style="margin: 0">
         {{ t('extApi.apiKeyLabel') }}

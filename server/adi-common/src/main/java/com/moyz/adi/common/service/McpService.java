@@ -72,6 +72,17 @@ public class McpService extends ServiceImpl<McpMapper, Mcp> {
         return list;
     }
 
+    /**
+     * 获取系统中所有已启用的 MCP 服务列表
+     */
+    public List<Mcp> listAllEnabled() {
+        return this.lambdaQuery()
+                .eq(Mcp::getIsEnable, true)
+                .eq(Mcp::getIsDeleted, false)
+                .orderByDesc(Mcp::getUpdateTime)
+                .list();
+    }
+
     public int enable(String uuid, Boolean isEnable) {
         Mcp existObj = PrivilegeUtil.checkAndGetByUuid(uuid, this.query(), A_MCP_SERVER_NOT_FOUND);
         Mcp updateObj = new Mcp();

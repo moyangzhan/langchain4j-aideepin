@@ -109,8 +109,8 @@ VALUES ('gpt-5.4-mini', 'gpt-5.4-mini', 'text', 'openai', 400000, 272000, 128000
         false);
 
 
-INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
-VALUES ('gpt-image-2', 'GPT-Image-2', 'image', 'openai', false);
+INSERT INTO adi_ai_model (name, title, type, platform, properties, is_enable)
+VALUES ('gpt-image-2', 'GPT-Image-2', 'image', 'openai', '{"max_images": 10}', false);
 -- OpenAI 语音识别 (ASR)
 INSERT INTO adi_ai_model (name, title, type, platform, input_types, is_enable)
 VALUES ('gpt-4o-mini-transcribe', 'OpenAI-ASR', 'asr', 'openai', 'audio', false);
@@ -154,8 +154,8 @@ INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input
 VALUES ('qwen2-vl-7b-instruct', 'Qwen-Vision', 'vision', 'dashscope', 32768, 16384, 16384, 'text,image', false);
 -- https://help.aliyun.com/zh/model-studio/developer-reference/text-to-image-v2-api-reference?spm=a2c4g.11186623.0.i2
 -- 通义万相-文生图（wanx2.1-t2i-plus、wanx2.1-t2i-turbo）
-INSERT INTO adi_ai_model (name, title, type, platform, is_enable)
-VALUES ('wanx2.1-t2i-turbo', 'Qwen-Image', 'image', 'dashscope', false);
+INSERT INTO adi_ai_model (name, title, type, platform, properties, is_enable)
+VALUES ('wanx2.1-t2i-turbo', 'Qwen-Image', 'image', 'dashscope', '{"max_images": 4}', false);
 -- 通义万相-切换背景
 INSERT INTO adi_ai_model (name, title, type, platform, input_types, is_enable)
 VALUES ('wanx-background-generation-v2', 'Qwen-Background', 'image', 'dashscope', 'text,image', false);
@@ -587,7 +587,8 @@ VALUES ('Kwai-Kolors/Kolors', 'SiliconFlow-Image', 'image', 'siliconflow', '{
     "768x1024",
     "720x1440",
     "720x1280"
-  ]
+  ],
+  "max_images": 4
 }',
         'Kolors 是由快手 Kolors 团队开发的基于潜在扩散的大规模文本到图像生成模型。该模型通过数十亿文本-图像对的训练，在视觉质量、复杂语义准确性以及中英文字符渲染方面展现出显著优势。它不仅支持中英文输入，在理解和生成中文特定内容方面也表现出色。',
         true, false);

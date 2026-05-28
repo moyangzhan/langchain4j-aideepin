@@ -1,14 +1,24 @@
 <script setup lang='ts'>
-import { ref } from 'vue'
-import { NRadio, NRadioGroup } from 'naive-ui'
-import { ImageModelSelector } from '@/components/common'
+import { computed, ref } from 'vue'
+import { NButton, NDropdown, NRadio, NRadioGroup } from 'naive-ui'
+import { ApiKeyModal, ImageModelSelector, SvgIcon } from '@/components/common'
 import { t } from '@/locales'
 
 const emit = defineEmits<Emit>()
 const selectedDisplayStyle = ref<string>('chatStyle')
+const showApiKeyModal = ref(false)
 
 interface Emit {
   (ev: 'displayStyleChange', style: string): void
+}
+
+const menuOptions = computed(() => [
+  { label: t('extApi.apiAccess'), key: 'api' },
+])
+
+function handleMenuSelect(key: string) {
+  if (key === 'api')
+    showApiKeyModal.value = true
 }
 
 function handleDisplayChange(value: string) {
@@ -35,7 +45,17 @@ function handleDisplayChange(value: string) {
             {{ t('draw.galleryStyle') }}
           </NRadio>
         </NRadioGroup>
+        <div class="w-px h-4 bg-gray-300 dark:bg-gray-600" />
+        <NDropdown :options="menuOptions" trigger="click" @select="handleMenuSelect">
+          <NButton quaternary circle size="small">
+            <template #icon>
+              <SvgIcon icon="ri:more-fill" />
+            </template>
+          </NButton>
+        </NDropdown>
       </div>
     </div>
   </header>
+
+  <ApiKeyModal v-model:show="showApiKeyModal" type="draw" uuid="" :title="t('draw.title')" />
 </template>

@@ -1,6 +1,7 @@
-package com.moyz.adi.common.dto;
+package com.moyz.adi.common.dto.extapi;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,16 +11,22 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class CreateImageDto {
+public class ExtApiDrawReq {
+
+    @NotBlank(message = "prompt is required")
     private String prompt;
+
     private String negativePrompt;
+
     private String size;
+
     private String quality;
-    private int number;
-    private int interactingMethod;
+
+    @Min(1)
+    @Builder.Default
+    private int number = 1;
+
+    private String model;
+
     private int seed;
-    private String originalImage;
-    private String maskImage;
-    private String modelName;
-    private JsonNode dynamicParams;
 }

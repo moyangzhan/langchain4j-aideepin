@@ -33,19 +33,22 @@ export function useWorkflowDoc(urlBase: string, inputDefs?: Workflow.NodeIODefin
       }`
 
   return {
-    endpoint: `${urlBase}/workflow/run`,
-    method: 'POST',
-    description: t('extApi.docWfDesc'),
-    params: [
-      { name: 'inputs', type: 'array', required: t('common.no'), desc: inputsDesc },
-      { name: 'response_mode', type: 'string', required: t('common.no'), desc: t('extApi.docParamMode') },
-    ],
-    responseFields: [
-      { name: 'task_id', type: 'string', required: '', desc: t('extApi.docRespTaskId') },
-      { name: 'status', type: 'string', required: '', desc: t('extApi.docRespStatus') },
-      { name: 'outputs', type: 'object', required: '', desc: t('extApi.docParamOutputs') },
-    ],
-    responseExample: `{
+    endpoints: [
+      {
+        title: t('extApi.docWfTitle'),
+        description: t('extApi.docWfDesc'),
+        endpoint: `${urlBase}/workflow/run`,
+        method: 'POST',
+        params: [
+          { name: 'inputs', type: 'array', required: t('common.no'), desc: inputsDesc },
+          { name: 'response_mode', type: 'string', required: t('common.no'), desc: t('extApi.docParamMode') },
+        ],
+        responseFields: [
+          { name: 'task_id', type: 'string', required: '', desc: t('extApi.docRespTaskId') },
+          { name: 'status', type: 'string', required: '', desc: t('extApi.docRespStatus') },
+          { name: 'outputs', type: 'object', required: '', desc: t('extApi.docParamOutputs') },
+        ],
+        responseExample: `{
   "success": true,
   "data": {
     "task_id": "f8e7d6c5b4a3",
@@ -59,7 +62,7 @@ export function useWorkflowDoc(urlBase: string, inputDefs?: Workflow.NodeIODefin
     }
   }
 }`,
-    curlExample: `curl -X POST '${urlBase}/workflow/run' \\
+        curlExample: `curl -X POST '${urlBase}/workflow/run' \\
   -H 'Authorization: YOUR_API_KEY' \\
   -H 'Content-Type: application/json' \\
   -d '{
@@ -68,5 +71,7 @@ ${inputsExample}
     ],
     "response_mode": "blocking"
   }'`,
+      },
+    ],
   }
 }

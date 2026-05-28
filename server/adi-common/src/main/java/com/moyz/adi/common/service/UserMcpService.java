@@ -53,6 +53,40 @@ public class UserMcpService extends ServiceImpl<UserMcpMapper, UserMcp> {
                 .list();
     }
 
+    /**
+     * 获取用户已启用的MCP列表（用于External API）
+     * 返回用户已启用的MCP服务信息，不包含敏感配置
+     */
+    public List<UserMcpDto> searchByUserIdForExtApi(Long userId) {
+        List<UserMcp> userMcpList = this.lambdaQuery()
+                .eq(UserMcp::getUserId, userId)
+                .eq(UserMcp::getIsEnable, true)
+                .eq(UserMcp::getIsDeleted, false)
+                .list();
+
+        List<UserMcpDto> dtoList = new ArrayList<>();
+
+        List<Mcp> mcpList = new ArrayList<>();
+        if (!userMcpList.isEmpty()) {
+            mcpList = mcpService.listByIds(userMcpList.stream()
+                    .map(UserMcp::getMcpId)
+                    .distinct()
+                    .toList());
+        }
+        for (UserMcp userMcp : userMcpList) {
+            UserMcpDto dto = new UserMcpDto();
+            BeanUtils.copyProperties(userMcp, dto);
+
+            Mcp mcp = mcpList.stream()
+                    .filter(item -> item.getId().equals(dto.getMcpId()))
+                    .findFirst()
+                    .orElse(null);
+            setMcpInfo(dto, mcp);
+            dtoList.add(dto);
+        }
+        return dtoList;
+    }
+
     public Page<UserMcpDto> searchByUserId(Long userId, Integer currentPage, Integer pageSize) {
         Page<UserMcp> page = this.lambdaQuery()
                 .eq(UserMcp::getUserId, userId)

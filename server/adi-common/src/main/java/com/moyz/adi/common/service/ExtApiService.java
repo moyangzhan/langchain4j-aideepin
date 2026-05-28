@@ -18,7 +18,7 @@ import static com.moyz.adi.common.enums.ErrorEnum.*;
 /**
  * External API Key management service.
  * Supports generating, retrieving (masked), revealing, and validating API keys
- * for characters, knowledge bases, and workflows.
+ * for characters, knowledge bases, workflows, and user-level resources (draw, mcp).
  */
 @Slf4j
 @Service
@@ -37,6 +37,11 @@ public class ExtApiService {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private UserExtApiKeyService userExtApiKeyService;
+
+    // ========== 资源级 API Key 方法 ==========
 
     /**
      * Generate an API key for the specified resource.
@@ -77,6 +82,7 @@ public class ExtApiService {
                         .set(Workflow::getApiKey, encryptedValue)
                         .update();
             }
+            default -> throw new BaseException(A_PARAMS_ERROR);
         }
 
         log.info("API key generated for {} uuid:{}, userId:{}", type, uuid, currentUser.getId());
@@ -195,7 +201,102 @@ public class ExtApiService {
                 }
                 yield new ValidateResult(wf.getUuid(), owner);
             }
+            default -> throw new BaseException(A_PARAMS_ERROR);
         };
+    }
+
+    // ========== 用户级 API Key 方法 ==========
+
+    /**
+     * 为当前用户生成用户级 API Key
+     *
+     * @param type 资源类型（draw, mcp）
+     * @return ApiKeyResp
+     */
+    public ApiKeyResp generateUserApiKey(String type) {
+        User currentUser = ThreadContext.getCurrentUser();
+        String rawKey = KEY_PREFIX + AesUtil.generateRandomKey();
+        String encryptedValue = AesUtil.encrypt(rawKey);
+
+        userExtApiKeyService.saveOrUpdate(currentUser.getId(), type, encryptedValue);
+
+        log.info("User-level API key generated for type:{}, userId:{}", type, currentUser.getId());
+        return ApiKeyResp.builder()
+                .rawKey(rawKey)
+                .maskedKey(maskKey(rawKey))
+                .build();
+    }
+
+    /**
+     * 获取当前用户的用户级 API Key 信息（掩码）
+     *
+     * @param type 资源类型（draw, mcp）
+     * @return ApiKeyResp
+     */
+    public ApiKeyResp getUserApiKeyInfo(String type) {
+        User currentUser = ThreadContext.getCurrentUser();
+
+        UserExtApiKey keyRecord = userExtApiKeyService.getByUserAndType(currentUser.getId(), type);
+
+        if (keyRecord == null || StringUtils.isBlank(keyRecord.getApiKey())) {
+            return ApiKeyResp.builder().canManage(true).build();
+        }
+
+        String rawKey = AesUtil.decrypt(keyRecord.getApiKey());
+        return ApiKeyResp.builder()
+                .rawKey(null)
+                .maskedKey(maskKey(rawKey))
+                .canManage(true)
+                .build();
+    }
+
+    /**
+     * 查看当前用户的用户级 API Key 明文
+     *
+     * @param type 资源类型（draw, mcp）
+     * @return ApiKeyResp
+     */
+    public ApiKeyResp revealUserApiKey(String type) {
+        User currentUser = ThreadContext.getCurrentUser();
+
+        UserExtApiKey keyRecord = userExtApiKeyService.getByUserAndType(currentUser.getId(), type);
+
+        if (keyRecord == null || StringUtils.isBlank(keyRecord.getApiKey())) {
+            throw new BaseException(A_API_KEY_NOT_FOUND);
+        }
+
+        String rawKey = AesUtil.decrypt(keyRecord.getApiKey());
+        return ApiKeyResp.builder()
+                .rawKey(rawKey)
+                .maskedKey(maskKey(rawKey))
+                .build();
+    }
+
+    /**
+     * 验证用户级 API Key
+     *
+     * @param rawKey API Key 明文
+     * @param type   资源类型（draw, mcp）
+     * @return ValidateResult
+     */
+    public ValidateResult validateUserApiKey(String rawKey, String type) {
+        if (StringUtils.isBlank(rawKey) || !rawKey.startsWith(KEY_PREFIX)) {
+            throw new BaseException(A_API_KEY_INVALID);
+        }
+
+        String encryptedValue = AesUtil.encrypt(rawKey);
+        UserExtApiKey keyRecord = userExtApiKeyService.getByEncryptedKey(type, encryptedValue);
+
+        if (keyRecord == null) {
+            throw new BaseException(A_API_KEY_NOT_FOUND);
+        }
+
+        User owner = userService.getById(keyRecord.getUserId());
+        if (owner == null || owner.getIsDeleted()) {
+            throw new BaseException(A_API_KEY_INVALID);
+        }
+
+        return new ValidateResult(null, owner); // 用户级 API Key 没有 entityUuid
     }
 
     // ========== Private helpers ==========
@@ -228,6 +329,7 @@ public class ExtApiService {
                 checkOwnership(wf.getUserId(), currentUser);
                 yield wf.getApiKey();
             }
+            default -> throw new BaseException(A_PARAMS_ERROR);
         };
     }
 
@@ -245,6 +347,7 @@ public class ExtApiService {
             case CHARACTER -> getCharacterOrThrow(uuid).getUserId();
             case KNOWLEDGE -> getKbOrThrow(uuid).getOwnerId();
             case WORKFLOW -> getWfOrThrow(uuid).getUserId();
+            default -> null;
         };
         return currentUser.getId().equals(resourceUserId);
     }
@@ -254,6 +357,7 @@ public class ExtApiService {
             case CHARACTER -> getCharacterOrThrow(uuid).getApiKey();
             case KNOWLEDGE -> getKbOrThrow(uuid).getApiKey();
             case WORKFLOW -> getWfOrThrow(uuid).getApiKey();
+            default -> null;
         };
     }
 

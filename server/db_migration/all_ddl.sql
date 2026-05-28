@@ -54,7 +54,7 @@ CREATE TABLE adi_draw
     create_time           timestamp     default CURRENT_TIMESTAMP not null,
     update_time           timestamp     default CURRENT_TIMESTAMP not null,
     is_deleted            boolean       default false             not null,
-    CONSTRAINT adi_draw_generate_number_check CHECK (((generate_number >= 1) AND (generate_number <= 10))),
+    CONSTRAINT adi_draw_generate_number_check CHECK ((generate_number >= 1)),
     CONSTRAINT adi_draw_process_status_check CHECK ((process_status = ANY (ARRAY [1, 2, 3]))),
     CONSTRAINT adi_draw_user_id_check CHECK ((user_id >= 0))
 );
@@ -67,7 +67,7 @@ COMMENT ON COLUMN adi_draw.ai_model_name IS 'Image model name';
 COMMENT ON COLUMN adi_draw.prompt IS 'The prompt for generating images';
 COMMENT ON COLUMN adi_draw.generate_size IS 'Image generation size';
 COMMENT ON COLUMN adi_draw.generate_quality IS 'Image generation quality';
-COMMENT ON COLUMN adi_draw.generate_number IS 'Number of images to generate (1-10)';
+COMMENT ON COLUMN adi_draw.generate_number IS 'Number of images to generate (limited by model max_images)';
 COMMENT ON COLUMN adi_draw.generate_seed IS 'Random seed for reproducible generation';
 COMMENT ON COLUMN adi_draw.original_image IS 'Original image UUID (required for interacting method 2 or 3)';
 COMMENT ON COLUMN adi_draw.mask_image IS 'Deprecated. The UUID of the mask image for editing (interacting method 2)';
@@ -579,6 +579,32 @@ COMMENT ON COLUMN adi_user_day_cost.draw_times IS 'Number of images';
 CREATE TRIGGER trigger_user_day_cost_update_time
     BEFORE UPDATE
     ON adi_user_day_cost
+    FOR EACH ROW
+EXECUTE PROCEDURE update_modified_column();
+
+CREATE TABLE adi_user_ext_api_key
+(
+    id            bigserial primary key,
+    user_id       bigint        default 0                 not null,
+    resource_type varchar(20)   default ''                not null,
+    api_key       varchar(256)  default ''                not null,
+    create_time   timestamp     default CURRENT_TIMESTAMP not null,
+    update_time   timestamp     default CURRENT_TIMESTAMP not null,
+    is_deleted    boolean       default false             not null
+);
+
+CREATE UNIQUE INDEX udx_user_resource_type
+    ON adi_user_ext_api_key(user_id, resource_type)
+    WHERE is_deleted = false;
+
+COMMENT ON TABLE adi_user_ext_api_key IS 'User-level External API Key';
+COMMENT ON COLUMN adi_user_ext_api_key.user_id IS 'User ID';
+COMMENT ON COLUMN adi_user_ext_api_key.resource_type IS 'Resource type: draw, mcp';
+COMMENT ON COLUMN adi_user_ext_api_key.api_key IS 'Encrypted External API Key';
+
+CREATE TRIGGER trigger_user_ext_api_key_update_time
+    BEFORE UPDATE
+    ON adi_user_ext_api_key
     FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
 

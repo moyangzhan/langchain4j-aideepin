@@ -1,6 +1,6 @@
 <script setup lang='ts'>
-import { ref, watch } from 'vue'
-import { NAlert, NButton, NIcon, NInput, NModal, NRadio, NRadioGroup, NTabPane, NTable, NTabs, NTooltip, useLoadingBar, useMessage } from 'naive-ui'
+import { computed, ref, watch } from 'vue'
+import { NAlert, NButton, NDropdown, NIcon, NInput, NModal, NRadio, NRadioGroup, NTabPane, NTable, NTabs, NTooltip, useLoadingBar, useMessage } from 'naive-ui'
 import { QuestionCircle16Regular } from '@vicons/fluent'
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js'
@@ -10,6 +10,7 @@ import McpInfoList from './McpInfoList.vue'
 import UserMcpList from './UserMcpList.vue'
 import { t } from '@/locales'
 import { useAuthStore, useMcpStore } from '@/store'
+import { ApiKeyModal, SvgIcon } from '@/components/common'
 
 import { emptyMcp, emptyUserMcp } from '@/utils/functions'
 import api from '@/api'
@@ -18,11 +19,21 @@ const authStore = useAuthStore()
 const ms = useMessage()
 const mcpStore = useMcpStore()
 const showConfigModal = ref<boolean>(false)
+const showApiKeyModal = ref<boolean>(false)
 const selectedMcp = ref<Mcp.McpInfo>(emptyMcp())
 const selectedUserMcp = ref<Mcp.UserMcp>(emptyUserMcp())
 const publicOrUser = ref<string>('serversView')
 const loaddingBar = useLoadingBar()
 const selectedTab = ref<string>('configTab')
+
+const menuOptions = computed(() => [
+  { label: t('extApi.apiAccess'), key: 'api' },
+])
+
+function handleMenuSelect(key: string) {
+  if (key === 'api')
+    showApiKeyModal.value = true
+}
 
 const mdi = new MarkdownIt({
   linkify: true,
@@ -132,6 +143,15 @@ watch(
             </NRadio>
           </NRadioGroup>
         </div>
+        <div class="flex items-center">
+          <NDropdown :options="menuOptions" trigger="click" @select="handleMenuSelect">
+            <NButton quaternary circle size="small">
+              <template #icon>
+                <SvgIcon icon="ri:more-fill" />
+              </template>
+            </NButton>
+          </NDropdown>
+        </div>
       </div>
     </header>
 
@@ -233,6 +253,8 @@ watch(
         </NTabPane>
       </NTabs>
     </NModal>
+
+    <ApiKeyModal v-model:show="showApiKeyModal" type="mcp" uuid="" :title="t('mcp.title')" />
   </div>
 </template>
 

@@ -10,7 +10,9 @@ public enum ExtApiResourceType {
 
     CHARACTER("character"),
     KNOWLEDGE("knowledge"),
-    WORKFLOW("workflow");
+    WORKFLOW("workflow"),
+    DRAW("draw"),
+    MCP("mcp");
 
     private final String value;
 
@@ -25,5 +27,12 @@ public enum ExtApiResourceType {
             }
         }
         return null;
+    }
+
+    /**
+     * 判断是否为用户级资源类型
+     */
+    public boolean isUserLevel() {
+        return this == DRAW || this == MCP;
     }
 }

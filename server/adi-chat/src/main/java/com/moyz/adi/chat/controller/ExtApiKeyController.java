@@ -15,6 +15,8 @@ public class ExtApiKeyController {
     @Resource
     private ExtApiService extApiService;
 
+    // ========== 资源级 API Key ==========
+
     @Operation(summary = "Generate API Key for a resource | 为资源生成 API Key")
     @PostMapping("/{type}/{uuid}")
     public ApiKeyResp generate(@PathVariable String type, @PathVariable String uuid) {
@@ -31,5 +33,25 @@ public class ExtApiKeyController {
     @PostMapping("/{type}/{uuid}/reveal")
     public ApiKeyResp reveal(@PathVariable String type, @PathVariable String uuid) {
         return extApiService.revealApiKey(type, uuid);
+    }
+
+    // ========== 用户级 API Key ==========
+
+    @Operation(summary = "Generate user-level API Key | 为用户生成 API Key")
+    @PostMapping("/user/{type}")
+    public ApiKeyResp generateUserKey(@PathVariable String type) {
+        return extApiService.generateUserApiKey(type);
+    }
+
+    @Operation(summary = "Get user-level API Key info (masked) | 获取用户 API Key 信息（掩码）")
+    @GetMapping("/user/{type}")
+    public ApiKeyResp userInfo(@PathVariable String type) {
+        return extApiService.getUserApiKeyInfo(type);
+    }
+
+    @Operation(summary = "Reveal user-level API Key (plaintext) | 查看用户 API Key 明文")
+    @PostMapping("/user/{type}/reveal")
+    public ApiKeyResp revealUserKey(@PathVariable String type) {
+        return extApiService.revealUserApiKey(type);
     }
 }

@@ -5,12 +5,17 @@ export interface ApiParamDef {
   desc: string
 }
 
-export interface ApiEndpointInfo {
+export interface ApiEndpoint {
+  title: string
+  description: string
   endpoint: string
   method: string
-  description: string
   params: ApiParamDef[]
   responseFields: ApiParamDef[]
   responseExample: string
   curlExample: string
+}
+
+export interface ApiEndpointInfo {
+  endpoints: ApiEndpoint[]
 }

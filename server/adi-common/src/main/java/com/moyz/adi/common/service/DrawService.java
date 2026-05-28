@@ -123,7 +123,14 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
     public String generate(CreateImageDto createImageDto) {
         AiModel aiModel = aiModelService.getByNameOrThrow(createImageDto.getModelName());
         User user = ThreadContext.getCurrentUser();
-        int generateNumber = Math.min(createImageDto.getNumber(), user.getQuotaByImageDaily());
+
+        // 计算实际生成数量：取模型限制、用户配额、请求值中的最小值
+        int maxImages = aiModel.getMaxImages();
+        int generateNumber = Math.min(
+                Math.min(createImageDto.getNumber(), maxImages),
+                user.getQuotaByImageDaily()
+        );
+
         String uuid = UuidUtil.createShort();
         Draw draw = new Draw();
         draw.setGenerateSize(createImageDto.getSize());

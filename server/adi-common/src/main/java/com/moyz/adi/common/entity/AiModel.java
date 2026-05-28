@@ -2,11 +2,13 @@ package com.moyz.adi.common.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.base.ObjectNodeTypeHandler;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.type.JdbcType;
 
 @Data
@@ -78,8 +80,27 @@ public class AiModel extends BaseEntity {
     @Schema(title = "思考过程是否可以关闭 | Is Thinking Process Closable")
     @TableField("is_thinking_closable")
     private Boolean isThinkingClosable;
-    
+
     @Schema(title = "是否支持web搜索 | Is Web Search Supported")
     @TableField("is_support_web_search")
     private Boolean isSupportWebSearch;
+
+    /**
+     * 从 properties 中获取 max_images 属性
+     * 如果未配置，默认返回 1
+     */
+    public int getMaxImages() {
+        if (properties == null || properties.isEmpty()) {
+            return 1;
+        }
+        JsonNode maxImages = properties.get("max_images");
+        if (maxImages == null || maxImages.isNull()) {
+            return 1;
+        }
+        try {
+            return maxImages.asInt(1);
+        } catch (Exception e) {
+            return 1;
+        }
+    }
 }

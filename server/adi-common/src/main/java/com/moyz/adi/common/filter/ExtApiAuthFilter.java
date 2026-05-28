@@ -60,7 +60,7 @@ public class ExtApiAuthFilter extends OncePerRequestFilter {
 
         ExtApiService.ValidateResult result;
         try {
-            result = extApiService.validateApiKey(rawKey, type);
+            result = validateByType(rawKey, type);
         } catch (Exception e) {
             log.warn("ExternalAPI: API key validation failed, uri:{}, error:{}", requestUri, e.getMessage());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -78,6 +78,19 @@ public class ExtApiAuthFilter extends OncePerRequestFilter {
         }
     }
 
+    /**
+     * 根据资源类型选择验证方式
+     * draw/mcp 为用户级，使用 userExtApiKey 表验证
+     * character/knowledge/workflow 为资源级，使用对应资源表验证
+     */
+    private ExtApiService.ValidateResult validateByType(String rawKey, String type) {
+        ExtApiResourceType resourceType = ExtApiResourceType.fromValue(type);
+        if (resourceType != null && resourceType.isUserLevel()) {
+            return extApiService.validateUserApiKey(rawKey, type);
+        }
+        return extApiService.validateApiKey(rawKey, type);
+    }
+
     private String inferType(String requestUri) {
         String apiPath = contextPath + API_V1_PREFIX;
         String pathAfterPrefix = requestUri.substring(apiPath.length());
@@ -86,6 +99,8 @@ public class ExtApiAuthFilter extends OncePerRequestFilter {
             case "character" -> ExtApiResourceType.CHARACTER;
             case "knowledge" -> ExtApiResourceType.KNOWLEDGE;
             case "workflow" -> ExtApiResourceType.WORKFLOW;
+            case "draw" -> ExtApiResourceType.DRAW;
+            case "mcp" -> ExtApiResourceType.MCP;
             default -> null;
         };
         return null != type ? type.getValue() : null;

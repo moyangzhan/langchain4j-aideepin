@@ -760,7 +760,7 @@ function userMcpSaveOrUpdate<T = any>(data: Mcp.UserMcpUpdateReq) {
   })
 }
 
-// External API Key management
+// External API Key management (resource-level)
 function extApiKeyGenerate<T = any>(type: string, uuid: string) {
   return post<T>({ url: `/external-api-key/${type}/${uuid}` })
 }
@@ -769,6 +769,17 @@ function extApiKeyInfo<T = any>(type: string, uuid: string) {
 }
 function extApiKeyReveal<T = any>(type: string, uuid: string) {
   return post<T>({ url: `/external-api-key/${type}/${uuid}/reveal` })
+}
+
+// External API Key management (user-level: draw, mcp)
+function extApiKeyUserGenerate<T = any>(type: string) {
+  return post<T>({ url: `/external-api-key/user/${type}` })
+}
+function extApiKeyUserInfo<T = any>(type: string) {
+  return get<T>({ url: `/external-api-key/user/${type}` })
+}
+function extApiKeyUserReveal<T = any>(type: string) {
+  return post<T>({ url: `/external-api-key/user/${type}/reveal` })
 }
 
 export default {
@@ -873,4 +884,7 @@ export default {
   extApiKeyGenerate,
   extApiKeyInfo,
   extApiKeyReveal,
+  extApiKeyUserGenerate,
+  extApiKeyUserInfo,
+  extApiKeyUserReveal,
 }
