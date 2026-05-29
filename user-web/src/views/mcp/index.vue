@@ -1,5 +1,5 @@
 <script setup lang='ts'>
-import { computed, ref, watch } from 'vue'
+import { computed, h, ref, watch } from 'vue'
 import { NAlert, NButton, NDropdown, NIcon, NInput, NModal, NRadio, NRadioGroup, NTabPane, NTable, NTabs, NTooltip, useLoadingBar, useMessage } from 'naive-ui'
 import { QuestionCircle16Regular } from '@vicons/fluent'
 import MarkdownIt from 'markdown-it'
@@ -26,8 +26,12 @@ const publicOrUser = ref<string>('serversView')
 const loaddingBar = useLoadingBar()
 const selectedTab = ref<string>('configTab')
 
+function renderIcon(icon: string) {
+  return () => h(SvgIcon, { icon, class: 'text-base cursor-pointer' })
+}
+
 const menuOptions = computed(() => [
-  { label: t('extApi.apiAccess'), key: 'api' },
+  { label: t('extApi.apiAccess'), key: 'api', icon: renderIcon('carbon:api') },
 ])
 
 function handleMenuSelect(key: string) {

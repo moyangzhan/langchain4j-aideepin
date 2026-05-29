@@ -4,6 +4,7 @@ import { NAlert, NButton, NFlex, NH4, NInput, NModal, NPopconfirm, NSpace, useMe
 import ApiDocPanel from './ApiDocPanel.vue'
 import api from '@/api'
 import { t } from '@/locales'
+import { useAuthStore } from '@/store'
 
 interface Props {
   show: boolean
@@ -23,6 +24,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 const emit = defineEmits<Emit>()
 const ms = useMessage()
+const authStore = useAuthStore()
 
 const innerShow = ref(false)
 const loading = ref(false)
@@ -35,9 +37,11 @@ const canManage = ref(false)
 // 判断是否为用户级 API Key 类型
 const isUserLevelType = computed(() => ['draw', 'mcp'].includes(props.type))
 
+const isLoggedIn = computed(() => !!authStore.token)
+
 watch(() => props.show, (val) => {
   innerShow.value = val
-  if (val)
+  if (val && isLoggedIn.value)
     fetchKeyInfo()
 })
 
@@ -130,44 +134,50 @@ async function handleCopy() {
 <template>
   <NModal v-model:show="innerShow" :title="`${title} - ${t('extApi.apiAccess')}`" style="width: 90%; max-width: 900px" preset="card" :mask-closable="false" :auto-focus="false" content-style="max-height: 80vh; overflow-y: auto;">
     <NSpace vertical :size="16">
-      <NH4 v-if="canManage" style="margin: 0">
-        {{ t('extApi.apiKeyLabel') }}
-      </NH4>
-      <NAlert v-if="justGenerated" type="warning" :show-icon="true">
-        {{ t('extApi.closeWarning') }}
-      </NAlert>
+      <!-- API Key section (only when logged in) -->
+      <template v-if="isLoggedIn">
+        <NH4 v-if="canManage" style="margin: 0">
+          {{ t('extApi.apiKeyLabel') }}
+        </NH4>
+        <NAlert v-if="justGenerated" type="warning" :show-icon="true">
+          {{ t('extApi.closeWarning') }}
+        </NAlert>
 
-      <div v-if="canManage">
-        <!-- No key yet -->
-        <NFlex v-if="!maskedKey" justify="center" :size="12">
-          <NButton type="primary" :loading="loading" @click="handleGenerate">
-            {{ t('extApi.generateKey') }}
-          </NButton>
-        </NFlex>
-
-        <!-- Key exists -->
-        <template v-else>
-          <NInput :value="showingRaw ? rawKey : maskedKey" readonly :style="{ backgroundColor: 'var(--n-color-disabled)', marginBottom: '8px' }" />
-          <NFlex justify="end" :size="8">
-            <NButton v-if="showingRaw" size="small" @click="handleCopy">
-              {{ t('extApi.copyKey') }}
+        <div v-if="canManage">
+          <!-- No key yet -->
+          <NFlex v-if="!maskedKey" justify="center" :size="12">
+            <NButton type="primary" :loading="loading" @click="handleGenerate">
+              {{ t('extApi.generateKey') }}
             </NButton>
-            <NButton size="small" @click="handleReveal">
-              {{ showingRaw ? t('extApi.hideKey') : t('extApi.viewKey') }}
-            </NButton>
-            <NPopconfirm @positive-click="handleGenerate">
-              <template #trigger>
-                <NButton size="small" type="warning">
-                  {{ t('extApi.regenerateKey') }}
-                </NButton>
-              </template>
-              {{ t('extApi.regenerateConfirm') }}
-            </NPopconfirm>
           </NFlex>
-        </template>
-      </div>
 
-      <!-- API Documentation -->
+          <!-- Key exists -->
+          <template v-else>
+            <NInput :value="showingRaw ? rawKey : maskedKey" readonly :style="{ backgroundColor: 'var(--n-color-disabled)', marginBottom: '8px' }" />
+            <NFlex justify="end" :size="8">
+              <NButton v-if="showingRaw" size="small" @click="handleCopy">
+                {{ t('extApi.copyKey') }}
+              </NButton>
+              <NButton size="small" @click="handleReveal">
+                {{ showingRaw ? t('extApi.hideKey') : t('extApi.viewKey') }}
+              </NButton>
+              <NPopconfirm @positive-click="handleGenerate">
+                <template #trigger>
+                  <NButton size="small" type="warning">
+                    {{ t('extApi.regenerateKey') }}
+                  </NButton>
+                </template>
+                {{ t('extApi.regenerateConfirm') }}
+              </NPopconfirm>
+            </NFlex>
+            <p class="text-xs text-gray-500 mt-2">
+              {{ t('extApi.usageTip') }}
+            </p>
+          </template>
+        </div>
+      </template>
+
+      <!-- API Documentation (always visible) -->
       <ApiDocPanel :type="props.type" :uuid="props.uuid" :wf-input-defs="props.wfInputDefs" />
     </NSpace>
   </NModal>

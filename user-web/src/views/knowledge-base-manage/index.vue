@@ -125,7 +125,7 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Info> => {
                     showApiKeyModal.value = true
                   },
                 },
-                { default: () => 'API' },
+                { default: () => t('extApi.apiAccess') },
               ),
             ]),
             h('div', { class: 'flex gap-1' }, [

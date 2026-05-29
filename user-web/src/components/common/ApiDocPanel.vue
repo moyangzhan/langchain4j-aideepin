@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import { computed, ref } from 'vue'
-import { NButton, NCollapse, NCollapseItem, NFlex, NH4, NSpace, NTable, useMessage } from 'naive-ui'
+import { NButton, NCollapse, NCollapseItem, NDivider, NFlex, NH4, NSpace, NTable, useMessage } from 'naive-ui'
 import ApiDocCommon from './ApiDocCommon.vue'
 import { t } from '@/locales'
 import { useCharacterDoc } from '@/hooks/api-doc/useCharacterDoc'

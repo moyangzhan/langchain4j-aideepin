@@ -48,7 +48,7 @@ public class ExtDrawController {
     }
 
     @Operation(summary = "Get draw task detail | 获取绘图任务详情")
-    @GetMapping("/detail/{uuid}")
+    @GetMapping("/{uuid}")
     public DrawDto detail(@PathVariable String uuid) {
         User user = ThreadContext.getCurrentUser();
         DrawDto drawDto = drawService.getPublicOrMine(uuid);

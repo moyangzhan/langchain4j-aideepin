@@ -1,5 +1,5 @@
 <script setup lang='ts'>
-import { computed, ref } from 'vue'
+import { computed, h, ref } from 'vue'
 import { NButton, NDropdown, NRadio, NRadioGroup } from 'naive-ui'
 import { ApiKeyModal, ImageModelSelector, SvgIcon } from '@/components/common'
 import { t } from '@/locales'
@@ -12,8 +12,12 @@ interface Emit {
   (ev: 'displayStyleChange', style: string): void
 }
 
+function renderIcon(icon: string) {
+  return () => h(SvgIcon, { icon, class: 'text-base cursor-pointer' })
+}
+
 const menuOptions = computed(() => [
-  { label: t('extApi.apiAccess'), key: 'api' },
+  { label: t('extApi.apiAccess'), key: 'api', icon: renderIcon('carbon:api') },
 ])
 
 function handleMenuSelect(key: string) {

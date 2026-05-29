@@ -36,6 +36,34 @@ export function useDrawDoc(urlBase: string): ApiEndpointInfo {
     "number": 1
   }'`,
       },
+      {
+        title: t('extApi.docDrawDetailTitle'),
+        description: t('extApi.docDrawDetailDesc'),
+        endpoint: `${urlBase}/draw/{uuid}`,
+        method: 'GET',
+        params: [
+          { name: 'uuid', type: 'string', required: t('common.yes'), desc: t('extApi.docDrawDetailUuid') },
+        ],
+        responseFields: [
+          { name: 'uuid', type: 'string', required: '', desc: t('extApi.docDrawUuid') },
+          { name: 'processStatus', type: 'integer', required: '', desc: t('extApi.docDrawProcessStatus') },
+          { name: 'processStatusRemark', type: 'string', required: '', desc: t('extApi.docDrawProcessStatusRemark') },
+          { name: 'prompt', type: 'string', required: '', desc: t('extApi.docDrawPrompt') },
+          { name: 'generatedImages', type: 'string', required: '', desc: t('extApi.docDrawGeneratedImages') },
+        ],
+        responseExample: `{
+  "success": true,
+  "data": {
+    "uuid": "abc123def456",
+    "processStatus": 3,
+    "processStatusRemark": "",
+    "prompt": "a cute cat playing piano",
+    "generatedImages": "file-uuid-1,file-uuid-2"
+  }
+}`,
+        curlExample: `curl -X GET '${urlBase}/draw/abc123def456' \\
+  -H 'Authorization: YOUR_API_KEY'`,
+      },
     ],
   }
 }

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { h, ref } from 'vue'
-import { NDropdown } from 'naive-ui'
+import { NButton, NDropdown } from 'naive-ui'
 import { ApiKeyModal, SvgIcon } from '@/components/common'
 import { useAuthStore } from '@/store'
 import { t } from '@/locales'
@@ -24,19 +24,20 @@ const options = [
     icon: () => h(SvgIcon, { icon: 'carbon:information', class: 'text-base cursor-pointer' }),
   },
   {
-    label: 'API',
+    label: t('extApi.apiAccess'),
     key: 'api',
     icon: () => h(SvgIcon, { icon: 'carbon:api', class: 'text-base cursor-pointer' }),
   },
 ]
 
 function handleSelect(key: string) {
-  if (!authStore.checkLoginOrShow())
-    return
-  if (key === 'detail')
+  if (key === 'detail') {
+    if (!authStore.checkLoginOrShow())
+      return
     showEditModal.value = true
-  else if (key === 'api')
+  } else if (key === 'api') {
     showApiKeyModal.value = true
+  }
 }
 function showOrCloseModal(show: boolean) {
   showEditModal.value = show
@@ -54,10 +55,14 @@ function showOrCloseModal(show: boolean) {
         </p>
       </div>
       <NDropdown :options="options" @select="handleSelect">
-        <SvgIcon class="w-6 cursor-pointer" icon="ri:more-fill" />
+        <NButton quaternary circle size="small">
+          <template #icon>
+            <SvgIcon icon="ri:more-fill" />
+          </template>
+        </NButton>
       </NDropdown>
     </div>
     <KbInfo v-if="knowledgeBase && knowledgeBase.uuid" :show-modal="showEditModal" :knowledge-base="knowledgeBase" @showModal="showOrCloseModal" />
-    <ApiKeyModal v-if="knowledgeBase" v-model:show="showApiKeyModal" type="knowledge" :uuid="knowledgeBase.uuid" :title="knowledgeBase.title" />
+    <ApiKeyModal v-model:show="showApiKeyModal" type="knowledge" :uuid="knowledgeBase?.uuid ?? ''" :title="knowledgeBase?.title ?? t('knowledgeBase.knowledgeBase')" />
   </header>
 </template>

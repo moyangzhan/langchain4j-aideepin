@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, h, ref } from 'vue'
-import { NDropdown, NTag, useMessage } from 'naive-ui'
+import { NButton, NDropdown, NTag, useMessage } from 'naive-ui'
 import { ApiKeyModal, HoverButton, SvgIcon } from '@/components/common'
 import { emptyWorkflowInfo } from '@/utils/functions'
 import { useAuthStore, useUserStore, useWfStore } from '@/store'
@@ -44,13 +44,11 @@ const options = computed(() => {
       icon: renderIcon('ri:file-copy-2-line'),
     })
   }
-  if (authStore.token) {
-    common.push({
-      label: 'API',
-      key: 'api',
-      icon: renderIcon('carbon:api'),
-    })
-  }
+  common.push({
+    label: t('extApi.apiAccess'),
+    key: 'api',
+    icon: renderIcon('carbon:api'),
+  })
   return common
 })
 
@@ -103,8 +101,6 @@ function handleSelect(key: string | number) {
 }
 
 function extApiKey() {
-  if (!authStore.checkLoginOrShow())
-    return
   showApiKeyModal.value = true
 }
 </script>
@@ -140,10 +136,14 @@ function extApiKey() {
           </div>
         </HoverButton>
         <NDropdown :options="options" class="mr-2" @select="handleSelect">
-          <SvgIcon class="w-6 ml-2 cursor-pointer" icon="ri:more-fill" />
+          <NButton quaternary circle size="small">
+            <template #icon>
+              <SvgIcon icon="ri:more-fill" />
+            </template>
+          </NButton>
         </NDropdown>
       </div>
     </div>
-    <ApiKeyModal v-model:show="showApiKeyModal" type="workflow" :uuid="workflow.uuid" :title="workflow.title" :wf-input-defs="startNodeUserInputs" />
+    <ApiKeyModal v-model:show="showApiKeyModal" type="workflow" :uuid="workflow?.uuid ?? ''" :title="workflow?.title || t('workflow.workflowLabel')" :wf-input-defs="startNodeUserInputs" />
   </header>
 </template>
