@@ -649,8 +649,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     /**
      * Update knowledge base stat
      */
-    @Scheduled(fixedDelay = 60 * 1000)
-    public void asyncUpdateStatistic() {
+    public void updateStatistic() {
         try {
             Set<String> kbUuidList = stringRedisTemplate.opsForSet().members(KB_STATISTIC_RECALCULATE_SIGNAL);
             if (CollectionUtils.isEmpty(kbUuidList)) {

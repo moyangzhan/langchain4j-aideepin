@@ -17,4 +17,6 @@ public class ModelInfo {
     private Boolean isThinkingClosable;
     private Boolean isSupportWebSearch;
     private ObjectNode properties;
+    private String healthStatus;
+    private String healthReason;
 }

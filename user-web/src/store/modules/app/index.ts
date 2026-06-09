@@ -142,7 +142,7 @@ export const useAppStore = defineStore('app-store', {
     },
     setLLMs(llms: AiModelInfo[]) {
       llms.forEach((item) => {
-        item.disabled = !item.enable
+        item.disabled = !item.enable || item.healthStatus === 'UNHEALTHY'
         item.label = item.modelTitle || item.modelName
         item.key = item.modelId
         item.value = item.modelId

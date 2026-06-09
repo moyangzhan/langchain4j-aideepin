@@ -5,6 +5,8 @@ import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.languagemodel.AbstractLLMService;
+import com.moyz.adi.common.service.ModelHealthService;
+import com.moyz.adi.common.util.SpringUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -80,14 +82,16 @@ public class LLMContext {
     }
 
     public static AbstractLLMService getServiceById(Long modelId, boolean useDefault) {
+        ModelHealthService healthService = SpringUtil.getBean(ModelHealthService.class);
         AbstractLLMService service = LLM_SERVICES.stream()
-                .filter(item -> item.getAiModel().getId().equals(modelId))
+                .filter(item -> item.getAiModel().getId().equals(modelId)
+                        && healthService.isHealthy(item.getAiModel().getName()))
                 .findFirst()
                 .orElse(null);
         if (null == service && useDefault) {
             Optional<AbstractLLMService> serviceOptional = getFirstEnableAndFree();
             if (serviceOptional.isPresent()) {
-                log.warn("^^^^^ modelId:{} not found, using the first available free model {} ^^^^^", modelId, serviceOptional.get().getAiModel().getName());
+                log.warn("^^^^^ modelId:{} not found or unhealthy, using the first available free model {} ^^^^^", modelId, serviceOptional.get().getAiModel().getName());
                 return serviceOptional.get();
             }
             log.error("^^^^^ No available models, please check platform and model configuration ^^^^^");
@@ -108,17 +112,17 @@ public class LLMContext {
      * @return AbstractLLMService
      */
     public static AbstractLLMService getServiceByPlatformAndModel(String platform, String modelName, boolean useDefault) {
+        ModelHealthService healthService = SpringUtil.getBean(ModelHealthService.class);
         AbstractLLMService service = LLM_SERVICES.stream()
-//Compatible with modelName-only case
-                //兼容只有 modelName 的情况
-                // Compatible with modelName-only case
-                .filter(item -> (StringUtils.isBlank(platform) || item.getPlatform().getName().equals(platform)) && item.getAiModel().getName().equalsIgnoreCase(modelName))
+                .filter(item -> (StringUtils.isBlank(platform) || item.getPlatform().getName().equals(platform))
+                        && item.getAiModel().getName().equalsIgnoreCase(modelName)
+                        && healthService.isHealthy(item.getAiModel().getName()))
                 .findFirst()
                 .orElse(null);
         if (null == service && useDefault) {
             Optional<AbstractLLMService> serviceOptional = getFirstEnableAndFree();
             if (serviceOptional.isPresent()) {
-                log.warn("^^^^^ {} not found, using the first available free model {} ^^^^^", modelName, serviceOptional.get().getAiModel().getName());
+                log.warn("^^^^^ {} not found or unhealthy, using the first available free model {} ^^^^^", modelName, serviceOptional.get().getAiModel().getName());
                 return serviceOptional.get();
             }
             log.error("^^^^^ No available models, please check platform and model configuration ^^^^^");
@@ -138,15 +142,18 @@ public class LLMContext {
      * @return 返回免费或收费的可用模型 / Return a free or paid available model
      */
     public static Optional<AbstractLLMService> getFirstEnableAndFree() {
+        ModelHealthService healthService = SpringUtil.getBean(ModelHealthService.class);
         AbstractLLMService freeObj = null;
         AbstractLLMService enableObj = null;
         for (AbstractLLMService service : LLM_SERVICES) {
             AiModel aiModel = service.getAiModel();
-            if (aiModel.getIsEnable() && aiModel.getIsFree()) {
-                freeObj = service;
-                break;
-            } else if (null == enableObj && Boolean.TRUE.equals(aiModel.getIsEnable())) {
-                enableObj = service;
+            if (Boolean.TRUE.equals(aiModel.getIsEnable()) && healthService.isHealthy(aiModel.getName())) {
+                if (aiModel.getIsFree()) {
+                    freeObj = service;
+                    break;
+                } else if (null == enableObj) {
+                    enableObj = service;
+                }
             }
         }
         if (null != freeObj) {

@@ -80,14 +80,6 @@ public class Initializer {
     }
 
     /**
-     * 10分钟重刷一次配置信息
-     */
-    @Scheduled(initialDelay = 10 * 60 * 1000, fixedDelay = 10 * 60 * 1000)
-    public void reloadConfig() {
-        sysConfigService.loadAndCache();
-    }
-
-    /**
      * Initialize default locale if not exists.
      * Detect from system locale: zh-CN for Chinese, en-US otherwise.
      */

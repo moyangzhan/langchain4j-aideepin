@@ -21,32 +21,41 @@ function renderOption({ node, option }: { node: VNode; option: DropdownOption | 
 }
 function renderLabel(option: DropdownOption) {
   const val = option.value as string
-  const modelPlatform = appStore.getLLMById(val)?.modelPlatform
+  const llm = appStore.getLLMById(val)
+  const modelPlatform = llm?.modelPlatform
+  const isUnhealthy = llm?.healthStatus === 'UNHEALTHY'
+  const children = [
+    h(
+      'span',
+      {
+        class: option.isFree ? 'text-green-500' : 'text-orange-500',
+      },
+      '⨀ ',
+    ),
+    h(
+      AvatarComponent,
+      {
+        name: modelPlatform,
+        imageSize: 20,
+      },
+    ),
+    h(
+      'div',
+      {
+        class: `ml-1.5${option.disabled ? ' text-gray-400' : ''}`,
+      },
+      { default: () => (option.label as string) + (isUnhealthy ? ' (🚫)' : '') },
+    ),
+  ]
+  if (isUnhealthy) {
+    return h(NTooltip, { placement: 'right' }, {
+      trigger: () => h('div', { class: 'flex items-center' }, { default: () => children }),
+      default: () => llm?.healthReason || 'Unavailable',
+    })
+  }
   return [
     h('div', { class: 'flex items-center' }, {
-      default: () => [
-        h(
-          'span',
-          {
-            class: option.isFree ? 'text-green-500' : 'text-orange-500',
-          },
-          '⨀ ',
-        ),
-        h(
-          AvatarComponent,
-          {
-            name: modelPlatform,
-            imageSize: 20,
-          },
-        ),
-        h(
-          'div',
-          {
-            class: 'ml-1.5',
-          },
-          { default: () => option.label as string },
-        ),
-      ],
+      default: () => children,
     }),
   ]
 }

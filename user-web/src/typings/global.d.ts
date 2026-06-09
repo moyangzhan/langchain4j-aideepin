@@ -46,6 +46,8 @@ interface AiModelInfo {
   isThinkingClosable: boolean
   isSupportWebSearch: boolean
   properties: object
+  healthStatus?: string
+  healthReason?: string
 
   //for NSelector
   value: string

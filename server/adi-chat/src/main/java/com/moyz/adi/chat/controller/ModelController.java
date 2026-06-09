@@ -4,9 +4,11 @@ import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.helper.ImageModelContext;
 import com.moyz.adi.common.helper.LLMContext;
+import com.moyz.adi.common.service.ModelHealthService;
 import com.moyz.adi.common.service.ModelPlatformService;
 import com.moyz.adi.common.languagemodel.data.ImageModelInfo;
 import com.moyz.adi.common.languagemodel.data.LLMModelInfo;
+import com.moyz.adi.common.util.SpringUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.Resource;
 import org.springframework.beans.BeanUtils;
@@ -26,6 +28,7 @@ public class ModelController {
     @Operation(summary = "支持的大语言模型列表 | Supported LLM List")
     @GetMapping(value = "/llms")
     public List<LLMModelInfo> llms() {
+        ModelHealthService healthService = SpringUtil.getBean(ModelHealthService.class);
         return LLMContext.getAllServices().stream().map(item -> {
             AiModel aiModel = item.getAiModel();
             LLMModelInfo modelInfo = new LLMModelInfo();
@@ -35,6 +38,12 @@ public class ModelController {
             modelInfo.setModelPlatform(aiModel.getPlatform());
             modelInfo.setEnable(aiModel.getIsEnable());
             BeanUtils.copyProperties(aiModel, modelInfo);
+            // 健康状态（不过滤，前端根据状态置灰）
+            ModelHealthService.HealthCheckResult health = healthService.getAllStatuses().get(aiModel.getName());
+            if (health != null) {
+                modelInfo.setHealthStatus(health.getStatus().name());
+                modelInfo.setHealthReason(health.getFailReason());
+            }
             return modelInfo;
         }).toList();
     }

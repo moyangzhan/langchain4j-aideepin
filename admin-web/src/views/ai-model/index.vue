@@ -20,6 +20,14 @@
           </template>
           {{ t('common.create') }}
         </n-button>
+        <n-button class="ml-2" @click="handleRefreshHealth" :loading="healthLoading">
+          <template #icon>
+            <n-icon>
+              <HealthOutlined />
+            </n-icon>
+          </template>
+          {{ t('model.healthCheck') }}
+        </n-button>
       </template>
     </BasicTable>
 
@@ -162,6 +170,7 @@
   const MODEL_RESPONSE_FORMAT_TYPES = getModelResponseFormatTypes()
   const allPlatforms = getDefaultModelPlatforms()
   import { PlusOutlined } from '@vicons/antd'
+  import { HeartPulseRound as HealthOutlined } from '@vicons/material'
   import { AiModelData } from '/#/aiModel'
   import type { FormItemRule, FormRules } from 'naive-ui'
   import { useDialog } from 'naive-ui'
@@ -218,6 +227,7 @@
   const actionRef = ref()
   const showEditModal = ref(false)
   const formBtnLoading = ref(false)
+  const healthLoading = ref(false)
   const editFormParams = reactive({
     label: t('common.create'),
     id: '0',
@@ -323,14 +333,37 @@
   }
 
   const loadDataTable = async (res) => {
-    const resp = await api.search({ ...getFieldsValue() }, res)
-    if (resp.data.records) {
-      resp.data.records.forEach((item: AiModelData) => {
+    const [modelResp, healthResp] = await Promise.all([
+      api.search({ ...getFieldsValue() }, res),
+      api.getHealth().catch(() => ({ data: {} })),
+    ])
+    const healthData = (healthResp as any).data || {}
+    if (modelResp.data.records) {
+      modelResp.data.records.forEach((item: AiModelData) => {
         item.inputTypeList = item.inputTypes.split(',')
         item.responseFormatTypeList = item.responseFormatTypes.split(',')
+        // 合并健康状态
+        const health = healthData[item.name]
+        if (health) {
+          item.healthStatus = health.status
+          item.healthReason = health.failReason
+        }
       })
     }
-    return resp.data
+    return modelResp.data
+  }
+
+  async function handleRefreshHealth() {
+    healthLoading.value = true
+    try {
+      await api.triggerHealthCheck()
+      window['$message'].success(t('model.healthCheckSuccess'))
+      reloadTable()
+    } catch {
+      window['$message'].error(t('common.operationFailed'))
+    } finally {
+      healthLoading.value = false
+    }
   }
 
   const loadPlatforms = async () => {

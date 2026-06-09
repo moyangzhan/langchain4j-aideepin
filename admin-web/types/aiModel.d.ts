@@ -14,6 +14,8 @@ export interface AiModelData {
   isReasoner: boolean
   isThinkingClosable: boolean
   isSupportWebSearch: boolean
+  healthStatus?: string
+  healthReason?: string
 
   //For ui
   inputTypeList: string[]

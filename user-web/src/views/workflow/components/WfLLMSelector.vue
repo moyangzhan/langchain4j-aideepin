@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { h, ref } from 'vue'
-import { NSelect } from 'naive-ui'
+import { NSelect, NTooltip } from 'naive-ui'
 import type { SelectOption } from 'naive-ui'
 import type { VNodeChild } from 'vue'
 import { useAppStore } from '@/store'
@@ -25,8 +25,11 @@ function renderLabel(option: SelectOption): VNodeChild {
   if (option.type === 'group')
     return option.label as string
   const val = option.value as string
-  const modelPlatform = appStore.getLLMById(val)?.modelPlatform
-  return [
+  const llm = appStore.getLLMById(val)
+  const modelPlatform = llm?.modelPlatform
+  const isUnhealthy = llm?.healthStatus === 'UNHEALTHY'
+  const label = (option.label as string) + (isUnhealthy ? ' 🚫' : '')
+  const children = [
     h('div', { class: 'flex items-center' }, {
       default: () => [
         h(
@@ -39,13 +42,20 @@ function renderLabel(option: SelectOption): VNodeChild {
         h(
           'div',
           {
-            class: 'ml-1.5',
+            class: `ml-1.5${option.disabled ? ' text-gray-400' : ''}`,
           },
-          { default: () => option.label as string },
+          { default: () => label },
         ),
       ],
     }),
   ]
+  if (isUnhealthy) {
+    return h(NTooltip, { placement: 'right' }, {
+      trigger: () => children[0],
+      default: () => llm?.healthReason || 'Unavailable',
+    })
+  }
+  return children[0]
 }
 
 const modelId = appStore.getLLMByPlatformAndName(props.modelPlatform, props.modelName)?.modelId || ''
