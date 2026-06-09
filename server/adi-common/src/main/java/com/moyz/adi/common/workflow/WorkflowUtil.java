@@ -10,6 +10,7 @@ import com.moyz.adi.common.vo.ChatModelRequestParams;
 import com.moyz.adi.common.vo.SseAskParams;
 import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.data.NodeIODataContent;
+import com.moyz.adi.common.workflow.metrics.LLMMetrics;
 import com.moyz.adi.common.workflow.node.humanfeedback.HumanFeedbackNode;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -57,7 +58,7 @@ public class WorkflowUtil {
                     TokenUsage tokenUsage = response.metadata().tokenUsage();
                     LLMTokenUtil.cacheTokenUsage(llmService.getStringRedisTemplate(), wfState.getUuid(), tokenUsage);
                     //记录节点级别的 token 消耗 | Record node-level token usage
-                    NodeExecutionMetrics nodeMetrics = state.getMetrics();
+                    LLMMetrics nodeMetrics = (LLMMetrics) state.getMetrics();
                     if (tokenUsage != null) {
                         nodeMetrics.setInputTokens(tokenUsage.inputTokenCount());
                         nodeMetrics.setOutputTokens(tokenUsage.outputTokenCount());
@@ -107,7 +108,7 @@ public class WorkflowUtil {
         //记录节点级别的 token 消耗 | Record node-level token usage
         if (nodeState != null && response.metadata() != null) {
             TokenUsage tokenUsage = response.metadata().tokenUsage();
-            NodeExecutionMetrics nodeMetrics = nodeState.getMetrics();
+            LLMMetrics nodeMetrics = (LLMMetrics) nodeState.getMetrics();
             if (tokenUsage != null) {
                 nodeMetrics.setInputTokens(tokenUsage.inputTokenCount());
                 nodeMetrics.setOutputTokens(tokenUsage.outputTokenCount());

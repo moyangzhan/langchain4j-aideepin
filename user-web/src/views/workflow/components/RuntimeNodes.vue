@@ -64,6 +64,24 @@ const authStore = useAuthStore()
         <span v-if="node.metrics?.retrievalCount != null" class="bg-gray-100 px-1.5 py-0.5 rounded">
           📚 {{ node.metrics.retrievalCount }} chunks
         </span>
+        <!-- 图片生成 -->
+        <span v-if="node.metrics?.imageModelName" class="bg-gray-100 px-1.5 py-0.5 rounded">
+          🎨 {{ node.metrics.imageModelName }}
+        </span>
+        <span v-if="node.metrics?.imageSize" class="bg-gray-100 px-1.5 py-0.5 rounded">
+          📐 {{ node.metrics.imageSize }}
+        </span>
+        <!-- 邮件发送 -->
+        <span v-if="node.metrics?.sendSuccess === true" class="bg-green-50 text-green-600 px-1.5 py-0.5 rounded">
+          ✉️ sent to {{ node.metrics.recipientCount }}
+        </span>
+        <!-- 文档提取 -->
+        <span v-if="node.metrics?.fileCount != null" class="bg-gray-100 px-1.5 py-0.5 rounded">
+          📄 {{ node.metrics.fileCount }} files
+        </span>
+        <span v-if="node.metrics?.extractedCharCount != null" class="bg-gray-100 px-1.5 py-0.5 rounded">
+          📝 {{ node.metrics.extractedCharCount }} chars
+        </span>
       </div>
       <div class="flex flex-col space-y-2">
         <div class="text-base border-b border-gray-200 py-1">

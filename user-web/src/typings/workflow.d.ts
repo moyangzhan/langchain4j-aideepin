@@ -96,7 +96,7 @@ declare namespace Workflow {
     statusRemark: string
     createTime: string
     duration: number | null
-    metrics: NodeExecutionMetrics | null
+    metrics: Record<string, any> | null
 
     wfComponent: WorkflowComponent
     wfRuntimeUuid: string
@@ -104,22 +104,63 @@ declare namespace Workflow {
     nodeTitle: string
   }
 
-  // 节点执行可观测指标 | Node execution observability metrics
+  // 节点执行可观测指标（基类） | Node execution observability metrics (base)
   interface NodeExecutionMetrics {
-    durationMs: number
-    // LLM related
+    type?: string
+    durationMs?: number
+  }
+
+  // LLM 节点指标 | LLM node metrics
+  interface LLMMetrics extends NodeExecutionMetrics {
+    type: 'llm'
     inputTokens?: number
     outputTokens?: number
     modelName?: string
     modelPlatform?: string
-    // HTTP Request
+  }
+
+  // 图片生成节点指标 | Image generation node metrics
+  interface ImageMetrics extends NodeExecutionMetrics {
+    type: 'image'
+    imageModelName?: string
+    imageSize?: string
+  }
+
+  // HTTP 请求节点指标 | HTTP request node metrics
+  interface HttpRequestMetrics extends NodeExecutionMetrics {
+    type: 'http_request'
     httpStatusCode?: number
     httpMethod?: string
-    // Search
+  }
+
+  // 搜索节点指标 | Search node metrics
+  interface SearchMetrics extends NodeExecutionMetrics {
+    type: 'search'
     searchResultCount?: number
-    // Knowledge Retrieval
+  }
+
+  // 知识检索节点指标 | Knowledge retrieval node metrics
+  interface KnowledgeRetrievalMetrics extends NodeExecutionMetrics {
+    type: 'knowledge_retrieval'
     retrievalCount?: number
   }
+
+  // 邮件发送节点指标 | Mail send node metrics
+  interface MailMetrics extends NodeExecutionMetrics {
+    type: 'mail'
+    recipientCount?: number
+    sendSuccess?: boolean
+  }
+
+  // 文档提取节点指标 | Document extractor node metrics
+  interface DocumentMetrics extends NodeExecutionMetrics {
+    type: 'document'
+    fileCount?: number
+    extractedCharCount?: number
+  }
+
+  type AnyNodeMetrics = LLMMetrics | ImageMetrics | HttpRequestMetrics
+    | SearchMetrics | KnowledgeRetrievalMetrics | MailMetrics | DocumentMetrics
 
   interface WorkflowState {
     showCreateOrEditView: boolean

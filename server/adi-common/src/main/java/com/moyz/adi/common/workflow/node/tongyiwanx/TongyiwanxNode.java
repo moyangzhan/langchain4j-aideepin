@@ -14,6 +14,7 @@ import com.moyz.adi.common.workflow.WfState;
 import com.moyz.adi.common.workflow.WorkflowUtil;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
 import com.moyz.adi.common.workflow.node.DrawNodeUtil;
+import com.moyz.adi.common.workflow.metrics.ImageMetrics;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
@@ -28,6 +29,7 @@ public class TongyiwanxNode extends AbstractWfNode {
 
     public TongyiwanxNode(WorkflowComponent wfComponent, WorkflowNode nodeDef, WfState wfState, WfNodeState nodeState) {
         super(wfComponent, nodeDef, wfState, nodeState);
+        state.setMetrics(new ImageMetrics());
     }
 
     @Override
@@ -54,6 +56,10 @@ public class TongyiwanxNode extends AbstractWfNode {
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
         AbstractImageModelService imageModelService = ImageModelContext.getOrDefault(nodeConfigObj.getModelName());
+        //记录图片生成指标 | Record image generation metrics
+        ImageMetrics imageMetrics = (ImageMetrics) state.getMetrics();
+        imageMetrics.setImageModelName(nodeConfigObj.getModelName());
+        imageMetrics.setImageSize(nodeConfigObj.getSize());
         if (null == imageModelService) {
             log.error("image service not found,ai platform:{}", DASHSCOPE);
             throw new BaseException(A_MODEL_NOT_FOUND);

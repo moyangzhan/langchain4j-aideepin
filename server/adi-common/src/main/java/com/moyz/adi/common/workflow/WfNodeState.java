@@ -33,7 +33,7 @@ public class WfNodeState extends AgentState implements Serializable {
     private String processStatusRemark = "";
     private List<NodeIOData> inputs = new ArrayList<>();
     private List<NodeIOData> outputs = new ArrayList<>();
-    private NodeExecutionMetrics metrics = new NodeExecutionMetrics();
+    private NodeExecutionMetrics metrics;
 
     /**
      * Constructs an AgentState with the given initial data.

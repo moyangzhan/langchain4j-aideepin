@@ -324,6 +324,8 @@ CREATE TABLE adi_character_message
     uuid                            varchar(32)   default ''                not null,
     message_role                    integer       default 1                 not null,
     tokens                          integer       default 0                 not null,
+    input_tokens                    integer       default 0                 not null,
+    output_tokens                   integer       default 0                 not null,
     user_id                         bigint        default 0                 not null,
     ai_model_id                     bigint        default 0                 not null,
     understand_context_msg_pair_num integer       default 0                 not null,
@@ -972,6 +974,8 @@ create table adi_workflow_runtime_node
     output              jsonb        default '{}'              not null,
     status              smallint     default 1                 not null,
     status_remark       varchar(250) default ''                not null,
+    duration            int          default 0                 not null,
+    metrics             jsonb        default '{}'              not null,
     create_time         timestamp    default CURRENT_TIMESTAMP not null,
     update_time         timestamp    default CURRENT_TIMESTAMP not null,
     is_deleted          boolean      default false             not null
@@ -984,18 +988,8 @@ create trigger trigger_workflow_runtime_node
     for each row
 execute procedure update_modified_column();
 
--- Workflow Runtime Node Observability
-ALTER TABLE adi_workflow_runtime_node
-    ADD COLUMN IF NOT EXISTS duration INT DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS metrics JSONB DEFAULT '{}';
-
 COMMENT ON COLUMN adi_workflow_runtime_node.duration IS '节点执行耗时（毫秒） | Node execution duration in ms';
 COMMENT ON COLUMN adi_workflow_runtime_node.metrics IS '可观测指标 JSON：token 消耗、HTTP 状态码、搜索结果数等 | Observability metrics JSON';
-
--- Chat Message Token Observability
-ALTER TABLE adi_character_message
-    ADD COLUMN IF NOT EXISTS input_tokens INT DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS output_tokens INT DEFAULT 0;
 
 COMMENT ON COLUMN adi_character_message.input_tokens IS '输入 token 数量 | Input token count';
 COMMENT ON COLUMN adi_character_message.output_tokens IS '输出 token 数量 | Output token count';

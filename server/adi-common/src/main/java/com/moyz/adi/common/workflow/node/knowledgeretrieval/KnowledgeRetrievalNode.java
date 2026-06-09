@@ -14,6 +14,7 @@ import com.moyz.adi.common.workflow.WfNodeState;
 import com.moyz.adi.common.workflow.WfState;
 import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
+import com.moyz.adi.common.workflow.metrics.KnowledgeRetrievalMetrics;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
@@ -39,6 +40,7 @@ public class KnowledgeRetrievalNode extends AbstractWfNode {
 
     public KnowledgeRetrievalNode(WorkflowComponent wfComponent, WorkflowNode nodeDef, WfState wfState, WfNodeState nodeState) {
         super(wfComponent, nodeDef, wfState, nodeState);
+        state.setMetrics(new KnowledgeRetrievalMetrics());
     }
 
     /**
@@ -78,7 +80,7 @@ public class KnowledgeRetrievalNode extends AbstractWfNode {
         try {
             List<Content> contents = retriever.retrieve(Query.from(textInput));
             //记录检索指标 | Record retrieval metrics
-            state.getMetrics().setRetrievalCount(contents.size());
+            ((KnowledgeRetrievalMetrics) state.getMetrics()).setRetrievalCount(contents.size());
             for (Content content : contents) {
                 resp.append(content.textSegment().text());
             }

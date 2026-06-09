@@ -11,6 +11,7 @@ import com.moyz.adi.common.workflow.WorkflowUtil;
 import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.data.NodeIODataTextContent;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
+import com.moyz.adi.common.workflow.metrics.LLMMetrics;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
@@ -29,6 +30,7 @@ public class ClassifierNode extends AbstractWfNode {
 
     public ClassifierNode(WorkflowComponent wfComponent, WorkflowNode nodeDef, WfState wfState, WfNodeState nodeState) {
         super(wfComponent, nodeDef, wfState, nodeState);
+        state.setMetrics(new LLMMetrics());
     }
 
     @Override

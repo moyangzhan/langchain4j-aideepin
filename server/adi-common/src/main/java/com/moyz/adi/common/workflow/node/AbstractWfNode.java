@@ -8,6 +8,7 @@ import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.CollectionUtil;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.SpringUtil;
+import com.moyz.adi.common.workflow.NodeExecutionMetrics;
 import com.moyz.adi.common.workflow.NodeProcessResult;
 import com.moyz.adi.common.workflow.WfNodeInputConfig;
 import com.moyz.adi.common.workflow.WfNodeState;
@@ -55,6 +56,9 @@ public abstract class AbstractWfNode {
         this.wfComponent = wfComponent;
         this.state = nodeState;
         this.node = node;
+        if (this.state.getMetrics() == null) {
+            this.state.setMetrics(new NodeExecutionMetrics());
+        }
     }
 
     public void initInput() {

@@ -16,6 +16,7 @@ import com.moyz.adi.common.workflow.WorkflowUtil;
 import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.data.NodeIODataTextContent;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
+import com.moyz.adi.common.workflow.metrics.LLMMetrics;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +39,7 @@ public class FaqExtractorNode extends AbstractWfNode {
 
     public FaqExtractorNode(WorkflowComponent wfComponent, WorkflowNode nodeDef, WfState wfState, WfNodeState nodeState) {
         super(wfComponent, nodeDef, wfState, nodeState);
+        state.setMetrics(new LLMMetrics());
     }
 
     /**

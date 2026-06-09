@@ -388,7 +388,7 @@ export const useWfStore = defineStore('wf-store', {
     updateRuntimeNodeMetrics(wfRuntimeUuid: string, runtimeNodeUuid: string, metrics: Workflow.NodeExecutionMetrics) {
       const runtimeNode = this.getRuntimeNode(wfRuntimeUuid, runtimeNodeUuid)
       if (runtimeNode) {
-        runtimeNode.duration = metrics.durationMs
+        runtimeNode.duration = metrics.durationMs ?? null
         runtimeNode.metrics = metrics
       }
     },
