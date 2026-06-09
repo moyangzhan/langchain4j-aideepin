@@ -80,4 +80,8 @@ public class Draw extends BaseEntity {
 
     @TableField("star_count")
     private Integer starCount;
+
+    @Schema(title = "生成耗时（毫秒） | Generation duration in ms")
+    @TableField("duration")
+    private Integer duration;
 }

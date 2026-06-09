@@ -118,6 +118,7 @@ export function emptyDraw() {
     userUuid: '',
     userName: '',
     dynamicParams: {} as any,
+    duration: 0,
   }
 }
 

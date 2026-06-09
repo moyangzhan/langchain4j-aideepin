@@ -142,6 +142,7 @@ function openDetail(uuid: string) {
     <div class="overflow-hidden text-sm " :class="[inversion ? 'items-end' : 'items-start']">
       <p class="text-xs text-[#b4bbc4]" :class="[inversion ? 'text-right' : 'text-left']">
         {{ draw.createTime }}
+        <span v-if="draw.duration" class="ml-1">⏱ {{ draw.duration >= 1000 ? `${(draw.duration / 1000).toFixed(1)}s` : `${draw.duration}ms` }}</span>
       </p>
       <!-- 1、渲染文字 -->
       <div class="flex items-start gap-1 mt-2" :class="[inversion ? 'flex-row-reverse' : 'flex-row']">

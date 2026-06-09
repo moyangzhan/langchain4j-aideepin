@@ -51,6 +51,7 @@ CREATE TABLE adi_draw
     is_public             boolean       default false             not null,
     with_watermark        boolean       default false             not null,
     star_count            int           default 0                 not null,
+    duration              int           default 0                 not null,
     create_time           timestamp     default CURRENT_TIMESTAMP not null,
     update_time           timestamp     default CURRENT_TIMESTAMP not null,
     is_deleted            boolean       default false             not null,

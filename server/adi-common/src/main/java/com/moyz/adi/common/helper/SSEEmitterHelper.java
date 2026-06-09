@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.Map;
 import java.text.MessageFormat;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -232,6 +233,18 @@ public class SSEEmitterHelper {
         } catch (IOException e) {
             log.error("stream onNext error", e);
             throw new RuntimeException(e);
+        }
+    }
+
+    public static void sendToolCall(SseEmitter sseEmitter, String toolName, long durationMs, boolean success) {
+        if (sseEmitter == null) {
+            return;
+        }
+        try {
+            String data = JsonUtil.toJson(Map.of("toolName", toolName, "durationMs", durationMs, "success", success));
+            sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.TOOL_CALL).data(data));
+        } catch (IOException e) {
+            log.error("sendToolCall error", e);
         }
     }
 

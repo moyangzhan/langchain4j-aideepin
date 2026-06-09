@@ -20,3 +20,7 @@ ALTER TABLE adi_character_message
 
 COMMENT ON COLUMN adi_character_message.input_tokens IS '输入 token 数量 | Input token count';
 COMMENT ON COLUMN adi_character_message.output_tokens IS '输出 token 数量 | Output token count';
+
+-- 3. Draw Duration Observability
+ALTER TABLE adi_draw ADD COLUMN IF NOT EXISTS duration INT DEFAULT 0;
+COMMENT ON COLUMN adi_draw.duration IS '生成耗时（毫秒） | Generation duration in ms';

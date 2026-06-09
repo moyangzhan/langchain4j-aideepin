@@ -18,6 +18,7 @@ import com.moyz.adi.common.rag.TokenEstimatorFactory;
 import com.moyz.adi.common.rag.TokenEstimatorThreadLocal;
 import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.vo.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
@@ -231,7 +232,7 @@ public abstract class AbstractLLMService extends CommonModelService {
                 if (responseAiMessage.hasToolExecutionRequests()) {
                     // 如果有工具执行请求
                     // If there are tool execution requests
-                    List<ToolExecutionResultMessage> toolExecutionMessages = createToolExecutionMessages(responseAiMessage, toolSpecificationMcpClientMap);
+                    List<ToolExecutionResultMessage> toolExecutionMessages = createToolExecutionMessages(responseAiMessage, toolSpecificationMcpClientMap, params.getSseEmitter());
 
                     //mcp调用消息格式参考：https://docs.langchain4j.dev/tutorials/tools/
                     AiMessage aiMessage = AiMessage.aiMessage(responseAiMessage.toolExecutionRequests());
@@ -311,7 +312,7 @@ public abstract class AbstractLLMService extends CommonModelService {
             AiMessage responseAiMessage = chatResponse.aiMessage();
             if (responseAiMessage.hasToolExecutionRequests()) {
                 Map<ToolSpecification, McpClient> toolSpecificationMcpClientMap = getRequestTools(chatModelRequestParams.getMcpClients());
-                List<ToolExecutionResultMessage> toolExecutionMessages = createToolExecutionMessages(responseAiMessage, toolSpecificationMcpClientMap);
+                List<ToolExecutionResultMessage> toolExecutionMessages = createToolExecutionMessages(responseAiMessage, toolSpecificationMcpClientMap, null);
 
                 AiMessage aiMessage = AiMessage.aiMessage(responseAiMessage.toolExecutionRequests());
                 List<ChatMessage> messages = new ArrayList<>(chatRequest.messages());
@@ -507,7 +508,7 @@ public abstract class AbstractLLMService extends CommonModelService {
         return defaultParameters;
     }
 
-    private List<ToolExecutionResultMessage> createToolExecutionMessages(AiMessage aiMessage, Map<ToolSpecification, McpClient> toolSpecificationMcpClientMap) {
+    private List<ToolExecutionResultMessage> createToolExecutionMessages(AiMessage aiMessage, Map<ToolSpecification, McpClient> toolSpecificationMcpClientMap, SseEmitter sseEmitter) {
         List<ToolExecutionResultMessage> toolExecutionMessages = new ArrayList<>();
         aiMessage.toolExecutionRequests().forEach(req -> {
             log.warn("tool exec request:{},", req);
@@ -523,13 +524,18 @@ public abstract class AbstractLLMService extends CommonModelService {
                         "No Tool executor found for this tool request"));
                 return;
             }
+            long toolStart = System.currentTimeMillis();
             try {
                 final ToolExecutionResult toolResult = selectedMcpClient.executeTool(req);
+                long toolDuration = System.currentTimeMillis() - toolStart;
                 final String result = toolResult.resultText();
-                log.info("tool execute result:{}", result);
+                log.info("tool execute result:{},duration:{}ms", result, toolDuration);
+                SSEEmitterHelper.sendToolCall(sseEmitter, req.name(), toolDuration, true);
                 toolExecutionMessages.add(ToolExecutionResultMessage.from(req, result));
             } catch (Exception e) {
-                log.debug("Error executing tool " + req, e);
+                long toolDuration = System.currentTimeMillis() - toolStart;
+                log.debug("Error executing tool {},duration:{}ms", req.name(), toolDuration, e);
+                SSEEmitterHelper.sendToolCall(sseEmitter, req.name(), toolDuration, false);
                 toolExecutionMessages.add(ToolExecutionResultMessage.from(req, e.getMessage()));
             }
         });

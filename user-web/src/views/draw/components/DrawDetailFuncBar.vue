@@ -71,6 +71,9 @@ async function handleStar(uuid: string) {
             <NIcon :component="ModelAlt" />
           </template>
         </NTag>
+        <NTag v-if="draw.duration" size="medium" :bordered="false" round :color="{ color: '#ff000000' }">
+          ⏱ {{ draw.duration >= 1000 ? `${(draw.duration / 1000).toFixed(1)}s` : `${draw.duration}ms` }}
+        </NTag>
       </NFlex>
       <!-- 可点击按钮组 -->
       <NFlex align="center">

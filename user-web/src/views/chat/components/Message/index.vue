@@ -41,6 +41,7 @@ interface Props {
   aiModelPlatform?: string // openai,dashscope,qianfan,ollama,deepseek
   inputTokens?: number
   outputTokens?: number
+  toolCalls?: { toolName: string; durationMs: number; success: boolean }[]
 }
 
 interface Emit {
@@ -168,6 +169,12 @@ watch(() => props.thinking, (thinking) => {
         {{ dateTime }}
         <span v-if="inputTokens != null" class="ml-1">📥 {{ inputTokens }}</span>
         <span v-if="outputTokens != null" class="ml-1">📤 {{ outputTokens }}</span>
+        <template v-if="toolCalls?.length">
+          <span class="ml-1">🔧 {{ toolCalls.length }}</span>
+          <span v-for="(tool, idx) in toolCalls" :key="idx" class="ml-1 text-[10px] opacity-70">
+            {{ tool.toolName }}({{ tool.durationMs >= 1000 ? `${(tool.durationMs / 1000).toFixed(1)}s` : `${tool.durationMs}ms` }}{{ tool.success ? '' : '✗' }})
+          </span>
+        </template>
       </p>
       <div class="flex items-start gap-1 mt-2" :class="[inversion ? 'flex-row-reverse' : 'flex-row']">
         <!-- 消息框侧边下拉选择列表 -->

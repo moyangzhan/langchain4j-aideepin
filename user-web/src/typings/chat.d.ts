@@ -28,6 +28,9 @@ declare namespace Chat {
 		//Token observability
 		inputTokens?: number
 		outputTokens?: number
+
+		//MCP tool call observability
+		toolCalls?: { toolName: string; durationMs: number; success: boolean }[]
 	}
 
 	interface CharacterPreset {
@@ -184,6 +187,7 @@ declare namespace Chat {
 		userUuid: string
 		userName: string
 		dynamicParams: any
+		duration?: number
 	}
 
 	interface DrawListResp {

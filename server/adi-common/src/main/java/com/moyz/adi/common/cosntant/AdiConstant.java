@@ -268,6 +268,7 @@ public class AdiConstant {
         public static final String WF_NODE_CHUNK = "[WF_NODE_CHUNK]";
         public static final String WF_NODE_OUTPUT = "[WF_NODE_OUTPUT]";
         public static final String STATE_CHANGED = "[STATE_CHANGED]";
+        public static final String TOOL_CALL = "[TOOL_CALL]";
     }
 
     public static class SSEEventData {

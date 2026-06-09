@@ -224,6 +224,15 @@ const fetchChatAPIOnce = async (regenerateQuestionUuid: string, childAudioPlaySt
       if (appStore.audioSynthesizerSide !== AUDIO_SYNTHESIZER_SIDE.client && audioFrame)
         childAudioPlayState.audioFrame = audioFrame
     },
+    toolCallReceived: (data) => {
+      const question = messages.value.find((q: { uuid: string }) => q.uuid === regenerateQuestionUuid)
+      if (!question)
+        return
+      const answer = question.children[0]
+      if (!answer.toolCalls)
+        answer.toolCalls = []
+      answer.toolCalls.push(data)
+    },
     doneCallback: (chunk) => {
       const question = messages.value.find((q: { uuid: string }) => q.uuid === regenerateQuestionUuid)
       if (!question) {
@@ -556,6 +565,7 @@ onDeactivated(() => {
                       :thinking-content="answer.thinkingContent" :text="answer.remark" type="text" :inversion="false"
                       :regenerate="true" :error="answer.error" :loading="answer.loading"
                       :input-tokens="answer.inputTokens" :output-tokens="answer.outputTokens"
+                      :tool-calls="answer.toolCalls"
                       :ai-model-platform="answer.aiModelPlatform" @regenerate="onRegenerate(qaMessage.uuid)"
                       @delete="handleDelete(qaMessage.uuid, answer.uuid)"
                     >
@@ -621,6 +631,7 @@ onDeactivated(() => {
                   type="text" :inversion="qaMessage.children[0].inversion" :regenerate="true"
                   :error="qaMessage.children[0].error" :loading="qaMessage.children[0].loading"
                   :input-tokens="qaMessage.children[0].inputTokens" :output-tokens="qaMessage.children[0].outputTokens"
+                  :tool-calls="qaMessage.children[0].toolCalls"
                   :ai-model-platform="qaMessage.children[0].aiModelPlatform" @regenerate="onRegenerate(qaMessage.uuid)"
                   @delete="handleDelete(qaMessage.uuid, qaMessage.children[0].uuid)"
                 >
