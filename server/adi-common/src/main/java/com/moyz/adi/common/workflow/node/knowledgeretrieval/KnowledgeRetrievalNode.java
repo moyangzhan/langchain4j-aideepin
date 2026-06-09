@@ -77,6 +77,8 @@ public class KnowledgeRetrievalNode extends AbstractWfNode {
         StringBuilder resp = new StringBuilder();
         try {
             List<Content> contents = retriever.retrieve(Query.from(textInput));
+            //记录检索指标 | Record retrieval metrics
+            state.getMetrics().setRetrievalCount(contents.size());
             for (Content content : contents) {
                 resp.append(content.textSegment().text());
             }

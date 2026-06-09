@@ -984,6 +984,14 @@ create trigger trigger_workflow_runtime_node
     for each row
 execute procedure update_modified_column();
 
+-- Workflow Runtime Node Observability
+ALTER TABLE adi_workflow_runtime_node
+    ADD COLUMN IF NOT EXISTS duration INT DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS metrics JSONB DEFAULT '{}';
+
+COMMENT ON COLUMN adi_workflow_runtime_node.duration IS '节点执行耗时（毫秒） | Node execution duration in ms';
+COMMENT ON COLUMN adi_workflow_runtime_node.metrics IS '可观测指标 JSON：token 消耗、HTTP 状态码、搜索结果数等 | Observability metrics JSON';
+
 -- ============================================================
 -- MCP: model context protocol services
 -- ============================================================

@@ -5,6 +5,7 @@ import com.moyz.adi.common.entity.WorkflowComponent;
 import com.moyz.adi.common.entity.WorkflowNode;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.workflow.NodeProcessResult;
+import com.moyz.adi.common.workflow.NodeExecutionMetrics;
 import com.moyz.adi.common.workflow.WfNodeState;
 import com.moyz.adi.common.workflow.WfState;
 import com.moyz.adi.common.workflow.data.NodeIOData;
@@ -103,6 +104,10 @@ public class HttpRequestNode extends AbstractWfNode {
             try (CloseableHttpResponse response = httpClient.execute(httpRequest)) {
                 int statusCode = response.getStatusLine().getStatusCode();
                 String responseBody = EntityUtils.toString(response.getEntity(), Consts.UTF_8);
+                //记录 HTTP 指标 | Record HTTP metrics
+                NodeExecutionMetrics metrics = state.getMetrics();
+                metrics.setHttpStatusCode(statusCode);
+                metrics.setHttpMethod(nodeConfig.getMethod());
                 if (Boolean.TRUE.equals(nodeConfig.getClearHtml())) {
                     Document doc = Jsoup.parse(responseBody);
                     responseBody = doc.body().text();
@@ -119,6 +124,8 @@ public class HttpRequestNode extends AbstractWfNode {
             }
         } catch (IOException e) {
             log.error("Request failed:{}", e.getMessage());
+            //IO 异常时仍记录请求方法 | Record HTTP method even on IO failure
+            state.getMetrics().setHttpMethod(nodeConfig.getMethod());
         }
         return NodeProcessResult.builder().content(outputData).build();
     }

@@ -97,6 +97,11 @@ public class WorkflowRuntimeNodeService extends ServiceImpl<WorkflowRuntimeNodeM
         }
         updateOne.setStatus(state.getProcessStatus());
         updateOne.setStatusRemark(state.getProcessStatusRemark());
+        //更新可观测指标 | Update observability metrics
+        if (state.getMetrics() != null && state.getMetrics().getDurationMs() > 0) {
+            updateOne.setDuration((int) Math.min(state.getMetrics().getDurationMs(), Integer.MAX_VALUE));
+            updateOne.setMetrics((ObjectNode) JsonUtil.classToJsonNode(state.getMetrics()));
+        }
         baseMapper.updateById(updateOne);
     }
 

@@ -38,6 +38,33 @@ const authStore = useAuthStore()
           {{ node.nodeTitle || t('workflow.nodeTitleNotFound') }}
         </div>
       </div>
+      <div v-if="node.duration || node.metrics" class="flex flex-wrap gap-1.5 px-2 py-1 text-xs text-gray-500">
+        <span v-if="node.duration" class="bg-gray-100 px-1.5 py-0.5 rounded">
+          ⏱ {{ node.duration >= 1000 ? `${(node.duration / 1000).toFixed(2)}s` : `${node.duration}ms` }}
+        </span>
+        <span v-if="node.metrics?.inputTokens != null" class="bg-gray-100 px-1.5 py-0.5 rounded">
+          📥 {{ node.metrics.inputTokens }} tokens
+        </span>
+        <span v-if="node.metrics?.outputTokens != null" class="bg-gray-100 px-1.5 py-0.5 rounded">
+          📤 {{ node.metrics.outputTokens }} tokens
+        </span>
+        <span v-if="node.metrics?.modelName" class="bg-gray-100 px-1.5 py-0.5 rounded">
+          🤖 {{ node.metrics.modelName }}
+        </span>
+        <span
+          v-if="node.metrics?.httpStatusCode"
+          class="px-1.5 py-0.5 rounded"
+          :class="node.metrics.httpStatusCode === 200 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'"
+        >
+          HTTP {{ node.metrics.httpStatusCode }}
+        </span>
+        <span v-if="node.metrics?.searchResultCount != null" class="bg-gray-100 px-1.5 py-0.5 rounded">
+          🔍 {{ node.metrics.searchResultCount }} results
+        </span>
+        <span v-if="node.metrics?.retrievalCount != null" class="bg-gray-100 px-1.5 py-0.5 rounded">
+          📚 {{ node.metrics.retrievalCount }} chunks
+        </span>
+      </div>
       <div class="flex flex-col space-y-2">
         <div class="text-base border-b border-gray-200 py-1">
           {{ t('common.input') }}

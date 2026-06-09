@@ -42,4 +42,10 @@ public class WorkflowRuntimeNode extends BaseEntity {
 
     @TableField("status_remark")
     private String statusRemark;
+
+    @TableField("duration")
+    private Integer duration;
+
+    @TableField(value = "metrics", jdbcType = JdbcType.JAVA_OBJECT, typeHandler = JsonNodeTypeHandler.class)
+    private ObjectNode metrics;
 }

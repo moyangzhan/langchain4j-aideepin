@@ -385,6 +385,13 @@ export const useWfStore = defineStore('wf-store', {
         runtimeNode.output.output.value = runtimeNode.output.output.value + chunk
       }
     },
+    updateRuntimeNodeMetrics(wfRuntimeUuid: string, runtimeNodeUuid: string, metrics: Workflow.NodeExecutionMetrics) {
+      const runtimeNode = this.getRuntimeNode(wfRuntimeUuid, runtimeNodeUuid)
+      if (runtimeNode) {
+        runtimeNode.duration = metrics.durationMs
+        runtimeNode.metrics = metrics
+      }
+    },
     deleteWfRuntime(wfUuid: string, wfRuntimeUuid: string) {
       const wfRuntimes = this.wfUuidToWfRuntimes.get(wfUuid)
       if (wfRuntimes) {

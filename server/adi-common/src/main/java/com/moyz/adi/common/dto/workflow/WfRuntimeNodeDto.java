@@ -14,4 +14,6 @@ public class WfRuntimeNodeDto {
     private ObjectNode input;
     private ObjectNode output;
     private Integer status;
+    private Integer duration;
+    private ObjectNode metrics;
 }

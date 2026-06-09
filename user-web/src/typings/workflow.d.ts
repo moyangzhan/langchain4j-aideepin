@@ -95,11 +95,30 @@ declare namespace Workflow {
     status: number
     statusRemark: string
     createTime: string
+    duration: number | null
+    metrics: NodeExecutionMetrics | null
 
     wfComponent: WorkflowComponent
     wfRuntimeUuid: string
     nodeUuid: string
     nodeTitle: string
+  }
+
+  // 节点执行可观测指标 | Node execution observability metrics
+  interface NodeExecutionMetrics {
+    durationMs: number
+    // LLM related
+    inputTokens?: number
+    outputTokens?: number
+    modelName?: string
+    modelPlatform?: string
+    // HTTP Request
+    httpStatusCode?: number
+    httpMethod?: string
+    // Search
+    searchResultCount?: number
+    // Knowledge Retrieval
+    retrievalCount?: number
   }
 
   interface WorkflowState {

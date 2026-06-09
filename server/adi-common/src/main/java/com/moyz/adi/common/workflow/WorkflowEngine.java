@@ -219,6 +219,14 @@ public class WorkflowEngine {
             // Synchronous invoke instead of streaming
             app.invoke(Map.of(), invokeConfig);
 
+            //Consume any streaming generators to ensure mapResult callbacks fire (e.g. token recording)
+            //消费流式生成器以确保 mapResult 回调被触发（如 token 记录）
+            for (StreamingChatGenerator<AgentState> generator : wfState.getNodeToStreamingGenerator().values()) {
+                for (Object ignored : generator) {
+                    // drain the generator to trigger mapResult
+                }
+            }
+
             // Collect output from the last completed node (end node or final node)
             List<AbstractWfNode> completedNodes = wfState.getCompletedNodes();
             if (!completedNodes.isEmpty()) {
@@ -281,6 +289,12 @@ public class WorkflowEngine {
                     log.info("callback node:{},output:{}", nodeUuid, output.getContent());
                     SSEEmitterHelper.parseAndSendPartialMsg(sseEmitter, "[NODE_OUTPUT_" + nodeUuid + "]", JsonUtil.toJson(output));
                 }
+                //推送可观测指标（流式节点由 streamingResult 统一推送，因为 token 数据在流完成后才可用）
+                //Push observability metrics (streaming nodes are handled by streamingResult since token data is only available after stream completes)
+                if (nodeState.getMetrics() != null && nodeState.getMetrics().getDurationMs() > 0
+                        && !wfState.getNodeToStreamingGenerator().containsKey(nodeUuid)) {
+                    SSEEmitterHelper.parseAndSendPartialMsg(sseEmitter, "[NODE_METRICS_" + nodeUuid + "]", JsonUtil.toJson(nodeState.getMetrics()));
+                }
             });
             if (StringUtils.isNotBlank(processResult.getNextNodeUuid())) {
                 resultMap.put("next", processResult.getNextNodeUuid());
@@ -320,6 +334,11 @@ public class WorkflowEngine {
                     if (null != runtimeNodeDto) {
                         workflowRuntimeNodeService.updateOutput(runtimeNodeDto.getId(), abstractWfNode.getState());
                         wfState.setOutput(abstractWfNode.getState().getOutputs());
+                        //流式节点完成时推送可观测指标（token 数据此时才可用）
+                        //Push observability metrics when streaming node completes (token data available only now)
+                        if (abstractWfNode.getState().getMetrics() != null && abstractWfNode.getState().getMetrics().getDurationMs() > 0) {
+                            SSEEmitterHelper.parseAndSendPartialMsg(sseEmitter, "[NODE_METRICS_" + out.node() + "]", JsonUtil.toJson(abstractWfNode.getState().getMetrics()));
+                        }
                     } else {
                         log.warn("Can not find runtime node, node uuid:{}", out.node());
                     }
