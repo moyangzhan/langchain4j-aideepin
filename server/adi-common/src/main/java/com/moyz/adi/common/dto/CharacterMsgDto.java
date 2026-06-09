@@ -40,6 +40,12 @@ public class CharacterMsgDto {
     @Schema(title = "消耗的token数量 | Token Count Consumed")
     private Integer tokens;
 
+    @Schema(title = "输入token数量 | Input Token Count")
+    private Integer inputTokens;
+
+    @Schema(title = "输出token数量 | Output Token Count")
+    private Integer outputTokens;
+
     @Schema(title = "创建时间 | Create Time")
     private LocalDateTime createTime;
 

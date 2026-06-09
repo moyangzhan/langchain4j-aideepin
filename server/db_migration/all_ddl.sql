@@ -992,6 +992,14 @@ ALTER TABLE adi_workflow_runtime_node
 COMMENT ON COLUMN adi_workflow_runtime_node.duration IS '节点执行耗时（毫秒） | Node execution duration in ms';
 COMMENT ON COLUMN adi_workflow_runtime_node.metrics IS '可观测指标 JSON：token 消耗、HTTP 状态码、搜索结果数等 | Observability metrics JSON';
 
+-- Chat Message Token Observability
+ALTER TABLE adi_character_message
+    ADD COLUMN IF NOT EXISTS input_tokens INT DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS output_tokens INT DEFAULT 0;
+
+COMMENT ON COLUMN adi_character_message.input_tokens IS '输入 token 数量 | Input token count';
+COMMENT ON COLUMN adi_character_message.output_tokens IS '输出 token 数量 | Output token count';
+
 -- ============================================================
 -- MCP: model context protocol services
 -- ============================================================

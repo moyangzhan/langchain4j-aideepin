@@ -234,9 +234,9 @@ const fetchChatAPIOnce = async (regenerateQuestionUuid: string, childAudioPlaySt
       if (chunk.includes('[META]')) {
         const meta = chunk.replace('[META]', '')
         const metaData: Chat.MetaData = JSON.parse(meta)
-        updateMessageSomeFields(characterUuid, question.uuid, { ...metaData.question, loading: false, state: new Map<string, string>() })
+        updateMessageSomeFields(characterUuid, question.uuid, { ...metaData.question, inputTokens: metaData.question.tokens, loading: false, state: new Map<string, string>() })
         // 保留临时answer的uuid以方便自动选中最新答案
-        updateMessageSomeFields(characterUuid, answer.uuid, { ...metaData.answer, uuid: answer.uuid, loading: false })
+        updateMessageSomeFields(characterUuid, answer.uuid, { ...metaData.answer, outputTokens: metaData.answer.tokens, uuid: answer.uuid, loading: false })
         if (metaData.audioInfo) {
           answer.audioPlayState.audioUrl = metaData.audioInfo.url
           answer.audioDuration = metaData.audioInfo.duration
@@ -555,6 +555,7 @@ onDeactivated(() => {
                       v-else :show-avatar="false" :date-time="answer.createTime" :thinking="answer.thinking"
                       :thinking-content="answer.thinkingContent" :text="answer.remark" type="text" :inversion="false"
                       :regenerate="true" :error="answer.error" :loading="answer.loading"
+                      :input-tokens="answer.inputTokens" :output-tokens="answer.outputTokens"
                       :ai-model-platform="answer.aiModelPlatform" @regenerate="onRegenerate(qaMessage.uuid)"
                       @delete="handleDelete(qaMessage.uuid, answer.uuid)"
                     >
@@ -619,6 +620,7 @@ onDeactivated(() => {
                   :thinking-content="qaMessage.children[0].thinkingContent" :text="qaMessage.children[0].remark"
                   type="text" :inversion="qaMessage.children[0].inversion" :regenerate="true"
                   :error="qaMessage.children[0].error" :loading="qaMessage.children[0].loading"
+                  :input-tokens="qaMessage.children[0].inputTokens" :output-tokens="qaMessage.children[0].outputTokens"
                   :ai-model-platform="qaMessage.children[0].aiModelPlatform" @regenerate="onRegenerate(qaMessage.uuid)"
                   @delete="handleDelete(qaMessage.uuid, qaMessage.children[0].uuid)"
                 >

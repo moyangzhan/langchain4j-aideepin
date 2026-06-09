@@ -39,6 +39,8 @@ interface Props {
   type: string // text,text-image,image
 
   aiModelPlatform?: string // openai,dashscope,qianfan,ollama,deepseek
+  inputTokens?: number
+  outputTokens?: number
 }
 
 interface Emit {
@@ -164,6 +166,8 @@ watch(() => props.thinking, (thinking) => {
     <div class="overflow-hidden text-sm " :class="[inversion ? 'items-end' : 'items-start']">
       <p class="text-xs text-[#b4bbc4]" :class="[inversion ? 'text-right' : 'text-left']">
         {{ dateTime }}
+        <span v-if="inputTokens != null" class="ml-1">📥 {{ inputTokens }}</span>
+        <span v-if="outputTokens != null" class="ml-1">📤 {{ outputTokens }}</span>
       </p>
       <div class="flex items-start gap-1 mt-2" :class="[inversion ? 'flex-row-reverse' : 'flex-row']">
         <!-- 消息框侧边下拉选择列表 -->

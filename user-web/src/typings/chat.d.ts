@@ -24,6 +24,10 @@ declare namespace Chat {
 		loading?: boolean
 		audioPlayState: AudioPlayState
 		state?: Map<string, string> //消息状态描述
+
+		//Token observability
+		inputTokens?: number
+		outputTokens?: number
 	}
 
 	interface CharacterPreset {

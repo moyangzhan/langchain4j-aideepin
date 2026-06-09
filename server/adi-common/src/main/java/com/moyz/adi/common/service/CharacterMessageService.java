@@ -496,6 +496,7 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
             question.setAudioUuid(askReq.getAudioUuid());
             question.setAudioDuration(askReq.getAudioDuration());
             question.setTokens(questionMeta.getTokens());
+            question.setInputTokens(questionMeta.getTokens());
             question.setUnderstandContextMsgPairNum(user.getUnderstandContextMsgPairNum());
             question.setAttachments(String.join(",", askReq.getImageUrls()));
             baseMapper.insert(question);
@@ -519,6 +520,7 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
         aiAnswer.setAudioUuid(null == audioInfo ? "" : Objects.toString(audioInfo.getUuid(), ""));
         aiAnswer.setAudioDuration(null == audioInfo ? 0 : audioInfo.getDuration());
         aiAnswer.setTokens(answerMeta.getTokens());
+        aiAnswer.setOutputTokens(answerMeta.getTokens());
         aiAnswer.setParentMessageId(promptMsg.getId());
         aiAnswer.setAiModelId(aiModel.getId());
         aiAnswer.setIsRefEmbedding(answerMeta.getIsRefEmbedding());

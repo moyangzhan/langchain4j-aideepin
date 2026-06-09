@@ -284,8 +284,14 @@ public class SSEEmitterHelper {
         log.info("Response data completed:{}", response);
         //缓存以便后续统计此次提问的消耗总token
         // Cache for later statistics of total token consumption for this query
-        int inputTokenCount = response.metadata().tokenUsage().totalTokenCount();
-        int outputTokenCount = response.metadata().tokenUsage().outputTokenCount();
+        int inputTokenCount = 0;
+        int outputTokenCount = 0;
+        if (response.metadata() != null && response.metadata().tokenUsage() != null) {
+            Integer input = response.metadata().tokenUsage().inputTokenCount();
+            Integer output = response.metadata().tokenUsage().outputTokenCount();
+            inputTokenCount = input != null ? input : 0;
+            outputTokenCount = output != null ? output : 0;
+        }
         log.info("StreamingChatModel token cost,uuid:{},inputTokenCount:{},outputTokenCount:{}", uuid, inputTokenCount, outputTokenCount);
         LLMTokenUtil.cacheTokenUsage(SpringUtil.getBean(StringRedisTemplate.class), uuid, response.metadata().tokenUsage());
 
