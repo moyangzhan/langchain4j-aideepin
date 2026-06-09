@@ -7,7 +7,7 @@ import { Reload } from '@vicons/ionicons5'
 import AvatarComponent from '@/views/chat/components/Message/Avatar.vue'
 import TextComponent from '@/views/chat/components/Message/Text.vue'
 import { SvgIcon } from '@/components/common'
-import { copyText } from '@/utils/format'
+import { copyText, formatDuration } from '@/utils/format'
 import { useIconRender } from '@/hooks/useIconRender'
 import { t } from '@/locales'
 import { useAuthStore } from '@/store'
@@ -142,7 +142,7 @@ function openDetail(uuid: string) {
     <div class="overflow-hidden text-sm " :class="[inversion ? 'items-end' : 'items-start']">
       <p class="text-xs text-[#b4bbc4]" :class="[inversion ? 'text-right' : 'text-left']">
         {{ draw.createTime }}
-        <span v-if="draw.duration" class="ml-1">⏱ {{ draw.duration >= 1000 ? `${(draw.duration / 1000).toFixed(1)}s` : `${draw.duration}ms` }}</span>
+        <span v-if="formatDuration(draw.duration)" class="ml-1">⏱ {{ formatDuration(draw.duration) }}</span>
       </p>
       <!-- 1、渲染文字 -->
       <div class="flex items-start gap-1 mt-2" :class="[inversion ? 'flex-row-reverse' : 'flex-row']">

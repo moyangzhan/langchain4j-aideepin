@@ -534,7 +534,7 @@ public abstract class AbstractLLMService extends CommonModelService {
                 toolExecutionMessages.add(ToolExecutionResultMessage.from(req, result));
             } catch (Exception e) {
                 long toolDuration = System.currentTimeMillis() - toolStart;
-                log.debug("Error executing tool {},duration:{}ms", req.name(), toolDuration, e);
+                log.debug("Error executing tool {},duration:{}ms,req:{}", req.name(), toolDuration, req, e);
                 SSEEmitterHelper.sendToolCall(sseEmitter, req.name(), toolDuration, false);
                 toolExecutionMessages.add(ToolExecutionResultMessage.from(req, e.getMessage()));
             }

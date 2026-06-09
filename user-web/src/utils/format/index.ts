@@ -42,3 +42,14 @@ export function copyText(options: { text: string; origin?: boolean }) {
     document.execCommand('copy')
   document.body.removeChild(input)
 }
+
+/**
+ * 格式化毫秒时长为可读字符串
+ * Format milliseconds duration to human-readable string
+ * @param ms 毫秒数 | duration in milliseconds
+ */
+export function formatDuration(ms: number | undefined | null): string {
+  if (ms == null || ms === 0)
+    return ''
+  return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`
+}

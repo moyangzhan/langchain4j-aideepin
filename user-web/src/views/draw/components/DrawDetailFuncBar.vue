@@ -8,6 +8,7 @@ import defaultAvatar from '@/assets/avatar.jpg'
 import NoPic from '@/assets/no_pic.png'
 import api from '@/api'
 import { emptyDraw, getRealFileUrl } from '@/utils/functions'
+import { formatDuration } from '@/utils/format'
 
 const props = withDefaults(defineProps<Props>(), {
   draw: () => emptyDraw(),
@@ -71,8 +72,8 @@ async function handleStar(uuid: string) {
             <NIcon :component="ModelAlt" />
           </template>
         </NTag>
-        <NTag v-if="draw.duration" size="medium" :bordered="false" round :color="{ color: '#ff000000' }">
-          ⏱ {{ draw.duration >= 1000 ? `${(draw.duration / 1000).toFixed(1)}s` : `${draw.duration}ms` }}
+        <NTag v-if="formatDuration(draw.duration)" size="medium" :bordered="false" round :color="{ color: '#ff000000' }">
+          ⏱ {{ formatDuration(draw.duration) }}
         </NTag>
       </NFlex>
       <!-- 可点击按钮组 -->

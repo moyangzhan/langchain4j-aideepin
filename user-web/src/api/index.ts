@@ -154,7 +154,12 @@ function commonSseProcess(
         params.stateChanged && params.stateChanged(eventMessage.data)
         return
       } else if (eventMessage.event === '[TOOL_CALL]') {
-        params.toolCallReceived && params.toolCallReceived(JSON.parse(eventMessage.data))
+        try {
+          params.toolCallReceived && params.toolCallReceived(JSON.parse(eventMessage.data))
+        }
+        catch (e) {
+          console.warn('[TOOL_CALL] parse error', e)
+        }
         return
       }
       if (eventMessage.data.indexOf('-_wrap_-') === 0)

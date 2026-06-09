@@ -7,7 +7,7 @@ import { Reload } from '@vicons/ionicons5'
 import AvatarComponent from './Avatar.vue'
 import TextComponent from './Text.vue'
 import { SvgIcon } from '@/components/common'
-import { copyText } from '@/utils/format'
+import { copyText, formatDuration } from '@/utils/format'
 import { useIconRender } from '@/hooks/useIconRender'
 import { t } from '@/locales'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
@@ -172,7 +172,7 @@ watch(() => props.thinking, (thinking) => {
         <template v-if="toolCalls?.length">
           <span class="ml-1">🔧 {{ toolCalls.length }}</span>
           <span v-for="(tool, idx) in toolCalls" :key="idx" class="ml-1 text-[10px] opacity-70">
-            {{ tool.toolName }}({{ tool.durationMs >= 1000 ? `${(tool.durationMs / 1000).toFixed(1)}s` : `${tool.durationMs}ms` }}{{ tool.success ? '' : '✗' }})
+            {{ tool.toolName }}({{ formatDuration(tool.durationMs) }}{{ tool.success ? '' : '✗' }})
           </span>
         </template>
       </p>

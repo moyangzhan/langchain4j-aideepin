@@ -3,6 +3,7 @@ import { NImage, NImageGroup } from 'naive-ui'
 import { SvgIcon } from '@/components/common'
 import { getIconByComponentName, getIconClassByComponentName } from '@/utils/workflow-util'
 import { useAuthStore } from '@/store'
+import { formatDuration } from '@/utils/format'
 import { t } from '@/locales'
 import { getRealFileUrl } from '@/utils/functions'
 import TextComponent from '@/views/chat/components/Message/Text.vue'
@@ -39,8 +40,8 @@ const authStore = useAuthStore()
         </div>
       </div>
       <div v-if="node.duration || node.metrics" class="flex flex-wrap gap-1.5 px-2 py-1 text-xs text-gray-500">
-        <span v-if="node.duration" class="bg-gray-100 px-1.5 py-0.5 rounded">
-          ⏱ {{ node.duration >= 1000 ? `${(node.duration / 1000).toFixed(2)}s` : `${node.duration}ms` }}
+        <span v-if="formatDuration(node.duration)" class="bg-gray-100 px-1.5 py-0.5 rounded">
+          ⏱ {{ formatDuration(node.duration) }}
         </span>
         <span v-if="node.metrics?.inputTokens != null" class="bg-gray-100 px-1.5 py-0.5 rounded">
           📥 {{ node.metrics.inputTokens }} tokens

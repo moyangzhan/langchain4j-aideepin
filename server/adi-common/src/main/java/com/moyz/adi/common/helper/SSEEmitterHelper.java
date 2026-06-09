@@ -240,11 +240,17 @@ public class SSEEmitterHelper {
         if (sseEmitter == null) {
             return;
         }
+        if (Boolean.TRUE.equals(COMPLETED_SSE.getIfPresent(sseEmitter))) {
+            log.warn("sseEmitter already completed, skip sendToolCall");
+            return;
+        }
         try {
-            String data = JsonUtil.toJson(Map.of("toolName", toolName, "durationMs", durationMs, "success", success));
+            String safeName = toolName != null ? toolName : "unknown";
+            String data = JsonUtil.toJson(Map.of("toolName", safeName, "durationMs", durationMs, "success", success));
             sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.TOOL_CALL).data(data));
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("sendToolCall error", e);
+            COMPLETED_SSE.put(sseEmitter, Boolean.TRUE);
         }
     }
 
