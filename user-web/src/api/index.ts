@@ -598,29 +598,6 @@ function loadImageModels<T = any>() {
   })
 }
 
-function aiSearchProcess(params: {
-  options: { searchText: string; engineName: string; modelName: string; briefSearch: boolean }
-  signal: AbortSignal
-  startCallback: (chunk: string) => void
-  messageReceived: (chunk: string, eventName?: string) => void
-  thinkingDataReceived: (chunk: string) => void
-  doneCallback: (chunk: string) => void
-  errorCallback: (error: string) => void
-}) {
-  commonSseProcess('/api/ai-search/process', params)
-}
-
-function aiSearchRecords<T = any>(maxId: number, keyword: string) {
-  return get<T>({
-    url: `/ai-search-record/list?maxId=${maxId}&keyword=${keyword}`,
-  })
-}
-
-function aiSearchRecordDel<T = any>(uuid: string) {
-  return post<T>({
-    url: `/ai-search-record/del/${uuid}`,
-  })
-}
 
 function loadFileContent(fileUrl: string) {
   return getRawAxios().get(fileUrl, {
@@ -858,9 +835,6 @@ export default {
   loadSearchEngines,
   loadLLMs,
   loadImageModels,
-  aiSearchProcess,
-  aiSearchRecords,
-  aiSearchRecordDel,
   loadFileContent,
   workflowAdd,
   workflowCopy,

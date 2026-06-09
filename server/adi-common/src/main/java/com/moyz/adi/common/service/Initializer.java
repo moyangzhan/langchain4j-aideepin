@@ -55,9 +55,6 @@ public class Initializer {
     private EmbeddingStore<TextSegment> characterMemoryEmbeddingStore;
     @Lazy
     @Resource
-    private EmbeddingStore<TextSegment> aiSearchEmbeddingStore;
-    @Lazy
-    @Resource
     private EmbeddingModel embeddingModel;
 
     /**
@@ -78,7 +75,6 @@ public class Initializer {
         // 使用召回内容来源(RetrieveContentFrom)做为RAG名称以区分不同RAG实例
         EmbeddingRagContext.add(new EmbeddingRag(AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE, embeddingModel, kbEmbeddingStore));
         EmbeddingRagContext.add(new EmbeddingRag(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY, embeddingModel, characterMemoryEmbeddingStore));
-        EmbeddingRagContext.add(new EmbeddingRag(AdiConstant.RetrieveContentFrom.WEB, embeddingModel, aiSearchEmbeddingStore));
 
         GraphRagContext.add(new GraphRag(AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE, kbGraphStore));
     }

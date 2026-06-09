@@ -329,7 +329,7 @@ onActivated(async () => {
                 :inversion="true" :error="qaRecord.error" :loading="false" @delete="handleDelete(qaRecord.uuid)"
               />
               <Message
-                :date-time="qaRecord.createTime" :text="!!qaRecord.answer ? qaRecord.answer : t('aiSearch.noAnswer')"
+                :date-time="qaRecord.createTime" :text="!!qaRecord.answer ? qaRecord.answer : t('common.noAnswer')"
                 :regenerate="false" type="text" :inversion="false" :error="qaRecord.error" :loading="qaRecord.loading"
                 :input-tokens="qaRecord.inputTokens || qaRecord.promptTokens" :output-tokens="qaRecord.outputTokens || qaRecord.answerTokens"
                 :ai-model-platform="qaRecord.aiModelPlatform" @delete="handleDelete(qaRecord.uuid)"
@@ -390,7 +390,7 @@ onActivated(async () => {
       </div>
       <NCollapse v-show="references.length > 0" :default-expanded-names="['refer_0']">
         <NCollapseItem
-          v-for="(reference, idx) of references" :key="reference.embeddingId" :title="`${t('aiSearch.quote')}${idx + 1}`"
+          v-for="(reference, idx) of references" :key="reference.embeddingId" :title="`${t('chat.reference')}${idx + 1}`"
           :name="`refer_${idx}`"
         >
           {{ reference.text }}

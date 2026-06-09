@@ -39,7 +39,6 @@ const menuKeyToRouteNames = new Map<string, string[]>(
     ['gallery', ['Root', 'Gallery']],
     ['knowledge-base', ['QAIndex', 'QADetail', 'KnowledgeBaseManage', 'KnowledgeBaseManageDetail']],
     ['workflow', ['WfDetail']],
-    ['aisearch', ['AiSearch']],
     ['mcp', ['Mcp']],
   ])
 

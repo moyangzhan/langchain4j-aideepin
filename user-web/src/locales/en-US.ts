@@ -675,17 +675,6 @@ export default {
     publicImage: 'Public Images',
     myLikes: 'My Likes',
   },
-  aiSearch: {
-    deleteConfirmContent: 'The question and its corresponding answer will be deleted together. Continue?',
-    generating: 'Generating...',
-    loading: 'Loading...',
-    noMore: 'No more data',
-    systemTip: 'System prompt: ',
-    briefMode: 'Brief Mode',
-    detailMode: 'Detail Mode',
-    quote: 'Reference',
-    noAnswer: '[No answer]',
-  },
   extApi: {
     apiAccess: 'API',
     apiKeyLabel: 'API Key',

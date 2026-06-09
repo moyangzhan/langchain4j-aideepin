@@ -675,17 +675,6 @@ export default {
     publicImage: '公开图片',
     myLikes: '我的点赞',
   },
-  aiSearch: {
-    deleteConfirmContent: '提问及对应的答案会一起删除，继续执行？',
-    generating: '生成中...',
-    loading: '加载中...',
-    noMore: '没有更多了',
-    systemTip: '系统提示：',
-    briefMode: '摘要模式',
-    detailMode: '详细模式',
-    quote: '引用',
-    noAnswer: '[无答案]',
-  },
   extApi: {
     apiAccess: 'API',
     apiKeyLabel: 'API Key',
