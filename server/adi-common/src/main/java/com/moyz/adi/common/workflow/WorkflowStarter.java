@@ -51,24 +51,25 @@ public class WorkflowStarter {
 
 
     public SseEmitter streaming(User user, String workflowUuid, List<ObjectNode> userInputs) {
+        String sseUuid = com.moyz.adi.common.util.UuidUtil.createShort();
         SseEmitter sseEmitter = new SseEmitter(SSE_TIMEOUT);
-        if (!sseEmitterHelper.checkOrComplete(user, sseEmitter)) {
+        if (!sseEmitterHelper.checkOrComplete(user, sseUuid, sseEmitter)) {
             return sseEmitter;
         }
         Workflow workflow = workflowService.getByUuid(workflowUuid);
         if (null == workflow) {
-            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, SpringUtil.getMessage(A_WF_NOT_FOUND.getInfo()));
+            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage(A_WF_NOT_FOUND.getInfo()));
             return sseEmitter;
         } else if (Boolean.FALSE.equals(workflow.getIsEnable())) {
-            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, SpringUtil.getMessage(A_WF_DISABLED.getInfo()));
+            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage(A_WF_DISABLED.getInfo()));
             return sseEmitter;
         }
-        self.asyncRun(user, workflow, userInputs, sseEmitter);
+        self.asyncRun(user, workflow, userInputs, sseUuid);
         return sseEmitter;
     }
 
     @Async
-    public void asyncRun(User user, Workflow workflow, List<ObjectNode> userInputs, SseEmitter sseEmitter) {
+    public void asyncRun(User user, Workflow workflow, List<ObjectNode> userInputs, String sseUuid) {
         log.info("WorkflowEngine run,userId:{},workflowUuid:{},userInputs:{}", user.getId(), workflow.getUuid(), userInputs);
         try {
             List<WorkflowComponent> components = workflowComponentService.getAllEnable();
@@ -87,10 +88,10 @@ public class WorkflowStarter {
                     edges,
                     workflowRuntimeService,
                     workflowRuntimeNodeService);
-            workflowEngine.run(user, userInputs, sseEmitter);
+            workflowEngine.run(user, userInputs, sseUuid);
         } catch (Throwable e) {
             log.error("asyncRun execution exception, workflowUuid:{}", workflow.getUuid(), e);
-            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "Workflow execution error:" + e.getMessage());
+            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseUuid, "Workflow execution error:" + e.getMessage());
         }
     }
 

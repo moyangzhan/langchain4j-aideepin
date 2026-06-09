@@ -79,23 +79,22 @@ public class CompositeRag {
     public void ragChat(List<ContentRetriever> retrievers, SseAskParams sseAskParams, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
         SSEEmitterHelper sseEmitterHelper = SpringUtil.getBean(SSEEmitterHelper.class);
         User user = sseAskParams.getUser();
-        String askingKey = sseEmitterHelper.registerEventStreamListener(sseAskParams);
+        sseEmitterHelper.registerEventStreamListener(sseAskParams);
         try {
             query(retrievers, sseAskParams, (response, promptMeta, answerMeta) -> {
                 try {
                     consumer.accept(response, promptMeta, answerMeta);
                 } catch (Exception e) {
                     log.error("ragProcess error", e);
-                } finally {
-                    sseEmitterHelper.deleteCache(askingKey);
                 }
             });
         } catch (Exception baseException) {
             if (baseException.getCause() instanceof BaseException && B_BREAK_SEARCH.getCode().equals(((BaseException) baseException.getCause()).getCode())) {
-                sseEmitterHelper.sendStartAndComplete(user.getId(), sseAskParams.getSseEmitter(), "");
+                sseEmitterHelper.sendStartAndComplete(user.getId(), sseAskParams.getSseUuid(), "");
                 consumer.accept("", PromptMeta.builder().tokens(0).build(), AnswerMeta.builder().tokens(0).build());
             } else {
                 log.error("ragProcess error", baseException);
+                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseAskParams.getSseUuid(), baseException.getMessage());
             }
         }
 
@@ -154,12 +153,12 @@ public class CompositeRag {
             }
         }
         tokenStream
-                .onPartialResponse(content -> SSEEmitterHelper.parseAndSendPartialMsg(params.getSseEmitter(), content))
+                .onPartialResponse(content -> SSEEmitterHelper.parseAndSendPartialMsg(params.getSseUuid(), content))
                 .onCompleteResponse(response -> {
                     Pair<PromptMeta, AnswerMeta> pair = SSEEmitterHelper.calculateToken(response, params.getUuid());
                     consumer.accept(response.aiMessage().text(), pair.getLeft(), pair.getRight());
                 })
-                .onError(error -> SSEEmitterHelper.errorAndShutdown(error, params.getSseEmitter()))
+                .onError(error -> SSEEmitterHelper.errorAndShutdown(error, params.getSseUuid()))
                 .start();
     }
 

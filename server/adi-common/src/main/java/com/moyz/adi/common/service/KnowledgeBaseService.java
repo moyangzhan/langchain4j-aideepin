@@ -305,13 +305,14 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
     public SseEmitter sseAsk(String qaRecordUuid) {
         checkRequestTimesOrThrow();
+        String sseUuid = UuidUtil.createShort();
         SseEmitter sseEmitter = new SseEmitter(SSE_TIMEOUT);
         User user = ThreadContext.getCurrentUser();
-        if (!sseEmitterHelper.checkOrComplete(user, sseEmitter)) {
+        if (!sseEmitterHelper.checkOrComplete(user, sseUuid, sseEmitter)) {
             return sseEmitter;
         }
-        sseEmitterHelper.startSse(user, sseEmitter);
-        self.retrieveAndPushToLLM(user, sseEmitter, qaRecordUuid);
+        sseEmitterHelper.startSse(user, sseUuid, sseEmitter, null);
+        self.retrieveAndPushToLLM(user, sseUuid, qaRecordUuid);
         return sseEmitter;
     }
 
@@ -482,11 +483,11 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
      * 文档召回并将请求发送给LLM
      *
      * @param user         当前提问的用户
-     * @param sseEmitter   sse emitter
+     * @param sseUuid      SSE 请求标识 / SSE request identifier
      * @param qaRecordUuid 知识库uuid
      */
     @Async
-    public void retrieveAndPushToLLM(User user, SseEmitter sseEmitter, String qaRecordUuid) {
+    public void retrieveAndPushToLLM(User user, String sseUuid, String qaRecordUuid) {
         log.info("retrieveAndPushToLLM,qaRecordUuid:{},userId:{}", qaRecordUuid, user.getId());
         KnowledgeBaseQa qaRecord = knowledgeBaseQaRecordService.getOrThrow(qaRecordUuid);
         KnowledgeBase knowledgeBase = getOrThrow(qaRecord.getKbUuid());
@@ -517,16 +518,16 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                             .temperature(knowledgeBase.getQueryLlmTemperature())
                             .build()
             );
-            sseAskParams.setSseEmitter(sseEmitter);
+            sseAskParams.setSseUuid(sseUuid);
             sseAskParams.setModelName(aiModel.getName());
             sseAskParams.setUser(user);
             if (maxResults == 0) {
                 log.info("User question too long, no need to retrieve docs; strict mode returns error, relaxed mode continues to LLM");
                 if (Boolean.TRUE.equals(knowledgeBase.getIsStrict())) {
-                    sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "Question too long, max " + maxInputTokens + " tokens");
+                    sseEmitterHelper.sendErrorAndComplete(user.getId(), sseUuid, "Question too long, max " + maxInputTokens + " tokens");
                 } else {
                     sseEmitterHelper.call(sseAskParams, (response, questionMeta, answerMeta) -> {
-                                sseEmitterHelper.sendComplete(user.getId(), sseEmitter);
+                                sseEmitterHelper.sendComplete(user.getId(), sseUuid);
                                 updateQaRecord(
                                         UpdateQaParams.builder()
                                                 .user(user)
@@ -556,7 +557,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 List<RetrieverWrapper> retrieverWrappers = compositeRag.createRetriever(createParam);
                 List<ContentRetriever> retrievers = retrieverWrappers.stream().map(RetrieverWrapper::getRetriever).toList();
                 compositeRag.ragChat(retrievers, sseAskParams, (response, promptMeta, answerMeta) -> {
-                            sseEmitterHelper.sendComplete(user.getId(), sseAskParams.getSseEmitter());
+                            sseEmitterHelper.sendComplete(user.getId(), sseAskParams.getSseUuid());
                             updateQaRecord(
                                     UpdateQaParams.builder()
                                             .user(user)

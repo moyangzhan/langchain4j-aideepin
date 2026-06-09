@@ -10,7 +10,6 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import lombok.Builder;
 import lombok.Data;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
@@ -18,7 +17,13 @@ import java.util.List;
 @Data
 public class InnerStreamChatParams {
     private String uuid;
-    private SseEmitter sseEmitter;
+    /**
+     * SSE 请求标识，用于从注册中心获取 SseEmitter
+     * <p>
+     * SSE request identifier, used to look up SseEmitter from the registry.
+     * </p>
+     */
+    private String sseUuid;
     private List<McpClient> mcpClients;
     private StreamingChatModel streamingChatModel;
     private ChatRequest chatRequest;

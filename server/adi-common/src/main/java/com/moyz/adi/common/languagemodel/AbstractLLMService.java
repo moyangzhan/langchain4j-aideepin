@@ -18,7 +18,7 @@ import com.moyz.adi.common.rag.TokenEstimatorFactory;
 import com.moyz.adi.common.rag.TokenEstimatorThreadLocal;
 import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.vo.*;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
@@ -162,7 +162,7 @@ public abstract class AbstractLLMService extends CommonModelService {
                 .user(params.getUser())
                 .streamingChatModel(streamingChatModel)
                 .chatRequest(chatRequest)
-                .sseEmitter(params.getSseEmitter())
+                .sseUuid(params.getSseUuid())
                 .mcpClients(httpRequestParams.getMcpClients())
                 .answerContentType(params.getAnswerContentType())
                 .consumer(consumer)
@@ -183,7 +183,7 @@ public abstract class AbstractLLMService extends CommonModelService {
                     byte[] frameBytes = new byte[audioFrame.remaining()];
                     audioFrame.get(frameBytes);
                     String base64Audio = Base64.getEncoder().encodeToString(frameBytes);
-                    SSEEmitterHelper.sendAudio(params.getSseEmitter(), base64Audio);
+                    SSEEmitterHelper.sendAudio(params.getSseUuid(), base64Audio);
                 }, jobInfo::setFilePath, (String errorMsg) -> log.error("tts error: {}", errorMsg));
             }
 
@@ -209,7 +209,7 @@ public abstract class AbstractLLMService extends CommonModelService {
     private void innerStreamingChat(InnerStreamChatParams params) {
         if (params.getToolCallDepth() >= MAX_TOOL_CALL_DEPTH) {
             log.error("Tool call recursion depth exceeded {} times, terminating execution", MAX_TOOL_CALL_DEPTH);
-            SSEEmitterHelper.errorAndShutdown(new RuntimeException("Tool call count exceeded limit"), params.getSseEmitter());
+            SSEEmitterHelper.errorAndShutdown(new RuntimeException("Tool call count exceeded limit"), params.getSseUuid());
             closeMcpClients(params.getMcpClients());
             return;
         }
@@ -217,13 +217,13 @@ public abstract class AbstractLLMService extends CommonModelService {
         params.getStreamingChatModel().chat(params.getChatRequest(), new StreamingChatResponseHandler() {
             @Override
             public void onPartialResponse(String partialResponse) {
-                SSEEmitterHelper.parseAndSendPartialMsg(params.getSseEmitter(), partialResponse);
+                SSEEmitterHelper.parseAndSendPartialMsg(params.getSseUuid(), partialResponse);
                 ttsOnPartialMessage(params, partialResponse);
             }
 
             @Override
             public void onPartialThinking(PartialThinking partialThinking) {
-                SSEEmitterHelper.sendThinking(params.getSseEmitter(), partialThinking.text());
+                SSEEmitterHelper.sendThinking(params.getSseUuid(), partialThinking.text());
             }
 
             @Override
@@ -232,7 +232,7 @@ public abstract class AbstractLLMService extends CommonModelService {
                 if (responseAiMessage.hasToolExecutionRequests()) {
                     // 如果有工具执行请求
                     // If there are tool execution requests
-                    List<ToolExecutionResultMessage> toolExecutionMessages = createToolExecutionMessages(responseAiMessage, toolSpecificationMcpClientMap, params.getSseEmitter());
+                    List<ToolExecutionResultMessage> toolExecutionMessages = createToolExecutionMessages(responseAiMessage, toolSpecificationMcpClientMap, params.getSseUuid());
 
                     //mcp调用消息格式参考：https://docs.langchain4j.dev/tutorials/tools/
                     AiMessage aiMessage = AiMessage.aiMessage(responseAiMessage.toolExecutionRequests());
@@ -258,7 +258,7 @@ public abstract class AbstractLLMService extends CommonModelService {
 
             @Override
             public void onError(Throwable error) {
-                SSEEmitterHelper.errorAndShutdown(error, params.getSseEmitter());
+                SSEEmitterHelper.errorAndShutdown(error, params.getSseUuid());
                 closeMcpClients(params.getMcpClients());
             }
         });
@@ -508,7 +508,7 @@ public abstract class AbstractLLMService extends CommonModelService {
         return defaultParameters;
     }
 
-    private List<ToolExecutionResultMessage> createToolExecutionMessages(AiMessage aiMessage, Map<ToolSpecification, McpClient> toolSpecificationMcpClientMap, SseEmitter sseEmitter) {
+    private List<ToolExecutionResultMessage> createToolExecutionMessages(AiMessage aiMessage, Map<ToolSpecification, McpClient> toolSpecificationMcpClientMap, String sseUuid) {
         List<ToolExecutionResultMessage> toolExecutionMessages = new ArrayList<>();
         aiMessage.toolExecutionRequests().forEach(req -> {
             log.warn("tool exec request:{},", req);
@@ -530,12 +530,12 @@ public abstract class AbstractLLMService extends CommonModelService {
                 long toolDuration = System.currentTimeMillis() - toolStart;
                 final String result = toolResult.resultText();
                 log.info("tool execute result:{},duration:{}ms", result, toolDuration);
-                SSEEmitterHelper.sendToolCall(sseEmitter, req.name(), toolDuration, true);
+                SSEEmitterHelper.sendToolCall(sseUuid, req.name(), toolDuration, true);
                 toolExecutionMessages.add(ToolExecutionResultMessage.from(req, result));
             } catch (Exception e) {
                 long toolDuration = System.currentTimeMillis() - toolStart;
                 log.debug("Error executing tool {},duration:{}ms,req:{}", req.name(), toolDuration, req, e);
-                SSEEmitterHelper.sendToolCall(sseEmitter, req.name(), toolDuration, false);
+                SSEEmitterHelper.sendToolCall(sseUuid, req.name(), toolDuration, false);
                 toolExecutionMessages.add(ToolExecutionResultMessage.from(req, e.getMessage()));
             }
         });
