@@ -15,6 +15,7 @@ import TemplateNode from './TemplateNode.vue'
 import HumanFeedbackNode from './HumanFeedbackNode.vue'
 import MailSendNode from './MailSendNode.vue'
 import HttpRequestNode from './HttpRequestNode.vue'
+import AgentNode from './AgentNode.vue'
 
 import StartNodeProperty from './StartNodeProperty.vue'
 import AnswerNodeProperty from './AnswerNodeProperty.vue'
@@ -32,5 +33,6 @@ import EndNodeProperty from './EndNodeProperty.vue'
 import HumanFeedbackNodeProperty from './HumanFeedbackNodeProperty.vue'
 import MailSendNodeProperty from './MailSendNodeProperty.vue'
 import HttpRequestNodeProperty from './HttpRequestNodeProperty.vue'
+import AgentNodeProperty from './AgentNodeProperty.vue'
 
-export { SpecialNode, StartNode, EndNode, AnswerNode, ClassifierNode, DocumentExtractorNode, KeywordExtractorNode, FaqExtractorNode, OpenAiImageNode, TongyiwanxNode, KnowledgeRetrievalNode, GoogleNode, SwitcherNode, TemplateNode, StartNodeProperty, AnswerNodeProperty, ClassifierNodeProperty, SwticherNodeProperty, TemplateNodeProperty, KeywordExtractorNodeProperty, FaqExtractorNodeProperty, DocumentExtractorNodeProperty, KnowledgeRetrievalNodeProperty, OpenAiImageNodeProperty, TongyiwanxNodeProperty, GoogleNodeProperty, EndNodeProperty, HumanFeedbackNode, HumanFeedbackNodeProperty, MailSendNode, MailSendNodeProperty, HttpRequestNode, HttpRequestNodeProperty }
+export { SpecialNode, StartNode, EndNode, AnswerNode, ClassifierNode, DocumentExtractorNode, KeywordExtractorNode, FaqExtractorNode, OpenAiImageNode, TongyiwanxNode, KnowledgeRetrievalNode, GoogleNode, SwitcherNode, TemplateNode, AgentNode, StartNodeProperty, AnswerNodeProperty, ClassifierNodeProperty, SwticherNodeProperty, TemplateNodeProperty, KeywordExtractorNodeProperty, FaqExtractorNodeProperty, DocumentExtractorNodeProperty, KnowledgeRetrievalNodeProperty, OpenAiImageNodeProperty, TongyiwanxNodeProperty, GoogleNodeProperty, EndNodeProperty, HumanFeedbackNode, HumanFeedbackNodeProperty, MailSendNode, MailSendNodeProperty, HttpRequestNode, HttpRequestNodeProperty, AgentNodeProperty }

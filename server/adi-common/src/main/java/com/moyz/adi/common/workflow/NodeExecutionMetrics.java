@@ -26,7 +26,8 @@ import java.io.Serializable;
         @JsonSubTypes.Type(value = SearchMetrics.class, name = "search"),
         @JsonSubTypes.Type(value = KnowledgeRetrievalMetrics.class, name = "knowledge_retrieval"),
         @JsonSubTypes.Type(value = MailMetrics.class, name = "mail"),
-        @JsonSubTypes.Type(value = DocumentMetrics.class, name = "document")
+        @JsonSubTypes.Type(value = DocumentMetrics.class, name = "document"),
+        @JsonSubTypes.Type(value = AgentMetrics.class, name = "agent")
 })
 @Data
 @NoArgsConstructor

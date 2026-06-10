@@ -367,6 +367,17 @@ declare namespace Workflow {
     clear_html: boolean
   }
 
+  // Agent node
+  interface NodeConfigAgent implements NodeConfig {
+    character_uuid: string
+    model_platform?: string
+    model_name?: string
+    prompt?: string
+    enable_rag?: boolean
+    enable_mcp?: boolean
+    enable_web_search?: boolean
+  }
+
   interface NodeIOData {
     name: string
     value: any

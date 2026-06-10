@@ -637,6 +637,7 @@ export default {
       HumanFeedback: 'Human Feedback',
       MailSend: 'Email Send',
       HttpRequest: 'HTTP Request',
+      Agent: 'Agent',
     },
   },
   mcp: {

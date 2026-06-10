@@ -23,20 +23,17 @@ import com.moyz.adi.common.mapper.CharacterMessageMapper;
 import com.moyz.adi.common.memory.longterm.LongTermMemoryService;
 import com.moyz.adi.common.memory.shortterm.MapDBChatMemoryStore;
 import com.moyz.adi.common.rag.AdiEmbeddingStoreContentRetriever;
-import com.moyz.adi.common.rag.CompositeRag;
 import com.moyz.adi.common.rag.GraphStoreContentRetriever;
 import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.util.*;
+import com.moyz.adi.common.util.CharacterChatHelper;
+import com.moyz.adi.common.vo.AgentRequest;
+import com.moyz.adi.common.vo.AgentResult;
 import com.moyz.adi.common.vo.*;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.mcp.client.McpClient;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.rag.query.Query;
-import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
-import dev.langchain4j.store.embedding.filter.comparison.IsIn;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -52,8 +49,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import ws.schild.jave.info.MultimediaInfo;
 
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.*;
 import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CHARACTER_ID;
@@ -96,6 +91,9 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
     private SSEEmitterHelper sseEmitterHelper;
 
     @Resource
+    private AgentService agentService;
+
+    @Resource
     private FileService fileService;
 
     @Resource
@@ -117,8 +115,10 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
     }
 
     /**
-     * Blocking chat: same preparation as SSE but calls ChatModel.chat() instead of streaming.
-     * Returns the ChatResponse after persisting messages to DB.
+     * Blocking chat: calls AgentService for the core pipeline, then persists messages to DB.
+     * <p>
+     * Blocking chat：通过 AgentService 执行核心流程，然后持久化消息。
+     * </p>
      */
     public Map<String, Object> blockingAsk(AskReq askReq) {
         User user = ThreadContext.getExistCurrentUser();
@@ -130,7 +130,7 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
                 .oneOpt()
                 .orElseThrow(() -> new BaseException(A_CHARACTER_NOT_FOUND));
 
-        // Quota check (same as checkCharacter's check 3)
+        // Quota check
         AiModel aiModel = LLMContext.getAiModel(askReq.getModelPlatform(), askReq.getModelName());
         if (null != aiModel && !aiModel.getIsFree()) {
             ErrorEnum quotaError = quotaHelper.checkTextQuota(user);
@@ -139,69 +139,39 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
             }
         }
 
-        AbstractLLMService llmService = LLMContext.getServiceOrDefault(askReq.getModelPlatform(), askReq.getModelName());
-
-        // Knowledge base retrieval
-        List<KbInfoResp> filteredKb = new ArrayList<>();
-        if (StringUtils.isNotBlank(character.getKbIds())) {
-            List<Long> kbIds = Arrays.stream(character.getKbIds().split(",")).map(Long::parseLong).toList();
-            filteredKb = characterService.filterEnableKb(user, kbIds);
-        }
-        List<RetrieverWrapper> retrieverWrappers = retrieve(character.getId(), filteredKb, llmService, askReq);
-
-        // Build prompt with memory and knowledge context
-        Pair<String, String> memoryAndKnowledge = buildMemoryAndKnowledge(retrieverWrappers);
-        String effectiveLocale = StringUtils.isNotBlank(user.getLocale())
-                ? user.getLocale()
-                : Objects.toString(SysConfigService.getByKey(AdiConstant.SysConfigKey.DEFAULT_LOCALE), "zh-CN");
-        String processedPrompt = PromptUtil.createPrompt(askReq.getPrompt(), memoryAndKnowledge.getLeft(), memoryAndKnowledge.getRight(), "", effectiveLocale);
-        if (!Objects.equals(askReq.getPrompt(), processedPrompt)) {
-            askReq.setProcessedPrompt(processedPrompt);
-        }
-
+        // Build generic request and invoke via AgentService
         String questionUuid = UuidUtil.createShort();
-        ChatModelRequestParams chatRequestParams = buildChatRequestParams(character, askReq);
-        SseAskParams sseAskParams = new SseAskParams();
-        sseAskParams.setUser(user);
-        sseAskParams.setUuid(questionUuid);
-        sseAskParams.setModelName(askReq.getModelName());
-        sseAskParams.setHttpRequestParams(chatRequestParams);
-        sseAskParams.setModelProperties(
-                ChatModelBuilderProperties.builder()
-                        .temperature(character.getLlmTemperature())
-                        .returnThinking(chatRequestParams.getReturnThinking())
-                        .build()
-        );
-
-        // Blocking LLM call
-        ChatResponse chatResponse = llmService.chat(sseAskParams);
+        AgentRequest request = AgentRequest.builder()
+                .characterUuid(askReq.getCharacterUuid())
+                .modelPlatform(askReq.getModelPlatform())
+                .modelName(askReq.getModelName())
+                .inputText(askReq.getPrompt())
+                .enableRag(true)
+                .enableMcp(true)
+                .enableWebSearch(true)
+                .build();
+        AgentResult result = agentService.invoke(request, user, questionUuid);
 
         // Persist messages to DB
-        int inputTokens = 0;
-        int outputTokens = 0;
-        int totalTokens = 0;
-        if (chatResponse.metadata() != null && chatResponse.metadata().tokenUsage() != null) {
-            inputTokens = chatResponse.metadata().tokenUsage().inputTokenCount();
-            outputTokens = chatResponse.metadata().tokenUsage().outputTokenCount();
-            totalTokens = chatResponse.metadata().tokenUsage().totalTokenCount();
-        }
-        PromptMeta questionMeta = new PromptMeta(inputTokens, questionUuid);
+        PromptMeta questionMeta = new PromptMeta(
+                result.getInputTokens() != null ? result.getInputTokens() : 0, questionUuid);
         AnswerMeta answerMeta = AnswerMeta.builder()
-                .tokens(outputTokens)
+                .tokens(result.getOutputTokens() != null ? result.getOutputTokens() : 0)
                 .uuid(UuidUtil.createShort())
                 .build();
         LLMResponseContent responseContent = new LLMResponseContent(
-                chatResponse.aiMessage().thinking(), chatResponse.aiMessage().text(), null);
-        self.saveAfterAiResponse(user, askReq, retrieverWrappers, responseContent, questionMeta, answerMeta, null);
+                result.getThinking(), result.getAnswer(), null);
+        self.saveAfterAiResponse(user, askReq, new ArrayList<>(), responseContent, questionMeta, answerMeta, null);
 
         // Build response
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("message_id", questionUuid);
-        data.put("answer", chatResponse.aiMessage().text());
+        data.put("answer", result.getAnswer());
         Map<String, Object> usage = new LinkedHashMap<>();
-        usage.put("prompt_tokens", inputTokens);
-        usage.put("completion_tokens", outputTokens);
-        usage.put("total_tokens", totalTokens);
+        usage.put("prompt_tokens", result.getInputTokens() != null ? result.getInputTokens() : 0);
+        usage.put("completion_tokens", result.getOutputTokens() != null ? result.getOutputTokens() : 0);
+        usage.put("total_tokens", (result.getInputTokens() != null ? result.getInputTokens() : 0)
+                + (result.getOutputTokens() != null ? result.getOutputTokens() : 0));
         data.put("usage", usage);
         return data;
     }
@@ -292,7 +262,7 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
             SSEEmitterHelper.sendPartial(sseUuid, SSEEventName.STATE_CHANGED, SSEEventData.STATE_KNOWLEDGE_SEARCHING);
         }
         //Retrieve contents from knowledge base and character memory
-        List<RetrieverWrapper> retrieverWrappers = retrieve(character.getId(), filteredKb, llmService, askReq);
+        List<RetrieverWrapper> retrieverWrappers = CharacterChatHelper.retrieve(character.getId(), filteredKb, llmService, askReq.getPrompt(), mainExecutor);
 
         // Process prompt with retrieved contents and audio settings
         int answerContentType = getAnswerContentType(character, askReq);
@@ -300,7 +270,7 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
         String effectiveLocale = StringUtils.isNotBlank(user.getLocale())
                 ? user.getLocale()
                 : Objects.toString(SysConfigService.getByKey(AdiConstant.SysConfigKey.DEFAULT_LOCALE), "zh-CN");
-        Pair<String, String> memoryAndKnowledge = buildMemoryAndKnowledge(retrieverWrappers);
+        Pair<String, String> memoryAndKnowledge = CharacterChatHelper.buildMemoryAndKnowledge(retrieverWrappers);
         String audioExtra = answerToAudio ? (effectiveLocale.startsWith("zh") ? PROMPT_EXTRA_AUDIO : PROMPT_EXTRA_AUDIO_EN) : "";
         String processedPrompt = PromptUtil.createPrompt(askReq.getPrompt(), memoryAndKnowledge.getLeft(), memoryAndKnowledge.getRight(), audioExtra, effectiveLocale);
         if (!Objects.equals(askReq.getPrompt(), processedPrompt)) {
@@ -321,7 +291,7 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
             sseAskParams.setVoice(character.getAudioConfig().getVoice().getParamName());
         }
 
-        ChatModelRequestParams chatRequestParams = buildChatRequestParams(character, askReq);
+        ChatModelRequestParams chatRequestParams = CharacterChatHelper.buildChatRequestParams(character, askReq.getProcessedPrompt() != null ? askReq.getProcessedPrompt() : askReq.getPrompt(), user, llmService, true, Boolean.TRUE.equals(character.getIsEnableWebSearch()), askReq.getImageUrls());
         sseAskParams.setHttpRequestParams(chatRequestParams);
 
         sseAskParams.setModelProperties(
@@ -370,88 +340,6 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
             sseEmitterHelper.sendComplete(user.getId(), sseUuid, questionMeta, answerMeta, audioInfo);
             self.saveAfterAiResponse(user, askReq, retrieverWrappers, response, questionMeta, answerMeta, audioInfo);
         });
-    }
-
-    /**
-     * 判断是否需要返回推理过程
-     * 以下两种场景表示需要返回推理过程
-     * 场景1：模型是推理模型 && 不允许关闭推理过程，
-     * 场景2：模型是推理模型 && 允许关闭推理过程 && 角色会话开启了深度思考
-     *
-     * @param aiModel      模型
-     * @param character 会话
-     * @return 是否需要返回推理过程
-     */
-    private Boolean checkIfReturnThinking(AiModel aiModel, Character character) {
-        if (!aiModel.getIsReasoner()) {
-            return null;
-        }
-        return Boolean.FALSE.equals(aiModel.getIsThinkingClosable()) || Boolean.TRUE.equals(character.getIsEnableThinking());
-    }
-
-    /**
-     * 多知识库搜索、记忆搜索
-     *
-     * @param characterId     角色id
-     * @param filteredKb 有效的已关联的知识库
-     * @param llmService 大模型服务
-     * @param askReq     请求参数
-     */
-    private List<RetrieverWrapper> retrieve(Long characterId, List<KbInfoResp> filteredKb, AbstractLLMService llmService, AskReq askReq) {
-        ChatModel chatModel = llmService.buildChatLLM(
-                ChatModelBuilderProperties.builder()
-                        .temperature(LLM_TEMPERATURE_DEFAULT)
-                        .build());
-        //Create memory retriever
-        RetrieverCreateParam memoryRetrieveParam = RetrieverCreateParam.builder()
-                .chatModel(chatModel)
-                .filter(new IsEqualTo(CHARACTER_ID, characterId))
-                .maxResults(3)
-                .minScore(RAG_RETRIEVE_MIN_SCORE_DEFAULT)
-                .breakIfSearchMissed(false)
-                .build();
-        List<RetrieverWrapper> retrieverWrappers = new CompositeRag(RetrieveContentFrom.CHARACTER_MEMORY).createRetriever(memoryRetrieveParam);
-        //Create knowledge base retriever
-        if (!filteredKb.isEmpty()) {
-            List<String> kbUuids = filteredKb.stream().map(KbInfoResp::getUuid).toList();
-            log.info("Preparing to search related knowledge bases, kbUuids:{}, question:{}", String.join(",", kbUuids), askReq.getPrompt());
-            //忽略知识库自身的设置如 [最大召回数量maxResult，最小命中分数minScore，角色设置，是否强行中断搜索] 等
-            RetrieverCreateParam kbRetrieveParam = RetrieverCreateParam.builder()
-                    .chatModel(chatModel)
-                    .filter(new IsIn(KB_UUID, kbUuids)) //跨多个知识库查询
-                    .maxResults(3)
-                    .minScore(RAG_RETRIEVE_MIN_SCORE_DEFAULT)
-                    .breakIfSearchMissed(false)
-                    .build();
-            List<RetrieverWrapper> kbRetrievers = new CompositeRag(RetrieveContentFrom.KNOWLEDGE_BASE).createRetriever(kbRetrieveParam);
-            retrieverWrappers.addAll(kbRetrievers);
-        }
-        //Retrieve contents concurrently
-        if (!retrieverWrappers.isEmpty()) {
-            CountDownLatch countDownLatch = new CountDownLatch(retrieverWrappers.size());
-            for (RetrieverWrapper retriever : retrieverWrappers) {
-                mainExecutor.execute(() -> {
-                    try {
-                        List<Content> contents = retriever.getRetriever().retrieve(Query.from(askReq.getPrompt()));
-                        retriever.setResponse(contents);
-                    } catch (Exception e) {
-                        log.error("Retrieve content error", e);
-                    } finally {
-                        countDownLatch.countDown();
-                    }
-                });
-            }
-            try {
-                boolean awaitRet = countDownLatch.await(1, TimeUnit.MINUTES);
-                if (!awaitRet) {
-                    log.warn("retrieveContents CountDownLatch await timeout");
-                }
-            } catch (InterruptedException e) {
-                log.error("retrieveContents CountDownLatch await error", e);
-                Thread.currentThread().interrupt();
-            }
-        }
-        return retrieverWrappers;
     }
 
     public List<CharacterMessage> listQuestionsByCharacterId(long characterId, long maxId, int pageSize) {
@@ -680,43 +568,6 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
         characterMessageRefGraphService.save(refGraph);
     }
 
-    private ChatModelRequestParams buildChatRequestParams(Character character, AskReq askReq) {
-        ChatModelRequestParams.ChatModelRequestParamsBuilder builder = ChatModelRequestParams.builder();
-        if (StringUtils.isNotBlank(character.getAiSystemMessage())) {
-            builder.systemMessage(character.getAiSystemMessage());
-        }
-        //history message
-        if (Boolean.TRUE.equals(character.getUnderstandContextEnable())) {
-            builder.memoryId(askReq.getCharacterUuid());
-        }
-//If user question has been processed (e.g., with retrieved document segments), use the enhanced question
-        //如果用户问题已处理过，例如增加了召回的文档文段，则使用该增强的问题，否则使用用户的原始问题
-        String prompt = StringUtils.isNotBlank(askReq.getProcessedPrompt()) ? askReq.getProcessedPrompt() : askReq.getPrompt();
-        if (StringUtils.isNotBlank(askReq.getRegenerateQuestionUuid())) {
-            CharacterMessage lastMsg = getPromptMsgByQuestionUuid(askReq.getRegenerateQuestionUuid());
-            prompt = StringUtils.isNotBlank(lastMsg.getProcessedRemark()) ? lastMsg.getProcessedRemark() : lastMsg.getRemark();
-        }
-        builder.userMessage(prompt);
-        builder.imageUrls(askReq.getImageUrls());
-
-        List<McpClient> mcpClients = new ArrayList<>();
-        if (StringUtils.isNotBlank(character.getMcpIds())) {
-            List<Long> mcpIds = stringToList(character.getMcpIds(), ",", Long::parseLong);
-            mcpClients = userMcpService.createMcpClients(character.getUserId(), mcpIds);
-        }
-        builder.mcpClients(mcpClients);
-
-        //Enable thinking
-        AiModel aiModel = LLMContext.getServiceOrDefault(askReq.getModelPlatform(), askReq.getModelName()).getAiModel();
-        Boolean returnThinking = checkIfReturnThinking(aiModel, character);
-        builder.returnThinking(returnThinking);
-
-        //Enable web search
-        builder.enableWebSearch(Boolean.TRUE.equals(character.getIsEnableWebSearch()));
-
-        return builder.build();
-    }
-
     /**
      * 获取响应内容类型
      *
@@ -732,33 +583,5 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
             answerContentType = AdiConstant.CharacterConstant.ANSWER_CONTENT_TYPE_AUDIO;
         }
         return answerContentType;
-    }
-
-    private Pair<String, String> buildMemoryAndKnowledge(List<RetrieverWrapper> wrappers) {
-        StringBuilder memory = new StringBuilder();
-        StringBuilder knowledge = new StringBuilder();
-        wrappers.forEach(item -> {
-            String retrieveType = item.getContentFrom();
-            if (RetrieveContentFrom.CHARACTER_MEMORY.equals(retrieveType)) {
-                for (Content content : item.getResponse()) {
-                    memory.append(content.textSegment().text()).append("\n");
-                }
-                if (memory.isEmpty()) {
-                    memory.append("None\n");
-                } else {
-                    memory.append("\n");
-                }
-            } else if (RetrieveContentFrom.KNOWLEDGE_BASE.equals(retrieveType)) {
-                for (Content content : item.getResponse()) {
-                    knowledge.append(content.textSegment().text()).append("\n");
-                }
-                if (knowledge.isEmpty()) {
-                    knowledge.append("None\n");
-                } else {
-                    knowledge.append("\n");
-                }
-            }
-        });
-        return Pair.of(memory.toString(), knowledge.toString());
     }
 }

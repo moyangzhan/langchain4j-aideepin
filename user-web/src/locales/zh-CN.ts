@@ -637,6 +637,7 @@ export default {
       HumanFeedback: '人机交互',
       MailSend: '邮件发送',
       HttpRequest: 'HTTP 请求',
+      Agent: 'Agent 节点',
     },
   },
   mcp: {
