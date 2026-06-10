@@ -15,7 +15,7 @@ import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.file.FileOperatorContext;
 import com.moyz.adi.common.helper.LLMContext;
-import com.moyz.adi.common.helper.SSEEmitterHelper;
+import com.moyz.adi.common.helper.SseManager;
 import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.rag.*;
@@ -82,7 +82,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     private FileService fileService;
 
     @Resource
-    private SSEEmitterHelper sseEmitterHelper;
+    private SseManager sseManager;
 
     @Resource
     private UserDayCostService userDayCostService;
@@ -308,10 +308,10 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         String sseUuid = UuidUtil.createShort();
         SseEmitter sseEmitter = new SseEmitter(SSE_TIMEOUT);
         User user = ThreadContext.getCurrentUser();
-        if (!sseEmitterHelper.checkOrComplete(user, sseUuid, sseEmitter)) {
+        if (!sseManager.checkOrComplete(user, sseUuid, sseEmitter)) {
             return sseEmitter;
         }
-        sseEmitterHelper.startSse(user, sseUuid, sseEmitter, null);
+        sseManager.startSse(user, sseUuid, sseEmitter, null);
         self.retrieveAndPushToLLM(user, sseUuid, qaRecordUuid);
         return sseEmitter;
     }
@@ -524,10 +524,10 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             if (maxResults == 0) {
                 log.info("User question too long, no need to retrieve docs; strict mode returns error, relaxed mode continues to LLM");
                 if (Boolean.TRUE.equals(knowledgeBase.getIsStrict())) {
-                    sseEmitterHelper.sendErrorAndComplete(user.getId(), sseUuid, "Question too long, max " + maxInputTokens + " tokens");
+                    sseManager.sendErrorAndComplete(user.getId(), sseUuid, "Question too long, max " + maxInputTokens + " tokens");
                 } else {
-                    sseEmitterHelper.call(sseAskParams, (response, questionMeta, answerMeta) -> {
-                                sseEmitterHelper.sendComplete(user.getId(), sseUuid);
+                    sseManager.call(sseAskParams, (response, questionMeta, answerMeta) -> {
+                                sseManager.sendComplete(user.getId(), sseUuid);
                                 updateQaRecord(
                                         UpdateQaParams.builder()
                                                 .user(user)
@@ -557,7 +557,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 List<RetrieverWrapper> retrieverWrappers = compositeRag.createRetriever(createParam);
                 List<ContentRetriever> retrievers = retrieverWrappers.stream().map(RetrieverWrapper::getRetriever).toList();
                 compositeRag.ragChat(retrievers, sseAskParams, (response, promptMeta, answerMeta) -> {
-                            sseEmitterHelper.sendComplete(user.getId(), sseAskParams.getSseUuid());
+                            sseManager.sendComplete(user.getId(), sseAskParams.getSseUuid());
                             updateQaRecord(
                                     UpdateQaParams.builder()
                                             .user(user)

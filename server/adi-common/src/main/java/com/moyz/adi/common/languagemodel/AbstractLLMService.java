@@ -7,7 +7,7 @@ import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.helper.SSEEmitterHelper;
+import com.moyz.adi.common.helper.SseManager;
 import com.moyz.adi.common.helper.TtsModelContext;
 import com.moyz.adi.common.interfaces.TriConsumer;
 import com.moyz.adi.common.languagemodel.data.InnerStreamChatParams;
@@ -183,7 +183,7 @@ public abstract class AbstractLLMService extends CommonModelService {
                     byte[] frameBytes = new byte[audioFrame.remaining()];
                     audioFrame.get(frameBytes);
                     String base64Audio = Base64.getEncoder().encodeToString(frameBytes);
-                    SSEEmitterHelper.sendAudio(params.getSseUuid(), base64Audio);
+                    SseManager.sendAudio(params.getSseUuid(), base64Audio);
                 }, jobInfo::setFilePath, (String errorMsg) -> log.error("tts error: {}", errorMsg));
             }
 
@@ -209,7 +209,7 @@ public abstract class AbstractLLMService extends CommonModelService {
     private void innerStreamingChat(InnerStreamChatParams params) {
         if (params.getToolCallDepth() >= MAX_TOOL_CALL_DEPTH) {
             log.error("Tool call recursion depth exceeded {} times, terminating execution", MAX_TOOL_CALL_DEPTH);
-            SSEEmitterHelper.errorAndShutdown(new RuntimeException("Tool call count exceeded limit"), params.getSseUuid());
+            SseManager.errorAndShutdown(new RuntimeException("Tool call count exceeded limit"), params.getSseUuid());
             closeMcpClients(params.getMcpClients());
             return;
         }
@@ -217,13 +217,13 @@ public abstract class AbstractLLMService extends CommonModelService {
         params.getStreamingChatModel().chat(params.getChatRequest(), new StreamingChatResponseHandler() {
             @Override
             public void onPartialResponse(String partialResponse) {
-                SSEEmitterHelper.parseAndSendPartialMsg(params.getSseUuid(), partialResponse);
+                SseManager.parseAndSendPartialMsg(params.getSseUuid(), partialResponse);
                 ttsOnPartialMessage(params, partialResponse);
             }
 
             @Override
             public void onPartialThinking(PartialThinking partialThinking) {
-                SSEEmitterHelper.sendThinking(params.getSseUuid(), partialThinking.text());
+                SseManager.sendThinking(params.getSseUuid(), partialThinking.text());
             }
 
             @Override
@@ -250,7 +250,7 @@ public abstract class AbstractLLMService extends CommonModelService {
                     TtsJobInfo jobInfo = ttsOnComplete(params);
                     String filePath = null != jobInfo ? jobInfo.getFilePath() : null;
                     //结束整个对话任务
-                    Pair<PromptMeta, AnswerMeta> pair = SSEEmitterHelper.calculateToken(response, params.getUuid());
+                    Pair<PromptMeta, AnswerMeta> pair = SseManager.calculateToken(response, params.getUuid());
                     params.getConsumer().accept(new LLMResponseContent(response.aiMessage().thinking(), response.aiMessage().text(), filePath), pair.getLeft(), pair.getRight());
                     closeMcpClients(params.getMcpClients());
                 }
@@ -258,7 +258,7 @@ public abstract class AbstractLLMService extends CommonModelService {
 
             @Override
             public void onError(Throwable error) {
-                SSEEmitterHelper.errorAndShutdown(error, params.getSseUuid());
+                SseManager.errorAndShutdown(error, params.getSseUuid());
                 closeMcpClients(params.getMcpClients());
             }
         });
@@ -530,12 +530,12 @@ public abstract class AbstractLLMService extends CommonModelService {
                 long toolDuration = System.currentTimeMillis() - toolStart;
                 final String result = toolResult.resultText();
                 log.info("tool execute result:{},duration:{}ms", result, toolDuration);
-                SSEEmitterHelper.sendToolCall(sseUuid, req.name(), toolDuration, true);
+                SseManager.sendToolCall(sseUuid, req.name(), toolDuration, true);
                 toolExecutionMessages.add(ToolExecutionResultMessage.from(req, result));
             } catch (Exception e) {
                 long toolDuration = System.currentTimeMillis() - toolStart;
                 log.debug("Error executing tool {},duration:{}ms,req:{}", req.name(), toolDuration, req, e);
-                SSEEmitterHelper.sendToolCall(sseUuid, req.name(), toolDuration, false);
+                SseManager.sendToolCall(sseUuid, req.name(), toolDuration, false);
                 toolExecutionMessages.add(ToolExecutionResultMessage.from(req, e.getMessage()));
             }
         });

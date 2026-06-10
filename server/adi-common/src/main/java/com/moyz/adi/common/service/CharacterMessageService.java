@@ -17,7 +17,7 @@ import com.moyz.adi.common.file.LocalFileUtil;
 import com.moyz.adi.common.helper.AsrModelContext;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.QuotaHelper;
-import com.moyz.adi.common.helper.SSEEmitterHelper;
+import com.moyz.adi.common.helper.SseManager;
 import com.moyz.adi.common.languagemodel.data.LLMResponseContent;
 import com.moyz.adi.common.mapper.CharacterMessageMapper;
 import com.moyz.adi.common.memory.longterm.LongTermMemoryService;
@@ -88,7 +88,7 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
     private UserMcpService userMcpService;
 
     @Resource
-    private SSEEmitterHelper sseEmitterHelper;
+    private SseManager sseManager;
 
     @Resource
     private AgentService agentService;
@@ -106,10 +106,10 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
         String sseUuid = UuidUtil.createShort();
         SseEmitter sseEmitter = new SseEmitter(SSE_TIMEOUT);
         User user = ThreadContext.getCurrentUser();
-        if (!sseEmitterHelper.checkOrComplete(user, sseUuid, sseEmitter)) {
+        if (!sseManager.checkOrComplete(user, sseUuid, sseEmitter)) {
             return sseEmitter;
         }
-        sseEmitterHelper.startSse(user, sseUuid, sseEmitter, null);
+        sseManager.startSse(user, sseUuid, sseEmitter, null);
         self.asyncCheckAndChat(sseUuid, user, askReq);
         return sseEmitter;
     }
@@ -185,7 +185,7 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
                     .eq(Character::getIsDeleted, true)
                     .one();
             if (null != delConv) {
-                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage("A_CHARACTER_DELETED"));
+                sseManager.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage("A_CHARACTER_DELETED"));
                 return false;
             }
 
@@ -196,7 +196,7 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
                     .count();
             long convsMax = Integer.parseInt(LocalCache.CONFIGS.get(AdiConstant.SysConfigKey.CHARACTER_MAX_NUM));
             if (convsCount >= convsMax) {
-                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage("A_CHARACTER_MAX_LIMIT", String.valueOf(convsMax)));
+                sseManager.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage("A_CHARACTER_MAX_LIMIT", String.valueOf(convsMax)));
                 return false;
             }
 
@@ -205,13 +205,13 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
             if (null != aiModel && !aiModel.getIsFree()) {
                 ErrorEnum errorMsg = quotaHelper.checkTextQuota(user);
                 if (null != errorMsg) {
-                    sseEmitterHelper.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage(errorMsg.getInfo()));
+                    sseManager.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage(errorMsg.getInfo()));
                     return false;
                 }
             }
         } catch (Exception e) {
             log.error("error", e);
-            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseUuid, e.getMessage());
+            sseManager.sendErrorAndComplete(user.getId(), sseUuid, e.getMessage());
             return false;
         }
         return true;
@@ -231,19 +231,19 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
                 .oneOpt()
                 .orElse(null);
         if (null == character) {
-            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage(A_CHARACTER_NOT_FOUND.getInfo()));
+            sseManager.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage(A_CHARACTER_NOT_FOUND.getInfo()));
             return;
         }
 
         //Send analysing question event to client
-        SSEEmitterHelper.sendPartial(sseUuid, SSEEventName.STATE_CHANGED, SSEEventData.STATE_QUESTION_ANALYSING);
+        SseManager.sendPartial(sseUuid, SSEEventName.STATE_CHANGED, SSEEventData.STATE_QUESTION_ANALYSING);
 //If voice input, convert audio to text
         //如果是语音输入，将音频转成文本
         if (StringUtils.isNotBlank(askReq.getAudioUuid())) {
             String path = fileService.getImagePath(askReq.getAudioUuid());
             String audioText = new AsrModelContext().audioToText(path);
             if (StringUtils.isBlank(audioText)) {
-                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage("B_ASR_PARSE_FAIL"));
+                sseManager.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage("B_ASR_PARSE_FAIL"));
                 return;
             }
             askReq.setPrompt(audioText);
@@ -259,7 +259,7 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
             filteredKb = characterService.filterEnableKb(user, kbIds);
 
             //Send searching knowledge event to user
-            SSEEmitterHelper.sendPartial(sseUuid, SSEEventName.STATE_CHANGED, SSEEventData.STATE_KNOWLEDGE_SEARCHING);
+            SseManager.sendPartial(sseUuid, SSEEventName.STATE_CHANGED, SSEEventData.STATE_KNOWLEDGE_SEARCHING);
         }
         //Retrieve contents from knowledge base and character memory
         List<RetrieverWrapper> retrieverWrappers = CharacterChatHelper.retrieve(character.getId(), filteredKb, llmService, askReq.getPrompt(), mainExecutor);
@@ -300,7 +300,7 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
                         .returnThinking(chatRequestParams.getReturnThinking())
                         .build()
         );
-        sseEmitterHelper.call(sseAskParams, (response, questionMeta, answerMeta) -> {
+        sseManager.call(sseAskParams, (response, questionMeta, answerMeta) -> {
 
             AudioInfo audioInfo = null;
             if (StringUtils.isNotBlank(response.getAudioPath())) {
@@ -337,7 +337,7 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
             answerMeta.setIsRefEmbedding(isRefEmbedding);
             answerMeta.setIsRefGraph(isRefGraph);
             answerMeta.setIsRefMemoryEmbedding(isRefMemoryEmbedding);
-            sseEmitterHelper.sendComplete(user.getId(), sseUuid, questionMeta, answerMeta, audioInfo);
+            sseManager.sendComplete(user.getId(), sseUuid, questionMeta, answerMeta, audioInfo);
             self.saveAfterAiResponse(user, askReq, retrieverWrappers, response, questionMeta, answerMeta, audioInfo);
         });
     }

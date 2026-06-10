@@ -24,7 +24,7 @@ import org.bsc.langgraph4j.serializer.std.ObjectStreamStateSerializer;
 import org.bsc.langgraph4j.state.AgentState;
 import org.bsc.langgraph4j.state.StateSnapshot;
 import org.bsc.langgraph4j.streaming.StreamingOutput;
-import com.moyz.adi.common.helper.SSEEmitterHelper;
+import com.moyz.adi.common.helper.SseManager;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -45,7 +45,7 @@ public class WorkflowEngine {
     private final List<WorkflowComponent> components;
     private final List<WorkflowNode> wfNodes;
     private final List<WorkflowEdge> wfEdges;
-    private final SSEEmitterHelper sseEmitterHelper;
+    private final SseManager sseManager;
     private final WorkflowRuntimeService workflowRuntimeService;
     private final WorkflowRuntimeNodeService workflowRuntimeNodeService;
 
@@ -62,14 +62,14 @@ public class WorkflowEngine {
 
     public WorkflowEngine(
             Workflow workflow,
-            SSEEmitterHelper sseEmitterHelper,
+            SseManager sseManager,
             List<WorkflowComponent> components,
             List<WorkflowNode> nodes,
             List<WorkflowEdge> wfEdges,
             WorkflowRuntimeService workflowRuntimeService,
             WorkflowRuntimeNodeService workflowRuntimeNodeService) {
         this.workflow = workflow;
-        this.sseEmitterHelper = sseEmitterHelper;
+        this.sseManager = sseManager;
         this.components = components;
         this.wfNodes = nodes;
         this.wfEdges = wfEdges;
@@ -82,13 +82,13 @@ public class WorkflowEngine {
         this.sseUuid = sseUuid;
         log.info("WorkflowEngine run,userId:{},workflowUuid:{},userInputs:{}", user.getId(), workflow.getUuid(), userInputs);
         if (!this.workflow.getIsEnable()) {
-            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage(ErrorEnum.A_WF_DISABLED.getInfo()));
+            sseManager.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage(ErrorEnum.A_WF_DISABLED.getInfo()));
             throw new BaseException(ErrorEnum.A_WF_DISABLED);
         }
 
         Long workflowId = this.workflow.getId();
         this.wfRuntimeResp = workflowRuntimeService.create(user, workflowId);
-        this.sseEmitterHelper.startSse(user, sseUuid, JsonUtil.toJson(wfRuntimeResp));
+        this.sseManager.startSse(user, sseUuid, JsonUtil.toJson(wfRuntimeResp));
 
         String runtimeUuid = this.wfRuntimeResp.getUuid();
         try {
@@ -137,14 +137,14 @@ public class WorkflowEngine {
         //还有下个节点，表示进入中断状态，等待用户输入后继续执行
         if (StringUtils.isNotBlank(nextNode) && !nextNode.equalsIgnoreCase(END)) {
             String intTip = WorkflowUtil.getHumanFeedbackTip(nextNode, wfNodes);
-            SSEEmitterHelper.parseAndSendPartialMsg(sseUuid, "[NODE_WAIT_FEEDBACK_BY_" + nextNode + "]", intTip);
+            SseManager.parseAndSendPartialMsg(sseUuid, "[NODE_WAIT_FEEDBACK_BY_" + nextNode + "]", intTip);
             InterruptedFlow.put(wfState.getUuid(), this);
             //更新状态
             wfState.setProcessStatus(WORKFLOW_PROCESS_STATUS_WAITING_INPUT);
             workflowRuntimeService.updateOutput(wfRuntimeResp.getId(), wfState);
         } else {
             WorkflowRuntime updatedRuntime = workflowRuntimeService.updateOutput(wfRuntimeResp.getId(), wfState);
-            sseEmitterHelper.sendComplete(user.getId(), sseUuid, JsonUtil.toJson(updatedRuntime.getOutput()));
+            sseManager.sendComplete(user.getId(), sseUuid, JsonUtil.toJson(updatedRuntime.getOutput()));
             InterruptedFlow.remove(wfState.getUuid());
         }
     }
@@ -179,8 +179,8 @@ public class WorkflowEngine {
         // so all SSE send operations in runNode silently skip (COMPLETED_SSE cache check)
         this.sseUuid = "blocking-" + com.moyz.adi.common.util.UuidUtil.createShort();
         SseEmitter dummyEmitter = new SseEmitter(0L);
-        SpringUtil.getBean(com.moyz.adi.common.helper.SseEmitterRegistry.class).register(this.sseUuid, dummyEmitter);
-        sseEmitterHelper.sendComplete(user.getId(), this.sseUuid);
+        SpringUtil.getBean(com.moyz.adi.common.helper.SseManager.class).register(this.sseUuid, dummyEmitter);
+        sseManager.sendComplete(user.getId(), this.sseUuid);
         log.info("WorkflowEngine blockingRun,userId:{},workflowUuid:{},userInputs:{}", user.getId(), workflow.getUuid(), userInputs);
         if (!this.workflow.getIsEnable()) {
             throw new BaseException(ErrorEnum.A_WF_DISABLED);
@@ -260,7 +260,7 @@ public class WorkflowEngine {
         if (errorMsg.contains("parallel node doesn't support conditional branch")) {
             errorMsg = "Parallel nodes cannot contain conditional branches";
         }
-        sseEmitterHelper.sendErrorAndComplete(user.getId(), sseUuid, errorMsg);
+        sseManager.sendErrorAndComplete(user.getId(), sseUuid, errorMsg);
         workflowRuntimeService.updateStatus(wfRuntimeResp.getId(), WORKFLOW_PROCESS_STATUS_FAIL, errorMsg);
     }
 
@@ -273,12 +273,12 @@ public class WorkflowEngine {
             WfRuntimeNodeDto runtimeNodeDto = workflowRuntimeNodeService.createByState(user, wfNode.getId(), wfRuntimeResp.getId(), nodeState);
             wfState.getRuntimeNodes().add(runtimeNodeDto);
 
-            SSEEmitterHelper.parseAndSendPartialMsg(sseUuid, "[NODE_RUN_" + wfNode.getUuid() + "]", JsonUtil.toJson(runtimeNodeDto));
+            SseManager.parseAndSendPartialMsg(sseUuid, "[NODE_RUN_" + wfNode.getUuid() + "]", JsonUtil.toJson(runtimeNodeDto));
 
             NodeProcessResult processResult = abstractWfNode.process((is) -> {
                 workflowRuntimeNodeService.updateInput(runtimeNodeDto.getId(), nodeState);
                 for (NodeIOData input : nodeState.getInputs()) {
-                    SSEEmitterHelper.parseAndSendPartialMsg(sseUuid, "[NODE_INPUT_" + wfNode.getUuid() + "]", JsonUtil.toJson(input));
+                    SseManager.parseAndSendPartialMsg(sseUuid, "[NODE_INPUT_" + wfNode.getUuid() + "]", JsonUtil.toJson(input));
                 }
             }, (is) -> {
                 workflowRuntimeNodeService.updateOutput(runtimeNodeDto.getId(), nodeState);
@@ -288,13 +288,13 @@ public class WorkflowEngine {
                 List<NodeIOData> nodeOutputs = nodeState.getOutputs();
                 for (NodeIOData output : nodeOutputs) {
                     log.info("callback node:{},output:{}", nodeUuid, output.getContent());
-                    SSEEmitterHelper.parseAndSendPartialMsg(sseUuid, "[NODE_OUTPUT_" + nodeUuid + "]", JsonUtil.toJson(output));
+                    SseManager.parseAndSendPartialMsg(sseUuid, "[NODE_OUTPUT_" + nodeUuid + "]", JsonUtil.toJson(output));
                 }
                 //推送可观测指标（流式节点由 streamingResult 统一推送，因为 token 数据在流完成后才可用）
                 //Push observability metrics (streaming nodes are handled by streamingResult since token data is only available after stream completes)
                 if (nodeState.getMetrics() != null && nodeState.getMetrics().getDurationMs() > 0
                         && !wfState.getNodeToStreamingGenerator().containsKey(nodeUuid)) {
-                    SSEEmitterHelper.parseAndSendPartialMsg(sseUuid, "[NODE_METRICS_" + nodeUuid + "]", JsonUtil.toJson(nodeState.getMetrics()));
+                    SseManager.parseAndSendPartialMsg(sseUuid, "[NODE_METRICS_" + nodeUuid + "]", JsonUtil.toJson(nodeState.getMetrics()));
                 }
             });
             if (StringUtils.isNotBlank(processResult.getNextNodeUuid())) {
@@ -327,7 +327,7 @@ public class WorkflowEngine {
                 String node = streamingOutput.node();
                 String chunk = streamingOutput.chunk();
                 log.info("node:{},chunk:{}", node, streamingOutput.chunk());
-                SSEEmitterHelper.parseAndSendPartialMsg(sseUuid, "[NODE_CHUNK_" + node + "]", chunk);
+                SseManager.parseAndSendPartialMsg(sseUuid, "[NODE_CHUNK_" + node + "]", chunk);
             } else {
                 AbstractWfNode abstractWfNode = wfState.getCompletedNodes().stream().filter(item -> item.getNode().getUuid().endsWith(out.node())).findFirst().orElse(null);
                 if (null != abstractWfNode) {
@@ -338,7 +338,7 @@ public class WorkflowEngine {
                         //流式节点完成时推送可观测指标（token 数据此时才可用）
                         //Push observability metrics when streaming node completes (token data available only now)
                         if (abstractWfNode.getState().getMetrics() != null && abstractWfNode.getState().getMetrics().getDurationMs() > 0) {
-                            SSEEmitterHelper.parseAndSendPartialMsg(sseUuid, "[NODE_METRICS_" + out.node() + "]", JsonUtil.toJson(abstractWfNode.getState().getMetrics()));
+                            SseManager.parseAndSendPartialMsg(sseUuid, "[NODE_METRICS_" + out.node() + "]", JsonUtil.toJson(abstractWfNode.getState().getMetrics()));
                         }
                     } else {
                         log.warn("Can not find runtime node, node uuid:{}", out.node());

@@ -3,7 +3,7 @@ package com.moyz.adi.common.workflow;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.helper.SSEEmitterHelper;
+import com.moyz.adi.common.helper.SseManager;
 import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.service.*;
 import jakarta.annotation.Resource;
@@ -47,21 +47,21 @@ public class WorkflowStarter {
     private WorkflowRuntimeNodeService workflowRuntimeNodeService;
 
     @Resource
-    private SSEEmitterHelper sseEmitterHelper;
+    private SseManager sseManager;
 
 
     public SseEmitter streaming(User user, String workflowUuid, List<ObjectNode> userInputs) {
         String sseUuid = com.moyz.adi.common.util.UuidUtil.createShort();
         SseEmitter sseEmitter = new SseEmitter(SSE_TIMEOUT);
-        if (!sseEmitterHelper.checkOrComplete(user, sseUuid, sseEmitter)) {
+        if (!sseManager.checkOrComplete(user, sseUuid, sseEmitter)) {
             return sseEmitter;
         }
         Workflow workflow = workflowService.getByUuid(workflowUuid);
         if (null == workflow) {
-            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage(A_WF_NOT_FOUND.getInfo()));
+            sseManager.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage(A_WF_NOT_FOUND.getInfo()));
             return sseEmitter;
         } else if (Boolean.FALSE.equals(workflow.getIsEnable())) {
-            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage(A_WF_DISABLED.getInfo()));
+            sseManager.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage(A_WF_DISABLED.getInfo()));
             return sseEmitter;
         }
         self.asyncRun(user, workflow, userInputs, sseUuid);
@@ -82,7 +82,7 @@ public class WorkflowStarter {
                     .eq(WorkflowEdge::getIsDeleted, false)
                     .list();
             WorkflowEngine workflowEngine = new WorkflowEngine(workflow,
-                    sseEmitterHelper,
+                    sseManager,
                     components,
                     nodes,
                     edges,
@@ -91,7 +91,7 @@ public class WorkflowStarter {
             workflowEngine.run(user, userInputs, sseUuid);
         } catch (Throwable e) {
             log.error("asyncRun execution exception, workflowUuid:{}", workflow.getUuid(), e);
-            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseUuid, "Workflow execution error:" + e.getMessage());
+            sseManager.sendErrorAndComplete(user.getId(), sseUuid, "Workflow execution error:" + e.getMessage());
         }
     }
 
@@ -117,7 +117,7 @@ public class WorkflowStarter {
                 .list();
 
         WorkflowEngine workflowEngine = new WorkflowEngine(workflow,
-                sseEmitterHelper,
+                sseManager,
                 components,
                 nodes,
                 edges,

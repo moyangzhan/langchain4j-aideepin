@@ -1,7 +1,5 @@
 package com.moyz.adi.common.helper;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.cosntant.RedisKeyConstant;
@@ -24,22 +22,37 @@ import java.io.IOException;
 import java.util.Map;
 import java.text.MessageFormat;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
- * SSE 事件发送辅助类
+ * SSE 管理器
  * <p>
- * 通过 {@link SseEmitterRegistry} 管理 uuid → SseEmitter 映射，
- * 所有方法以 SSE 请求标识(uuid)作为参数，替代直接传递 SseEmitter。
+ * 统一管理 SSE 请求的完整生命周期：注册、限流、事件发送、清理。
+ * 内部通过 {@link SseEntry} 同时追踪 SseEmitter 实例和关联的 userId，
+ * entry 从 map 中移除即代表已完成，天然防止重复完成。
  * </p>
  * <p>
- * SSE event helper — uses {@link SseEmitterRegistry} for uuid → SseEmitter mapping.
- * All methods accept SSE request identifier (uuid) instead of SseEmitter directly.
+ * SSE manager — unified lifecycle management for SSE connections: registration,
+ * rate limiting, event dispatching, and cleanup. The internal {@link SseEntry}
+ * tracks both the emitter and its associated userId; removing the entry from
+ * the map signals completion, providing natural double-completion prevention.
  * </p>
  */
 @Slf4j
 @Service
-public class SSEEmitterHelper {
+public class SseManager {
+
+    /**
+     * 内部条目：emitter + userId 一体
+     * <p>
+     * Internal entry bundling an emitter with its owning userId.
+     * </p>
+     */
+    private record SseEntry(SseEmitter emitter, long userId) {
+    }
+
+    private final ConcurrentHashMap<String, SseEntry> entries = new ConcurrentHashMap<>();
 
     /**
      * Web 用户最大并发 SSE 数 / Max concurrent SSE for web users
@@ -56,13 +69,87 @@ public class SSEEmitterHelper {
     @Resource
     private RateLimitHelper rateLimitHelper;
 
-    @Resource
-    private SseEmitterRegistry registry;
+    // ==================== 注册/查找/注销 ====================
 
     /**
-     * 已完成的 SseEmitter 缓存，防止重复完成 / Cache for completed SseEmitters to prevent double-completion
+     * 注册 SseEmitter 并关联 userId
+     * <p>
+     * Register an emitter associated with a userId.
+     * </p>
+     *
+     * @param uuid    SSE 请求标识 / SSE request identifier
+     * @param emitter SseEmitter 实例 / SseEmitter instance
+     * @param userId  用户 ID / User ID
      */
-    private static final Cache<SseEmitter, Boolean> COMPLETED_SSE = CacheBuilder.newBuilder().expireAfterWrite(10, TimeUnit.MINUTES).build();
+    public void register(String uuid, SseEmitter emitter, long userId) {
+        entries.put(uuid, new SseEntry(emitter, userId));
+    }
+
+    /**
+     * 注册 SseEmitter（无 userId，仅 blocking 模式兼容）
+     * <p>
+     * Register an emitter without userId (blocking mode compatibility).
+     * </p>
+     *
+     * @param uuid    SSE 请求标识 / SSE request identifier
+     * @param emitter SseEmitter 实例 / SseEmitter instance
+     */
+    public void register(String uuid, SseEmitter emitter) {
+        entries.put(uuid, new SseEntry(emitter, -1));
+    }
+
+    /**
+     * 获取 SseEmitter
+     * <p>
+     * Get the SseEmitter for the given uuid.
+     * </p>
+     *
+     * @param uuid SSE 请求标识 / SSE request identifier
+     * @return SseEmitter 实例，不存在则返回 null / SseEmitter or null
+     */
+    public SseEmitter get(String uuid) {
+        SseEntry entry = entries.get(uuid);
+        return entry != null ? entry.emitter() : null;
+    }
+
+    /**
+     * 获取关联的 userId
+     * <p>
+     * Get the userId associated with the given uuid.
+     * </p>
+     *
+     * @param uuid SSE 请求标识 / SSE request identifier
+     * @return userId，不存在则返回 null / userId or null
+     */
+    public Long getUserId(String uuid) {
+        SseEntry entry = entries.get(uuid);
+        return entry != null ? entry.userId() : null;
+    }
+
+    /**
+     * 注销 SseEmitter 并递减 Redis 并发计数（幂等）
+     * <p>
+     * Unregister the emitter and decrement the Redis concurrency counter (idempotent).
+     * </p>
+     *
+     * @param uuid SSE 请求标识 / SSE request identifier
+     */
+    public void unregister(String uuid) {
+        SseEntry removed = entries.remove(uuid);
+        if (removed != null && removed.userId() > 0) {
+            decActiveSseCount(removed.userId(), uuid);
+        }
+    }
+
+    /**
+     * 判断是否已完成（entry 不存在 = 已完成）
+     * <p>
+     * Check if the emitter has been completed (entry absent = completed).
+     * </p>
+     */
+    public boolean isCompleted(String uuid) {
+        return !entries.containsKey(uuid);
+    }
 
     // ==================== 请求入口（check + start） ====================
 
@@ -103,27 +190,27 @@ public class SSEEmitterHelper {
     }
 
     /**
-     * 启动 SSE 流，发送 START 事件（从注册中心查找 emitter）
+     * 启动 SSE 流，发送 START 事件（从管理器查找 emitter）
      * <p>
-     * Start SSE stream, send START event (look up emitter from registry).
+     * Start SSE stream, send START event (look up emitter from manager).
      * </p>
      */
     public void startSse(User user, String sseUuid) {
-        startSse(user, sseUuid, registry.get(sseUuid), null);
+        startSse(user, sseUuid, get(sseUuid), null);
     }
 
     /**
-     * 启动 SSE 流，发送 START 事件（从注册中心查找 emitter）
+     * 启动 SSE 流，发送 START 事件（从管理器查找 emitter）
      * <p>
-     * Start SSE stream, send START event (look up emitter from registry).
+     * Start SSE stream, send START event (look up emitter from manager).
      * </p>
      */
     public void startSse(User user, String sseUuid, String data) {
-        startSse(user, sseUuid, registry.get(sseUuid), data);
+        startSse(user, sseUuid, get(sseUuid), data);
     }
 
     public void startSse(User user, String sseUuid, SseEmitter sseEmitter, String data) {
-        registry.register(sseUuid, sseEmitter);
+        register(sseUuid, sseEmitter, user.getId());
 
         String requestTimesKey = MessageFormat.format(RedisKeyConstant.USER_REQUEST_TEXT_TIMES, user.getId());
         rateLimitHelper.increaseRequestTimes(requestTimesKey, LocalCache.TEXT_RATE_LIMIT_CONFIG);
@@ -136,9 +223,7 @@ public class SSEEmitterHelper {
         } catch (IOException e) {
             log.error("startSse error", e);
             sseEmitter.completeWithError(e);
-            COMPLETED_SSE.put(sseEmitter, Boolean.TRUE);
-            registry.unregister(sseUuid);
-            decActiveSseCount(user.getId(), sseUuid);
+            unregister(sseUuid);
         }
     }
 
@@ -163,12 +248,7 @@ public class SSEEmitterHelper {
                 log.error("commonProcess error", e);
                 errorAndShutdown(e, sseUuid);
             } finally {
-                SseEmitter sseEmitter = registry.get(sseUuid);
-                if (sseEmitter != null) {
-                    COMPLETED_SSE.put(sseEmitter, Boolean.TRUE);
-                }
-                registry.unregister(sseUuid);
-                decActiveSseCount(sseAskParams.getUser().getId(), sseUuid);
+                unregister(sseUuid);
             }
         });
     }
@@ -184,18 +264,18 @@ public class SSEEmitterHelper {
     public void registerEventStreamListener(SseAskParams sseAskParams) {
         User user = sseAskParams.getUser();
         String sseUuid = sseAskParams.getSseUuid();
-        SseEmitter sseEmitter = registry.get(sseUuid);
+        SseEmitter sseEmitter = get(sseUuid);
         if (sseEmitter == null) {
             log.error("registerEventStreamListener: SseEmitter not found for sseUuid:{}", sseUuid);
             return;
         }
         sseEmitter.onCompletion(() -> {
             log.info("response complete,uid:{}", user.getId());
-            cleanupEmitter(sseUuid, sseEmitter, user.getId());
+            unregister(sseUuid);
         });
         sseEmitter.onTimeout(() -> {
             log.warn("sseEmitter timeout,uid:{},on timeout:{}", user.getId(), sseEmitter.getTimeout());
-            cleanupEmitter(sseUuid, sseEmitter, user.getId());
+            unregister(sseUuid);
         });
         sseEmitter.onError(
                 throwable -> {
@@ -205,7 +285,7 @@ public class SSEEmitterHelper {
                     } catch (IOException e) {
                         log.error("error", e);
                     } finally {
-                        cleanupEmitter(sseUuid, sseEmitter, user.getId());
+                        unregister(sseUuid);
                     }
                 }
         );
@@ -214,18 +294,17 @@ public class SSEEmitterHelper {
     // ==================== 实例方法（接受 uuid，内部查找 emitter） ====================
 
     public void sendComplete(long userId, String sseUuid, String msg) {
-        SseEmitter sseEmitter = registry.get(sseUuid);
-        if (sseEmitter == null || Boolean.TRUE.equals(COMPLETED_SSE.getIfPresent(sseEmitter))) {
+        SseEntry entry = entries.get(sseUuid);
+        if (entry == null) {
             log.warn("sseEmitter already completed or not found,userId:{}", userId);
-            decActiveSseCount(userId, sseUuid);
             return;
         }
         try {
-            sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.DONE).data(msg));
+            entry.emitter().send(SseEmitter.event().name(AdiConstant.SSEEventName.DONE).data(msg));
         } catch (IOException e) {
             throw new RuntimeException(e);
         } finally {
-            cleanupEmitter(sseUuid, sseEmitter, userId);
+            unregister(sseUuid);
         }
     }
 
@@ -245,55 +324,53 @@ public class SSEEmitterHelper {
      * @param sseUuid SSE 请求标识 / SSE request identifier
      */
     public void sendComplete(long userId, String sseUuid) {
-        SseEmitter sseEmitter = registry.get(sseUuid);
-        if (sseEmitter == null || Boolean.TRUE.equals(COMPLETED_SSE.getIfPresent(sseEmitter))) {
+        SseEntry entry = entries.get(sseUuid);
+        if (entry == null) {
             log.warn("sseEmitter already completed or not found,userId:{}", userId);
-            decActiveSseCount(userId, sseUuid);
             return;
         }
         try {
-            sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.DONE));
-            sseEmitter.complete();
+            entry.emitter().send(SseEmitter.event().name(AdiConstant.SSEEventName.DONE));
+            entry.emitter().complete();
         } catch (Exception e) {
             log.warn("sendComplete error", e);
         } finally {
-            cleanupEmitter(sseUuid, sseEmitter, userId);
+            unregister(sseUuid);
         }
     }
 
     public void sendStartAndComplete(long userId, String sseUuid, String msg) {
-        SseEmitter sseEmitter = registry.get(sseUuid);
-        if (sseEmitter == null) {
+        SseEntry entry = entries.get(sseUuid);
+        if (entry == null) {
             log.warn("sendStartAndComplete: SseEmitter not found for sseUuid:{}", sseUuid);
-            decActiveSseCount(userId, sseUuid);
             return;
         }
         try {
-            sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.START));
-            sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.DONE).data(msg));
+            entry.emitter().send(SseEmitter.event().name(AdiConstant.SSEEventName.START));
+            entry.emitter().send(SseEmitter.event().name(AdiConstant.SSEEventName.DONE).data(msg));
         } catch (IOException e) {
             throw new RuntimeException(e);
         } finally {
-            cleanupEmitter(sseUuid, sseEmitter, userId);
+            unregister(sseUuid);
         }
     }
 
     public void sendErrorAndComplete(long userId, String sseUuid, String errorMsg) {
-        SseEmitter sseEmitter = registry.get(sseUuid);
+        SseEmitter sseEmitter = get(sseUuid);
         doSendErrorAndComplete(userId, sseUuid, sseEmitter, errorMsg);
     }
 
-    // ==================== 静态方法（接受 uuid，通过 SpringUtil 获取 registry） ====================
+    // ==================== 静态方法（接受 uuid，通过 SpringUtil 获取 manager） ====================
 
     public static void parseAndSendPartialMsg(String uuid, String content) {
         parseAndSendPartialMsg(uuid, "", content);
     }
 
     public static void sendAudio(String uuid, Object content) {
-        SseEmitter sseEmitter = getEmitter(uuid);
-        if (sseEmitter == null) return;
+        SseEntry entry = getEntry(uuid);
+        if (entry == null) return;
         try {
-            sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.AUDIO).data(content));
+            entry.emitter().send(SseEmitter.event().name(AdiConstant.SSEEventName.AUDIO).data(content));
         } catch (IOException e) {
             log.error("stream onNext error", e);
             throw new RuntimeException(e);
@@ -301,10 +378,10 @@ public class SSEEmitterHelper {
     }
 
     public static void sendThinking(String uuid, String content) {
-        SseEmitter sseEmitter = getEmitter(uuid);
-        if (sseEmitter == null) return;
+        SseEntry entry = getEntry(uuid);
+        if (entry == null) return;
         try {
-            sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.THINKING).data(content));
+            entry.emitter().send(SseEmitter.event().name(AdiConstant.SSEEventName.THINKING).data(content));
         } catch (IOException e) {
             log.error("stream onNext error", e);
             throw new RuntimeException(e);
@@ -312,84 +389,66 @@ public class SSEEmitterHelper {
     }
 
     public static void sendToolCall(String uuid, String toolName, long durationMs, boolean success) {
-        SseEmitter sseEmitter = getEmitter(uuid);
-        if (sseEmitter == null) {
-            return;
-        }
-        if (Boolean.TRUE.equals(COMPLETED_SSE.getIfPresent(sseEmitter))) {
-            log.warn("sseEmitter already completed, skip sendToolCall");
+        SseEntry entry = getEntry(uuid);
+        if (entry == null) {
             return;
         }
         try {
             String safeName = toolName != null ? toolName : "unknown";
             String data = JsonUtil.toJson(Map.of("toolName", safeName, "durationMs", durationMs, "success", success));
-            sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.TOOL_CALL).data(data));
+            entry.emitter().send(SseEmitter.event().name(AdiConstant.SSEEventName.TOOL_CALL).data(data));
         } catch (Exception e) {
             log.error("sendToolCall error", e);
-            COMPLETED_SSE.put(sseEmitter, Boolean.TRUE);
+            SpringUtil.getBean(SseManager.class).unregister(uuid);
         }
     }
 
     public static void parseAndSendPartialMsg(String uuid, String name, String content) {
-        SseEmitter sseEmitter = getEmitter(uuid);
-        if (sseEmitter == null) return;
-        if (Boolean.TRUE.equals(COMPLETED_SSE.getIfPresent(sseEmitter))) {
-            log.warn("sseEmitter already completed,name:{}", name);
-            return;
-        }
+        SseEntry entry = getEntry(uuid);
+        if (entry == null) return;
         String[] lines = content.split("[\\r\\n]", -1);
         if (lines.length > 1) {
-            sendPartial(uuid, name, " " + lines[0]);
+            sendPartial(uuid, name, entry, " " + lines[0]);
             for (int i = 1; i < lines.length; i++) {
-                sendPartial(uuid, name, "-_wrap_-");
-                sendPartial(uuid, name, " " + lines[i]);
+                sendPartial(uuid, name, entry, "-_wrap_-");
+                sendPartial(uuid, name, entry, " " + lines[i]);
             }
         } else {
-            sendPartial(uuid, name, " " + content);
+            sendPartial(uuid, name, entry, " " + content);
         }
     }
 
     public static void sendPartial(String uuid, String name, String msg) {
-        SseEmitter sseEmitter = getEmitter(uuid);
-        if (sseEmitter == null) return;
-        if (Boolean.TRUE.equals(COMPLETED_SSE.getIfPresent(sseEmitter))) {
-            log.warn("sseEmitter already completed,name:{}", name);
-            return;
-        }
+        SseEntry entry = getEntry(uuid);
+        if (entry == null) return;
+        sendPartial(uuid, name, entry, msg);
+    }
+
+    /** 内部 sendPartial：复用上层已获取的 entry */
+    private static void sendPartial(String uuid, String name, SseEntry entry, String msg) {
         try {
             if (StringUtils.isNotBlank(name)) {
-                sseEmitter.send(SseEmitter.event().name(name).data(msg));
+                entry.emitter().send(SseEmitter.event().name(name).data(msg));
             } else {
-                sseEmitter.send(msg);
+                entry.emitter().send(msg);
             }
         } catch (IOException ioException) {
             log.error("stream onNext error", ioException);
-            COMPLETED_SSE.put(sseEmitter, Boolean.TRUE);
+            SpringUtil.getBean(SseManager.class).unregister(uuid);
             throw new RuntimeException(ioException);
         }
     }
 
     public static void errorAndShutdown(Throwable error, String uuid) {
-        SseEmitter sseEmitter = getEmitter(uuid);
-        if (sseEmitter == null) return;
-        if (Boolean.TRUE.equals(COMPLETED_SSE.getIfPresent(sseEmitter))) {
-            log.warn("sseEmitter already completed,ignore error:{}", error.getMessage());
-            return;
-        }
+        SseEntry entry = getEntry(uuid);
+        if (entry == null) return;
         log.error("stream error", error);
         try {
-            sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.ERROR).data(error.getMessage()));
+            entry.emitter().send(SseEmitter.event().name(AdiConstant.SSEEventName.ERROR).data(error.getMessage()));
         } catch (IOException e) {
             log.error("sse error", e);
         } finally {
-            COMPLETED_SSE.put(sseEmitter, Boolean.TRUE);
-            sseEmitter.complete();
-            //自包含清理兜底：如果 onCompletion 回调未注册（registerEventStreamListener 未调用前出错），
-            //这里主动执行 unregister + decActiveSseCount，确保 Redis 并发计数不泄漏
-            SseEmitterRegistry reg = SpringUtil.getBean(SseEmitterRegistry.class);
-            reg.unregister(uuid);
-            //decActiveSseCount 由 onCompletion 回调处理（registerEventStreamListener 在所有调用方中都先于 errorAndShutdown）
-            //6min TTL 作为最终兜底
+            SpringUtil.getBean(SseManager.class).unregister(uuid);
         }
     }
 
@@ -426,32 +485,13 @@ public class SSEEmitterHelper {
     // ==================== 内部方法 ====================
 
     /**
-     * 通过 uuid 从注册中心获取 SseEmitter
+     * 通过 uuid 从管理器获取 SseEntry（单次查找，避免 TOCTOU）
      * <p>
-     * Look up SseEmitter by uuid from the registry.
+     * Look up SseEntry by uuid from the manager (single lookup, avoids TOCTOU).
      * </p>
      */
-    private static SseEmitter getEmitter(String uuid) {
-        return SpringUtil.getBean(SseEmitterRegistry.class).get(uuid);
-    }
-
-    /**
-     * 统一的清理方法：标记完成 + 注销 + 递减并发计数（幂等）
-     * <p>
-     * Unified cleanup: mark completed + unregister + decrement active count (idempotent).
-     * COMPLETED_SSE guard prevents double-cleanup from call() finally vs onCompletion callback.
-     * </p>
-     */
-    private void cleanupEmitter(String sseUuid, SseEmitter sseEmitter, long userId) {
-        if (sseEmitter != null && Boolean.TRUE.equals(COMPLETED_SSE.getIfPresent(sseEmitter))) {
-            //已清理过，跳过（call() finally 和 onCompletion 回调可能都触发）
-            return;
-        }
-        if (sseEmitter != null) {
-            COMPLETED_SSE.put(sseEmitter, Boolean.TRUE);
-        }
-        registry.unregister(sseUuid);
-        decActiveSseCount(userId, sseUuid);
+    private static SseEntry getEntry(String uuid) {
+        return SpringUtil.getBean(SseManager.class).entries.get(uuid);
     }
 
     /**
@@ -461,22 +501,23 @@ public class SSEEmitterHelper {
      * </p>
      */
     private void doSendErrorAndComplete(long userId, String sseUuid, SseEmitter sseEmitter, String errorMsg) {
-        if (sseEmitter != null && Boolean.TRUE.equals(COMPLETED_SSE.getIfPresent(sseEmitter))) {
-            log.warn("sseEmitter already completed,ignore error:{}", errorMsg);
+        if (sseEmitter == null) {
             decActiveSseCount(userId, sseUuid);
             return;
         }
-        if (sseEmitter != null) {
-            try {
-                sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.ERROR).data(Objects.toString(errorMsg, "")));
-            } catch (IOException e) {
-                log.warn("sendErrorAndComplete userId:{},errorMsg:{}", userId, errorMsg);
-                throw new RuntimeException(e);
-            } finally {
-                cleanupEmitter(sseUuid, sseEmitter, userId);
-            }
-        } else {
-            decActiveSseCount(userId, sseUuid);
+        // 用单次 entries.get 避免 TOCTOU：entry 不存在即已完成
+        SseEntry entry = entries.get(sseUuid);
+        if (entry == null) {
+            log.warn("sseEmitter already completed,ignore error:{}", errorMsg);
+            return;
+        }
+        try {
+            entry.emitter().send(SseEmitter.event().name(AdiConstant.SSEEventName.ERROR).data(Objects.toString(errorMsg, "")));
+        } catch (IOException e) {
+            log.warn("sendErrorAndComplete userId:{},errorMsg:{}", userId, errorMsg);
+            throw new RuntimeException(e);
+        } finally {
+            unregister(sseUuid);
         }
     }
 

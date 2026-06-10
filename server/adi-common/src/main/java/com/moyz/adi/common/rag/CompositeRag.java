@@ -3,7 +3,7 @@ package com.moyz.adi.common.rag;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.LLMContext;
-import com.moyz.adi.common.helper.SSEEmitterHelper;
+import com.moyz.adi.common.helper.SseManager;
 import com.moyz.adi.common.interfaces.IStreamingChatAssistant;
 import com.moyz.adi.common.interfaces.ITempStreamingChatAssistant;
 import com.moyz.adi.common.interfaces.TriConsumer;
@@ -77,9 +77,9 @@ public class CompositeRag {
      * @param consumer     回调
      */
     public void ragChat(List<ContentRetriever> retrievers, SseAskParams sseAskParams, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
-        SSEEmitterHelper sseEmitterHelper = SpringUtil.getBean(SSEEmitterHelper.class);
+        SseManager sseManager = SpringUtil.getBean(SseManager.class);
         User user = sseAskParams.getUser();
-        sseEmitterHelper.registerEventStreamListener(sseAskParams);
+        sseManager.registerEventStreamListener(sseAskParams);
         try {
             query(retrievers, sseAskParams, (response, promptMeta, answerMeta) -> {
                 try {
@@ -90,11 +90,11 @@ public class CompositeRag {
             });
         } catch (Exception baseException) {
             if (baseException.getCause() instanceof BaseException && B_BREAK_SEARCH.getCode().equals(((BaseException) baseException.getCause()).getCode())) {
-                sseEmitterHelper.sendStartAndComplete(user.getId(), sseAskParams.getSseUuid(), "");
+                sseManager.sendStartAndComplete(user.getId(), sseAskParams.getSseUuid(), "");
                 consumer.accept("", PromptMeta.builder().tokens(0).build(), AnswerMeta.builder().tokens(0).build());
             } else {
                 log.error("ragProcess error", baseException);
-                sseEmitterHelper.sendErrorAndComplete(user.getId(), sseAskParams.getSseUuid(), baseException.getMessage());
+                sseManager.sendErrorAndComplete(user.getId(), sseAskParams.getSseUuid(), baseException.getMessage());
             }
         }
 
@@ -153,12 +153,12 @@ public class CompositeRag {
             }
         }
         tokenStream
-                .onPartialResponse(content -> SSEEmitterHelper.parseAndSendPartialMsg(params.getSseUuid(), content))
+                .onPartialResponse(content -> SseManager.parseAndSendPartialMsg(params.getSseUuid(), content))
                 .onCompleteResponse(response -> {
-                    Pair<PromptMeta, AnswerMeta> pair = SSEEmitterHelper.calculateToken(response, params.getUuid());
+                    Pair<PromptMeta, AnswerMeta> pair = SseManager.calculateToken(response, params.getUuid());
                     consumer.accept(response.aiMessage().text(), pair.getLeft(), pair.getRight());
                 })
-                .onError(error -> SSEEmitterHelper.errorAndShutdown(error, params.getSseUuid()))
+                .onError(error -> SseManager.errorAndShutdown(error, params.getSseUuid()))
                 .start();
     }
 
