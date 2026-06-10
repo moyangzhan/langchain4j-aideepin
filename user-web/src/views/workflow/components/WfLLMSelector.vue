@@ -60,7 +60,6 @@ function renderLabel(option: SelectOption): VNodeChild {
 
 const modelId = appStore.getLLMByPlatformAndName(props.modelPlatform, props.modelName)?.modelId || ''
 const selectedModelId = ref<string>(modelId)
-console.log('selectedModelId', selectedModelId.value)
 function handleSelect(modelId: string) {
   const aiModel = appStore.getLLMById(modelId)
   emit('llmSelected', aiModel || emptyAiModel())

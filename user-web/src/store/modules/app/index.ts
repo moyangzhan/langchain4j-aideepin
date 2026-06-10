@@ -49,7 +49,7 @@ export const useAppStore = defineStore('app-store', {
     },
     getFirstLLM(state: AppState) {
       return () => {
-        const enableList = state.llms.filter(item => item.enable)
+        const enableList = state.llms.filter(item => item.enable && item.healthStatus !== 'UNHEALTHY')
         const freeLLM = enableList.find(item => item.isFree)
         if (freeLLM)
           return freeLLM

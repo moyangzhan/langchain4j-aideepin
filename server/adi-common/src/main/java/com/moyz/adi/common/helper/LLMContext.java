@@ -148,7 +148,7 @@ public class LLMContext {
         for (AbstractLLMService service : LLM_SERVICES) {
             AiModel aiModel = service.getAiModel();
             if (Boolean.TRUE.equals(aiModel.getIsEnable()) && healthService.isHealthy(aiModel.getName())) {
-                if (aiModel.getIsFree()) {
+                if (Boolean.TRUE.equals(aiModel.getIsFree())) {
                     freeObj = service;
                     break;
                 } else if (null == enableObj) {

@@ -53,11 +53,9 @@ function renderLabel(option: DropdownOption) {
       default: () => llm?.healthReason || 'Unavailable',
     })
   }
-  return [
-    h('div', { class: 'flex items-center' }, {
-      default: () => children,
-    }),
-  ]
+  return h('div', { class: 'flex items-center' }, {
+    default: () => children,
+  })
 }
 
 function handleSelect(key: string | number) {

@@ -205,16 +205,6 @@ public class ModelHealthService {
         return result;
     }
 
-    /**
-     * 手动触发全量探测（供管理端 API）
-     * <p>
-     * Force a full health check (for admin API).
-     * </p>
-     */
-    public void forceCheckAll() {
-        checkAll();
-    }
-
     // ==================== 内部类 ====================
 
     @Data

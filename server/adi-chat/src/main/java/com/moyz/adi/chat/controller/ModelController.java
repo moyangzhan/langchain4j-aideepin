@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/model")
@@ -29,6 +30,7 @@ public class ModelController {
     @GetMapping(value = "/llms")
     public List<LLMModelInfo> llms() {
         ModelHealthService healthService = SpringUtil.getBean(ModelHealthService.class);
+        Map<String, ModelHealthService.HealthCheckResult> allStatuses = healthService.getAllStatuses();
         return LLMContext.getAllServices().stream().map(item -> {
             AiModel aiModel = item.getAiModel();
             LLMModelInfo modelInfo = new LLMModelInfo();
@@ -39,7 +41,7 @@ public class ModelController {
             modelInfo.setEnable(aiModel.getIsEnable());
             BeanUtils.copyProperties(aiModel, modelInfo);
             // 健康状态（不过滤，前端根据状态置灰）
-            ModelHealthService.HealthCheckResult health = healthService.getAllStatuses().get(aiModel.getName());
+            ModelHealthService.HealthCheckResult health = allStatuses.get(aiModel.getName());
             if (health != null) {
                 modelInfo.setHealthStatus(health.getStatus().name());
                 modelInfo.setHealthReason(health.getFailReason());

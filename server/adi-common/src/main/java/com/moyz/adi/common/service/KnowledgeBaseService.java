@@ -666,7 +666,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 }
             }
         } catch (Exception e) {
-            log.error("asyncUpdateStatistic execution exception", e);
+            log.error("updateStatistic execution exception", e);
         }
     }
 

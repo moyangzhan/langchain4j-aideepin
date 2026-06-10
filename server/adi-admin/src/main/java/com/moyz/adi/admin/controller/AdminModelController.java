@@ -69,7 +69,7 @@ public class AdminModelController {
     @Operation(summary = "手动触发健康探测 | Trigger Health Check")
     @PostMapping("/health/check")
     public Map<String, ModelHealthService.HealthCheckResult> healthCheck() {
-        modelHealthService.forceCheckAll();
+        modelHealthService.checkAll();
         return modelHealthService.getAllStatuses();
     }
 
