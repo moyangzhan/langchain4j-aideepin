@@ -301,8 +301,9 @@ public class SseManager {
         }
         try {
             entry.emitter().send(SseEmitter.event().name(AdiConstant.SSEEventName.DONE).data(msg));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            entry.emitter().complete();
+        } catch (Exception e) {
+            log.warn("sendComplete error,userId:{}", userId, e);
         } finally {
             unregister(sseUuid);
         }
@@ -348,8 +349,9 @@ public class SseManager {
         try {
             entry.emitter().send(SseEmitter.event().name(AdiConstant.SSEEventName.START));
             entry.emitter().send(SseEmitter.event().name(AdiConstant.SSEEventName.DONE).data(msg));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            entry.emitter().complete();
+        } catch (Exception e) {
+            log.warn("sendStartAndComplete error,userId:{}", userId, e);
         } finally {
             unregister(sseUuid);
         }
@@ -471,7 +473,10 @@ public class SseManager {
             outputTokenCount = output != null ? output : 0;
         }
         log.info("StreamingChatModel token cost,uuid:{},inputTokenCount:{},outputTokenCount:{}", uuid, inputTokenCount, outputTokenCount);
-        LLMTokenUtil.cacheTokenUsage(SpringUtil.getBean(StringRedisTemplate.class), uuid, response.metadata().tokenUsage());
+        //只在 tokenUsage 不为 null 时才缓存，避免 NPE | Only cache when tokenUsage is non-null to avoid NPE
+        if (response.metadata() != null && response.metadata().tokenUsage() != null) {
+            LLMTokenUtil.cacheTokenUsage(SpringUtil.getBean(StringRedisTemplate.class), uuid, response.metadata().tokenUsage());
+        }
 
         PromptMeta questionMeta = new PromptMeta(inputTokenCount, uuid);
         AnswerMeta answerMeta = AnswerMeta.builder().tokens(outputTokenCount).uuid(UuidUtil.createShort()).build();
@@ -505,17 +510,24 @@ public class SseManager {
             decActiveSseCount(userId, sseUuid);
             return;
         }
-        // 用单次 entries.get 避免 TOCTOU：entry 不存在即已完成
         SseEntry entry = entries.get(sseUuid);
         if (entry == null) {
-            log.warn("sseEmitter already completed,ignore error:{}", errorMsg);
+            // Emitter not yet registered (e.g. rejected by checkOrComplete before startSse).
+            // Send error directly so the frontend still gets a response.
+            try {
+                sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.ERROR).data(Objects.toString(errorMsg, "")));
+                sseEmitter.complete();
+            } catch (IOException e) {
+                log.warn("sendErrorAndComplete userId:{},errorMsg:{}", userId, errorMsg);
+            }
+            decActiveSseCount(userId, sseUuid);
             return;
         }
         try {
             entry.emitter().send(SseEmitter.event().name(AdiConstant.SSEEventName.ERROR).data(Objects.toString(errorMsg, "")));
-        } catch (IOException e) {
-            log.warn("sendErrorAndComplete userId:{},errorMsg:{}", userId, errorMsg);
-            throw new RuntimeException(e);
+            entry.emitter().complete();
+        } catch (Exception e) {
+            log.warn("sendErrorAndComplete userId:{},errorMsg:{}", userId, errorMsg, e);
         } finally {
             unregister(sseUuid);
         }

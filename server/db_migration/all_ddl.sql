@@ -324,9 +324,6 @@ CREATE TABLE adi_character_message
     audio_duration                  integer       default 0                 not null,
     uuid                            varchar(32)   default ''                not null,
     message_role                    integer       default 1                 not null,
-    tokens                          integer       default 0                 not null,
-    input_tokens                    integer       default 0                 not null,
-    output_tokens                   integer       default 0                 not null,
     user_id                         bigint        default 0                 not null,
     ai_model_id                     bigint        default 0                 not null,
     understand_context_msg_pair_num integer       default 0                 not null,
@@ -350,7 +347,6 @@ COMMENT ON COLUMN adi_character_message.uuid IS 'Unique identifier for the messa
 COMMENT ON COLUMN adi_character_message.audio_uuid IS 'Audio file UUID (references adi_file.uuid)';
 COMMENT ON COLUMN adi_character_message.audio_duration IS 'Audio duration in seconds';
 COMMENT ON COLUMN adi_character_message.message_role IS 'Message role: 1=User, 2=System, 3=Assistant';
-COMMENT ON COLUMN adi_character_message.tokens IS 'Number of tokens consumed';
 COMMENT ON COLUMN adi_character_message.user_id IS 'User ID';
 COMMENT ON COLUMN adi_character_message.ai_model_id IS 'adi_ai_model id';
 COMMENT ON COLUMN adi_character_message.understand_context_msg_pair_num IS 'Number of context message pairs';
@@ -408,6 +404,43 @@ comment on column adi_character_message_ref_memory_embedding.message_id is 'adi_
 comment on column adi_character_message_ref_memory_embedding.embedding_id is 'Embedding UUID retrieved from memory vector store';
 comment on column adi_character_message_ref_memory_embedding.score is 'Similarity score';
 comment on column adi_character_message_ref_memory_embedding.user_id is 'User ID';
+
+-- ============================================================
+-- LLM Call Record: unified LLM call resource consumption tracking
+-- ============================================================
+
+CREATE TABLE adi_llm_call_record
+(
+    id             bigserial primary key,
+    uuid           varchar(32)  not null default '',
+    source_type    smallint     not null default 0,
+    source_id      bigint       not null default 0,
+    user_id        bigint       not null default 0,
+    model_platform varchar(50)  not null default '',
+    model_name     varchar(100) not null default '',
+    input_tokens   integer      not null default 0,
+    output_tokens  integer      not null default 0,
+    duration       integer      not null default 0,
+    request_time   timestamp    not null default CURRENT_TIMESTAMP,
+    create_time    timestamp    not null default CURRENT_TIMESTAMP,
+    update_time    timestamp    not null default CURRENT_TIMESTAMP,
+    is_deleted     boolean      not null default false
+);
+
+CREATE INDEX idx_llm_call_record_source ON adi_llm_call_record(source_type, source_id);
+CREATE INDEX idx_llm_call_record_user_id ON adi_llm_call_record(user_id);
+CREATE INDEX idx_llm_call_record_request_time ON adi_llm_call_record(request_time);
+
+COMMENT ON TABLE adi_llm_call_record IS 'Unified LLM call resource consumption tracking';
+COMMENT ON COLUMN adi_llm_call_record.source_type IS 'Source type: 0=unknown 1=character_chat 2=knowledge_base_qa 3=knowledge_base_ingest 4=workflow_node 5=agent';
+COMMENT ON COLUMN adi_llm_call_record.source_id IS 'Source record primary key';
+COMMENT ON COLUMN adi_llm_call_record.user_id IS 'User ID';
+COMMENT ON COLUMN adi_llm_call_record.model_platform IS 'Model platform name';
+COMMENT ON COLUMN adi_llm_call_record.model_name IS 'Model name';
+COMMENT ON COLUMN adi_llm_call_record.input_tokens IS 'Input token count';
+COMMENT ON COLUMN adi_llm_call_record.output_tokens IS 'Output token count';
+COMMENT ON COLUMN adi_llm_call_record.duration IS 'Call duration in ms';
+COMMENT ON COLUMN adi_llm_call_record.request_time IS 'Request start time';
 
 -- ============================================================
 -- File & Prompt: file storage and prompt templates
@@ -756,9 +789,7 @@ create table adi_knowledge_base_qa
     kb_uuid         varchar(32)   default ''                not null,
     question        varchar(1000) default ''                not null,
     prompt          text          default ''                not null,
-    prompt_tokens   integer       default 0                 not null,
     answer          text          default ''                not null,
-    answer_tokens   integer       default 0                 not null,
     source_file_ids varchar(500)  default ''                not null,
     user_id         bigint        default 0                 not null,
     ai_model_id     bigint        default 0                 not null,
@@ -772,9 +803,7 @@ comment on column adi_knowledge_base_qa.kb_id is 'adi_knowledge_base ID';
 comment on column adi_knowledge_base_qa.kb_uuid is 'adi_knowledge_base UUID';
 comment on column adi_knowledge_base_qa.question is 'User''s original question';
 comment on column adi_knowledge_base_qa.prompt is 'Prompt provided to LLM';
-comment on column adi_knowledge_base_qa.prompt_tokens is 'Tokens consumed by the prompt';
 comment on column adi_knowledge_base_qa.answer is 'Answer';
-comment on column adi_knowledge_base_qa.answer_tokens is 'Tokens consumed by the answer';
 comment on column adi_knowledge_base_qa.source_file_ids is 'Source file IDs, separated by commas';
 comment on column adi_knowledge_base_qa.user_id is 'User ID of the questioner';
 comment on column adi_knowledge_base_qa.create_time is 'Creation time';
@@ -991,9 +1020,6 @@ execute procedure update_modified_column();
 
 COMMENT ON COLUMN adi_workflow_runtime_node.duration IS '节点执行耗时（毫秒） | Node execution duration in ms';
 COMMENT ON COLUMN adi_workflow_runtime_node.metrics IS '可观测指标 JSON：token 消耗、HTTP 状态码、搜索结果数等 | Observability metrics JSON';
-
-COMMENT ON COLUMN adi_character_message.input_tokens IS '输入 token 数量 | Input token count';
-COMMENT ON COLUMN adi_character_message.output_tokens IS '输出 token 数量 | Output token count';
 
 -- ============================================================
 -- MCP: model context protocol services

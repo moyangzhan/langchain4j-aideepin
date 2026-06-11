@@ -11,6 +11,8 @@ public class AnswerMeta {
     private Integer tokens;
     private String uuid;
     @Builder.Default
+    private Integer duration = 0;
+    @Builder.Default
     private Boolean isRefEmbedding = false;
     @Builder.Default
     private Boolean isRefGraph = false;

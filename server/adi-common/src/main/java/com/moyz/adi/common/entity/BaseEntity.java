@@ -23,7 +23,6 @@ public class BaseEntity implements Serializable {
     @TableField(value = "update_time")
     private LocalDateTime updateTime;
 
-    @Schema(title = "是否删除（0：未删除，1：已删除） | Is Deleted (0: Not Deleted, 1: Deleted)")
     @TableField(value = "is_deleted")
     private Boolean isDeleted;
 }

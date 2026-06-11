@@ -1,24 +1,12 @@
 <script setup lang="ts">
 import { h } from 'vue'
 import { NButton, NDropdown, NTooltip } from 'naive-ui'
-import type { VNode } from 'vue'
-import type { DropdownGroupOption, DropdownOption } from 'naive-ui'
+import type { DropdownOption } from 'naive-ui'
 import AvatarComponent from '@/views/chat/components/Message/Avatar.vue'
 import { useAppStore } from '@/store'
-import { t } from '@/locales'
 
 const appStore = useAppStore()
 
-function renderOption({ node, option }: { node: VNode; option: DropdownOption | DropdownGroupOption }) {
-  if (option.enable && option.isFree) {
-    return h(NTooltip, { placement: 'left' }, {
-      trigger: () => node,
-      default: () => t('setting.tokenQuotaUnlimited'),
-    })
-  } else {
-    return node
-  }
-}
 function renderLabel(option: DropdownOption) {
   const val = option.value as string
   const llm = appStore.getLLMById(val)
@@ -28,9 +16,9 @@ function renderLabel(option: DropdownOption) {
     h(
       'span',
       {
-        class: option.isFree ? 'text-green-500' : 'text-orange-500',
+        class: (isUnhealthy ? 'text-red-500' : 'text-green-500') + ' mr-1',
       },
-      '⨀ ',
+      '●',
     ),
     h(
       AvatarComponent,
@@ -44,7 +32,7 @@ function renderLabel(option: DropdownOption) {
       {
         class: `ml-1.5${option.disabled ? ' text-gray-400' : ''}`,
       },
-      { default: () => (option.label as string) + (isUnhealthy ? ' (🚫)' : '') },
+      { default: () => option.label as string },
     ),
   ]
   if (isUnhealthy) {
@@ -66,7 +54,7 @@ function handleSelect(key: string | number) {
 <template>
   <NDropdown
     size="small" placement="top-start" trigger="click" :show-arrow="true" :render-label="renderLabel"
-    :render-option="renderOption" :options="appStore.llms" @select="handleSelect"
+    :options="appStore.llms" @select="handleSelect"
   >
     <NButton icon-placement="right">
       <AvatarComponent :name="appStore.selectedLLM.modelPlatform" :image-size="20" class="mr-1" />{{ appStore.selectedLLM.modelTitle || appStore.selectedLLM.modelName }}

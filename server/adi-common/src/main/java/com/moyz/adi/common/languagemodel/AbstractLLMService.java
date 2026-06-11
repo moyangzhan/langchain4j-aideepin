@@ -16,6 +16,7 @@ import com.moyz.adi.common.languagemodel.data.LLMResponseContent;
 import com.moyz.adi.common.memory.shortterm.MapDBChatMemoryStore;
 import com.moyz.adi.common.rag.TokenEstimatorFactory;
 import com.moyz.adi.common.rag.TokenEstimatorThreadLocal;
+import com.moyz.adi.common.service.ModelHealthService;
 import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.vo.*;
 
@@ -150,6 +151,20 @@ public abstract class AbstractLLMService extends CommonModelService {
         }
     }
 
+    /**
+     * Record a user-facing LLM invocation failure so that the model can be
+     * marked UNHEALTHY after consecutive failures.
+     */
+    private void recordInvocationFailure(Throwable error) {
+        try {
+            ModelHealthService healthService = SpringUtil.getBean(ModelHealthService.class);
+            String reason = error.getCause() != null ? error.getCause().getMessage() : error.getMessage();
+            healthService.recordFailure(aiModel.getName(), reason);
+        } catch (Exception ignored) {
+            // ModelHealthService may not be available (e.g. during startup)
+        }
+    }
+
     protected abstract ChatModel doBuildChatModel(ChatModelBuilderProperties properties);
 
     public abstract StreamingChatModel buildStreamingChatModel(ChatModelBuilderProperties properties);
@@ -215,7 +230,9 @@ public abstract class AbstractLLMService extends CommonModelService {
             innerStreamingChat(innerStreamChatParams);
         } catch (Exception e) {
             ttsJobCache.invalidate(params.getUser().getUuid());
-            closeMcpClients(params.getHttpRequestParams().getMcpClients());
+            if (params.getHttpRequestParams() != null) {
+                closeMcpClients(params.getHttpRequestParams().getMcpClients());
+            }
             throw e;
         }
 
@@ -281,6 +298,7 @@ public abstract class AbstractLLMService extends CommonModelService {
 
             @Override
             public void onError(Throwable error) {
+                recordInvocationFailure(error);
                 SseManager.errorAndShutdown(error, params.getSseUuid());
                 closeMcpClients(params.getMcpClients());
             }
@@ -302,13 +320,18 @@ public abstract class AbstractLLMService extends CommonModelService {
         ChatModel chatModel = buildChatLLM(modelProperties);
         ChatRequest chatRequest = createChatRequest(chatModelRequestParams);
 
-        ChatResponse chatResponse = chatModel.chat(chatRequest);
-        if (chatResponse.aiMessage().hasToolExecutionRequests()) {
-            return innerChat(params.getUuid(), chatModel, chatModelRequestParams, chatRequest);
-        }
+        try {
+            ChatResponse chatResponse = chatModel.chat(chatRequest);
+            if (chatResponse.aiMessage().hasToolExecutionRequests()) {
+                return innerChat(params.getUuid(), chatModel, chatModelRequestParams, chatRequest);
+            }
 
-        cacheTokenUsage(params.getUuid(), chatResponse);
-        return chatResponse;
+            cacheTokenUsage(params.getUuid(), chatResponse);
+            return chatResponse;
+        } catch (Exception e) {
+            recordInvocationFailure(e);
+            throw e;
+        }
     }
 
     /**
@@ -445,6 +468,9 @@ public abstract class AbstractLLMService extends CommonModelService {
 
     private Map<ToolSpecification, McpClient> getRequestTools(List<McpClient> mcpClients) {
         Map<ToolSpecification, McpClient> tools = new HashMap<>();
+        if (mcpClients == null || mcpClients.isEmpty()) {
+            return tools;
+        }
         // MCP Tools
         for (McpClient mcpClient : mcpClients) {
             for (ToolSpecification toolSpecification : mcpClient.listTools()) {
@@ -596,6 +622,9 @@ public abstract class AbstractLLMService extends CommonModelService {
     }
 
     private void closeMcpClients(List<McpClient> mcpClients) {
+        if (mcpClients == null) {
+            return;
+        }
         mcpClients.forEach(item -> {
             try {
                 item.close();

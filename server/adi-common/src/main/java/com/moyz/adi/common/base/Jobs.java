@@ -21,7 +21,7 @@ public class Jobs {
     @Resource
     private ModelHealthService modelHealthService;
 
-    @Scheduled(initialDelay = 60_000, fixedDelay = 5 * 60_000)
+    @Scheduled(initialDelay = 180_000, fixedDelay = 10 * 60_000)
     public void scheduledHealthCheck() {
         log.info("Scheduled health check starting");
         modelHealthService.checkAll();

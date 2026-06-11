@@ -44,12 +44,7 @@ export function getColumns(): BasicColumn<AiModelData>[] {
       width: 100,
       render(row) {
         if (!row.isEnable) return t('common.disable')
-        const status = row.healthStatus
-        switch (status) {
-          case 'HEALTHY': return '🟢 ' + t('common.normal')
-          case 'UNHEALTHY': return '🔴 ' + t('common.abnormal')
-          default: return '⚪ ' + t('common.unknown')
-        }
+        return row.healthStatus === 'UNHEALTHY' ? '🔴 ' + t('common.abnormal') : '🟢 ' + t('common.normal')
       },
     },
     {

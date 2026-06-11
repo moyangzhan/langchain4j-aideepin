@@ -8,6 +8,7 @@ import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.*;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.entity.Character;
+import com.moyz.adi.common.enums.LLMCallRecordSourceType;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.CharacterMapper;
 import com.moyz.adi.common.util.JsonUtil;
@@ -65,6 +66,9 @@ public class CharacterService extends ServiceImpl<CharacterMapper, Character> {
 
     @Resource
     private AiModelService aiModelService;
+
+    @Resource
+    private LLMCallRecordService llmCallRecordService;
 
     public Page<CharacterDto> search(CharacterSearchReq characterSearchReq, int currentPage, int pageSize) {
         Page<Character> page = this.lambdaQuery()
@@ -154,6 +158,13 @@ public class CharacterService extends ServiceImpl<CharacterMapper, Character> {
                 .list();
         Map<Long, List<CharacterMessage>> idToMessages = childMessages.stream().collect(Collectors.groupingBy(CharacterMessage::getParentMessageId));
 
+        //Batch query LLM call records for token and duration
+        List<Long> childIds = childMessages.stream().map(CharacterMessage::getId).toList();
+        List<LLMCallRecord> callRecords = llmCallRecordService.listBySource(
+                LLMCallRecordSourceType.CHARACTER_CHAT.getValue(), childIds);
+        Map<Long, LLMCallRecord> idToCallRecord = callRecords.stream()
+                .collect(Collectors.toMap(LLMCallRecord::getSourceId, r -> r, (a, b) -> a));
+
         //Fill AI answer to the request of user
         result.getMsgList().forEach(item -> {
             List<CharacterMsgDto> children = MPPageUtil.convertToList(idToMessages.get(item.getId()), CharacterMsgDto.class);
@@ -168,6 +179,13 @@ public class CharacterService extends ServiceImpl<CharacterMapper, Character> {
                     characterMsgDto.setAudioUrl(fileService.getUrl(characterMsgDto.getAudioUuid()));
                 } else {
                     characterMsgDto.setAudioUrl("");
+                }
+                //Fill token and duration from LLM call record
+                LLMCallRecord callRecord = idToCallRecord.get(characterMsgDto.getId());
+                if (callRecord != null) {
+                    characterMsgDto.setInputTokens(callRecord.getInputTokens());
+                    characterMsgDto.setOutputTokens(callRecord.getOutputTokens());
+                    characterMsgDto.setDuration(callRecord.getDuration());
                 }
             }
             item.setChildren(children);

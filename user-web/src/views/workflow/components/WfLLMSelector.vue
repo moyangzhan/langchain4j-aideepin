@@ -28,10 +28,16 @@ function renderLabel(option: SelectOption): VNodeChild {
   const llm = appStore.getLLMById(val)
   const modelPlatform = llm?.modelPlatform
   const isUnhealthy = llm?.healthStatus === 'UNHEALTHY'
-  const label = (option.label as string) + (isUnhealthy ? ' 🚫' : '')
   const children = [
     h('div', { class: 'flex items-center' }, {
       default: () => [
+        h(
+          'span',
+          {
+            class: (isUnhealthy ? 'text-red-500' : 'text-green-500') + ' mr-1',
+          },
+          '●',
+        ),
         h(
           AvatarComponent,
           {
@@ -44,7 +50,7 @@ function renderLabel(option: SelectOption): VNodeChild {
           {
             class: `ml-1.5${option.disabled ? ' text-gray-400' : ''}`,
           },
-          { default: () => label },
+          { default: () => option.label as string },
         ),
       ],
     }),

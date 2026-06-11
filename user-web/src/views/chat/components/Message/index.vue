@@ -41,6 +41,7 @@ interface Props {
   aiModelPlatform?: string // openai,dashscope,qianfan,ollama,deepseek
   inputTokens?: number
   outputTokens?: number
+  duration?: number
   toolCalls?: { toolName: string; durationMs: number; success: boolean }[]
 }
 
@@ -169,6 +170,7 @@ watch(() => props.thinking, (thinking) => {
         {{ dateTime }}
         <span v-if="inputTokens != null" class="ml-1">📥 {{ inputTokens }}</span>
         <span v-if="outputTokens != null" class="ml-1">📤 {{ outputTokens }}</span>
+        <span v-if="duration != null" class="ml-1">⏱ {{ formatDuration(duration) }}</span>
         <template v-if="toolCalls?.length">
           <span class="ml-1">🔧 {{ toolCalls.length }}</span>
           <span v-for="(tool, idx) in toolCalls" :key="idx" class="ml-1 text-[10px] opacity-70">

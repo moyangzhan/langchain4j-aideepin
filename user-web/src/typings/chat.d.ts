@@ -28,6 +28,7 @@ declare namespace Chat {
 		//Token observability
 		inputTokens?: number
 		outputTokens?: number
+		duration?: number
 
 		//MCP tool call observability
 		toolCalls?: { toolName: string; durationMs: number; success: boolean }[]
@@ -133,7 +134,8 @@ declare namespace Chat {
 		},
 		answer: {
 			tokens: number,
-			uuid: string
+			uuid: string,
+			duration?: number
 		},
 		audioInfo: AudioInfo
 	}

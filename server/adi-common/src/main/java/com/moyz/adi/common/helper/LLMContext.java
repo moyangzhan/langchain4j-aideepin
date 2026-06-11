@@ -22,7 +22,23 @@ public class LLMContext {
 
     protected static final List<AbstractLLMService> LLM_SERVICES = new ArrayList<>();
 
+    /**
+     * Cached ModelHealthService reference to avoid repeated getBean calls.
+     */
+    private static volatile ModelHealthService healthService;
+
     private LLMContext() {
+    }
+
+    private static ModelHealthService getHealthService() {
+        if (healthService == null) {
+            synchronized (LLMContext.class) {
+                if (healthService == null) {
+                    healthService = SpringUtil.getBean(ModelHealthService.class);
+                }
+            }
+        }
+        return healthService;
     }
 
     public static void addLLMService(AbstractLLMService llmService) {
@@ -82,7 +98,7 @@ public class LLMContext {
     }
 
     public static AbstractLLMService getServiceById(Long modelId, boolean useDefault) {
-        ModelHealthService healthService = SpringUtil.getBean(ModelHealthService.class);
+        ModelHealthService healthService = getHealthService();
         AbstractLLMService service = LLM_SERVICES.stream()
                 .filter(item -> item.getAiModel().getId().equals(modelId)
                         && healthService.isHealthy(item.getAiModel().getName()))
@@ -112,7 +128,7 @@ public class LLMContext {
      * @return AbstractLLMService
      */
     public static AbstractLLMService getServiceByPlatformAndModel(String platform, String modelName, boolean useDefault) {
-        ModelHealthService healthService = SpringUtil.getBean(ModelHealthService.class);
+        ModelHealthService healthService = getHealthService();
         AbstractLLMService service = LLM_SERVICES.stream()
                 .filter(item -> (StringUtils.isBlank(platform) || item.getPlatform().getName().equals(platform))
                         && item.getAiModel().getName().equalsIgnoreCase(modelName)
@@ -142,7 +158,7 @@ public class LLMContext {
      * @return 返回免费或收费的可用模型 / Return a free or paid available model
      */
     public static Optional<AbstractLLMService> getFirstEnableAndFree() {
-        ModelHealthService healthService = SpringUtil.getBean(ModelHealthService.class);
+        ModelHealthService healthService = getHealthService();
         AbstractLLMService freeObj = null;
         AbstractLLMService enableObj = null;
         for (AbstractLLMService service : LLM_SERVICES) {

@@ -18,6 +18,9 @@ import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import jakarta.annotation.Resource;
+import org.springframework.core.task.AsyncTaskExecutor;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -40,6 +43,9 @@ public class ModelHealthService {
 
     private static final int FAILURE_THRESHOLD = 3;
     private static final int PROBE_TIMEOUT_SECONDS = 5;
+
+    @Resource
+    private AsyncTaskExecutor mainExecutor;
 
     /**
      * 模型健康缓存：key = modelName, 10 分钟过期
@@ -65,7 +71,7 @@ public class ModelHealthService {
         boolean success;
         String failReason = null;
         try {
-            success = CompletableFuture.supplyAsync(service::performHealthCheck)
+            success = CompletableFuture.supplyAsync(service::performHealthCheck, mainExecutor)
                     .get(PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (Exception e) {
             success = false;
@@ -88,7 +94,7 @@ public class ModelHealthService {
         } else if (consecutiveFailures >= FAILURE_THRESHOLD) {
             status = ModelHealthStatus.UNHEALTHY;
         } else {
-            status = previous != null ? previous.getStatus() : ModelHealthStatus.UNKNOWN;
+            status = previous != null ? previous.getStatus() : ModelHealthStatus.HEALTHY;
         }
 
         healthCache.put(modelName, HealthCheckResult.builder()
@@ -146,8 +152,7 @@ public class ModelHealthService {
         if (result != null) {
             return result.getStatus();
         }
-        // 未探测过：已启用且有 key → 默认 HEALTHY；否则 UNKNOWN
-        return defaultHealthy(modelName) ? ModelHealthStatus.HEALTHY : ModelHealthStatus.UNKNOWN;
+        return defaultHealthy(modelName) ? ModelHealthStatus.HEALTHY : ModelHealthStatus.UNHEALTHY;
     }
 
     /**
@@ -162,6 +167,38 @@ public class ModelHealthService {
      */
     public boolean isHealthy(String modelName) {
         return getStatus(modelName) != ModelHealthStatus.UNHEALTHY;
+    }
+
+    /**
+     * Record a failed invocation for a model, triggered when a user's real
+     * LLM call fails (network error, API error, etc.).
+     * <p>
+     * After {@link #FAILURE_THRESHOLD} consecutive failures without a
+     * successful probe, the model is marked UNHEALTHY.
+     * </p>
+     *
+     * @param modelName  Model name
+     * @param failReason Failure reason (exception message)
+     */
+    public void recordFailure(String modelName, String failReason) {
+        HealthCheckResult previous = healthCache.getIfPresent(modelName);
+        int consecutiveFailures = (previous != null ? previous.getConsecutiveFailures() : 0) + 1;
+        ModelHealthStatus status;
+        if (consecutiveFailures >= FAILURE_THRESHOLD) {
+            status = ModelHealthStatus.UNHEALTHY;
+            log.warn("Model {} marked UNHEALTHY after {} consecutive failures, reason:{}",
+                    modelName, consecutiveFailures, failReason);
+        } else {
+            status = previous != null ? previous.getStatus() : ModelHealthStatus.HEALTHY;
+            log.info("Model {} invocation failed ({} of {}), reason:{}",
+                    modelName, consecutiveFailures, FAILURE_THRESHOLD, failReason);
+        }
+        healthCache.put(modelName, HealthCheckResult.builder()
+                .status(status)
+                .consecutiveFailures(consecutiveFailures)
+                .lastCheckTime(System.currentTimeMillis())
+                .failReason(failReason)
+                .build());
     }
 
     /**
@@ -193,10 +230,9 @@ public class ModelHealthService {
             if (cached != null) {
                 result.put(modelName, cached);
             } else {
-                // 已启用且有 key → 默认 HEALTHY；否则 UNKNOWN
                 boolean healthy = shouldProbe(service);
                 result.put(modelName, HealthCheckResult.builder()
-                        .status(healthy ? ModelHealthStatus.HEALTHY : ModelHealthStatus.UNKNOWN)
+                        .status(healthy ? ModelHealthStatus.HEALTHY : ModelHealthStatus.UNHEALTHY)
                         .consecutiveFailures(0)
                         .lastCheckTime(0)
                         .build());

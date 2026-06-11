@@ -56,18 +56,6 @@ public class CharacterMessage extends BaseEntity {
     @TableField("message_role")
     private Integer messageRole;
 
-    @Schema(title = "消耗的token数量 | Token Count Consumed")
-    @TableField("tokens")
-    private Integer tokens;
-
-    @Schema(title = "输入token数量 | Input Token Count")
-    @TableField("input_tokens")
-    private Integer inputTokens;
-
-    @Schema(title = "输出token数量 | Output Token Count")
-    @TableField("output_tokens")
-    private Integer outputTokens;
-
     @Schema(name = "上下文理解中携带的消息对数量 | Message Pair Count in Context Understanding")
     @TableField("understand_context_msg_pair_num")
     private Integer understandContextMsgPairNum;

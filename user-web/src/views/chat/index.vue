@@ -245,7 +245,7 @@ const fetchChatAPIOnce = async (regenerateQuestionUuid: string, childAudioPlaySt
         const metaData: Chat.MetaData = JSON.parse(meta)
         updateMessageSomeFields(characterUuid, question.uuid, { ...metaData.question, inputTokens: metaData.question.tokens, loading: false, state: new Map<string, string>() })
         // 保留临时answer的uuid以方便自动选中最新答案
-        updateMessageSomeFields(characterUuid, answer.uuid, { ...metaData.answer, outputTokens: metaData.answer.tokens, uuid: answer.uuid, loading: false })
+        updateMessageSomeFields(characterUuid, answer.uuid, { ...metaData.answer, outputTokens: metaData.answer.tokens, duration: metaData.answer.duration, uuid: answer.uuid, loading: false })
         if (metaData.audioInfo) {
           answer.audioPlayState.audioUrl = metaData.audioInfo.url
           answer.audioDuration = metaData.audioInfo.duration
@@ -565,6 +565,7 @@ onDeactivated(() => {
                       :thinking-content="answer.thinkingContent" :text="answer.remark" type="text" :inversion="false"
                       :regenerate="true" :error="answer.error" :loading="answer.loading"
                       :input-tokens="answer.inputTokens" :output-tokens="answer.outputTokens"
+                      :duration="answer.duration"
                       :tool-calls="answer.toolCalls"
                       :ai-model-platform="answer.aiModelPlatform" @regenerate="onRegenerate(qaMessage.uuid)"
                       @delete="handleDelete(qaMessage.uuid, answer.uuid)"
@@ -631,6 +632,7 @@ onDeactivated(() => {
                   type="text" :inversion="qaMessage.children[0].inversion" :regenerate="true"
                   :error="qaMessage.children[0].error" :loading="qaMessage.children[0].loading"
                   :input-tokens="qaMessage.children[0].inputTokens" :output-tokens="qaMessage.children[0].outputTokens"
+                  :duration="qaMessage.children[0].duration"
                   :tool-calls="qaMessage.children[0].toolCalls"
                   :ai-model-platform="qaMessage.children[0].aiModelPlatform" @regenerate="onRegenerate(qaMessage.uuid)"
                   @delete="handleDelete(qaMessage.uuid, qaMessage.children[0].uuid)"

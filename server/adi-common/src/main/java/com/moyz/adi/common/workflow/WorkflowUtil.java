@@ -1,10 +1,15 @@
 package com.moyz.adi.common.workflow;
 
+import com.moyz.adi.common.entity.LLMCallRecord;
 import com.moyz.adi.common.entity.WorkflowNode;
+import com.moyz.adi.common.enums.LLMCallRecordSourceType;
 import com.moyz.adi.common.enums.WfIODataTypeEnum;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.languagemodel.AbstractLLMService;
+import com.moyz.adi.common.service.LLMCallRecordService;
 import com.moyz.adi.common.util.LLMTokenUtil;
+import com.moyz.adi.common.util.SpringUtil;
+import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.ChatModelBuilderProperties;
 import com.moyz.adi.common.vo.ChatModelRequestParams;
 import com.moyz.adi.common.vo.SseAskParams;
@@ -65,6 +70,8 @@ public class WorkflowUtil {
                     }
                     nodeMetrics.setModelName(modelName);
                     nodeMetrics.setModelPlatform(modelPlatform);
+                    //Save LLM call record
+                    saveLLMCallRecord(wfState, node, modelPlatform, modelName, tokenUsage);
                     NodeIOData output = NodeIOData.createByText(DEFAULT_OUTPUT_PARAM_NAME, "", responseTxt);
                     wfState.getNodeStateByNodeUuid(node.getUuid()).ifPresent(item -> item.getOutputs().add(output));
                     return Map.of("completeResult", response.aiMessage().text());
@@ -115,6 +122,8 @@ public class WorkflowUtil {
             }
             nodeMetrics.setModelName(modelName);
             nodeMetrics.setModelPlatform(modelPlatform);
+            //Save LLM call record
+            saveLLMCallRecord(wfState, null, modelPlatform, modelName, tokenUsage);
         }
         return NodeIOData.createByText(DEFAULT_OUTPUT_PARAM_NAME, "", response.aiMessage().text());
     }
@@ -125,5 +134,28 @@ public class WorkflowUtil {
             return "";
         }
         return HumanFeedbackNode.getTip(wfNode);
+    }
+
+    /**
+     * 异步保存 LLM 调用记录 | Save LLM call record asynchronously
+     */
+    private static void saveLLMCallRecord(WfState wfState, WorkflowNode node, String modelPlatform, String modelName, TokenUsage tokenUsage) {
+        try {
+            Long sourceId = node != null ? node.getId() : 0L;
+            LLMCallRecord record = new LLMCallRecord();
+            record.setUuid(UuidUtil.createShort());
+            record.setSourceType(LLMCallRecordSourceType.WORKFLOW_NODE.getValue());
+            record.setSourceId(sourceId);
+            record.setUserId(wfState.getUser().getId());
+            record.setModelPlatform(modelPlatform);
+            record.setModelName(modelName);
+            if (tokenUsage != null) {
+                record.setInputTokens(tokenUsage.inputTokenCount());
+                record.setOutputTokens(tokenUsage.outputTokenCount());
+            }
+            SpringUtil.getBean(LLMCallRecordService.class).saveAsync(record);
+        } catch (Exception e) {
+            log.error("Failed to save LLM call record for workflow node", e);
+        }
     }
 }

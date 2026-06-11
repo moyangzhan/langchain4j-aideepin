@@ -9,9 +9,11 @@ import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.Character;
 import com.moyz.adi.common.entity.CharacterMessage;
+import com.moyz.adi.common.entity.LLMCallRecord;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ChatMessageRoleEnum;
 import com.moyz.adi.common.enums.ErrorEnum;
+import com.moyz.adi.common.enums.LLMCallRecordSourceType;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.file.FileOperatorContext;
 import com.moyz.adi.common.file.LocalFileUtil;
@@ -90,6 +92,9 @@ public class CharacterChatService {
 
     @Resource
     private LongTermMemoryService longTermMemoryService;
+
+    @Resource
+    private LLMCallRecordService llmCallRecordService;
 
     public SseEmitter sseAsk(AskReq askReq) {
         String sseUuid = UuidUtil.createShort();
@@ -286,46 +291,51 @@ public class CharacterChatService {
                         .returnThinking(chatRequestParams.getReturnThinking())
                         .build()
         );
-        sseManager.call(sseAskParams, (response, questionMeta, answerMeta) -> {
+        try {
+            sseManager.call(sseAskParams, (response, questionMeta, answerMeta) -> {
 
-            AudioInfo audioInfo = null;
-            if (StringUtils.isNotBlank(response.getAudioPath())) {
+                AudioInfo audioInfo = null;
+                if (StringUtils.isNotBlank(response.getAudioPath())) {
 
-                audioInfo = new AudioInfo();
-                MultimediaInfo multimediaInfo = LocalFileUtil.getAudioFileInfo(response.getAudioPath());
-                if (null != multimediaInfo) {
-                    audioInfo.setDuration((int) multimediaInfo.getDuration() / 1000);
-                }
-                audioInfo.setPath(response.getAudioPath());
-                //存储到数据库并返回真实的URL
-                AdiFile adiFile = fileService.saveFromPath(user, response.getAudioPath());
-                audioInfo.setUuid(adiFile.getUuid());
-                audioInfo.setUrl(FileOperatorContext.getFileUrl(adiFile));
-            }
-            boolean isRefEmbedding = false;
-            boolean isRefGraph = false;
-            boolean isRefMemoryEmbedding = false;
-            for (RetrieverWrapper wrapper : retrieverWrappers) {
-                if (RetrieveContentFrom.KNOWLEDGE_BASE.equals(wrapper.getContentFrom())) {
-                    if (wrapper.getRetriever() instanceof AdiEmbeddingStoreContentRetriever embeddingStoreContentRetriever) {
-                        isRefEmbedding = !embeddingStoreContentRetriever.getRetrievedEmbeddingToScore().isEmpty();
-                    } else if (wrapper.getRetriever() instanceof GraphStoreContentRetriever graphStoreContentRetriever) {
-                        RefGraphDto graphDto = graphStoreContentRetriever.getGraphRef();
-                        isRefGraph = !graphDto.getVertices().isEmpty() || !graphDto.getEdges().isEmpty();
+                    audioInfo = new AudioInfo();
+                    MultimediaInfo multimediaInfo = LocalFileUtil.getAudioFileInfo(response.getAudioPath());
+                    if (null != multimediaInfo) {
+                        audioInfo.setDuration((int) multimediaInfo.getDuration() / 1000);
                     }
-                } else if (RetrieveContentFrom.CHARACTER_MEMORY.equals(wrapper.getContentFrom())) {
-                    //目前记忆相关内容只使用向量存储，后续如果增加了其他类型的记忆存储，也可以在这里增加判断
-                    if (wrapper.getRetriever() instanceof AdiEmbeddingStoreContentRetriever embeddingStoreContentRetriever) {
-                        isRefMemoryEmbedding = !embeddingStoreContentRetriever.getRetrievedEmbeddingToScore().isEmpty();
+                    audioInfo.setPath(response.getAudioPath());
+                    //存储到数据库并返回真实的URL
+                    AdiFile adiFile = fileService.saveFromPath(user, response.getAudioPath());
+                    audioInfo.setUuid(adiFile.getUuid());
+                    audioInfo.setUrl(FileOperatorContext.getFileUrl(adiFile));
+                }
+                boolean isRefEmbedding = false;
+                boolean isRefGraph = false;
+                boolean isRefMemoryEmbedding = false;
+                for (RetrieverWrapper wrapper : retrieverWrappers) {
+                    if (RetrieveContentFrom.KNOWLEDGE_BASE.equals(wrapper.getContentFrom())) {
+                        if (wrapper.getRetriever() instanceof AdiEmbeddingStoreContentRetriever embeddingStoreContentRetriever) {
+                            isRefEmbedding = !embeddingStoreContentRetriever.getRetrievedEmbeddingToScore().isEmpty();
+                        } else if (wrapper.getRetriever() instanceof GraphStoreContentRetriever graphStoreContentRetriever) {
+                            RefGraphDto graphDto = graphStoreContentRetriever.getGraphRef();
+                            isRefGraph = !graphDto.getVertices().isEmpty() || !graphDto.getEdges().isEmpty();
+                        }
+                    } else if (RetrieveContentFrom.CHARACTER_MEMORY.equals(wrapper.getContentFrom())) {
+                        //目前记忆相关内容只使用向量存储，后续如果增加了其他类型的记忆存储，也可以在这里增加判断
+                        if (wrapper.getRetriever() instanceof AdiEmbeddingStoreContentRetriever embeddingStoreContentRetriever) {
+                            isRefMemoryEmbedding = !embeddingStoreContentRetriever.getRetrievedEmbeddingToScore().isEmpty();
+                        }
                     }
                 }
-            }
-            answerMeta.setIsRefEmbedding(isRefEmbedding);
-            answerMeta.setIsRefGraph(isRefGraph);
-            answerMeta.setIsRefMemoryEmbedding(isRefMemoryEmbedding);
-            sseManager.sendComplete(user.getId(), sseUuid, questionMeta, answerMeta, audioInfo);
-            self.saveAfterAiResponse(user, askReq, retrieverWrappers, response, questionMeta, answerMeta, audioInfo);
-        });
+                answerMeta.setIsRefEmbedding(isRefEmbedding);
+                answerMeta.setIsRefGraph(isRefGraph);
+                answerMeta.setIsRefMemoryEmbedding(isRefMemoryEmbedding);
+                sseManager.sendComplete(user.getId(), sseUuid, questionMeta, answerMeta, audioInfo);
+                self.saveAfterAiResponse(user, askReq, retrieverWrappers, response, questionMeta, answerMeta, audioInfo);
+            });
+        } catch (Exception e) {
+            log.error("Chat pipeline failed, userId:{}, sseUuid:{}", user.getId(), sseUuid, e);
+            sseManager.sendErrorAndComplete(user.getId(), sseUuid, e.getMessage());
+        }
     }
 
     @Transactional
@@ -359,8 +369,6 @@ public class CharacterChatService {
             question.setAiModelId(aiModel.getId());
             question.setAudioUuid(askReq.getAudioUuid());
             question.setAudioDuration(askReq.getAudioDuration());
-            question.setTokens(questionMeta.getTokens());
-            question.setInputTokens(questionMeta.getTokens());
             question.setUnderstandContextMsgPairNum(user.getUnderstandContextMsgPairNum());
             question.setAttachments(String.join(",", askReq.getImageUrls()));
             characterMessageService.save(question);
@@ -383,8 +391,6 @@ public class CharacterChatService {
         //aiAnswer.setProcessedRemark("");
         aiAnswer.setAudioUuid(null == audioInfo ? "" : Objects.toString(audioInfo.getUuid(), ""));
         aiAnswer.setAudioDuration(null == audioInfo ? 0 : audioInfo.getDuration());
-        aiAnswer.setTokens(answerMeta.getTokens());
-        aiAnswer.setOutputTokens(answerMeta.getTokens());
         aiAnswer.setParentMessageId(promptMsg.getId());
         aiAnswer.setAiModelId(aiModel.getId());
         aiAnswer.setIsRefEmbedding(answerMeta.getIsRefEmbedding());
@@ -393,6 +399,18 @@ public class CharacterChatService {
         int answerContentType = getAnswerContentType(character, askReq);
         aiAnswer.setContentType(answerContentType);
         characterMessageService.save(aiAnswer);
+
+        //Save LLM call record
+        LLMCallRecord callRecord = new LLMCallRecord();
+        callRecord.setUuid(UuidUtil.createShort());
+        callRecord.setSourceType(LLMCallRecordSourceType.CHARACTER_CHAT.getValue());
+        callRecord.setSourceId(aiAnswer.getId());
+        callRecord.setUserId(user.getId());
+        callRecord.setModelPlatform(modelPlatform);
+        callRecord.setModelName(modelName);
+        callRecord.setInputTokens(questionMeta.getTokens());
+        callRecord.setOutputTokens(answerMeta.getTokens());
+        llmCallRecordService.saveAsync(callRecord);
 
         createRef(retrievers, user, aiAnswer.getId());
 

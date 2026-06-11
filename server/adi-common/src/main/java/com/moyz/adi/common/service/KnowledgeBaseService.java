@@ -12,6 +12,7 @@ import com.moyz.adi.common.dto.KbInfoResp;
 import com.moyz.adi.common.dto.KbQaDto;
 import com.moyz.adi.common.dto.KbSearchReq;
 import com.moyz.adi.common.entity.*;
+import com.moyz.adi.common.enums.LLMCallRecordSourceType;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.file.FileOperatorContext;
 import com.moyz.adi.common.helper.LLMContext;
@@ -92,6 +93,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
     @Resource
     private IKnowledgeEmbeddingService embeddingService;
+
+    @Resource
+    private LLMCallRecordService llmCallRecordService;
 
     public KnowledgeBase saveOrUpdate(KbEditReq kbEditReq) {
         KnowledgeBase knowledgeBase = new KnowledgeBase();
@@ -399,18 +403,24 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         updateRecord.setId(qaRecord.getId());
         updateRecord.setPrompt(prompt);
         updateRecord.setAnswer(chatResponse.aiMessage().text());
-        if (chatResponse.metadata() != null && chatResponse.metadata().tokenUsage() != null) {
-            updateRecord.setPromptTokens(chatResponse.metadata().tokenUsage().inputTokenCount());
-            updateRecord.setAnswerTokens(chatResponse.metadata().tokenUsage().outputTokenCount());
-        }
         knowledgeBaseQaRecordService.updateById(updateRecord);
 
-        // Record token consumption
+        // Record token consumption and save LLM call record
         if (chatResponse.metadata() != null && chatResponse.metadata().tokenUsage() != null) {
             int allToken = chatResponse.metadata().tokenUsage().totalTokenCount().intValue();
             if (allToken > 0) {
                 userDayCostService.appendCostToUser(user, allToken, false);
             }
+            LLMCallRecord callRecord = new LLMCallRecord();
+            callRecord.setUuid(UuidUtil.createShort());
+            callRecord.setSourceType(LLMCallRecordSourceType.KNOWLEDGE_BASE_QA.getValue());
+            callRecord.setSourceId(qaRecord.getId());
+            callRecord.setUserId(user.getId());
+            callRecord.setModelPlatform(aiModel.getPlatform());
+            callRecord.setModelName(aiModel.getName());
+            callRecord.setInputTokens(chatResponse.metadata().tokenUsage().inputTokenCount());
+            callRecord.setOutputTokens(chatResponse.metadata().tokenUsage().outputTokenCount());
+            llmCallRecordService.saveAsync(callRecord);
         }
 
         // Build response
@@ -585,10 +595,20 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         KnowledgeBaseQa updateRecord = new KnowledgeBaseQa();
         updateRecord.setId(qaRecord.getId());
         updateRecord.setPrompt(updateQaParams.getSseAskParams().getHttpRequestParams().getUserMessage());
-        updateRecord.setPromptTokens(inputOutputTokenCost.getLeft());
         updateRecord.setAnswer(updateQaParams.getResponse());
-        updateRecord.setAnswerTokens(inputOutputTokenCost.getRight());
         knowledgeBaseQaRecordService.updateById(updateRecord);
+
+        //Save LLM call record
+        LLMCallRecord callRecord = new LLMCallRecord();
+        callRecord.setUuid(UuidUtil.createShort());
+        callRecord.setSourceType(LLMCallRecordSourceType.KNOWLEDGE_BASE_QA.getValue());
+        callRecord.setSourceId(qaRecord.getId());
+        callRecord.setUserId(user.getId());
+        callRecord.setModelPlatform(updateQaParams.getSseAskParams().getModelName());
+        callRecord.setModelName(updateQaParams.getSseAskParams().getModelName());
+        callRecord.setInputTokens(inputOutputTokenCost.getLeft());
+        callRecord.setOutputTokens(inputOutputTokenCost.getRight());
+        llmCallRecordService.saveAsync(callRecord);
 
         createRef(updateQaParams.getRetrievers(), user, qaRecord.getId());
         //用户本次请求消耗的token数指的是整个RAG过程中消耗的token数量，其中可能涉及到多次LLM请求
