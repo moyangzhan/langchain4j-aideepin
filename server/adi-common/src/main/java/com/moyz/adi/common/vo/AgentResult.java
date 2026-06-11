@@ -6,10 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Agent 调用结果
- * <p>
- * Result of an agent (Character) invocation.
- * </p>
+ * Result of executing a Character in agent mode.
  */
 @Data
 @Builder
@@ -17,43 +14,18 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class AgentResult {
 
-    /**
-     * Agent 的文本回复
-     * <p>
-     * The agent's text response.
-     * </p>
-     */
+    /** The agent's text response. */
     private String answer;
 
-    /**
-     * 推理模型的思考内容，可为空
-     * <p>
-     * Thinking content from reasoning models, may be null.
-     * </p>
-     */
+    /** Thinking content from reasoning models, may be null. */
     private String thinking;
 
-    /**
-     * 输入 token 数量
-     * <p>
-     * Input token count.
-     * </p>
-     */
+    /** Input token count. */
     private Integer inputTokens;
 
-    /**
-     * 输出 token 数量
-     * <p>
-     * Output token count.
-     * </p>
-     */
+    /** Output token count. */
     private Integer outputTokens;
 
-    /**
-     * 知识检索结果数量
-     * <p>
-     * Knowledge retrieval result count.
-     * </p>
-     */
+    /** Knowledge retrieval result count. */
     private Integer retrievalCount;
 }

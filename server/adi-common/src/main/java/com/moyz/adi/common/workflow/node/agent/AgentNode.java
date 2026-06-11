@@ -22,14 +22,12 @@ import java.util.List;
 import static com.moyz.adi.common.cosntant.AdiConstant.WorkflowConstant.DEFAULT_OUTPUT_PARAM_NAME;
 
 /**
- * 【节点】Agent 节点 — 调用角色（Character）的完整能力
- * <p>
- * Agent node — invokes a Character with its full capabilities
- * (system prompt, knowledge base RAG, MCP tools, memory, web search).
- * </p>
- * <p>
- * 节点内容固定格式：{@link AgentNodeConfig}
- * </p>
+ * Workflow node that executes a Character in agent mode.
+ *
+ * <p>Invokes a Character with its full capabilities:
+ * system prompt, knowledge base RAG, MCP tools, memory, web search.</p>
+ *
+ * <p>Node config format: {@link AgentNodeConfig}</p>
  */
 @Slf4j
 public class AgentNode extends AbstractWfNode {

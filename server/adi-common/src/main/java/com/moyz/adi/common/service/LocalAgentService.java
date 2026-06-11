@@ -27,14 +27,13 @@ import java.util.Objects;
 import static com.moyz.adi.common.enums.ErrorEnum.A_CHARACTER_NOT_FOUND;
 
 /**
- * 本地 Agent 服务：在进程内执行 Character 管道
- * <p>
- * Local agent service: executes Character pipeline in-process.
- * Phase 1 implementation of {@link AgentService}.
- * </p>
- * <p>
- * 不做：消息持久化、配额扣减、记忆写入、音频/TTS。
- * </p>
+ * Local in-process implementation of {@link AgentService}.
+ *
+ * <p>Loads a Character's configuration and executes the full agent pipeline:
+ * RAG retrieval → prompt enhancement → LLM call.</p>
+ *
+ * <p>Responsibilities end at LLM response — does NOT handle:
+ * message persistence, quota deduction, memory storage, or audio/TTS.</p>
  */
 @Slf4j
 @Service

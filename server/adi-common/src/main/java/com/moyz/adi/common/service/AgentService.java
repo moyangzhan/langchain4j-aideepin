@@ -5,28 +5,24 @@ import com.moyz.adi.common.vo.AgentRequest;
 import com.moyz.adi.common.vo.AgentResult;
 
 /**
- * Agent 服务接口
- * <p>
- * Agent service interface. Phase 1: local execution via Character pipeline.
- * Future Phase 2: A2A protocol for remote agent invocation.
- * </p>
- * <p>
- * Agent 服务接口。第一阶段：通过 Character 管道本地执行。
- * 未来第二阶段：A2A 协议远程 Agent 调用。
- * </p>
+ * Agent execution interface — executes a Character in agent mode.
+ *
+ * <p>Character is the identity/configuration (system prompt, knowledge base, MCP tools, etc.).
+ * When a Character is invoked to perform a task, it runs in agent mode — hence "Agent".
+ * Agent = Character in execution.</p>
+ *
+ * <p>Phase 1: local in-process execution via Character pipeline.
+ * Phase 2: A2A protocol for remote agent invocation.</p>
  */
 public interface AgentService {
 
     /**
-     * 调用 Agent（Character）处理任务
-     * <p>
-     * Invoke an agent (Character) with the given request.
-     * </p>
+     * Execute a Character in agent mode with the given request.
      *
-     * @param request Agent 调用请求 / Agent invocation request
-     * @param user    当前用户 / Current user
-     * @param uuid    本次调用的唯一标识（用于 token 追踪）/ Unique identifier for this invocation
-     * @return Agent 调用结果 / Agent call result
+     * @param request Agent invocation request (specifies which Character and how to run it)
+     * @param user    Current user
+     * @param uuid    Unique identifier for this invocation (used for token tracking)
+     * @return Agent execution result
      */
     AgentResult invoke(AgentRequest request, User user, String uuid);
 }
