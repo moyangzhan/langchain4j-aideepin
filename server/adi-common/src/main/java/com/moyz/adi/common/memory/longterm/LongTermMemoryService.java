@@ -1,12 +1,17 @@
 package com.moyz.adi.common.memory.longterm;
 
-import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.AdiConstant;
+import com.moyz.adi.common.entity.LLMCallRecord;
+import com.moyz.adi.common.entity.User;
+import com.moyz.adi.common.enums.LLMCallRecordSourceType;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.memory.vo.ActionMemories;
 import com.moyz.adi.common.memory.vo.ExtractedFact;
+import com.moyz.adi.common.memory.vo.MemoryAddRequest;
 import com.moyz.adi.common.rag.EmbeddingRagContext;
 import com.moyz.adi.common.languagemodel.AbstractLLMService;
+import com.moyz.adi.common.service.LLMCallRecordService;
+import com.moyz.adi.common.service.UserDayCostService;
 import com.moyz.adi.common.util.AdiStringUtil;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.UuidUtil;
@@ -41,8 +46,10 @@ import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CHARACTER_MSG
 import static com.moyz.adi.common.cosntant.AdiConstant.RESPONSE_FORMAT_TYPE_JSON_OBJECT;
 
 /**
- * 长期记忆<br/>
- * 目前只支持角色的长期记忆
+ * 长期记忆
+ * <p>
+ * Long-term memory service for character conversations.
+ * Tracks token usage for each internal LLM call and updates user day cost.
  */
 @Slf4j
 @Service
@@ -52,13 +59,21 @@ public class LongTermMemoryService {
     private EmbeddingStore<TextSegment> characterMemoryEmbeddingStore;
     @Resource
     private EmbeddingModel embeddingModel;
+    @Resource
+    private UserDayCostService userDayCostService;
+    @Resource
+    private LLMCallRecordService llmCallRecordService;
 
     @Async
-    public void asyncAdd(Long characterId, String modelPlatform, String modelName, String userMessage, String assistantMessage) {
-        log.info("Converting messages to memory, characterId:{}", characterId);
-        String inputMessage = toInputMessage(userMessage, assistantMessage);
+    public void asyncAdd(MemoryAddRequest request) {
+        log.info("Converting messages to memory, characterId:{}", request.getCharacterId());
+        String inputMessage = toInputMessage(request.getUserMessage(), request.getAssistantMessage());
         log.info("inputMessage: {}", inputMessage);
-        AbstractLLMService llmService = LLMContext.getServiceOrDefault(modelPlatform, modelName);
+        AbstractLLMService llmService = LLMContext.getServiceOrDefault(request.getModelPlatform(), request.getModelName());
+
+        int totalInputTokens = 0;
+        int totalOutputTokens = 0;
+
         SseAskParams sseAskParams = new SseAskParams();
         sseAskParams.setUuid(UuidUtil.createShort());
         sseAskParams.setHttpRequestParams(
@@ -68,14 +83,24 @@ public class LongTermMemoryService {
                         .responseFormat(RESPONSE_FORMAT_TYPE_JSON_OBJECT)
                         .build()
         );
-        sseAskParams.setModelName(modelName);
-        sseAskParams.setUser(ThreadContext.getCurrentUser());
+        sseAskParams.setModelName(request.getModelName());
+        sseAskParams.setUser(request.getUser());
         log.info("request:{}", sseAskParams);
         ChatResponse response = llmService.chat(sseAskParams);
+
+        // Track token usage for fact extraction call
+        // <p>
+        // 追踪事实提取调用的 token 用量
+        int[] factTokens = extractTokenUsage(response);
+        totalInputTokens += factTokens[0];
+        totalOutputTokens += factTokens[1];
+        saveCallRecord(request.getUser(), request.getModelPlatform(), request.getModelName(), factTokens[0], factTokens[1], "fact_extraction");
+
         log.info("Fact extraction response: {}", response.aiMessage().text());
         String factResponse = AdiStringUtil.removeCodeBlock(response.aiMessage().text());
         if (StringUtils.isBlank(factResponse)) {
             log.warn("Unable to extract factual information from this content");
+            appendCostSafely(request.getUser(), totalInputTokens + totalOutputTokens, request.isFreeToken());
             return;
         }
         //虽然指定了返回的数据结构，有些模型可能还是会返回无法解析的内容，所以这里需要做下容错处理，先兼容直接返回数组的情况
@@ -86,12 +111,14 @@ public class LongTermMemoryService {
             ExtractedFact extractedFact = JsonUtil.fromJson(factResponse, ExtractedFact.class);
             if (null == extractedFact || CollectionUtils.isEmpty(extractedFact.getFacts())) {
                 log.warn("Content cannot be parsed as ExtractedFact, raw content:{}", factResponse);
+                appendCostSafely(request.getUser(), totalInputTokens + totalOutputTokens, request.isFreeToken());
                 return;
             }
             facts = new ArrayList<>(extractedFact.getFacts());
         }
         if (null == facts) {
             log.warn("Content cannot be parsed as factual information, raw content:{}", factResponse);
+            appendCostSafely(request.getUser(), totalInputTokens + totalOutputTokens, request.isFreeToken());
             return;
         }
 
@@ -105,7 +132,7 @@ public class LongTermMemoryService {
                     .queryEmbedding(embedding)
                     .maxResults(5)
                     .minScore(0.7)
-                    .filter(new IsEqualTo(CHARACTER_ID, characterId))
+                    .filter(new IsEqualTo(CHARACTER_ID, request.getCharacterId()))
                     .build();
             Map<String, EmbeddingMatch<TextSegment>> oldMemoryEmbeddingToContent = new HashMap<>();
             EmbeddingSearchResult<TextSegment> searchResult = characterMemoryEmbeddingStore.search(searchRequest);
@@ -123,7 +150,7 @@ public class LongTermMemoryService {
 
             // Analyze there is any update/delete/add events required in the memory
             String analyzePrompt = getUpdateMemoryMessages(retrievedOldMemory, facts);
-            String resp = llmService.chat(SseAskParams.builder()
+            ChatResponse analyzeResp = llmService.chat(SseAskParams.builder()
                     .uuid(UuidUtil.createShort())
                     .httpRequestParams(
                             ChatModelRequestParams.builder()
@@ -131,15 +158,25 @@ public class LongTermMemoryService {
                                     .responseFormat(RESPONSE_FORMAT_TYPE_JSON_OBJECT)
                                     .build()
                     )
-                    .modelName(modelName)
-                    .user(ThreadContext.getCurrentUser())
+                    .modelName(request.getModelName())
+                    .user(request.getUser())
                     .build()
-            ).aiMessage().text();
+            );
+
+            // Track token usage for memory analysis call
+            // <p>
+            // 追踪记忆分析调用的 token 用量
+            int[] analyzeTokens = extractTokenUsage(analyzeResp);
+            totalInputTokens += analyzeTokens[0];
+            totalOutputTokens += analyzeTokens[1];
+            saveCallRecord(request.getUser(), request.getModelPlatform(), request.getModelName(), analyzeTokens[0], analyzeTokens[1], "memory_analysis");
+
+            String resp = analyzeResp.aiMessage().text();
             log.info("Memory analysis response: {}", resp);
             String analyzedMsg = AdiStringUtil.removeCodeBlock(resp);
             ActionMemories actionMemories = JsonUtil.fromJson(analyzedMsg, ActionMemories.class);
             if (null == actionMemories || null == actionMemories.getMemory() || actionMemories.getMemory().isEmpty()) {
-                return;
+                continue;
             }
             for (ActionMemories.ActionMemory actionMemory : actionMemories.getMemory()) {
                 if ("NONE".equalsIgnoreCase(actionMemory.getEvent())) {
@@ -154,21 +191,81 @@ public class LongTermMemoryService {
                     characterMemoryEmbeddingStore.remove(oldEmbeddingId);
 
                     EmbeddingMatch<TextSegment> match = oldMemoryEmbeddingToContent.get(oldEmbeddingId);
-                    Metadata metadata = new Metadata(Map.of(CHARACTER_ID, characterId));
+                    Metadata metadata = new Metadata(Map.of(CHARACTER_ID, request.getCharacterId()));
                     TextSegment newSegment = TextSegment.from(actionMemory.getText(), metadata);
                     characterMemoryEmbeddingStore.addAll(List.of(oldEmbeddingId), List.of(match.embedding()), List.of(newSegment));
 
                 } else if (AdiConstant.MemoryEvent.ADD.equalsIgnoreCase(actionMemory.getEvent())) {
-                    Metadata metadata = new Metadata(Map.of(CHARACTER_ID, characterId));
+                    Metadata metadata = new Metadata(Map.of(CHARACTER_ID, request.getCharacterId()));
                     Document document = new DefaultDocument(actionMemory.getText(), metadata);
                     EmbeddingRagContext.get(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY).ingest(document, 20, AdiConstant.SplitStrategy.RECURSIVE, AdiConstant.RAG_MAX_SEGMENT_SIZE_IN_TOKENS, "", null, null);
                 }
             }
         }
+
+        // Update user day cost with total tokens from all LLM calls
+        // <p>
+        // 将所有 LLM 调用的 token 总量更新到用户日消费
+        appendCostSafely(request.getUser(), totalInputTokens + totalOutputTokens, request.isFreeToken());
     }
 
-    public void search(String text) {
+    /**
+     * Extract token usage from ChatResponse.
+     * <p>
+     * 从 ChatResponse 中提取 token 用量，返回 [inputTokens, outputTokens]。
+     */
+    private int[] extractTokenUsage(ChatResponse response) {
+        if (response != null && response.metadata() != null && response.metadata().tokenUsage() != null) {
+            return new int[]{
+                    response.metadata().tokenUsage().inputTokenCount() != null
+                            ? response.metadata().tokenUsage().inputTokenCount() : 0,
+                    response.metadata().tokenUsage().outputTokenCount() != null
+                            ? response.metadata().tokenUsage().outputTokenCount() : 0
+            };
+        }
+        return new int[]{0, 0};
+    }
 
+    /**
+     * Save an LLM call record for long-term memory operations.
+     * <p>
+     * 保存长期记忆操作的 LLM 调用记录。
+     */
+    private void saveCallRecord(User user, String modelPlatform, String modelName,
+                                int inputTokens, int outputTokens, String stage) {
+        if (inputTokens == 0 && outputTokens == 0) {
+            return;
+        }
+        try {
+            LLMCallRecord record = new LLMCallRecord();
+            record.setUuid(UuidUtil.createShort());
+            record.setSourceType(LLMCallRecordSourceType.LONG_TERM_MEMORY.getValue());
+            record.setSourceId(0L);
+            record.setUserId(user.getId());
+            record.setModelPlatform(modelPlatform);
+            record.setModelName(modelName);
+            record.setInputTokens(inputTokens);
+            record.setOutputTokens(outputTokens);
+            llmCallRecordService.saveAsync(record);
+        } catch (Exception e) {
+            log.error("Failed to save LLM call record for long-term memory stage: {}", stage, e);
+        }
+    }
+
+    /**
+     * Append token cost to user day cost, wrapped in try-catch to avoid affecting main flow.
+     * <p>
+     * 将 token 费用累加到用户日消费，包裹 try-catch 以避免影响主流程。
+     */
+    private void appendCostSafely(User user, int totalTokens, boolean isFreeToken) {
+        if (totalTokens <= 0) {
+            return;
+        }
+        try {
+            userDayCostService.appendCostToUser(user, totalTokens, isFreeToken);
+        } catch (Exception e) {
+            log.error("Failed to append long-term memory cost for userId: {}", user.getId(), e);
+        }
     }
 
     private String toInputMessage(String userMessage, String assistantMessage) {

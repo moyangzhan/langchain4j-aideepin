@@ -15,7 +15,8 @@ public enum LLMCallRecordSourceType implements BaseEnum {
     KNOWLEDGE_BASE_QA(2, "knowledge_base_qa"),
     KNOWLEDGE_BASE_INGEST(3, "knowledge_base_ingest"),
     WORKFLOW_NODE(4, "workflow_node"),
-    AGENT(5, "agent");
+    AGENT(5, "agent"),
+    LONG_TERM_MEMORY(6, "long_term_memory");
 
     private final Integer value;
     private final String desc;

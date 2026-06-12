@@ -25,6 +25,7 @@ import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.languagemodel.data.LLMResponseContent;
 import com.moyz.adi.common.memory.longterm.LongTermMemoryService;
 import com.moyz.adi.common.memory.shortterm.MapDBChatMemoryStore;
+import com.moyz.adi.common.memory.vo.MemoryAddRequest;
 import com.moyz.adi.common.rag.AdiEmbeddingStoreContentRetriever;
 import com.moyz.adi.common.rag.GraphStoreContentRetriever;
 import com.moyz.adi.common.util.*;
@@ -141,13 +142,18 @@ public class CharacterChatService {
                 .enableMcp(true)
                 .enableWebSearch(true)
                 .build();
+        long llmStartTime = System.currentTimeMillis();
         AgentResult result = agentService.invoke(request, user, questionUuid);
+        int llmDuration = (int) Math.min(System.currentTimeMillis() - llmStartTime, Integer.MAX_VALUE);
 
         // Persist messages to DB
         PromptMeta questionMeta = new PromptMeta(
                 result.getInputTokens() != null ? result.getInputTokens() : 0, questionUuid);
         AnswerMeta answerMeta = AnswerMeta.builder()
                 .tokens(result.getOutputTokens() != null ? result.getOutputTokens() : 0)
+                .inputTokens(result.getInputTokens() != null ? result.getInputTokens() : 0)
+                .outputTokens(result.getOutputTokens() != null ? result.getOutputTokens() : 0)
+                .duration(llmDuration)
                 .uuid(UuidUtil.createShort())
                 .build();
         LLMResponseContent responseContent = new LLMResponseContent(
@@ -292,7 +298,9 @@ public class CharacterChatService {
                         .build()
         );
         try {
+            long llmStartTime = System.currentTimeMillis();
             sseManager.call(sseAskParams, (response, questionMeta, answerMeta) -> {
+                answerMeta.setDuration((int) Math.min(System.currentTimeMillis() - llmStartTime, Integer.MAX_VALUE));
 
                 AudioInfo audioInfo = null;
                 if (StringUtils.isNotBlank(response.getAudioPath())) {
@@ -386,9 +394,8 @@ public class CharacterChatService {
         aiAnswer.setMessageRole(ChatMessageRoleEnum.ASSISTANT.getValue());
         aiAnswer.setThinkingContent(Objects.toString(response.getThinkingContent(), ""));
         aiAnswer.setRemark(response.getContent());
-//TODO: Filter or transform AI returned content
-        //TODO 过滤或转换AI返回的内容
-        //aiAnswer.setProcessedRemark("");
+        //TODO: If AI response content is non-compliant, store filtered version in processedRemark; frontend should prefer processedRemark over remark
+        //aiAnswer.setProcessedRemark(filteredContent);
         aiAnswer.setAudioUuid(null == audioInfo ? "" : Objects.toString(audioInfo.getUuid(), ""));
         aiAnswer.setAudioDuration(null == audioInfo ? 0 : audioInfo.getDuration());
         aiAnswer.setParentMessageId(promptMsg.getId());
@@ -408,8 +415,9 @@ public class CharacterChatService {
         callRecord.setUserId(user.getId());
         callRecord.setModelPlatform(modelPlatform);
         callRecord.setModelName(modelName);
-        callRecord.setInputTokens(questionMeta.getTokens());
-        callRecord.setOutputTokens(answerMeta.getTokens());
+        callRecord.setInputTokens(answerMeta.getInputTokens());
+        callRecord.setOutputTokens(answerMeta.getOutputTokens());
+        callRecord.setDuration(answerMeta.getDuration());
         llmCallRecordService.saveAsync(callRecord);
 
         createRef(retrievers, user, aiAnswer.getId());
@@ -421,25 +429,59 @@ public class CharacterChatService {
             MapDBChatMemoryStore mapDBChatMemoryStore = MapDBChatMemoryStore.getSingleton();
             List<ChatMessage> messages = mapDBChatMemoryStore.getMessages(askReq.getCharacterUuid());
             List<ChatMessage> newMessages = new ArrayList<>(messages);
-// TODO: DeepSeek requires reasoning_content to be passed back to API
-            // TODO: DeepSeek 要求 reasoning_content 传回 API，升级 langchain4j 后确认是否仍需手动处理
+            // reasoning_content is stored in AiMessage.thinking() via returnThinking(true),
+            // and will be sent back to DeepSeek API via sendThinking(true) during multi-turn tool-call scenarios.
+            // <p>
+            // reasoning_content 通过 returnThinking(true) 存入 AiMessage.thinking()，
+            // 并在多轮工具调用场景中通过 sendThinking(true) 自动回传 DeepSeek API。
             newMessages.add(AiMessage.builder().text(response.getContent()).thinking(response.getThinkingContent()).build());
             mapDBChatMemoryStore.updateMessages(askReq.getCharacterUuid(), newMessages);
         }
 
-// TODO: Some vision models like qwen2-vl-7b-instruct do not support JSON structured response
-        // TODO... 部分视觉模型如 qwen2-vl-7b-instruct 不支持 json 结构返回内容，待处理
-        if (!aiModel.getType().equalsIgnoreCase(ModelType.VISION)) {
-            //Long-term memory
-            longTermMemoryService.asyncAdd(character.getId(), modelPlatform, modelName, askReq.getPrompt(), response.getContent());
-            //TODO async calculate token cost and update user day cost (include long-term memory analyze cost)
-            // Pair<Integer, Integer> inputOutputTokenCost = LLMTokenUtil.calAllTokenCostByUuid(stringRedisTemplate, updateQaParams.getSseAskParams().getUuid());
+        // Prefer the current model for long-term memory; fall back to getFirstEnableAndFree()
+        // if the current model does not support JSON structured output (e.g., vision models).
+        // <p>
+        // 长期记忆优先使用当前模型；如果当前模型不支持 JSON 结构化输出（如视觉模型），则降级到 getFirstEnableAndFree()。
+        String memoryPlatform = modelPlatform;
+        String memoryModelName = modelName;
+        boolean memoryIsFreeToken = aiModel.getIsFree();
+        boolean supportsJsonOutput = aiModel.getResponseFormatTypes() != null
+                && aiModel.getResponseFormatTypes().contains("json_object");
+        if (!supportsJsonOutput) {
+            Optional<AbstractLLMService> fallback = LLMContext.getFirstEnableAndFree();
+            if (fallback.isEmpty()) {
+                log.warn("No available model supports JSON output, skipping long-term memory for characterId:{}", character.getId());
+            } else {
+                memoryPlatform = fallback.get().getPlatform().getName();
+                memoryModelName = fallback.get().getAiModel().getName();
+                memoryIsFreeToken = fallback.get().getAiModel().getIsFree();
+                log.info("Current model {} does not support JSON output, using fallback model {} for long-term memory", modelName, memoryModelName);
+                longTermMemoryService.asyncAdd(MemoryAddRequest.builder()
+                        .characterId(character.getId())
+                        .modelPlatform(memoryPlatform)
+                        .modelName(memoryModelName)
+                        .userMessage(askReq.getPrompt())
+                        .assistantMessage(response.getContent())
+                        .user(user)
+                        .isFreeToken(memoryIsFreeToken)
+                        .build());
+            }
+        } else {
+            longTermMemoryService.asyncAdd(MemoryAddRequest.builder()
+                    .characterId(character.getId())
+                    .modelPlatform(memoryPlatform)
+                    .modelName(memoryModelName)
+                    .userMessage(askReq.getPrompt())
+                    .assistantMessage(response.getContent())
+                    .user(user)
+                    .isFreeToken(memoryIsFreeToken)
+                    .build());
         }
     }
 
     private void calcTodayCost(User user, Character character, PromptMeta questionMeta, AnswerMeta answerMeta, boolean isFreeToken) {
 
-        int todayTokenCost = questionMeta.getTokens() + answerMeta.getTokens();
+        int todayTokenCost = answerMeta.getInputTokens() + answerMeta.getOutputTokens();
         try {
             //calculate character tokens
             characterService.lambdaUpdate()
@@ -486,7 +528,7 @@ public class CharacterChatService {
      */
     private int getAnswerContentType(Character character, AskReq askReq) {
         int answerContentType = character.getAnswerContentType();
-//If response content type is auto and user input is audio, set response content type to audio
+        //If response content type is auto and user input is audio, set response content type to audio
         //如果设置了响应内容类型为自动，并且用户输入是音频，则响应内容类型设置为音频
         if (answerContentType == AdiConstant.CharacterConstant.ANSWER_CONTENT_TYPE_AUTO && StringUtils.isNotBlank(askReq.getAudioUuid())) {
             answerContentType = AdiConstant.CharacterConstant.ANSWER_CONTENT_TYPE_AUDIO;
