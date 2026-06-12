@@ -6,7 +6,7 @@ import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.DashscopeUtil;
 import com.moyz.adi.common.vo.ChatModelBuilderProperties;
 import com.moyz.adi.common.languagemodel.data.LLMException;
-import com.moyz.adi.common.vo.SseAskParams;
+import com.moyz.adi.common.vo.SseAskParam;
 import dev.langchain4j.community.model.dashscope.QwenChatModel;
 import dev.langchain4j.community.model.dashscope.QwenChatRequestParameters;
 import dev.langchain4j.community.model.dashscope.QwenStreamingChatModel;
@@ -51,7 +51,7 @@ public class DashScopeLLMService extends AbstractLLMService {
     }
 
     @Override
-    protected boolean checkBeforeChat(SseAskParams params) {
+    protected boolean checkBeforeChat(SseAskParam params) {
         if (CollectionUtils.isEmpty(params.getHttpRequestParams().getImageUrls()) && DashscopeUtil.vlChatModelNameProvider().anyMatch(item -> item.equalsIgnoreCase(params.getModelName()))) {
             log.warn("Multimodal LLM did not receive images, modelName:{}", params.getModelName());
         }

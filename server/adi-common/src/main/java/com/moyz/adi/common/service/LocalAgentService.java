@@ -83,23 +83,23 @@ public class LocalAgentService implements AgentService {
                 request.getInputText(), memoryAndKnowledge.getLeft(), memoryAndKnowledge.getRight(), "", effectiveLocale);
 
         // 5. Build request params (system message + memory + MCP tools + thinking + web search)
-        ChatModelRequestParams chatRequestParams = CharacterChatHelper.buildChatRequestParams(
+        ChatModelRequest chatRequestParams = CharacterChatHelper.buildChatRequestParams(
                 character, processedPrompt, user, llmService, request.isEnableMcp(), request.isEnableWebSearch(), null);
 
         // 6. Blocking LLM call
-        SseAskParams sseAskParams = new SseAskParams();
-        sseAskParams.setUser(user);
-        sseAskParams.setUuid(uuid);
-        sseAskParams.setModelName(llmService.getAiModel().getName());
-        sseAskParams.setHttpRequestParams(chatRequestParams);
-        sseAskParams.setModelProperties(
+        SseAskParam sseAskParam = new SseAskParam();
+        sseAskParam.setUser(user);
+        sseAskParam.setUuid(uuid);
+        sseAskParam.setModelName(llmService.getAiModel().getName());
+        sseAskParam.setHttpRequestParams(chatRequestParams);
+        sseAskParam.setModelProperties(
                 ChatModelBuilderProperties.builder()
                         .temperature(character.getLlmTemperature())
                         .returnThinking(chatRequestParams.getReturnThinking())
                         .build()
         );
 
-        ChatResponse chatResponse = llmService.chat(sseAskParams);
+        ChatResponse chatResponse = llmService.chat(sseAskParam);
 
         // 7. Build result
         Integer inputTokens = null;

@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class SseAskParams {
+public class SseAskParam {
 
     private User user;
     //请求标识,如:知识库的记录uuid,搜索记录uuid
@@ -39,5 +39,5 @@ public class SseAskParams {
     /**
      * 进行http请求时最终提交给LLM的信息，必填
      */
-    private ChatModelRequestParams httpRequestParams;
+    private ChatModelRequest httpRequestParams;
 }

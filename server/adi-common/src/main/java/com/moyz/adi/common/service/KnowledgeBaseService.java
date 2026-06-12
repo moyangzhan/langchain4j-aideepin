@@ -384,19 +384,21 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         ChatModelBuilderProperties modelProperties = ChatModelBuilderProperties.builder()
                 .temperature(knowledgeBase.getQueryLlmTemperature())
                 .build();
-        ChatModelRequestParams chatRequestParams = ChatModelRequestParams.builder()
+        ChatModelRequest chatRequestParams = ChatModelRequest.builder()
                 .memoryId(knowledgeBase.getUuid() + "_" + user.getUuid())
                 .systemMessage(knowledgeBase.getQuerySystemMessage())
                 .userMessage(prompt)
                 .build();
-        SseAskParams sseAskParams = SseAskParams.builder()
+        SseAskParam sseAskParam = SseAskParam.builder()
                 .user(user)
                 .uuid(uuid)
                 .modelProperties(modelProperties)
                 .httpRequestParams(chatRequestParams)
                 .build();
 
-        ChatResponse chatResponse = llmService.chat(sseAskParams);
+        long llmStartTime = System.currentTimeMillis();
+        ChatResponse chatResponse = llmService.chat(sseAskParam);
+        int llmDuration = (int) Math.min(System.currentTimeMillis() - llmStartTime, Integer.MAX_VALUE);
 
         // Update QA record
         KnowledgeBaseQa updateRecord = new KnowledgeBaseQa();
@@ -420,6 +422,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             callRecord.setModelName(aiModel.getName());
             callRecord.setInputTokens(chatResponse.metadata().tokenUsage().inputTokenCount());
             callRecord.setOutputTokens(chatResponse.metadata().tokenUsage().outputTokenCount());
+            callRecord.setDuration(llmDuration);
             llmCallRecordService.saveAsync(callRecord);
         }
 
@@ -514,37 +517,40 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 maxResults = EmbeddingRag.getRetrieveMaxResults(qaRecord.getQuestion(), maxInputTokens);
             }
 
-            SseAskParams sseAskParams = new SseAskParams();
-            sseAskParams.setUuid(qaRecord.getUuid());
-            sseAskParams.setHttpRequestParams(
-                    ChatModelRequestParams.builder()
+            SseAskParam sseAskParam = new SseAskParam();
+            sseAskParam.setUuid(qaRecord.getUuid());
+            sseAskParam.setHttpRequestParams(
+                    ChatModelRequest.builder()
                             .memoryId(qaRecord.getKbUuid() + "_" + user.getUuid())
                             .systemMessage(knowledgeBase.getQuerySystemMessage())
                             .userMessage(qaRecord.getQuestion())
                             .build()
             );
-            sseAskParams.setModelProperties(
+            sseAskParam.setModelProperties(
                     ChatModelBuilderProperties.builder()
                             .temperature(knowledgeBase.getQueryLlmTemperature())
                             .build()
             );
-            sseAskParams.setSseUuid(sseUuid);
-            sseAskParams.setModelName(aiModel.getName());
-            sseAskParams.setUser(user);
+            sseAskParam.setSseUuid(sseUuid);
+            sseAskParam.setModelName(aiModel.getName());
+            sseAskParam.setUser(user);
             if (maxResults == 0) {
                 log.info("User question too long, no need to retrieve docs; strict mode returns error, relaxed mode continues to LLM");
                 if (Boolean.TRUE.equals(knowledgeBase.getIsStrict())) {
                     sseManager.sendErrorAndComplete(user.getId(), sseUuid, "Question too long, max " + maxInputTokens + " tokens");
                 } else {
-                    sseManager.call(sseAskParams, (response, questionMeta, answerMeta) -> {
-                                sseManager.sendComplete(user.getId(), sseUuid);
+                    long llmStartTime = System.currentTimeMillis();
+                    sseManager.call(sseAskParam, (response, questionMeta, answerMeta) -> {
+                                answerMeta.setDuration((int) Math.min(System.currentTimeMillis() - llmStartTime, Integer.MAX_VALUE));
+                                sseManager.sendComplete(user.getId(), sseUuid, questionMeta, answerMeta, null);
                                 updateQaRecord(
-                                        UpdateQaParams.builder()
+                                        UpdateQaParam.builder()
                                                 .user(user)
                                                 .qaRecord(qaRecord)
                                                 .retrievers(null)
-                                                .sseAskParams(sseAskParams)
+                                                .sseAskParam(sseAskParam)
                                                 .response(response.getContent())
+                                                .duration(answerMeta.getDuration())
                                                 .isTokenFree(aiModel.getIsFree())
                                                 .build());
                             }
@@ -566,15 +572,18 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 CompositeRag compositeRag = new CompositeRag(KNOWLEDGE_BASE);
                 List<RetrieverWrapper> retrieverWrappers = compositeRag.createRetriever(createParam);
                 List<ContentRetriever> retrievers = retrieverWrappers.stream().map(RetrieverWrapper::getRetriever).toList();
-                compositeRag.ragChat(retrievers, sseAskParams, (response, promptMeta, answerMeta) -> {
-                            sseManager.sendComplete(user.getId(), sseAskParams.getSseUuid());
+                long llmStartTime = System.currentTimeMillis();
+                compositeRag.ragChat(retrievers, sseAskParam, (response, promptMeta, answerMeta) -> {
+                            answerMeta.setDuration((int) Math.min(System.currentTimeMillis() - llmStartTime, Integer.MAX_VALUE));
+                            sseManager.sendComplete(user.getId(), sseAskParam.getSseUuid(), promptMeta, answerMeta, null);
                             updateQaRecord(
-                                    UpdateQaParams.builder()
+                                    UpdateQaParam.builder()
                                             .user(user)
                                             .qaRecord(qaRecord)
                                             .retrievers(retrievers)
-                                            .sseAskParams(sseAskParams)
+                                            .sseAskParam(sseAskParam)
                                             .response(response)
+                                            .duration(answerMeta.getDuration())
                                             .isTokenFree(aiModel.getIsFree())
                                             .build());
                         }
@@ -585,17 +594,17 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         }
     }
 
-    private void updateQaRecord(UpdateQaParams updateQaParams) {
+    private void updateQaRecord(UpdateQaParam updateQaParam) {
 
-        Pair<Integer, Integer> inputOutputTokenCost = LLMTokenUtil.calAllTokenCostByUuid(stringRedisTemplate, updateQaParams.getSseAskParams().getUuid());
+        Pair<Integer, Integer> inputOutputTokenCost = LLMTokenUtil.calAllTokenCostByUuid(stringRedisTemplate, updateQaParam.getSseAskParam().getUuid());
 
-        KnowledgeBaseQa qaRecord = updateQaParams.getQaRecord();
-        User user = updateQaParams.getUser();
+        KnowledgeBaseQa qaRecord = updateQaParam.getQaRecord();
+        User user = updateQaParam.getUser();
 
         KnowledgeBaseQa updateRecord = new KnowledgeBaseQa();
         updateRecord.setId(qaRecord.getId());
-        updateRecord.setPrompt(updateQaParams.getSseAskParams().getHttpRequestParams().getUserMessage());
-        updateRecord.setAnswer(updateQaParams.getResponse());
+        updateRecord.setPrompt(updateQaParam.getSseAskParam().getHttpRequestParams().getUserMessage());
+        updateRecord.setAnswer(updateQaParam.getResponse());
         knowledgeBaseQaRecordService.updateById(updateRecord);
 
         //Save LLM call record
@@ -604,18 +613,19 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         callRecord.setSourceType(LLMCallRecordSourceType.KNOWLEDGE_BASE_QA.getValue());
         callRecord.setSourceId(qaRecord.getId());
         callRecord.setUserId(user.getId());
-        callRecord.setModelPlatform(updateQaParams.getSseAskParams().getModelName());
-        callRecord.setModelName(updateQaParams.getSseAskParams().getModelName());
+        callRecord.setModelPlatform(updateQaParam.getSseAskParam().getModelName());
+        callRecord.setModelName(updateQaParam.getSseAskParam().getModelName());
         callRecord.setInputTokens(inputOutputTokenCost.getLeft());
         callRecord.setOutputTokens(inputOutputTokenCost.getRight());
+        callRecord.setDuration(updateQaParam.getDuration());
         llmCallRecordService.saveAsync(callRecord);
 
-        createRef(updateQaParams.getRetrievers(), user, qaRecord.getId());
+        createRef(updateQaParam.getRetrievers(), user, qaRecord.getId());
         //用户本次请求消耗的token数指的是整个RAG过程中消耗的token数量，其中可能涉及到多次LLM请求
         int allToken = inputOutputTokenCost.getLeft() + inputOutputTokenCost.getRight();
         log.info("User {} total token consumption for this request: {}", user.getName(), allToken);
         if (allToken > 0) {
-            userDayCostService.appendCostToUser(user, allToken, updateQaParams.isTokenFree());
+            userDayCostService.appendCostToUser(user, allToken, updateQaParam.isTokenFree());
         }
     }
 

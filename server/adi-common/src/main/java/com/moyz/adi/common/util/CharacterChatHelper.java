@@ -11,7 +11,7 @@ import com.moyz.adi.common.service.UserMcpService;
 import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.util.AdiStringUtil;
 import com.moyz.adi.common.vo.ChatModelBuilderProperties;
-import com.moyz.adi.common.vo.ChatModelRequestParams;
+import com.moyz.adi.common.vo.ChatModelRequest;
 import com.moyz.adi.common.vo.RetrieverCreateParam;
 import com.moyz.adi.common.vo.RetrieverWrapper;
 import dev.langchain4j.mcp.client.McpClient;
@@ -166,7 +166,7 @@ public class CharacterChatHelper {
     /**
      * 根据 Character 配置构建聊天请求参数
      * <p>
-     * Build ChatModelRequestParams from Character configuration.
+     * Build ChatModelRequest from Character configuration.
      * </p>
      *
      * @param character       角色 / Character
@@ -177,11 +177,11 @@ public class CharacterChatHelper {
      * @param enableWebSearch 是否启用联网搜索 / Enable web search
      * @return 聊天请求参数 / Chat request params
      */
-    public static ChatModelRequestParams buildChatRequestParams(Character character, String userPrompt,
+    public static ChatModelRequest buildChatRequestParams(Character character, String userPrompt,
                                                                 User user, AbstractLLMService llmService,
                                                                 boolean enableMcp, boolean enableWebSearch,
                                                                 List<String> imageUrls) {
-        ChatModelRequestParams.ChatModelRequestParamsBuilder builder = ChatModelRequestParams.builder();
+        ChatModelRequest.ChatModelRequestBuilder builder = ChatModelRequest.builder();
 
         //System message
         if (StringUtils.isNotBlank(character.getAiSystemMessage())) {

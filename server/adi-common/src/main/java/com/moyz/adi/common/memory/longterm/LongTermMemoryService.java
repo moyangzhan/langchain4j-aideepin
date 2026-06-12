@@ -7,7 +7,7 @@ import com.moyz.adi.common.enums.LLMCallRecordSourceType;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.memory.vo.ActionMemories;
 import com.moyz.adi.common.memory.vo.ExtractedFact;
-import com.moyz.adi.common.memory.vo.MemoryAddRequest;
+import com.moyz.adi.common.memory.vo.MemoryAddParam;
 import com.moyz.adi.common.rag.EmbeddingRagContext;
 import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.service.LLMCallRecordService;
@@ -15,8 +15,9 @@ import com.moyz.adi.common.service.UserDayCostService;
 import com.moyz.adi.common.util.AdiStringUtil;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.UuidUtil;
-import com.moyz.adi.common.vo.ChatModelRequestParams;
-import com.moyz.adi.common.vo.SseAskParams;
+import com.moyz.adi.common.vo.ChatModelRequest;
+import com.moyz.adi.common.vo.EmbeddingIngestParam;
+import com.moyz.adi.common.vo.SseAskParam;
 import dev.langchain4j.data.document.DefaultDocument;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
@@ -65,7 +66,7 @@ public class LongTermMemoryService {
     private LLMCallRecordService llmCallRecordService;
 
     @Async
-    public void asyncAdd(MemoryAddRequest request) {
+    public void asyncAdd(MemoryAddParam request) {
         log.info("Converting messages to memory, characterId:{}", request.getCharacterId());
         String inputMessage = toInputMessage(request.getUserMessage(), request.getAssistantMessage());
         log.info("inputMessage: {}", inputMessage);
@@ -74,19 +75,19 @@ public class LongTermMemoryService {
         int totalInputTokens = 0;
         int totalOutputTokens = 0;
 
-        SseAskParams sseAskParams = new SseAskParams();
-        sseAskParams.setUuid(UuidUtil.createShort());
-        sseAskParams.setHttpRequestParams(
-                ChatModelRequestParams.builder()
+        SseAskParam sseAskParam = new SseAskParam();
+        sseAskParam.setUuid(UuidUtil.createShort());
+        sseAskParam.setHttpRequestParams(
+                ChatModelRequest.builder()
                         .systemMessage(LongTermMemoryPrompt.FACT_RETRIEVAL_PROMPT)
                         .userMessage(inputMessage)
                         .responseFormat(RESPONSE_FORMAT_TYPE_JSON_OBJECT)
                         .build()
         );
-        sseAskParams.setModelName(request.getModelName());
-        sseAskParams.setUser(request.getUser());
-        log.info("request:{}", sseAskParams);
-        ChatResponse response = llmService.chat(sseAskParams);
+        sseAskParam.setModelName(request.getModelName());
+        sseAskParam.setUser(request.getUser());
+        log.info("request:{}", sseAskParam);
+        ChatResponse response = llmService.chat(sseAskParam);
 
         // Track token usage for fact extraction call
         // <p>
@@ -150,10 +151,10 @@ public class LongTermMemoryService {
 
             // Analyze there is any update/delete/add events required in the memory
             String analyzePrompt = getUpdateMemoryMessages(retrievedOldMemory, facts);
-            ChatResponse analyzeResp = llmService.chat(SseAskParams.builder()
+            ChatResponse analyzeResp = llmService.chat(SseAskParam.builder()
                     .uuid(UuidUtil.createShort())
                     .httpRequestParams(
-                            ChatModelRequestParams.builder()
+                            ChatModelRequest.builder()
                                     .userMessage(analyzePrompt)
                                     .responseFormat(RESPONSE_FORMAT_TYPE_JSON_OBJECT)
                                     .build()
@@ -198,7 +199,13 @@ public class LongTermMemoryService {
                 } else if (AdiConstant.MemoryEvent.ADD.equalsIgnoreCase(actionMemory.getEvent())) {
                     Metadata metadata = new Metadata(Map.of(CHARACTER_ID, request.getCharacterId()));
                     Document document = new DefaultDocument(actionMemory.getText(), metadata);
-                    EmbeddingRagContext.get(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY).ingest(document, 20, AdiConstant.SplitStrategy.RECURSIVE, AdiConstant.RAG_MAX_SEGMENT_SIZE_IN_TOKENS, "", null, null);
+                    EmbeddingRagContext.get(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY).ingest(document,
+                            EmbeddingIngestParam.builder()
+                                    .overlap(20)
+                                    .strategy(AdiConstant.SplitStrategy.RECURSIVE)
+                                    .maxSegmentSize(AdiConstant.RAG_MAX_SEGMENT_SIZE_IN_TOKENS)
+                                    .customSeparator("")
+                                    .build());
                 }
             }
         }

@@ -247,7 +247,6 @@ CREATE TABLE adi_character
     uuid                      varchar(32)   default ''                not null,
     title                     varchar(45)   default ''                not null,
     remark                    varchar(500)  default ''                not null,
-    tokens                    integer       default 0                 not null,
     ai_system_message         varchar(1000) default ''                not null,
     understand_context_enable boolean       default false             not null,
     llm_temperature           numeric(2, 1) default 0.7               not null,

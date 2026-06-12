@@ -5,13 +5,13 @@ import lombok.Builder;
 import lombok.Getter;
 
 /**
- * Request parameters for long-term memory add operation.
+ * Parameters for long-term memory add operation.
  * <p>
- * 长期记忆添加操作的请求参数。
+ * 长期记忆添加操作的参数。
  */
 @Getter
 @Builder
-public class MemoryAddRequest {
+public class MemoryAddParam {
 
     /**
      * Character ID to associate memory with.

@@ -1,9 +1,9 @@
 package com.moyz.adi.common.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
-import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -17,12 +17,12 @@ public class BaseEntity implements Serializable {
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    @TableField(value = "create_time")
+    @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
-    @TableField(value = "update_time")
+    @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 
-    @TableField(value = "is_deleted")
+    @TableField(value = "is_deleted", fill = FieldFill.INSERT)
     private Boolean isDeleted;
 }

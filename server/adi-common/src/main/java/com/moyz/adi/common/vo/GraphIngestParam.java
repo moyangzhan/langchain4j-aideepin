@@ -10,7 +10,7 @@ import java.util.List;
 
 @Data
 @Builder
-public class GraphIngestParams {
+public class GraphIngestParam {
     private User user;
     private Document document;
     private int overlap;

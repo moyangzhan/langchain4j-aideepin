@@ -11,8 +11,8 @@ import com.moyz.adi.common.util.LLMTokenUtil;
 import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.ChatModelBuilderProperties;
-import com.moyz.adi.common.vo.ChatModelRequestParams;
-import com.moyz.adi.common.vo.SseAskParams;
+import com.moyz.adi.common.vo.ChatModelRequest;
+import com.moyz.adi.common.vo.SseAskParam;
 import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.data.NodeIODataContent;
 import com.moyz.adi.common.workflow.metrics.LLMMetrics;
@@ -108,12 +108,12 @@ public class WorkflowUtil {
     public static NodeIOData invokeLLM(WfState wfState, WfNodeState nodeState, String modelPlatform, String modelName, String prompt) {
         log.info("common invoke");
         AbstractLLMService llmService = LLMContext.getServiceOrDefault(modelPlatform, modelName);
-        SseAskParams sseAskParams = new SseAskParams();
-        sseAskParams.setUuid(wfState.getUuid());
-        sseAskParams.setHttpRequestParams(ChatModelRequestParams.builder().systemMessage(StringUtils.EMPTY).userMessage(prompt).build());
-        sseAskParams.setModelName(llmService.getAiModel().getName());
-        sseAskParams.setUser(wfState.getUser());
-        ChatResponse response = llmService.chat(sseAskParams);
+        SseAskParam sseAskParam = new SseAskParam();
+        sseAskParam.setUuid(wfState.getUuid());
+        sseAskParam.setHttpRequestParams(ChatModelRequest.builder().systemMessage(StringUtils.EMPTY).userMessage(prompt).build());
+        sseAskParam.setModelName(llmService.getAiModel().getName());
+        sseAskParam.setUser(wfState.getUser());
+        ChatResponse response = llmService.chat(sseAskParam);
         log.info("llm response:{}", response);
         //记录节点级别的 token 消耗 | Record node-level token usage
         if (nodeState != null && nodeState.getMetrics() instanceof LLMMetrics nodeMetrics && response.metadata() != null) {

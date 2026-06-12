@@ -235,13 +235,13 @@ public class SseManager {
      * event_stream request: close SSE and execute callback after completion.
      * </p>
      *
-     * @param sseAskParams     请求参数（必须包含 sseUuid）/ Request parameters (must include sseUuid)
+     * @param sseAskParam     请求参数（必须包含 sseUuid）/ Request parameters (must include sseUuid)
      * @param completeCallback 请求结束后的回调 / Callback after request completion
      */
-    public void call(SseAskParams sseAskParams, TriConsumer<LLMResponseContent, PromptMeta, AnswerMeta> completeCallback) {
-        String sseUuid = sseAskParams.getSseUuid();
-        registerEventStreamListener(sseAskParams);
-        LLMContext.getServiceOrDefault(sseAskParams.getModelPlatform(), sseAskParams.getModelName()).streamingChat(sseAskParams, (response, promptMeta, answerMeta) -> {
+    public void call(SseAskParam sseAskParam, TriConsumer<LLMResponseContent, PromptMeta, AnswerMeta> completeCallback) {
+        String sseUuid = sseAskParam.getSseUuid();
+        registerEventStreamListener(sseAskParam);
+        LLMContext.getServiceOrDefault(sseAskParam.getModelPlatform(), sseAskParam.getModelName()).streamingChat(sseAskParam, (response, promptMeta, answerMeta) -> {
             try {
                 completeCallback.accept(response, promptMeta, answerMeta);
             } catch (Exception e) {
@@ -259,11 +259,11 @@ public class SseManager {
      * Register lifecycle events for the event stream.
      * </p>
      *
-     * @param sseAskParams 参数（必须包含 sseUuid）/ Parameters (must include sseUuid)
+     * @param sseAskParam 参数（必须包含 sseUuid）/ Parameters (must include sseUuid)
      */
-    public void registerEventStreamListener(SseAskParams sseAskParams) {
-        User user = sseAskParams.getUser();
-        String sseUuid = sseAskParams.getSseUuid();
+    public void registerEventStreamListener(SseAskParam sseAskParam) {
+        User user = sseAskParam.getUser();
+        String sseUuid = sseAskParam.getSseUuid();
         SseEmitter sseEmitter = get(sseUuid);
         if (sseEmitter == null) {
             log.error("registerEventStreamListener: SseEmitter not found for sseUuid:{}", sseUuid);
@@ -479,7 +479,11 @@ public class SseManager {
         }
 
         PromptMeta questionMeta = new PromptMeta(inputTokenCount, uuid);
-        AnswerMeta answerMeta = AnswerMeta.builder().tokens(outputTokenCount).uuid(UuidUtil.createShort()).build();
+        AnswerMeta answerMeta = AnswerMeta.builder()
+                .inputTokens(inputTokenCount)
+                .outputTokens(outputTokenCount)
+                .uuid(UuidUtil.createShort())
+                .build();
         return Pair.of(questionMeta, answerMeta);
     }
 

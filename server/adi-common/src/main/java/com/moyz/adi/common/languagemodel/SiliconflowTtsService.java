@@ -15,8 +15,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.TtsConstant.SILICONFLOW_DEFAULT_VOICE;
@@ -26,14 +26,14 @@ import static com.moyz.adi.common.cosntant.AdiConstant.TtsConstant.SILICONFLOW_D
  */
 @Slf4j
 public class SiliconflowTtsService extends AbstractTtsModelService {
-    private final Map<String, TtsJobData> jobToData = new HashMap<>();
+    private final Map<String, TtsJobData> jobToData = new ConcurrentHashMap<>();
 
     public SiliconflowTtsService(AiModel model, ModelPlatform modelPlatform) {
         super(model, modelPlatform);
     }
 
     @Override
-    public void start(String jobId, String voice, Consumer<ByteBuffer> onProcess, Consumer<String> onComplete, Consumer<String> onError) {
+    protected void doStart(String jobId, String voice, Consumer<ByteBuffer> onProcess, Consumer<String> onComplete, Consumer<String> onError) {
         if (StringUtils.isBlank(voice)) {
             voice = SILICONFLOW_DEFAULT_VOICE;
         } else {
@@ -71,7 +71,7 @@ public class SiliconflowTtsService extends AbstractTtsModelService {
     }
 
     @Override
-    public void complete(String jobId) {
+    protected void doComplete(String jobId) {
         if (null == jobToData.get(jobId)) {
             return;
         }

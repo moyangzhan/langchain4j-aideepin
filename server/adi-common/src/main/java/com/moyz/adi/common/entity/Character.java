@@ -31,10 +31,6 @@ public class Character extends BaseEntity {
     @TableField("remark")
     private String remark;
 
-    @Schema(title = "消耗的token数量 | Token Count Consumed")
-    @TableField("tokens")
-    private Integer tokens;
-
     @Schema(name = "是否开启理解上下文的功能 | Enable Context Understanding")
     @TableField("understand_context_enable")
     private Boolean understandContextEnable;

@@ -25,7 +25,7 @@ import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.languagemodel.data.LLMResponseContent;
 import com.moyz.adi.common.memory.longterm.LongTermMemoryService;
 import com.moyz.adi.common.memory.shortterm.MapDBChatMemoryStore;
-import com.moyz.adi.common.memory.vo.MemoryAddRequest;
+import com.moyz.adi.common.memory.vo.MemoryAddParam;
 import com.moyz.adi.common.rag.AdiEmbeddingStoreContentRetriever;
 import com.moyz.adi.common.rag.GraphStoreContentRetriever;
 import com.moyz.adi.common.util.*;
@@ -150,7 +150,6 @@ public class CharacterChatService {
         PromptMeta questionMeta = new PromptMeta(
                 result.getInputTokens() != null ? result.getInputTokens() : 0, questionUuid);
         AnswerMeta answerMeta = AnswerMeta.builder()
-                .tokens(result.getOutputTokens() != null ? result.getOutputTokens() : 0)
                 .inputTokens(result.getInputTokens() != null ? result.getInputTokens() : 0)
                 .outputTokens(result.getOutputTokens() != null ? result.getOutputTokens() : 0)
                 .duration(llmDuration)
@@ -275,23 +274,23 @@ public class CharacterChatService {
         }
 
         String questionUuid = StringUtils.isNotBlank(askReq.getRegenerateQuestionUuid()) ? askReq.getRegenerateQuestionUuid() : UuidUtil.createShort();
-        SseAskParams sseAskParams = new SseAskParams();
-        sseAskParams.setUser(user);
-        sseAskParams.setUuid(questionUuid);
-        sseAskParams.setModelName(askReq.getModelName());
-        sseAskParams.setSseUuid(sseUuid);
-        sseAskParams.setRegenerateQuestionUuid(askReq.getRegenerateQuestionUuid());
-        sseAskParams.setAnswerContentType(answerContentType);
+        SseAskParam sseAskParam = new SseAskParam();
+        sseAskParam.setUser(user);
+        sseAskParam.setUuid(questionUuid);
+        sseAskParam.setModelName(askReq.getModelName());
+        sseAskParam.setSseUuid(sseUuid);
+        sseAskParam.setRegenerateQuestionUuid(askReq.getRegenerateQuestionUuid());
+        sseAskParam.setAnswerContentType(answerContentType);
         if (null != character.getAudioConfig() && null != character.getAudioConfig().getVoice()) {
 //If character has voice configured, use character voice settings
             //如果对话配置了语音，则使用对话的语音配置
-            sseAskParams.setVoice(character.getAudioConfig().getVoice().getParamName());
+            sseAskParam.setVoice(character.getAudioConfig().getVoice().getParamName());
         }
 
-        ChatModelRequestParams chatRequestParams = CharacterChatHelper.buildChatRequestParams(character, askReq.getProcessedPrompt() != null ? askReq.getProcessedPrompt() : askReq.getPrompt(), user, llmService, true, Boolean.TRUE.equals(character.getIsEnableWebSearch()), askReq.getImageUrls());
-        sseAskParams.setHttpRequestParams(chatRequestParams);
+        ChatModelRequest chatRequestParams = CharacterChatHelper.buildChatRequestParams(character, askReq.getProcessedPrompt() != null ? askReq.getProcessedPrompt() : askReq.getPrompt(), user, llmService, true, Boolean.TRUE.equals(character.getIsEnableWebSearch()), askReq.getImageUrls());
+        sseAskParam.setHttpRequestParams(chatRequestParams);
 
-        sseAskParams.setModelProperties(
+        sseAskParam.setModelProperties(
                 ChatModelBuilderProperties.builder()
                         .temperature(character.getLlmTemperature())
                         .returnThinking(chatRequestParams.getReturnThinking())
@@ -299,7 +298,7 @@ public class CharacterChatService {
         );
         try {
             long llmStartTime = System.currentTimeMillis();
-            sseManager.call(sseAskParams, (response, questionMeta, answerMeta) -> {
+            sseManager.call(sseAskParam, (response, questionMeta, answerMeta) -> {
                 answerMeta.setDuration((int) Math.min(System.currentTimeMillis() - llmStartTime, Integer.MAX_VALUE));
 
                 AudioInfo audioInfo = null;
@@ -456,7 +455,7 @@ public class CharacterChatService {
                 memoryModelName = fallback.get().getAiModel().getName();
                 memoryIsFreeToken = fallback.get().getAiModel().getIsFree();
                 log.info("Current model {} does not support JSON output, using fallback model {} for long-term memory", modelName, memoryModelName);
-                longTermMemoryService.asyncAdd(MemoryAddRequest.builder()
+                longTermMemoryService.asyncAdd(MemoryAddParam.builder()
                         .characterId(character.getId())
                         .modelPlatform(memoryPlatform)
                         .modelName(memoryModelName)
@@ -467,7 +466,7 @@ public class CharacterChatService {
                         .build());
             }
         } else {
-            longTermMemoryService.asyncAdd(MemoryAddRequest.builder()
+            longTermMemoryService.asyncAdd(MemoryAddParam.builder()
                     .characterId(character.getId())
                     .modelPlatform(memoryPlatform)
                     .modelName(memoryModelName)
@@ -483,12 +482,10 @@ public class CharacterChatService {
 
         int todayTokenCost = answerMeta.getInputTokens() + answerMeta.getOutputTokens();
         try {
-            //calculate character tokens
-            characterService.lambdaUpdate()
-                    .eq(Character::getId, character.getId())
-                    .set(Character::getTokens, character.getTokens() + todayTokenCost)
-                    .update();
-
+            // 用户级 token 累计；按 character 维度的 token 总量可在需要时从 llm_call_record 聚合得到。
+            // <p>
+            // User-level token accumulation. Character-level totals can be aggregated from
+            // llm_call_record on demand.
             userDayCostService.appendCostToUser(user, todayTokenCost, isFreeToken);
         } catch (Exception e) {
             log.error("calcTodayCost error", e);

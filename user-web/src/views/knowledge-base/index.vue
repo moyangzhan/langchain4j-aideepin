@@ -103,8 +103,9 @@ async function handleSubmit() {
           const meta = chunk.replace('[META]', '')
           const metaData: Chat.MetaData = JSON.parse(meta)
           console.info('metaData', metaData)
-          qaRecord.inputTokens = metaData.question.tokens
-          qaRecord.outputTokens = metaData.answer.tokens
+          qaRecord.inputTokens = metaData.answer.inputTokens
+          qaRecord.outputTokens = metaData.answer.outputTokens
+          qaRecord.duration = metaData.answer.duration
         } else {
           kbStore.appendChunk(
             currKbUuid,
@@ -331,7 +332,8 @@ onActivated(async () => {
               <Message
                 :date-time="qaRecord.createTime" :text="!!qaRecord.answer ? qaRecord.answer : t('common.noAnswer')"
                 :regenerate="false" type="text" :inversion="false" :error="qaRecord.error" :loading="qaRecord.loading"
-                :input-tokens="qaRecord.inputTokens || qaRecord.promptTokens" :output-tokens="qaRecord.outputTokens || qaRecord.answerTokens"
+                :input-tokens="qaRecord.inputTokens" :output-tokens="qaRecord.outputTokens"
+                :duration="qaRecord.duration"
                 :ai-model-platform="qaRecord.aiModelPlatform" @delete="handleDelete(qaRecord.uuid)"
               >
                 <NFlex>

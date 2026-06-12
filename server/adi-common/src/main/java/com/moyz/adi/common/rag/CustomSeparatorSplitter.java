@@ -1,6 +1,7 @@
 package com.moyz.adi.common.rag;
 
 import dev.langchain4j.data.document.DocumentSplitter;
+import dev.langchain4j.data.document.splitter.DocumentBySentenceSplitter;
 import dev.langchain4j.data.document.splitter.HierarchicalDocumentSplitter;
 import dev.langchain4j.model.TokenCountEstimator;
 
@@ -14,12 +15,18 @@ public class CustomSeparatorSplitter extends HierarchicalDocumentSplitter {
 
     private final String separator;
     private final Pattern splitPattern;
+    private final int maxSegmentSize;
+    private final int maxOverlapSize;
+    private final TokenCountEstimator estimator;
 
     public CustomSeparatorSplitter(int maxSegmentSize,
                                    int maxOverlapSize,
                                    String separator,
                                    TokenCountEstimator estimator) {
-        super(maxSegmentSize, maxOverlapSize, estimator, null);
+        super(maxSegmentSize, maxOverlapSize, estimator, new DocumentBySentenceSplitter(maxSegmentSize, maxOverlapSize, estimator));
+        this.maxSegmentSize = maxSegmentSize;
+        this.maxOverlapSize = maxOverlapSize;
+        this.estimator = estimator;
         this.separator = separator;
         this.splitPattern = Pattern.compile(Pattern.quote(separator));
     }
@@ -36,6 +43,6 @@ public class CustomSeparatorSplitter extends HierarchicalDocumentSplitter {
 
     @Override
     protected DocumentSplitter defaultSubSplitter() {
-        return null;
+        return new DocumentBySentenceSplitter(maxSegmentSize, maxOverlapSize, estimator);
     }
 }

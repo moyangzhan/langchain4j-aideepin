@@ -15,7 +15,7 @@ import java.util.List;
 
 @Builder
 @Data
-public class InnerStreamChatParams {
+public class InnerStreamChatParam {
     private String uuid;
     /**
      * SSE 请求标识，用于从注册中心获取 SseEmitter

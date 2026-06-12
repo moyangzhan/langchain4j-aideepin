@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 public class KbQaDto {
     @Schema(title = "uuid")
@@ -36,4 +38,16 @@ public class KbQaDto {
 
     @Schema(title = "ai model platform")
     private String aiModelPlatform;
+
+    @Schema(title = "输入token数量 | Input Token Count")
+    private Integer inputTokens;
+
+    @Schema(title = "输出token数量 | Output Token Count")
+    private Integer outputTokens;
+
+    @Schema(title = "调用耗时（毫秒） | Call Duration (ms)")
+    private Integer duration;
+
+    @Schema(title = "创建时间 | Create Time")
+    private LocalDateTime createTime;
 }

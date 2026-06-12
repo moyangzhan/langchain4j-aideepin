@@ -243,9 +243,9 @@ const fetchChatAPIOnce = async (regenerateQuestionUuid: string, childAudioPlaySt
       if (chunk.includes('[META]')) {
         const meta = chunk.replace('[META]', '')
         const metaData: Chat.MetaData = JSON.parse(meta)
-        updateMessageSomeFields(characterUuid, question.uuid, { ...metaData.question, inputTokens: metaData.question.tokens, loading: false, state: new Map<string, string>() })
-        // 保留临时answer的uuid以方便自动选中最新答案
-        updateMessageSomeFields(characterUuid, answer.uuid, { ...metaData.answer, outputTokens: metaData.answer.tokens, duration: metaData.answer.duration, uuid: answer.uuid, loading: false })
+        updateMessageSomeFields(characterUuid, question.uuid, { ...metaData.question, inputTokens: metaData.question.inputTokens, loading: false, state: new Map<string, string>() })
+        // inputTokens/outputTokens 由 AnswerMeta 直接提供 | inputTokens/outputTokens provided directly by AnswerMeta
+        updateMessageSomeFields(characterUuid, answer.uuid, { ...metaData.answer, inputTokens: metaData.answer.inputTokens, outputTokens: metaData.answer.outputTokens, duration: metaData.answer.duration, uuid: answer.uuid, loading: false })
         if (metaData.audioInfo) {
           answer.audioPlayState.audioUrl = metaData.audioInfo.url
           answer.audioDuration = metaData.audioInfo.duration

@@ -129,11 +129,12 @@ declare namespace Chat {
 
 	interface MetaData {
 		question: {
-			tokens: number,
+			inputTokens: number,
 			uuid: string
 		},
 		answer: {
-			tokens: number,
+			inputTokens: number,
+			outputTokens: number,
 			uuid: string,
 			duration?: number
 		},

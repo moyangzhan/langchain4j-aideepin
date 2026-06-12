@@ -21,7 +21,8 @@ import com.moyz.adi.common.service.embedding.IKnowledgeEmbeddingService;
 import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.ChatModelBuilderProperties;
-import com.moyz.adi.common.vo.GraphIngestParams;
+import com.moyz.adi.common.vo.EmbeddingIngestParam;
+import com.moyz.adi.common.vo.GraphIngestParam;
 import dev.langchain4j.data.document.DefaultDocument;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
@@ -177,7 +178,14 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                     .set(KnowledgeBaseItem::getEmbeddingStatusChangeTime, LocalDateTime.now())
                     .set(KnowledgeBaseItem::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
                     .update();
-            EmbeddingRagContext.get(KNOWLEDGE_BASE).ingest(document, knowledgeBase.getIngestMaxOverlap(), knowledgeBase.getIngestSplitStrategy(), knowledgeBase.getIngestMaxSegmentSize(), knowledgeBase.getIngestCustomSeparator(), knowledgeBase.getIngestTokenEstimator(), null);
+            EmbeddingRagContext.get(KNOWLEDGE_BASE).ingest(document,
+                    EmbeddingIngestParam.builder()
+                            .overlap(knowledgeBase.getIngestMaxOverlap())
+                            .strategy(knowledgeBase.getIngestSplitStrategy())
+                            .maxSegmentSize(knowledgeBase.getIngestMaxSegmentSize())
+                            .customSeparator(knowledgeBase.getIngestCustomSeparator())
+                            .tokenEstimator(knowledgeBase.getIngestTokenEstimator())
+                            .build());
             ChainWrappers.lambdaUpdateChain(baseMapper)
                     .eq(KnowledgeBaseItem::getId, kbItem.getId())
                     .set(KnowledgeBaseItem::getEmbeddingStatus, EmbeddingStatusEnum.DONE)
@@ -208,7 +216,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
 
             //Ingest document
             GraphRagContext.get(KNOWLEDGE_BASE).ingest(
-                    GraphIngestParams.builder()
+                    GraphIngestParam.builder()
                             .user(user)
                             .document(document)
                             .overlap(knowledgeBase.getIngestMaxOverlap())
