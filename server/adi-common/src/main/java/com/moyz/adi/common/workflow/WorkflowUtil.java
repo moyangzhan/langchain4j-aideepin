@@ -63,13 +63,16 @@ public class WorkflowUtil {
                     TokenUsage tokenUsage = response.metadata().tokenUsage();
                     LLMTokenUtil.cacheTokenUsage(llmService.getStringRedisTemplate(), wfState.getUuid(), tokenUsage);
                     //记录节点级别的 token 消耗 | Record node-level token usage
-                    LLMMetrics nodeMetrics = (LLMMetrics) state.getMetrics();
-                    if (tokenUsage != null) {
-                        nodeMetrics.setInputTokens(tokenUsage.inputTokenCount());
-                        nodeMetrics.setOutputTokens(tokenUsage.outputTokenCount());
+                    if (state.getMetrics() instanceof LLMMetrics nodeMetrics) {
+                        if (tokenUsage != null) {
+                            nodeMetrics.setInputTokens(tokenUsage.inputTokenCount());
+                            nodeMetrics.setOutputTokens(tokenUsage.outputTokenCount());
+                        }
+                        nodeMetrics.setModelName(modelName);
+                        nodeMetrics.setModelPlatform(modelPlatform);
+                    } else {
+                        log.warn("streamingInvokeLLM: metrics is not LLMMetrics, skipping token recording for node {}", node.getUuid());
                     }
-                    nodeMetrics.setModelName(modelName);
-                    nodeMetrics.setModelPlatform(modelPlatform);
                     //Save LLM call record
                     saveLLMCallRecord(wfState, node, modelPlatform, modelName, tokenUsage);
                     NodeIOData output = NodeIOData.createByText(DEFAULT_OUTPUT_PARAM_NAME, "", responseTxt);
@@ -113,9 +116,8 @@ public class WorkflowUtil {
         ChatResponse response = llmService.chat(sseAskParams);
         log.info("llm response:{}", response);
         //记录节点级别的 token 消耗 | Record node-level token usage
-        if (nodeState != null && response.metadata() != null) {
+        if (nodeState != null && nodeState.getMetrics() instanceof LLMMetrics nodeMetrics && response.metadata() != null) {
             TokenUsage tokenUsage = response.metadata().tokenUsage();
-            LLMMetrics nodeMetrics = (LLMMetrics) nodeState.getMetrics();
             if (tokenUsage != null) {
                 nodeMetrics.setInputTokens(tokenUsage.inputTokenCount());
                 nodeMetrics.setOutputTokens(tokenUsage.outputTokenCount());
