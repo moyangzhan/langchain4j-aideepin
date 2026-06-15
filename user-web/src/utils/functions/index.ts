@@ -81,6 +81,7 @@ export function emptyAiModel() {
     modelPlatform: '',
     enable: false,
     isFree: false,
+    type: 'text',
     inputTypes: 'text',
     isReasoner: false,
     isThinkingClosable: false,

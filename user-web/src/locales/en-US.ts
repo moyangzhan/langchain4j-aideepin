@@ -106,6 +106,7 @@ export default {
     failRetryMsg: 'Failed, will retry',
     countdown: 'Countdown: ',
     second: 's',
+    promptLabel: 'Prompt',
   },
   menu: {
     chat: 'Chat',
@@ -446,6 +447,11 @@ export default {
     questionAndAnswer: 'The question and its corresponding answer will be deleted together. Continue?',
   },
   workflow: {
+    characterLabel: 'Character',
+    selectCharacter: 'Select a Character',
+    capabilities: 'Capabilities',
+    toolsLabel: 'Tools',
+    webSearch: 'Web Search',
     onlyCreatorCanSave: 'Only the creator of the workflow can save it',
     saving: 'Saving...',
     startNodeOnlyOne: 'There can only be one start node',

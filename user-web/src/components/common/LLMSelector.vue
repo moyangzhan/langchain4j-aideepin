@@ -1,11 +1,18 @@
 <script setup lang="ts">
-import { h } from 'vue'
+import { computed, h } from 'vue'
 import { NButton, NDropdown, NTooltip } from 'naive-ui'
 import type { DropdownOption } from 'naive-ui'
 import AvatarComponent from '@/views/chat/components/Message/Avatar.vue'
 import { useAppStore } from '@/store'
 
 const appStore = useAppStore()
+
+// Resolve the current model from the authoritative llms list by id, instead of trusting the
+// persisted selectedLLM object (which can drift in localStorage and show a raw modelId as title).
+const currentLLM = computed(() => {
+  const id = appStore.selectedLLM.modelId
+  return (id && appStore.getLLMById(id)) || appStore.selectedLLM
+})
 
 function renderLabel(option: DropdownOption) {
   const val = option.value as string
@@ -57,7 +64,7 @@ function handleSelect(key: string | number) {
     :options="appStore.llms" @select="handleSelect"
   >
     <NButton icon-placement="right">
-      <AvatarComponent :name="appStore.selectedLLM.modelPlatform" :image-size="20" class="mr-1" />{{ appStore.selectedLLM.modelTitle || appStore.selectedLLM.modelName }}
+      <AvatarComponent :name="currentLLM.modelPlatform" :image-size="20" class="mr-1" />{{ currentLLM.modelTitle || currentLLM.modelName }}
     </NButton>
   </NDropdown>
 </template>

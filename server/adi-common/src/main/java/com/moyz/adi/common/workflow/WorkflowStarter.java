@@ -56,6 +56,13 @@ public class WorkflowStarter {
         if (!sseManager.checkOrComplete(user, sseUuid, sseEmitter)) {
             return sseEmitter;
         }
+        // 工作流的 START 事件由异步线程在 WorkflowEngine.run 中发送（需携带 wfRuntimeResp 数据），
+        // 所以这里不能像聊天那样直接调 startSse；只注册 emitter，供异步线程通过 sseUuid 取回使用。
+        // <p>
+        // The workflow START event is sent from the async thread inside WorkflowEngine.run (it
+        // carries the wfRuntimeResp payload), so unlike chat we cannot call startSse here; we only
+        // register the emitter so the async thread can look it up by sseUuid.
+        sseManager.register(sseUuid, sseEmitter, user.getId());
         Workflow workflow = workflowService.getByUuid(workflowUuid);
         if (null == workflow) {
             sseManager.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage(A_WF_NOT_FOUND.getInfo()));

@@ -8,6 +8,7 @@ import { SvgIcon } from '@/components/common'
 import { useIconRender } from '@/hooks/useIconRender'
 import { useAuthStore } from '@/store'
 import { getRealFileUrl } from '@/utils/functions'
+import { formatDuration } from '@/utils/format'
 import { t } from '@/locales'
 interface Props {
   wfRuntime: Workflow.WorkflowRuntime
@@ -17,6 +18,10 @@ interface Props {
   showAvatar?: boolean
   errorMsg?: string
   loading?: boolean
+  // Aggregated run metrics (input/output tokens, total duration in ms)
+  inputTokens?: number
+  outputTokens?: number
+  duration?: number
 }
 const props = withDefaults(defineProps<Props>(), {
   showAvatar: true,
@@ -108,6 +113,9 @@ function openFileInNewTab(filelUrl: string) {
     <div class="overflow-hidden text-sm " :class="[inversion ? 'items-end' : 'items-start']">
       <p class="text-xs text-[#b4bbc4]" :class="[inversion ? 'text-right' : 'text-left']">
         {{ wfRuntime.createTime }}
+        <span v-if="inputTokens != null && inputTokens > 0" class="ml-1">📥 {{ inputTokens }}</span>
+        <span v-if="outputTokens != null && outputTokens > 0" class="ml-1">📤 {{ outputTokens }}</span>
+        <span v-if="duration != null && duration > 0" class="ml-1">⏱ {{ formatDuration(duration) }}</span>
       </p>
       <div class="flex items-center w-full" :class="[{ 'flex-row-reverse': inversion }]">
         <!-- 1、渲染文字 -->

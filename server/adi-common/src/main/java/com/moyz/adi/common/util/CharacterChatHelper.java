@@ -214,8 +214,15 @@ public class CharacterChatHelper {
         Boolean returnThinking = checkIfReturnThinking(aiModel, character);
         builder.returnThinking(returnThinking);
 
-        //Web search
-        builder.enableWebSearch(enableWebSearch);
+        //Web search — drop the flag if the resolved model does not support it,
+        //so a stale config or capability change cannot cause a confusing LLM error.
+        boolean effectiveWebSearch = enableWebSearch;
+        if (effectiveWebSearch && !Boolean.TRUE.equals(aiModel.getIsSupportWebSearch())) {
+            log.warn("Web search requested but model {}/{} does not support it; ignoring flag",
+                    aiModel.getPlatform(), aiModel.getName());
+            effectiveWebSearch = false;
+        }
+        builder.enableWebSearch(effectiveWebSearch);
 
         return builder.build();
     }

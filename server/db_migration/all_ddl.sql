@@ -978,6 +978,9 @@ create table adi_workflow_runtime
     output        jsonb        default '{}'              not null,
     status        smallint     default 1                 not null,
     status_remark varchar(250) default ''                not null,
+    input_tokens  int          default 0                 not null,
+    output_tokens int          default 0                 not null,
+    duration      int          default 0                 not null,
     create_time   timestamp    default CURRENT_TIMESTAMP not null,
     update_time   timestamp    default CURRENT_TIMESTAMP not null,
     is_deleted    boolean      default false             not null
@@ -985,6 +988,9 @@ create table adi_workflow_runtime
 COMMENT ON COLUMN adi_workflow_runtime.input IS '{"userInput01":"text01","userInput02":true,"userInput03":10,"userInput04":["selectedA","selectedB"],"userInput05":["https://a.com/a.xlxs","https://a.com/b.png"]}';
 COMMENT ON COLUMN adi_workflow_runtime.status IS 'Execution status: 1=Ready, 2=In progress, 3=Success, 4=Failed';
 COMMENT ON COLUMN adi_workflow_runtime.status_remark IS 'Status remark';
+COMMENT ON COLUMN adi_workflow_runtime.input_tokens IS 'Total input tokens aggregated from LLM-typed nodes (terminal snapshot, written at success / fail / waiting_input)';
+COMMENT ON COLUMN adi_workflow_runtime.output_tokens IS 'Total output tokens aggregated from LLM-typed nodes (terminal snapshot)';
+COMMENT ON COLUMN adi_workflow_runtime.duration IS 'Total run duration in milliseconds aggregated from all nodes (terminal snapshot)';
 create trigger trigger_workflow_runtime
     before update
     on adi_workflow_runtime
@@ -1004,7 +1010,7 @@ create table adi_workflow_runtime_node
     status              smallint     default 1                 not null,
     status_remark       varchar(250) default ''                not null,
     duration            int          default 0                 not null,
-    metrics             jsonb        default '{}'              not null,
+    metadata            jsonb        default '{}'              not null,
     create_time         timestamp    default CURRENT_TIMESTAMP not null,
     update_time         timestamp    default CURRENT_TIMESTAMP not null,
     is_deleted          boolean      default false             not null
@@ -1017,8 +1023,8 @@ create trigger trigger_workflow_runtime_node
     for each row
 execute procedure update_modified_column();
 
-COMMENT ON COLUMN adi_workflow_runtime_node.duration IS '节点执行耗时（毫秒） | Node execution duration in ms';
-COMMENT ON COLUMN adi_workflow_runtime_node.metrics IS '可观测指标 JSON：token 消耗、HTTP 状态码、搜索结果数等 | Observability metrics JSON';
+COMMENT ON COLUMN adi_workflow_runtime_node.duration IS 'Node execution duration in ms';
+COMMENT ON COLUMN adi_workflow_runtime_node.metadata IS 'Per-node-type runtime metadata as JSON: token usage for LLM nodes, HTTP status code for HTTP nodes, search result counts for search nodes, etc.';
 
 -- ============================================================
 -- MCP: model context protocol services

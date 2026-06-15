@@ -10,6 +10,11 @@ public class ModelInfo {
     private String modelTitle;
     private Boolean enable;
     private String modelPlatform;
+    /**
+     * Model usage type: text / image / vision / embedding / rerank / asr / tts.
+     * Mirrors adi_ai_model.type; exposed so the frontend can filter by purpose.
+     */
+    private String type;
     private String inputTypes;
     private String responseFormatTypes;
     private Boolean isFree;

@@ -269,6 +269,15 @@ public class AdiConstant {
         public static final String WF_NODE_OUTPUT = "[WF_NODE_OUTPUT]";
         public static final String STATE_CHANGED = "[STATE_CHANGED]";
         public static final String TOOL_CALL = "[TOOL_CALL]";
+        /**
+         * Runtime-level aggregated metrics snapshot pushed at terminal status (success / fail /
+         * waiting_input). Frontend looks for this exact tag in RunDetail.vue.
+         */
+        public static final String RUNTIME_METRICS = "[RUNTIME_METRICS]";
+        /**
+         * Per-node metrics event prefix; the full event name is {@code NODE_METRICS_PREFIX + nodeUuid + "]"}.
+         */
+        public static final String NODE_METRICS_PREFIX = "[NODE_METRICS_";
     }
 
     public static class SSEEventData {

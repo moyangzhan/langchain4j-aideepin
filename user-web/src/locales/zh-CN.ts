@@ -106,6 +106,7 @@ export default {
     failRetryMsg: '失败，将重新操作',
     countdown: '倒计时：',
     second: '秒',
+    promptLabel: '提示词',
   },
   menu: {
     chat: '聊天',
@@ -446,6 +447,11 @@ export default {
     questionAndAnswer: '提问及对应的答案会一起删除，继续执行？',
   },
   workflow: {
+    characterLabel: '角色',
+    selectCharacter: '选择角色',
+    capabilities: '能力',
+    toolsLabel: '工具',
+    webSearch: '联网搜索',
     onlyCreatorCanSave: '只有工作流的创建者才能保存',
     saving: '正在保存中...',
     startNodeOnlyOne: '开始节点只能有一个',

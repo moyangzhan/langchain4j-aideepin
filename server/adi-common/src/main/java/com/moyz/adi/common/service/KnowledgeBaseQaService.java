@@ -12,6 +12,7 @@ import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.enums.LLMCallRecordSourceType;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.KnowledgeBaseQaRecordMapper;
+import com.moyz.adi.common.util.EntityRefreshUtil;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.MPPageUtil;
 import com.moyz.adi.common.util.UuidUtil;
@@ -55,8 +56,12 @@ public class KnowledgeBaseQaService extends ServiceImpl<KnowledgeBaseQaRecordMap
         newRecord.setUserId(ThreadContext.getCurrentUserId());
         baseMapper.insert(newRecord);
 
+        // Re-read the row so database-managed columns (create_time / update_time / is_deleted)
+        // are populated before copying into the DTO.
+        KnowledgeBaseQa fresh = EntityRefreshUtil.refresh(baseMapper, newRecord);
+
         KbQaDto result = new KbQaDto();
-        BeanUtils.copyProperties(newRecord, result);
+        BeanUtils.copyProperties(fresh, result);
         return result;
     }
 

@@ -223,8 +223,10 @@ function createSwitcherNode(workflow: Workflow.WorkflowInfo, node: Workflow.Work
 
 function createClassifierNode(node: Workflow.WorkflowNode) {
   const appStore = useAppStore()
+  const first = appStore.getFirstLLM('text')
   node.nodeConfig = {
-    model_name: appStore.getFirstLLM().modelName,
+    model_platform: first?.modelPlatform || '',
+    model_name: first?.modelName || '',
     categories: [
       {
         category_uuid: uuidv4().replace(/-/g, ''),
@@ -242,25 +244,31 @@ function createClassifierNode(node: Workflow.WorkflowNode) {
 
 function createAnswer(node: Workflow.WorkflowNode) {
   const appStore = useAppStore()
+  const first = appStore.getFirstLLM('text')
   node.nodeConfig = {
     prompt: '',
-    model_name: appStore.getFirstLLM().modelName,
+    model_platform: first?.modelPlatform || '',
+    model_name: first?.modelName || '',
   }
 }
 
 function createKeywordExtractor(node: Workflow.WorkflowNode) {
   const appStore = useAppStore()
+  const first = appStore.getFirstLLM('text')
   node.nodeConfig = {
     top_n: 5,
-    model_name: appStore.getFirstLLM().modelName,
+    model_platform: first?.modelPlatform || '',
+    model_name: first?.modelName || '',
   }
 }
 
 function createFaqExtractor(node: Workflow.WorkflowNode) {
   const appStore = useAppStore()
+  const first = appStore.getFirstLLM('text')
   node.nodeConfig = {
     top_n: 5,
-    model_name: appStore.getFirstLLM().modelName,
+    model_platform: first?.modelPlatform || '',
+    model_name: first?.modelName || '',
   }
 }
 

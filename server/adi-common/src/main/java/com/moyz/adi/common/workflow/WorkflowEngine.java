@@ -1,6 +1,8 @@
 package com.moyz.adi.common.workflow;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.moyz.adi.common.cosntant.AdiConstant;
+import com.moyz.adi.common.dto.workflow.WfRuntimeMetricsSummary;
 import com.moyz.adi.common.dto.workflow.WfRuntimeNodeDto;
 import com.moyz.adi.common.dto.workflow.WfRuntimeResp;
 import com.moyz.adi.common.entity.*;
@@ -10,8 +12,10 @@ import com.moyz.adi.common.service.WorkflowRuntimeNodeService;
 import com.moyz.adi.common.service.WorkflowRuntimeService;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.SpringUtil;
+import com.moyz.adi.common.workflow.NodeExecutionMetrics;
 import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.def.WfNodeIO;
+import com.moyz.adi.common.workflow.metrics.LLMMetrics;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -59,6 +63,12 @@ public class WorkflowEngine {
     private User user;
     private WfState wfState;
     private WfRuntimeResp wfRuntimeResp;
+    /**
+     * Wall-clock start of this run (epoch millis), captured once on entry. Used to compute total
+     * runtime duration at terminal status — sum-of-node durations would inflate when parallel
+     * branches execute concurrently.
+     */
+    private long runStartedMillis;
 
     public WorkflowEngine(
             Workflow workflow,
@@ -80,6 +90,7 @@ public class WorkflowEngine {
     public void run(User user, List<ObjectNode> userInputs, String sseUuid) {
         this.user = user;
         this.sseUuid = sseUuid;
+        this.runStartedMillis = System.currentTimeMillis();
         log.info("WorkflowEngine run,userId:{},workflowUuid:{},userInputs:{}", user.getId(), workflow.getUuid(), userInputs);
         if (!this.workflow.getIsEnable()) {
             sseManager.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage(ErrorEnum.A_WF_DISABLED.getInfo()));
@@ -141,10 +152,16 @@ public class WorkflowEngine {
             InterruptedFlow.put(wfState.getUuid(), this);
             //更新状态
             wfState.setProcessStatus(WORKFLOW_PROCESS_STATUS_WAITING_INPUT);
-            workflowRuntimeService.updateOutput(wfRuntimeResp.getId(), wfState);
+            WorkflowRuntime interruptedRuntime = workflowRuntimeService.updateOutput(wfRuntimeResp.getId(), wfState, runStartedMillis, computeTokenSummary());
+            pushRuntimeMetrics(interruptedRuntime);
         } else {
-            WorkflowRuntime updatedRuntime = workflowRuntimeService.updateOutput(wfRuntimeResp.getId(), wfState);
-            sseManager.sendComplete(user.getId(), sseUuid, JsonUtil.toJson(updatedRuntime.getOutput()));
+            WorkflowRuntime updatedRuntime = workflowRuntimeService.updateOutput(wfRuntimeResp.getId(), wfState, runStartedMillis, computeTokenSummary());
+            // Push the terminal metrics snapshot before completing the stream
+            pushRuntimeMetrics(updatedRuntime);
+            // updatedRuntime is null only if the runtime row was concurrently deleted; fall back
+            // to the in-memory wfState output so the client still gets a complete event.
+            ObjectNode output = updatedRuntime != null ? updatedRuntime.getOutput() : null;
+            sseManager.sendComplete(user.getId(), sseUuid, JsonUtil.toJson(output != null ? output : JsonUtil.createObjectNode()));
             InterruptedFlow.remove(wfState.getUuid());
         }
     }
@@ -175,6 +192,7 @@ public class WorkflowEngine {
      */
     public Map<String, Object> blockingRun(User user, List<ObjectNode> userInputs) {
         this.user = user;
+        this.runStartedMillis = System.currentTimeMillis();
         // Create a dummy sseUuid with a dummy emitter and immediately mark it completed,
         // so all SSE send operations in runNode silently skip (COMPLETED_SSE cache check)
         this.sseUuid = "blocking-" + com.moyz.adi.common.util.UuidUtil.createShort();
@@ -234,7 +252,7 @@ public class WorkflowEngine {
                 wfState.setOutput(completedNodes.get(completedNodes.size() - 1).getState().getOutputs());
             }
 
-            WorkflowRuntime updatedRuntime = workflowRuntimeService.updateOutput(wfRuntimeResp.getId(), wfState);
+            WorkflowRuntime updatedRuntime = workflowRuntimeService.updateOutput(wfRuntimeResp.getId(), wfState, runStartedMillis, computeTokenSummary());
 
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("task_id", runtimeUuid);
@@ -246,7 +264,7 @@ public class WorkflowEngine {
         } catch (Throwable e) {
             log.error("blockingRun execution exception, workflowUuid:{}", workflow.getUuid(), e);
             String errorMsg = e.getMessage();
-            workflowRuntimeService.updateStatus(wfRuntimeResp.getId(), WORKFLOW_PROCESS_STATUS_FAIL, errorMsg);
+            workflowRuntimeService.updateStatus(wfRuntimeResp.getId(), WORKFLOW_PROCESS_STATUS_FAIL, errorMsg, runStartedMillis, computeTokenSummary());
 
             Map<String, Object> errorResult = new LinkedHashMap<>();
             errorResult.put("message", errorMsg);
@@ -260,8 +278,60 @@ public class WorkflowEngine {
         if (errorMsg.contains("parallel node doesn't support conditional branch")) {
             errorMsg = "Parallel nodes cannot contain conditional branches";
         }
+        // Persist terminal snapshot (incl. already-consumed tokens) as best-effort; the SSE error
+        // MUST always reach the client even if persistence fails (DB unavailable, row gone, etc.).
+        try {
+            WorkflowRuntime failedRuntime = workflowRuntimeService.updateStatus(wfRuntimeResp.getId(), WORKFLOW_PROCESS_STATUS_FAIL, errorMsg, runStartedMillis, computeTokenSummary());
+            pushRuntimeMetrics(failedRuntime);
+        } catch (Throwable persistenceEx) {
+            log.error("Failed to persist runtime failure status, sending SSE error anyway", persistenceEx);
+        }
         sseManager.sendErrorAndComplete(user.getId(), sseUuid, errorMsg);
-        workflowRuntimeService.updateStatus(wfRuntimeResp.getId(), WORKFLOW_PROCESS_STATUS_FAIL, errorMsg);
+    }
+
+    /**
+     * Push the runtime's terminal metrics snapshot to the client via SSE, so the run list can
+     * render stats for the just-finished run without a page refresh. No-op when no metrics have
+     * been persisted yet.
+     */
+    /**
+     * Aggregate input/output token totals from completed nodes' in-memory metrics, avoiding a DB
+     * round-trip. Only LLM-typed nodes (llm, agent) contribute; other node types are skipped.
+     */
+    private WfRuntimeMetricsSummary computeTokenSummary() {
+        long inputTokens = 0;
+        long outputTokens = 0;
+        long duration = 0;
+        for (AbstractWfNode node : wfState.getCompletedNodes()) {
+            NodeExecutionMetrics metrics = node.getState().getMetrics();
+            if (metrics != null) {
+                duration += metrics.getDurationMs();
+                if (metrics instanceof LLMMetrics llm) {
+                    if (llm.getInputTokens() != null) {
+                        inputTokens += llm.getInputTokens();
+                    }
+                    if (llm.getOutputTokens() != null) {
+                        outputTokens += llm.getOutputTokens();
+                    }
+                }
+            }
+        }
+        return new WfRuntimeMetricsSummary(inputTokens, outputTokens, duration);
+    }
+
+    /**
+     * Push the runtime's terminal metrics snapshot via SSE. The DB columns are NOT NULL DEFAULT 0
+     * so a non-null runtime always has values; null safety is a guard against the caller passing a
+     * runtime that was returned null by updateOutput/updateStatus (row concurrently deleted).
+     */
+    private void pushRuntimeMetrics(WorkflowRuntime runtime) {
+        if (runtime == null) {
+            return;
+        }
+        SseManager.parseAndSendPartialMsg(sseUuid, AdiConstant.SSEEventName.RUNTIME_METRICS,
+                JsonUtil.toJson(Map.of("inputTokens", runtime.getInputTokens(),
+                        "outputTokens", runtime.getOutputTokens(),
+                        "duration", runtime.getDuration())));
     }
 
     private Map<String, Object> runNode(WorkflowNode wfNode, WfNodeState nodeState) {
@@ -294,7 +364,7 @@ public class WorkflowEngine {
                 //Push observability metrics (streaming nodes are handled by streamingResult since token data is only available after stream completes)
                 if (nodeState.getMetrics() != null && nodeState.getMetrics().getDurationMs() > 0
                         && !wfState.getNodeToStreamingGenerator().containsKey(nodeUuid)) {
-                    SseManager.parseAndSendPartialMsg(sseUuid, "[NODE_METRICS_" + nodeUuid + "]", JsonUtil.toJson(nodeState.getMetrics()));
+                    SseManager.parseAndSendPartialMsg(sseUuid, AdiConstant.SSEEventName.NODE_METRICS_PREFIX + nodeUuid + "]", JsonUtil.toJson(nodeState.getMetrics()));
                 }
             });
             if (StringUtils.isNotBlank(processResult.getNextNodeUuid())) {
@@ -338,7 +408,7 @@ public class WorkflowEngine {
                         //流式节点完成时推送可观测指标（token 数据此时才可用）
                         //Push observability metrics when streaming node completes (token data available only now)
                         if (abstractWfNode.getState().getMetrics() != null && abstractWfNode.getState().getMetrics().getDurationMs() > 0) {
-                            SseManager.parseAndSendPartialMsg(sseUuid, "[NODE_METRICS_" + out.node() + "]", JsonUtil.toJson(abstractWfNode.getState().getMetrics()));
+                            SseManager.parseAndSendPartialMsg(sseUuid, AdiConstant.SSEEventName.NODE_METRICS_PREFIX + out.node() + "]", JsonUtil.toJson(abstractWfNode.getState().getMetrics()));
                         }
                     } else {
                         log.warn("Can not find runtime node, node uuid:{}", out.node());

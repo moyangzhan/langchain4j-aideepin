@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.base.JsonNodeTypeHandler;
+import com.moyz.adi.common.base.NodeExecutionMetricsTypeHandler;
+import com.moyz.adi.common.workflow.NodeExecutionMetrics;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -46,6 +48,12 @@ public class WorkflowRuntimeNode extends BaseEntity {
     @TableField("duration")
     private Integer duration;
 
-    @TableField(value = "metrics", jdbcType = JdbcType.JAVA_OBJECT, typeHandler = JsonNodeTypeHandler.class)
-    private ObjectNode metrics;
+    /**
+     * Per-node-type runtime metadata: token usage for LLM nodes, HTTP status code for HTTP nodes,
+     * search result counts for search nodes, etc. Polymorphic — concrete subtype is selected via
+     * the {@code type} discriminator (Jackson {@link com.fasterxml.jackson.annotation.JsonTypeInfo}
+     * on {@link NodeExecutionMetrics}).
+     */
+    @TableField(value = "metadata", jdbcType = JdbcType.JAVA_OBJECT, typeHandler = NodeExecutionMetricsTypeHandler.class)
+    private NodeExecutionMetrics metadata;
 }

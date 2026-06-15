@@ -22,6 +22,7 @@ import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.rag.*;
 import com.moyz.adi.common.service.embedding.IKnowledgeEmbeddingService;
 import com.moyz.adi.common.util.*;
+import com.moyz.adi.common.util.NumberUtil;
 import com.moyz.adi.common.vo.*;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.model.chat.ChatModel;
@@ -398,7 +399,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
         long llmStartTime = System.currentTimeMillis();
         ChatResponse chatResponse = llmService.chat(sseAskParam);
-        int llmDuration = (int) Math.min(System.currentTimeMillis() - llmStartTime, Integer.MAX_VALUE);
+        int llmDuration = NumberUtil.saturatedCastToInt(System.currentTimeMillis() - llmStartTime);
 
         // Update QA record
         KnowledgeBaseQa updateRecord = new KnowledgeBaseQa();
@@ -541,7 +542,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 } else {
                     long llmStartTime = System.currentTimeMillis();
                     sseManager.call(sseAskParam, (response, questionMeta, answerMeta) -> {
-                                answerMeta.setDuration((int) Math.min(System.currentTimeMillis() - llmStartTime, Integer.MAX_VALUE));
+                                answerMeta.setDuration(NumberUtil.saturatedCastToInt(System.currentTimeMillis() - llmStartTime));
                                 sseManager.sendComplete(user.getId(), sseUuid, questionMeta, answerMeta, null);
                                 updateQaRecord(
                                         UpdateQaParam.builder()
@@ -574,7 +575,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 List<ContentRetriever> retrievers = retrieverWrappers.stream().map(RetrieverWrapper::getRetriever).toList();
                 long llmStartTime = System.currentTimeMillis();
                 compositeRag.ragChat(retrievers, sseAskParam, (response, promptMeta, answerMeta) -> {
-                            answerMeta.setDuration((int) Math.min(System.currentTimeMillis() - llmStartTime, Integer.MAX_VALUE));
+                            answerMeta.setDuration(NumberUtil.saturatedCastToInt(System.currentTimeMillis() - llmStartTime));
                             sseManager.sendComplete(user.getId(), sseAskParam.getSseUuid(), promptMeta, answerMeta, null);
                             updateQaRecord(
                                     UpdateQaParam.builder()

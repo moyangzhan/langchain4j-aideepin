@@ -12,6 +12,7 @@ import com.moyz.adi.common.mapper.WorkflowRuntimeNodeMapper;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.MPPageUtil;
 import com.moyz.adi.common.util.PrivilegeUtil;
+import com.moyz.adi.common.util.NumberUtil;
 import com.moyz.adi.common.workflow.WfNodeState;
 import com.moyz.adi.common.workflow.data.NodeIOData;
 import lombok.extern.slf4j.Slf4j;
@@ -97,10 +98,12 @@ public class WorkflowRuntimeNodeService extends ServiceImpl<WorkflowRuntimeNodeM
         }
         updateOne.setStatus(state.getProcessStatus());
         updateOne.setStatusRemark(state.getProcessStatusRemark());
-        //更新可观测指标 | Update observability metrics
-        if (state.getMetrics() != null && state.getMetrics().getDurationMs() > 0) {
-            updateOne.setDuration((int) Math.min(state.getMetrics().getDurationMs(), Integer.MAX_VALUE));
-            updateOne.setMetrics((ObjectNode) JsonUtil.classToJsonNode(state.getMetrics()));
+        //更新可观测指标 | Update observability metrics: persist metadata whenever available,
+        // regardless of whether durationMs is > 0, so token / model info is never silently dropped
+        // for sub-millisecond or cache-hit edge cases.
+        if (state.getMetrics() != null) {
+            updateOne.setDuration(NumberUtil.saturatedCastToInt(state.getMetrics().getDurationMs()));
+            updateOne.setMetadata(state.getMetrics());
         }
         baseMapper.updateById(updateOne);
     }

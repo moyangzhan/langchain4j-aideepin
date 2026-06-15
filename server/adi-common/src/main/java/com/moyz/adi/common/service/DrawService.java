@@ -20,6 +20,7 @@ import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.moyz.adi.common.util.PrivilegeUtil;
 import com.moyz.adi.common.util.UuidUtil;
+import com.moyz.adi.common.util.NumberUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -233,7 +234,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         updateImage.setRespImagesPath(respImagesPath);
         updateImage.setGeneratedImages(localImagesUuid);
         updateImage.setProcessStatus(STATUS_SUCCESS);
-        updateImage.setDuration((int) Math.min(durationMs, Integer.MAX_VALUE));
+        updateImage.setDuration(NumberUtil.saturatedCastToInt(durationMs));
         getBaseMapper().updateById(updateImage);
 
         if (StringUtils.isBlank(localImagesUuid)) {
@@ -250,7 +251,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         updateImage.setId(drawId);
         updateImage.setProcessStatus(STATUS_FAIL);
         updateImage.setProcessStatusRemark(failMsg);
-        updateImage.setDuration((int) Math.min(durationMs, Integer.MAX_VALUE));
+        updateImage.setDuration(NumberUtil.saturatedCastToInt(durationMs));
         getBaseMapper().updateById(updateImage);
     }
 

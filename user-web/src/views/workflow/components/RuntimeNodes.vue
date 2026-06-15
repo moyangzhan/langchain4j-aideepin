@@ -39,50 +39,74 @@ const authStore = useAuthStore()
           {{ node.nodeTitle || t('workflow.nodeTitleNotFound') }}
         </div>
       </div>
-      <div v-if="node.duration || node.metrics" class="flex flex-wrap gap-1.5 px-2 py-1 text-xs text-gray-500">
-        <span v-if="formatDuration(node.duration)" class="bg-gray-100 px-1.5 py-0.5 rounded">
+      <div v-if="node.duration || node.metadata" class="flex flex-wrap gap-1.5 px-2 py-1 text-xs text-gray-500">
+        <span v-if="formatDuration(node.duration)" class="metric-chip">
           ⏱ {{ formatDuration(node.duration) }}
         </span>
-        <span v-if="node.metrics?.inputTokens != null" class="bg-gray-100 px-1.5 py-0.5 rounded">
-          📥 {{ node.metrics.inputTokens }} tokens
-        </span>
-        <span v-if="node.metrics?.outputTokens != null" class="bg-gray-100 px-1.5 py-0.5 rounded">
-          📤 {{ node.metrics.outputTokens }} tokens
-        </span>
-        <span v-if="node.metrics?.modelName" class="bg-gray-100 px-1.5 py-0.5 rounded">
-          🤖 {{ node.metrics.modelName }}
-        </span>
-        <span
-          v-if="node.metrics?.httpStatusCode"
-          class="px-1.5 py-0.5 rounded"
-          :class="node.metrics.httpStatusCode === 200 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'"
-        >
-          HTTP {{ node.metrics.httpStatusCode }}
-        </span>
-        <span v-if="node.metrics?.searchResultCount != null" class="bg-gray-100 px-1.5 py-0.5 rounded">
-          🔍 {{ node.metrics.searchResultCount }} results
-        </span>
-        <span v-if="node.metrics?.retrievalCount != null" class="bg-gray-100 px-1.5 py-0.5 rounded">
-          📚 {{ node.metrics.retrievalCount }} chunks
-        </span>
-        <!-- 图片生成 -->
-        <span v-if="node.metrics?.imageModelName" class="bg-gray-100 px-1.5 py-0.5 rounded">
-          🎨 {{ node.metrics.imageModelName }}
-        </span>
-        <span v-if="node.metrics?.imageSize" class="bg-gray-100 px-1.5 py-0.5 rounded">
-          📐 {{ node.metrics.imageSize }}
-        </span>
-        <!-- 邮件发送 -->
-        <span v-if="node.metrics?.sendSuccess === true" class="bg-green-50 text-green-600 px-1.5 py-0.5 rounded">
-          ✉️ sent to {{ node.metrics.recipientCount }}
-        </span>
-        <!-- 文档提取 -->
-        <span v-if="node.metrics?.fileCount != null" class="bg-gray-100 px-1.5 py-0.5 rounded">
-          📄 {{ node.metrics.fileCount }} files
-        </span>
-        <span v-if="node.metrics?.extractedCharCount != null" class="bg-gray-100 px-1.5 py-0.5 rounded">
-          📝 {{ node.metrics.extractedCharCount }} chars
-        </span>
+        <!-- LLM / Agent: token + model -->
+        <template v-if="node.metadata?.type === 'llm' || node.metadata?.type === 'agent'">
+          <span v-if="node.metadata.inputTokens != null" class="metric-chip">
+            📥 {{ node.metadata.inputTokens }} tokens
+          </span>
+          <span v-if="node.metadata.outputTokens != null" class="metric-chip">
+            📤 {{ node.metadata.outputTokens }} tokens
+          </span>
+          <span v-if="node.metadata.modelName" class="metric-chip">
+            🤖 {{ node.metadata.modelName }}
+          </span>
+        </template>
+        <!-- Agent: extra RAG retrieval count -->
+        <template v-if="node.metadata?.type === 'agent'">
+          <span v-if="node.metadata.retrievalCount != null" class="metric-chip">
+            📚 {{ node.metadata.retrievalCount }} chunks
+          </span>
+        </template>
+        <!-- HTTP request -->
+        <template v-if="node.metadata?.type === 'http_request'">
+          <span
+            v-if="node.metadata.httpStatusCode"
+            class="px-1.5 py-0.5 rounded"
+            :class="node.metadata.httpStatusCode === 200 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'"
+          >
+            HTTP {{ node.metadata.httpStatusCode }}
+          </span>
+        </template>
+        <!-- Search -->
+        <template v-if="node.metadata?.type === 'search'">
+          <span v-if="node.metadata.searchResultCount != null" class="metric-chip">
+            🔍 {{ node.metadata.searchResultCount }} results
+          </span>
+        </template>
+        <!-- Knowledge retrieval -->
+        <template v-if="node.metadata?.type === 'knowledge_retrieval'">
+          <span v-if="node.metadata.retrievalCount != null" class="metric-chip">
+            📚 {{ node.metadata.retrievalCount }} chunks
+          </span>
+        </template>
+        <!-- Image generation -->
+        <template v-if="node.metadata?.type === 'image'">
+          <span v-if="node.metadata.imageModelName" class="metric-chip">
+            🎨 {{ node.metadata.imageModelName }}
+          </span>
+          <span v-if="node.metadata.imageSize" class="metric-chip">
+            📐 {{ node.metadata.imageSize }}
+          </span>
+        </template>
+        <!-- Mail send -->
+        <template v-if="node.metadata?.type === 'mail'">
+          <span v-if="node.metadata.sendSuccess === true" class="bg-green-50 text-green-600 px-1.5 py-0.5 rounded">
+            ✉️ sent to {{ node.metadata.recipientCount }}
+          </span>
+        </template>
+        <!-- Document extractor -->
+        <template v-if="node.metadata?.type === 'document'">
+          <span v-if="node.metadata.fileCount != null" class="metric-chip">
+            📄 {{ node.metadata.fileCount }} files
+          </span>
+          <span v-if="node.metadata.extractedCharCount != null" class="metric-chip">
+            📝 {{ node.metadata.extractedCharCount }} chars
+          </span>
+        </template>
       </div>
       <div class="flex flex-col space-y-2">
         <div class="text-base border-b border-gray-200 py-1">
@@ -121,3 +145,12 @@ const authStore = useAuthStore()
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Compact info chip used to display per-node observability metrics (tokens, model, counts...). */
+.metric-chip {
+  background-color: rgb(243 244 246); /* tailwind bg-gray-100 */
+  padding: 0.125rem 0.375rem;          /* tailwind py-0.5 px-1.5 */
+  border-radius: 0.25rem;              /* tailwind rounded */
+}
+</style>

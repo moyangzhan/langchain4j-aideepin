@@ -79,6 +79,11 @@ declare namespace Workflow {
     createTime: string
     loading: boolean
 
+    // Aggregated metrics across all nodes of this run (input/output tokens from LLM-typed nodes, total duration in ms)
+    inputTokens?: number
+    outputTokens?: number
+    duration?: number
+
     wfUuid: string
     nodes: WfRuntimeNode[]
   }
@@ -96,12 +101,19 @@ declare namespace Workflow {
     statusRemark: string
     createTime: string
     duration: number | null
-    metrics: Record<string, any> | null
+    metadata: AnyNodeMetrics | null
 
     wfComponent: WorkflowComponent
     wfRuntimeUuid: string
     nodeUuid: string
     nodeTitle: string
+  }
+
+  // Runtime-level aggregated metrics snapshot (terminal): tokens from LLM-typed nodes, total duration
+  interface RuntimeMetrics {
+    inputTokens?: number
+    outputTokens?: number
+    duration?: number
   }
 
   // 节点执行可观测指标（基类） | Node execution observability metrics (base)
@@ -159,7 +171,14 @@ declare namespace Workflow {
     extractedCharCount?: number
   }
 
-  type AnyNodeMetrics = LLMMetrics | ImageMetrics | HttpRequestMetrics
+  // Agent 节点指标（在 LLMMetrics 字段之上扩展 RAG / Character 信息） | Agent node metrics
+  interface AgentMetrics extends Omit<LLMMetrics, 'type'> {
+    type: 'agent'
+    retrievalCount?: number
+    characterUuid?: string
+  }
+
+  type AnyNodeMetrics = LLMMetrics | AgentMetrics | ImageMetrics | HttpRequestMetrics
     | SearchMetrics | KnowledgeRetrievalMetrics | MailMetrics | DocumentMetrics
 
   interface WorkflowState {

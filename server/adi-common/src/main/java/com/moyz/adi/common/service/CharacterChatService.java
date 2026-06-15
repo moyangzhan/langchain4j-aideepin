@@ -29,6 +29,7 @@ import com.moyz.adi.common.memory.vo.MemoryAddParam;
 import com.moyz.adi.common.rag.AdiEmbeddingStoreContentRetriever;
 import com.moyz.adi.common.rag.GraphStoreContentRetriever;
 import com.moyz.adi.common.util.*;
+import com.moyz.adi.common.util.NumberUtil;
 import com.moyz.adi.common.vo.*;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -144,7 +145,7 @@ public class CharacterChatService {
                 .build();
         long llmStartTime = System.currentTimeMillis();
         AgentResult result = agentService.invoke(request, user, questionUuid);
-        int llmDuration = (int) Math.min(System.currentTimeMillis() - llmStartTime, Integer.MAX_VALUE);
+        int llmDuration = NumberUtil.saturatedCastToInt(System.currentTimeMillis() - llmStartTime);
 
         // Persist messages to DB
         PromptMeta questionMeta = new PromptMeta(
@@ -299,7 +300,7 @@ public class CharacterChatService {
         try {
             long llmStartTime = System.currentTimeMillis();
             sseManager.call(sseAskParam, (response, questionMeta, answerMeta) -> {
-                answerMeta.setDuration((int) Math.min(System.currentTimeMillis() - llmStartTime, Integer.MAX_VALUE));
+                answerMeta.setDuration(NumberUtil.saturatedCastToInt(System.currentTimeMillis() - llmStartTime));
 
                 AudioInfo audioInfo = null;
                 if (StringUtils.isNotBlank(response.getAudioPath())) {
