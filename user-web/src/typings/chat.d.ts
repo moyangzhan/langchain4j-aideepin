@@ -24,6 +24,14 @@ declare namespace Chat {
 		loading?: boolean
 		audioPlayState: AudioPlayState
 		state?: Map<string, string> //消息状态描述
+
+		//Token observability
+		inputTokens?: number
+		outputTokens?: number
+		duration?: number
+
+		//MCP tool call observability
+		toolCalls?: { toolName: string; durationMs: number; success: boolean }[]
 	}
 
 	interface CharacterPreset {
@@ -121,12 +129,14 @@ declare namespace Chat {
 
 	interface MetaData {
 		question: {
-			tokens: number,
+			inputTokens: number,
 			uuid: string
 		},
 		answer: {
-			tokens: number,
-			uuid: string
+			inputTokens: number,
+			outputTokens: number,
+			uuid: string,
+			duration?: number
 		},
 		audioInfo: AudioInfo
 	}
@@ -180,6 +190,7 @@ declare namespace Chat {
 		userUuid: string
 		userName: string
 		dynamicParams: any
+		duration?: number
 	}
 
 	interface DrawListResp {

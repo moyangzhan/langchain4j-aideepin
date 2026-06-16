@@ -41,11 +41,19 @@ interface AiModelInfo {
   modelPlatform: string
   enable: boolean
   isFree: boolean
+  /**
+   * Model usage type: 'text' | 'image' | 'vision' | 'embedding' | 'rerank' | 'asr' | 'tts'.
+   * Mirrors backend ai_model.type; use this (not inputTypes) to filter by purpose —
+   * many text models support image input and would be wrongly excluded by inputTypes.
+   */
+  type: string
   inputTypes: string
   isReasoner: boolean
   isThinkingClosable: boolean
   isSupportWebSearch: boolean
   properties: object
+  healthStatus?: string
+  healthReason?: string
 
   //for NSelector
   value: string

@@ -14,6 +14,7 @@ import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.data.NodeIODataFilesContent;
 import com.moyz.adi.common.workflow.data.NodeIODataTextContent;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
+import com.moyz.adi.common.workflow.metrics.DocumentMetrics;
 import dev.langchain4j.data.document.Document;
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,6 +31,7 @@ public class DocumentExtractorNode extends AbstractWfNode {
 
     public DocumentExtractorNode(WorkflowComponent wfComponent, WorkflowNode nodeDef, WfState wfState, WfNodeState nodeState) {
         super(wfComponent, nodeDef, wfState, nodeState);
+        state.setMetrics(new DocumentMetrics());
     }
 
     @Override
@@ -58,6 +60,10 @@ public class DocumentExtractorNode extends AbstractWfNode {
         } catch (Exception e) {
             log.error("Failed to parse document", e);
         }
+        //记录文档提取指标 | Record document extraction metrics
+        DocumentMetrics docMetrics = (DocumentMetrics) state.getMetrics();
+        docMetrics.setFileCount(fileUuids.size());
+        docMetrics.setExtractedCharCount(documentText.length());
         NodeIODataTextContent dataContent = new NodeIODataTextContent();
         dataContent.setValue(documentText.toString());
         dataContent.setTitle("");

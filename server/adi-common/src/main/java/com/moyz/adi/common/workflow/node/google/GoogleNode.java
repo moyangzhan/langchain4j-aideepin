@@ -15,9 +15,11 @@ import com.moyz.adi.common.workflow.WfState;
 import com.moyz.adi.common.workflow.WorkflowUtil;
 import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
+import com.moyz.adi.common.workflow.metrics.SearchMetrics;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.Collections;
 import java.util.List;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.WorkflowConstant.DEFAULT_OUTPUT_PARAM_NAME;
@@ -31,6 +33,7 @@ public class GoogleNode extends AbstractWfNode {
 
     public GoogleNode(WorkflowComponent wfComponent, WorkflowNode nodeDef, WfState wfState, WfNodeState nodeState) {
         super(wfComponent, nodeDef, wfState, nodeState);
+        state.setMetrics(new SearchMetrics());
     }
 
     @Override
@@ -60,8 +63,11 @@ public class GoogleNode extends AbstractWfNode {
         if (StringUtils.isNotBlank(searchResult.getErrorMessage())) {
             log.error("Google search error:{}", searchResult.getErrorMessage());
         }
+        //记录搜索指标 | Record search metrics
+        List<SearchReturnWebPage> items = searchResult.getItems() != null ? searchResult.getItems() : Collections.emptyList();
+        ((SearchMetrics) state.getMetrics()).setSearchResultCount(items.size());
         StringBuilder respText = new StringBuilder();
-        for (SearchReturnWebPage searchReturn : searchResult.getItems()) {
+        for (SearchReturnWebPage searchReturn : items) {
             respText.append(searchReturn.getSnippet());
         }
         return NodeProcessResult

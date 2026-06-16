@@ -185,6 +185,14 @@ async function run() {
             humanFeedback.value = true
             humanFeedbackTip.value = chunk || ''
             ms.info(humanFeedbackTip.value)
+          } else if (eventName.includes('[NODE_METRICS_')) {
+            const nodeUuid = eventName.replace('[NODE_METRICS_', '').replace(']', '')
+            const runtimeNodeUuid = nodeUuidToRuntimeNodeUuid.get(nodeUuid) || ''
+            const metrics = JSON.parse(chunk) as Workflow.AnyNodeMetrics
+            wfStore.updateRuntimeNodeMetrics(wfRuntimeUuid.value, runtimeNodeUuid, metrics)
+          } else if (eventName.includes('[RUNTIME_METRICS]')) {
+            const metrics = JSON.parse(chunk) as Workflow.RuntimeMetrics
+            wfStore.updateRuntimeMetrics(wfRuntimeUuid.value, metrics)
           }
         } catch (error) {
           console.error(error)

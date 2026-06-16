@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.base.ThreadContext;
+import com.moyz.adi.common.dto.workflow.WfRuntimeMetricsSummary;
 import com.moyz.adi.common.dto.workflow.WfRuntimeNodeDto;
 import com.moyz.adi.common.dto.workflow.WfRuntimeResp;
 import com.moyz.adi.common.entity.User;
@@ -14,6 +15,7 @@ import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.mapper.WorkflowRunMapper;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.MPPageUtil;
+import com.moyz.adi.common.util.NumberUtil;
 import com.moyz.adi.common.util.PrivilegeUtil;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.workflow.WfState;
@@ -71,12 +73,15 @@ public class WorkflowRuntimeService extends ServiceImpl<WorkflowRunMapper, Workf
         baseMapper.updateById(updateOne);
     }
 
-    public WorkflowRuntime updateOutput(long id, WfState wfState) {
-        WorkflowRuntime node = baseMapper.selectById(id);
-        if (null == node) {
-            log.error("Workflow runtime not found, id:{}", id);
-            return null;
-        }
+    /**
+     * Persist the run output and a terminal metrics snapshot. Returns the same WorkflowRuntime
+     * instance with all written fields populated (id, output, status, snapshot columns) so the
+     * caller can push it via SSE without an extra round-trip; null only if no row matched the id.
+     *
+     * @param runStartedMillis epoch millis when the run started, used for wall-clock duration
+     * @param tokenSummary     pre-computed token totals from the caller (engine has them in memory)
+     */
+    public WorkflowRuntime updateOutput(long id, WfState wfState, long runStartedMillis, WfRuntimeMetricsSummary tokenSummary) {
         WorkflowRuntime updateOne = new WorkflowRuntime();
         updateOne.setId(id);
         ObjectNode ob = JsonUtil.createObjectNode();
@@ -85,21 +90,33 @@ public class WorkflowRuntimeService extends ServiceImpl<WorkflowRunMapper, Workf
         }
         updateOne.setOutput(ob);
         updateOne.setStatus(wfState.getProcessStatus());
-        baseMapper.updateById(updateOne);
+        applyMetricsSnapshot(updateOne, runStartedMillis, tokenSummary);
+        if (baseMapper.updateById(updateOne) == 0) {
+            log.error("Workflow runtime not found, id:{}", id);
+            return null;
+        }
         return updateOne;
     }
 
-    public void updateStatus(long id, int processStatus, String statusRemark) {
-        WorkflowRuntime node = baseMapper.selectById(id);
-        if (null == node) {
-            log.error("Workflow runtime not found, id:{}", id);
-            return;
-        }
+    /**
+     * Update status and persist a terminal metrics snapshot. Returns the same WorkflowRuntime
+     * instance carrying status / status_remark / snapshot columns so the caller can push it via
+     * SSE without an extra round-trip; null only if no row matched the id.
+     *
+     * @param runStartedMillis epoch millis when the run started, used for wall-clock duration
+     * @param tokenSummary     pre-computed token totals from the caller
+     */
+    public WorkflowRuntime updateStatus(long id, int processStatus, String statusRemark, long runStartedMillis, WfRuntimeMetricsSummary tokenSummary) {
         WorkflowRuntime updateOne = new WorkflowRuntime();
         updateOne.setId(id);
         updateOne.setStatus(processStatus);
         updateOne.setStatusRemark(StringUtils.substring(statusRemark, 0, 250));
-        baseMapper.updateById(updateOne);
+        applyMetricsSnapshot(updateOne, runStartedMillis, tokenSummary);
+        if (baseMapper.updateById(updateOne) == 0) {
+            log.error("Workflow runtime not found, id:{}", id);
+            return null;
+        }
+        return updateOne;
     }
 
     public WorkflowRuntime getByUuid(String uuid) {
@@ -123,6 +140,7 @@ public class WorkflowRuntimeService extends ServiceImpl<WorkflowRunMapper, Workf
         Page<WfRuntimeResp> result = new Page<>();
         MPPageUtil.convertToPage(page, result, WfRuntimeResp.class, (source, target) -> {
             fillInputOutput(target);
+            fillMetricsFromEntity(source, target);
             return target;
         });
         return result;
@@ -147,13 +165,9 @@ public class WorkflowRuntimeService extends ServiceImpl<WorkflowRunMapper, Workf
         WfRuntimeResp result = new WfRuntimeResp();
         BeanUtils.copyProperties(runtime, result);
         fillInputOutput(result);
+        fillMetricsFromEntity(runtime, result);
         return result;
     }
-
-//    private void fillNodes(WfRuntimeResp runtimeResp) {
-//        List<WfRuntimeNodeDto> nodes = workflowRuntimeNodeService.listByWfRuntimeId(runtimeResp.getId());
-//        runtimeResp.setNodes(nodes);
-//    }
 
     private void fillInputOutput(WfRuntimeResp target) {
         if (null == target.getInput()) {
@@ -162,6 +176,26 @@ public class WorkflowRuntimeService extends ServiceImpl<WorkflowRunMapper, Workf
         if (null == target.getOutput()) {
             target.setOutput(JsonUtil.createObjectNode());
         }
+    }
+
+    /**
+     * Apply the pre-computed token summary and wall-clock duration onto the update DTO.
+     */
+    private void applyMetricsSnapshot(WorkflowRuntime updateOne, long runStartedMillis, WfRuntimeMetricsSummary summary) {
+        updateOne.setInputTokens(NumberUtil.saturatedCastToInt(summary.inputTokens()));
+        updateOne.setOutputTokens(NumberUtil.saturatedCastToInt(summary.outputTokens()));
+        long wallClockMs = Math.max(0, System.currentTimeMillis() - runStartedMillis);
+        updateOne.setDuration(NumberUtil.saturatedCastToInt(wallClockMs));
+    }
+
+    /**
+     * Copy the persisted flat snapshot onto the resp DTO. Null columns leave the resp fields null
+     * so the UI hides them (e.g. still DOING, or legacy row).
+     */
+    private void fillMetricsFromEntity(WorkflowRuntime source, WfRuntimeResp target) {
+        target.setInputTokens(source.getInputTokens() == null ? null : source.getInputTokens().longValue());
+        target.setOutputTokens(source.getOutputTokens() == null ? null : source.getOutputTokens().longValue());
+        target.setDuration(source.getDuration() == null ? null : source.getDuration().longValue());
     }
 
     public boolean softDelete(String uuid) {

@@ -79,6 +79,11 @@ declare namespace Workflow {
     createTime: string
     loading: boolean
 
+    // Aggregated metrics across all nodes of this run (input/output tokens from LLM-typed nodes, total duration in ms)
+    inputTokens?: number
+    outputTokens?: number
+    duration?: number
+
     wfUuid: string
     nodes: WfRuntimeNode[]
   }
@@ -95,12 +100,86 @@ declare namespace Workflow {
     status: number
     statusRemark: string
     createTime: string
+    duration: number | null
+    metadata: AnyNodeMetrics | null
 
     wfComponent: WorkflowComponent
     wfRuntimeUuid: string
     nodeUuid: string
     nodeTitle: string
   }
+
+  // Runtime-level aggregated metrics snapshot (terminal): tokens from LLM-typed nodes, total duration
+  interface RuntimeMetrics {
+    inputTokens?: number
+    outputTokens?: number
+    duration?: number
+  }
+
+  // 节点执行可观测指标（基类） | Node execution observability metrics (base)
+  interface NodeExecutionMetrics {
+    type?: string
+    durationMs?: number
+  }
+
+  // LLM 节点指标 | LLM node metrics
+  interface LLMMetrics extends NodeExecutionMetrics {
+    type: 'llm'
+    inputTokens?: number
+    outputTokens?: number
+    modelName?: string
+    modelPlatform?: string
+  }
+
+  // 图片生成节点指标 | Image generation node metrics
+  interface ImageMetrics extends NodeExecutionMetrics {
+    type: 'image'
+    imageModelName?: string
+    imageSize?: string
+  }
+
+  // HTTP 请求节点指标 | HTTP request node metrics
+  interface HttpRequestMetrics extends NodeExecutionMetrics {
+    type: 'http_request'
+    httpStatusCode?: number
+    httpMethod?: string
+  }
+
+  // 搜索节点指标 | Search node metrics
+  interface SearchMetrics extends NodeExecutionMetrics {
+    type: 'search'
+    searchResultCount?: number
+  }
+
+  // 知识检索节点指标 | Knowledge retrieval node metrics
+  interface KnowledgeRetrievalMetrics extends NodeExecutionMetrics {
+    type: 'knowledge_retrieval'
+    retrievalCount?: number
+  }
+
+  // 邮件发送节点指标 | Mail send node metrics
+  interface MailMetrics extends NodeExecutionMetrics {
+    type: 'mail'
+    recipientCount?: number
+    sendSuccess?: boolean
+  }
+
+  // 文档提取节点指标 | Document extractor node metrics
+  interface DocumentMetrics extends NodeExecutionMetrics {
+    type: 'document'
+    fileCount?: number
+    extractedCharCount?: number
+  }
+
+  // Agent 节点指标（在 LLMMetrics 字段之上扩展 RAG / Character 信息） | Agent node metrics
+  interface AgentMetrics extends Omit<LLMMetrics, 'type'> {
+    type: 'agent'
+    retrievalCount?: number
+    characterUuid?: string
+  }
+
+  type AnyNodeMetrics = LLMMetrics | AgentMetrics | ImageMetrics | HttpRequestMetrics
+    | SearchMetrics | KnowledgeRetrievalMetrics | MailMetrics | DocumentMetrics
 
   interface WorkflowState {
     showCreateOrEditView: boolean
@@ -305,6 +384,17 @@ declare namespace Workflow {
     timeout: number
     retry_times: number
     clear_html: boolean
+  }
+
+  // Agent node
+  interface NodeConfigAgent implements NodeConfig {
+    character_uuid: string
+    model_platform?: string
+    model_name?: string
+    prompt?: string
+    enable_rag?: boolean
+    enable_mcp?: boolean
+    enable_web_search?: boolean
   }
 
   interface NodeIOData {

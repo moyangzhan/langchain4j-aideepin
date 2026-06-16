@@ -45,6 +45,8 @@ export function createNewNode(
     createMailSend(newWfNode)
   else if (component.name === 'HttpRequest')
     createHttpRequest(newWfNode)
+  else if (component.name === 'Agent')
+    createAgent(newWfNode)
 
   workflow.nodes.push(newWfNode)
   uiWorkflow.nodes.push(wfNodeToUiNode(newWfNode))
@@ -221,8 +223,10 @@ function createSwitcherNode(workflow: Workflow.WorkflowInfo, node: Workflow.Work
 
 function createClassifierNode(node: Workflow.WorkflowNode) {
   const appStore = useAppStore()
+  const first = appStore.getFirstLLM('text')
   node.nodeConfig = {
-    model_name: appStore.getFirstLLM().modelName,
+    model_platform: first?.modelPlatform || '',
+    model_name: first?.modelName || '',
     categories: [
       {
         category_uuid: uuidv4().replace(/-/g, ''),
@@ -240,25 +244,31 @@ function createClassifierNode(node: Workflow.WorkflowNode) {
 
 function createAnswer(node: Workflow.WorkflowNode) {
   const appStore = useAppStore()
+  const first = appStore.getFirstLLM('text')
   node.nodeConfig = {
     prompt: '',
-    model_name: appStore.getFirstLLM().modelName,
+    model_platform: first?.modelPlatform || '',
+    model_name: first?.modelName || '',
   }
 }
 
 function createKeywordExtractor(node: Workflow.WorkflowNode) {
   const appStore = useAppStore()
+  const first = appStore.getFirstLLM('text')
   node.nodeConfig = {
     top_n: 5,
-    model_name: appStore.getFirstLLM().modelName,
+    model_platform: first?.modelPlatform || '',
+    model_name: first?.modelName || '',
   }
 }
 
 function createFaqExtractor(node: Workflow.WorkflowNode) {
   const appStore = useAppStore()
+  const first = appStore.getFirstLLM('text')
   node.nodeConfig = {
     top_n: 5,
-    model_name: appStore.getFirstLLM().modelName,
+    model_platform: first?.modelPlatform || '',
+    model_name: first?.modelName || '',
   }
 }
 
@@ -349,6 +359,15 @@ function createHttpRequest(node: Workflow.WorkflowNode) {
   }
 }
 
+function createAgent(node: Workflow.WorkflowNode) {
+  node.nodeConfig = {
+    character_uuid: '',
+    enable_rag: true,
+    enable_mcp: true,
+    enable_web_search: false,
+  }
+}
+
 export function getInputLabelFromParamName(workflow: Workflow.WorkflowInfo, nodeUuid: string, nodeParamName: string) {
   const node = workflow.nodes.find(node => node.uuid === nodeUuid)
   if (!node)
@@ -409,6 +428,8 @@ export function getIconByComponentName(name: string) {
       return 'carbon:mail-all'
     case 'httprequest':
       return 'carbon:http'
+    case 'agent':
+      return 'carbon:bot'
     case 'end':
       return 'carbon:closed-caption'
     case 'start':
@@ -448,6 +469,8 @@ export function getIconClassByComponentName(name: string) {
       return 'text-amber-800'
     case 'httprequest':
       return 'text-slate-800'
+    case 'agent':
+      return 'text-indigo-800'
     case 'end':
       return 'text-orange-800'
     case 'start':

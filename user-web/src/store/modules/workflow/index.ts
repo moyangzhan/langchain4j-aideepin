@@ -361,6 +361,16 @@ export const useWfStore = defineStore('wf-store', {
 
       wfRuntime.nodes.push(runtimeNode)
     },
+    // Apply the terminal metrics snapshot pushed via the [RUNTIME_METRICS] SSE event so the
+    // just-finished run shows its stats in the list without a page refresh.
+    updateRuntimeMetrics(wfRuntimeUuid: string, metrics: Workflow.RuntimeMetrics) {
+      const wfRuntime = this.getWfRuntime(wfRuntimeUuid)
+      if (!wfRuntime)
+        return
+      wfRuntime.inputTokens = metrics.inputTokens
+      wfRuntime.outputTokens = metrics.outputTokens
+      wfRuntime.duration = metrics.duration
+    },
     appendInputToRuntimeNode(wfRuntimeUuid: string, runtimeNodeUuid: string, inputJson: string) {
       const runtimeNode = this.getRuntimeNode(wfRuntimeUuid, runtimeNodeUuid)
       if (runtimeNode) {
@@ -383,6 +393,13 @@ export const useWfStore = defineStore('wf-store', {
         if (!runtimeNode.output.output)
           runtimeNode.output.output = { value: '', type: 1 }
         runtimeNode.output.output.value = runtimeNode.output.output.value + chunk
+      }
+    },
+    updateRuntimeNodeMetrics(wfRuntimeUuid: string, runtimeNodeUuid: string, metrics: Workflow.AnyNodeMetrics) {
+      const runtimeNode = this.getRuntimeNode(wfRuntimeUuid, runtimeNodeUuid)
+      if (runtimeNode) {
+        runtimeNode.duration = metrics.durationMs ?? null
+        runtimeNode.metadata = metrics
       }
     },
     deleteWfRuntime(wfUuid: string, wfRuntimeUuid: string) {

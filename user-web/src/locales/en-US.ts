@@ -55,6 +55,7 @@ export default {
     name: 'Name',
     view: 'View',
     detail: 'Detail',
+    noAnswer: '[No answer]',
     config: 'Config',
     enable: 'Enable',
     status: 'Status',
@@ -105,6 +106,7 @@ export default {
     failRetryMsg: 'Failed, will retry',
     countdown: 'Countdown: ',
     second: 's',
+    promptLabel: 'Prompt',
   },
   menu: {
     chat: 'Chat',
@@ -206,7 +208,6 @@ export default {
     hitMemory: 'Matched Memory',
     reference: 'Reference',
     graph: 'Graph',
-    noAnswer: '[No answer]',
     referenceMaterial: 'Reference material',
     referenceGraph: 'Reference graph',
     knowledgeBaseManage: 'Knowledge Management',
@@ -446,6 +447,11 @@ export default {
     questionAndAnswer: 'The question and its corresponding answer will be deleted together. Continue?',
   },
   workflow: {
+    characterLabel: 'Character',
+    selectCharacter: 'Select a Character',
+    capabilities: 'Capabilities',
+    toolsLabel: 'Tools',
+    webSearch: 'Web Search',
     onlyCreatorCanSave: 'Only the creator of the workflow can save it',
     saving: 'Saving...',
     startNodeOnlyOne: 'There can only be one start node',
@@ -637,6 +643,7 @@ export default {
       HumanFeedback: 'Human Feedback',
       MailSend: 'Email Send',
       HttpRequest: 'HTTP Request',
+      Agent: 'Agent',
     },
   },
   mcp: {
@@ -674,17 +681,6 @@ export default {
   gallery: {
     publicImage: 'Public Images',
     myLikes: 'My Likes',
-  },
-  aiSearch: {
-    deleteConfirmContent: 'The question and its corresponding answer will be deleted together. Continue?',
-    generating: 'Generating...',
-    loading: 'Loading...',
-    noMore: 'No more data',
-    systemTip: 'System prompt: ',
-    briefMode: 'Brief Mode',
-    detailMode: 'Detail Mode',
-    quote: 'Reference',
-    noAnswer: '[No answer]',
   },
   extApi: {
     apiAccess: 'API',

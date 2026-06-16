@@ -34,6 +34,9 @@ export default {
     updateSuccess: 'Updated successfully',
     updateFailed: 'Update failed',
     fillCompleteInfo: 'Please fill in all required fields',
+    normal: 'Normal',
+    abnormal: 'Abnormal',
+    unknown: 'Unknown',
     deleteConfirmPrefix: 'Data cannot be recovered after deletion. Are you sure you want to delete',
     deleteConfirmSuffix: '?',
     positiveText: 'Confirm',
@@ -142,6 +145,8 @@ export default {
     deletePlatformConfirmPrefix:
       'Data cannot be recovered after deletion, and it may affect model calls. Are you sure you want to delete the platform [',
     deletePlatformConfirmSuffix: ']?',
+    healthCheck: 'Refresh Status',
+    healthCheckSuccess: 'Health check triggered',
     // Table columns
     colBaseUrl: 'Base URL',
     colApiKey: 'API Key',
@@ -505,6 +510,7 @@ export default {
     maxOutputTokens: 'Max Output Tokens',
     config: 'Config',
     setting: 'Config',
+    healthStatus: 'Health',
     // Platform columns
     baseUrl: 'Base URL',
     apiKey: 'API Key',

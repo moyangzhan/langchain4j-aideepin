@@ -34,6 +34,9 @@ export default {
     updateSuccess: '更新成功',
     updateFailed: '更新失败',
     fillCompleteInfo: '请填写完整信息',
+    normal: '正常',
+    abnormal: '异常',
+    unknown: '未知',
     deleteConfirmPrefix: '删除后数据无法恢复，确定要删除',
     deleteConfirmSuffix: '吗?',
     positiveText: '确定',
@@ -139,6 +142,8 @@ export default {
     openaiCompatibleFeedback: '兼容OpenAI API的平台，无需另外增加代码适配',
     deletePlatformConfirmPrefix: '删除后数据无法恢复，并且可能影响到模型调用，确定要删除模型平台【',
     deletePlatformConfirmSuffix: '】吗?',
+    healthCheck: '刷新状态',
+    healthCheckSuccess: '健康探测已触发',
     // Table columns
     colBaseUrl: '接口地址(base_url)',
     colApiKey: 'API Key',
@@ -496,6 +501,7 @@ export default {
     maxOutputTokens: '最大输出token数',
     config: '配置',
     setting: '配置',
+    healthStatus: '健康状态',
     // Platform columns
     baseUrl: '接口地址(base_url)',
     apiKey: 'API Key',

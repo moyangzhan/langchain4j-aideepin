@@ -72,21 +72,6 @@ export function knowledgeBaseEmptyRecord() {
   }
 }
 
-export function aiSearchEmptyRecord() {
-  return {
-    uuid: '',
-    question: '',
-    searchEngineResp: {
-      items: [],
-    },
-    answer: '',
-    loading: false,
-    error: false,
-    createTime: new Date().toLocaleString(),
-    aiModelPlatform: '',
-  }
-}
-
 export function emptyAiModel() {
   return {
     // from api
@@ -96,6 +81,7 @@ export function emptyAiModel() {
     modelPlatform: '',
     enable: false,
     isFree: false,
+    type: 'text',
     inputTypes: 'text',
     isReasoner: false,
     isThinkingClosable: false,
@@ -133,6 +119,7 @@ export function emptyDraw() {
     userUuid: '',
     userName: '',
     dynamicParams: {} as any,
+    duration: 0,
   }
 }
 

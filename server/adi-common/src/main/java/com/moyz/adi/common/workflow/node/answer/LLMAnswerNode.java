@@ -7,6 +7,7 @@ import com.moyz.adi.common.workflow.WfNodeState;
 import com.moyz.adi.common.workflow.WfState;
 import com.moyz.adi.common.workflow.WorkflowUtil;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
+import com.moyz.adi.common.workflow.metrics.LLMMetrics;
 import dev.langchain4j.data.message.UserMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -22,6 +23,7 @@ public class LLMAnswerNode extends AbstractWfNode {
 
     public LLMAnswerNode(WorkflowComponent wfComponent, WorkflowNode nodeDef, WfState wfState, WfNodeState nodeState) {
         super(wfComponent, nodeDef, wfState, nodeState);
+        state.setMetrics(new LLMMetrics());
     }
 
     /**

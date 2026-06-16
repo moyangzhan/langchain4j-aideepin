@@ -7,17 +7,19 @@ import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.helper.SSEEmitterHelper;
+import com.moyz.adi.common.helper.SseManager;
 import com.moyz.adi.common.helper.TtsModelContext;
 import com.moyz.adi.common.interfaces.TriConsumer;
-import com.moyz.adi.common.languagemodel.data.InnerStreamChatParams;
+import com.moyz.adi.common.languagemodel.data.InnerStreamChatParam;
 import com.moyz.adi.common.languagemodel.data.LLMException;
 import com.moyz.adi.common.languagemodel.data.LLMResponseContent;
 import com.moyz.adi.common.memory.shortterm.MapDBChatMemoryStore;
 import com.moyz.adi.common.rag.TokenEstimatorFactory;
 import com.moyz.adi.common.rag.TokenEstimatorThreadLocal;
+import com.moyz.adi.common.service.ModelHealthService;
 import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.vo.*;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
@@ -108,7 +110,7 @@ public abstract class AbstractLLMService extends CommonModelService {
      */
     public abstract boolean isEnabled();
 
-    protected boolean checkBeforeChat(SseAskParams params) {
+    protected boolean checkBeforeChat(SseAskParam params) {
         return true;
     }
 
@@ -126,6 +128,43 @@ public abstract class AbstractLLMService extends CommonModelService {
         return doBuildChatModel(tmpProperties);
     }
 
+    /**
+     * 健康探测：向模型发送最小化请求验证可用性
+     * <p>
+     * Health probe: send a minimal request to verify the model is reachable.
+     * </p>
+     *
+     * @return true if the model responded successfully
+     */
+    public boolean performHealthCheck() {
+        try {
+            ChatModel chatModel = buildChatLLM(ChatModelBuilderProperties.builder().build());
+            ChatRequest request = ChatRequest.builder()
+                    .messages(List.of(UserMessage.from("hi")))
+                    .parameters(ChatRequestParameters.builder().maxOutputTokens(1).build())
+                    .build();
+            chatModel.chat(request);
+            return true;
+        } catch (Exception e) {
+            log.warn("Health check failed for model {}: {}", aiModel.getName(), e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Record a user-facing LLM invocation failure so that the model can be
+     * marked UNHEALTHY after consecutive failures.
+     */
+    private void recordInvocationFailure(Throwable error) {
+        try {
+            ModelHealthService healthService = SpringUtil.getBean(ModelHealthService.class);
+            String reason = error.getCause() != null ? error.getCause().getMessage() : error.getMessage();
+            healthService.recordFailure(aiModel.getName(), reason);
+        } catch (Exception ignored) {
+            // ModelHealthService may not be available (e.g. during startup)
+        }
+    }
+
     protected abstract ChatModel doBuildChatModel(ChatModelBuilderProperties properties);
 
     public abstract StreamingChatModel buildStreamingChatModel(ChatModelBuilderProperties properties);
@@ -141,7 +180,7 @@ public abstract class AbstractLLMService extends CommonModelService {
      * @param params   请求参数 / Request parameters
      * @param consumer 响应结果回调 / Response result callback
      */
-    public void streamingChat(SseAskParams params, TriConsumer<LLMResponseContent, PromptMeta, AnswerMeta> consumer) {
+    public void streamingChat(SseAskParam params, TriConsumer<LLMResponseContent, PromptMeta, AnswerMeta> consumer) {
         if (!isEnabled()) {
             log.error("llm service is disabled");
             throw new BaseException(B_LLM_SERVICE_DISABLED);
@@ -150,18 +189,18 @@ public abstract class AbstractLLMService extends CommonModelService {
             log.error("Chat parameter validation failed");
             throw new BaseException(A_PARAMS_ERROR);
         }
-        ChatModelRequestParams httpRequestParams = params.getHttpRequestParams();
+        ChatModelRequest httpRequestParams = params.getHttpRequestParams();
         ChatModelBuilderProperties modelProperties = params.getModelProperties();
         log.info("sseChat,messageId:{}", httpRequestParams.getMemoryId());
 
         ChatRequest chatRequest = createChatRequest(httpRequestParams);
         StreamingChatModel streamingChatModel = buildStreamingChatModel(modelProperties);
-        InnerStreamChatParams innerStreamChatParams = InnerStreamChatParams.builder()
+        InnerStreamChatParam innerStreamChatParam = InnerStreamChatParam.builder()
                 .uuid(params.getUuid())
                 .user(params.getUser())
                 .streamingChatModel(streamingChatModel)
                 .chatRequest(chatRequest)
-                .sseEmitter(params.getSseEmitter())
+                .sseUuid(params.getSseUuid())
                 .mcpClients(httpRequestParams.getMcpClients())
                 .answerContentType(params.getAnswerContentType())
                 .consumer(consumer)
@@ -182,16 +221,18 @@ public abstract class AbstractLLMService extends CommonModelService {
                     byte[] frameBytes = new byte[audioFrame.remaining()];
                     audioFrame.get(frameBytes);
                     String base64Audio = Base64.getEncoder().encodeToString(frameBytes);
-                    SSEEmitterHelper.sendAudio(params.getSseEmitter(), base64Audio);
+                    SseManager.sendAudio(params.getSseUuid(), base64Audio);
                 }, jobInfo::setFilePath, (String errorMsg) -> log.error("tts error: {}", errorMsg));
             }
 
             //不管是不是需要返回音频文件，都需要innerStreamingChat()
             // Regardless of whether an audio file needs to be returned, innerStreamingChat() is always needed
-            innerStreamingChat(innerStreamChatParams);
+            innerStreamingChat(innerStreamChatParam);
         } catch (Exception e) {
             ttsJobCache.invalidate(params.getUser().getUuid());
-            closeMcpClients(params.getHttpRequestParams().getMcpClients());
+            if (params.getHttpRequestParams() != null) {
+                closeMcpClients(params.getHttpRequestParams().getMcpClients());
+            }
             throw e;
         }
 
@@ -205,10 +246,10 @@ public abstract class AbstractLLMService extends CommonModelService {
      */
     private static final int MAX_TOOL_CALL_DEPTH = 5;
 
-    private void innerStreamingChat(InnerStreamChatParams params) {
+    private void innerStreamingChat(InnerStreamChatParam params) {
         if (params.getToolCallDepth() >= MAX_TOOL_CALL_DEPTH) {
             log.error("Tool call recursion depth exceeded {} times, terminating execution", MAX_TOOL_CALL_DEPTH);
-            SSEEmitterHelper.errorAndShutdown(new RuntimeException("Tool call count exceeded limit"), params.getSseEmitter());
+            SseManager.errorAndShutdown(new RuntimeException("Tool call count exceeded limit"), params.getSseUuid());
             closeMcpClients(params.getMcpClients());
             return;
         }
@@ -216,13 +257,13 @@ public abstract class AbstractLLMService extends CommonModelService {
         params.getStreamingChatModel().chat(params.getChatRequest(), new StreamingChatResponseHandler() {
             @Override
             public void onPartialResponse(String partialResponse) {
-                SSEEmitterHelper.parseAndSendPartialMsg(params.getSseEmitter(), partialResponse);
+                SseManager.parseAndSendPartialMsg(params.getSseUuid(), partialResponse);
                 ttsOnPartialMessage(params, partialResponse);
             }
 
             @Override
             public void onPartialThinking(PartialThinking partialThinking) {
-                SSEEmitterHelper.sendThinking(params.getSseEmitter(), partialThinking.text());
+                SseManager.sendThinking(params.getSseUuid(), partialThinking.text());
             }
 
             @Override
@@ -231,7 +272,7 @@ public abstract class AbstractLLMService extends CommonModelService {
                 if (responseAiMessage.hasToolExecutionRequests()) {
                     // 如果有工具执行请求
                     // If there are tool execution requests
-                    List<ToolExecutionResultMessage> toolExecutionMessages = createToolExecutionMessages(responseAiMessage, toolSpecificationMcpClientMap);
+                    List<ToolExecutionResultMessage> toolExecutionMessages = createToolExecutionMessages(responseAiMessage, toolSpecificationMcpClientMap, params.getSseUuid());
 
                     //mcp调用消息格式参考：https://docs.langchain4j.dev/tutorials/tools/
                     AiMessage aiMessage = AiMessage.aiMessage(responseAiMessage.toolExecutionRequests());
@@ -249,7 +290,7 @@ public abstract class AbstractLLMService extends CommonModelService {
                     TtsJobInfo jobInfo = ttsOnComplete(params);
                     String filePath = null != jobInfo ? jobInfo.getFilePath() : null;
                     //结束整个对话任务
-                    Pair<PromptMeta, AnswerMeta> pair = SSEEmitterHelper.calculateToken(response, params.getUuid());
+                    Pair<PromptMeta, AnswerMeta> pair = SseManager.calculateToken(response, params.getUuid());
                     params.getConsumer().accept(new LLMResponseContent(response.aiMessage().thinking(), response.aiMessage().text(), filePath), pair.getLeft(), pair.getRight());
                     closeMcpClients(params.getMcpClients());
                 }
@@ -257,13 +298,14 @@ public abstract class AbstractLLMService extends CommonModelService {
 
             @Override
             public void onError(Throwable error) {
-                SSEEmitterHelper.errorAndShutdown(error, params.getSseEmitter());
+                recordInvocationFailure(error);
+                SseManager.errorAndShutdown(error, params.getSseUuid());
                 closeMcpClients(params.getMcpClients());
             }
         });
     }
 
-    public ChatResponse chat(SseAskParams params) {
+    public ChatResponse chat(SseAskParam params) {
         if (!isEnabled()) {
             log.error("llm service is disabled");
             throw new BaseException(B_LLM_SERVICE_DISABLED);
@@ -273,18 +315,23 @@ public abstract class AbstractLLMService extends CommonModelService {
             throw new BaseException(A_PARAMS_ERROR);
         }
 
-        ChatModelRequestParams chatModelRequestParams = params.getHttpRequestParams();
+        ChatModelRequest chatModelRequest = params.getHttpRequestParams();
         ChatModelBuilderProperties modelProperties = params.getModelProperties();
         ChatModel chatModel = buildChatLLM(modelProperties);
-        ChatRequest chatRequest = createChatRequest(chatModelRequestParams);
+        ChatRequest chatRequest = createChatRequest(chatModelRequest);
 
-        ChatResponse chatResponse = chatModel.chat(chatRequest);
-        if (chatResponse.aiMessage().hasToolExecutionRequests()) {
-            return innerChat(params.getUuid(), chatModel, chatModelRequestParams, chatRequest);
+        try {
+            ChatResponse chatResponse = chatModel.chat(chatRequest);
+            if (chatResponse.aiMessage().hasToolExecutionRequests()) {
+                return innerChat(params.getUuid(), chatModel, chatModelRequest, chatRequest);
+            }
+
+            cacheTokenUsage(params.getUuid(), chatResponse);
+            return chatResponse;
+        } catch (Exception e) {
+            recordInvocationFailure(e);
+            throw e;
         }
-
-        cacheTokenUsage(params.getUuid(), chatResponse);
-        return chatResponse;
     }
 
     /**
@@ -293,15 +340,15 @@ public abstract class AbstractLLMService extends CommonModelService {
      *
      * @param uuid                   唯一标识 / Unique identifier
      * @param chatModel              聊天模型 / Chat model
-     * @param chatModelRequestParams 聊天模型参数 / Chat model parameters
+     * @param chatModelRequest 聊天模型参数 / Chat model parameters
      * @param chatRequest            聊天请求 / Chat request
      * @return ChatResponse 聊天响应 / Chat response
      */
-    private ChatResponse innerChat(String uuid, ChatModel chatModel, ChatModelRequestParams chatModelRequestParams, ChatRequest chatRequest) {
-        return innerChatWithDepth(uuid, chatModel, chatModelRequestParams, chatRequest, 0);
+    private ChatResponse innerChat(String uuid, ChatModel chatModel, ChatModelRequest chatModelRequest, ChatRequest chatRequest) {
+        return innerChatWithDepth(uuid, chatModel, chatModelRequest, chatRequest, 0);
     }
 
-    private ChatResponse innerChatWithDepth(String uuid, ChatModel chatModel, ChatModelRequestParams chatModelRequestParams, ChatRequest chatRequest, int depth) {
+    private ChatResponse innerChatWithDepth(String uuid, ChatModel chatModel, ChatModelRequest chatModelRequest, ChatRequest chatRequest, int depth) {
         if (depth >= MAX_TOOL_CALL_DEPTH) {
             log.error("Tool call recursion depth exceeded {} times, terminating execution", MAX_TOOL_CALL_DEPTH);
             throw new BaseException(ErrorEnum.B_LLM_SERVICE_DISABLED);
@@ -310,8 +357,8 @@ public abstract class AbstractLLMService extends CommonModelService {
             ChatResponse chatResponse = chatModel.chat(chatRequest);
             AiMessage responseAiMessage = chatResponse.aiMessage();
             if (responseAiMessage.hasToolExecutionRequests()) {
-                Map<ToolSpecification, McpClient> toolSpecificationMcpClientMap = getRequestTools(chatModelRequestParams.getMcpClients());
-                List<ToolExecutionResultMessage> toolExecutionMessages = createToolExecutionMessages(responseAiMessage, toolSpecificationMcpClientMap);
+                Map<ToolSpecification, McpClient> toolSpecificationMcpClientMap = getRequestTools(chatModelRequest.getMcpClients());
+                List<ToolExecutionResultMessage> toolExecutionMessages = createToolExecutionMessages(responseAiMessage, toolSpecificationMcpClientMap, null);
 
                 AiMessage aiMessage = AiMessage.aiMessage(responseAiMessage.toolExecutionRequests());
                 List<ChatMessage> messages = new ArrayList<>(chatRequest.messages());
@@ -320,7 +367,7 @@ public abstract class AbstractLLMService extends CommonModelService {
 
                 cacheTokenUsage(uuid, chatResponse);
 
-                return innerChatWithDepth(uuid, chatModel, chatModelRequestParams, ChatRequest.builder()
+                return innerChatWithDepth(uuid, chatModel, chatModelRequest, ChatRequest.builder()
                         .messages(messages)
                         .parameters(chatRequest.parameters())
                         .build(), depth + 1);
@@ -329,7 +376,7 @@ public abstract class AbstractLLMService extends CommonModelService {
             return chatResponse;
         } finally {
             if (depth == 0) {
-                closeMcpClients(chatModelRequestParams.getMcpClients());
+                closeMcpClients(chatModelRequest.getMcpClients());
             }
         }
     }
@@ -349,10 +396,10 @@ public abstract class AbstractLLMService extends CommonModelService {
     }
 
 
-    private List<ChatMessage> createChatMessages(ChatModelRequestParams chatModelRequestParams) {
-        String memoryId = chatModelRequestParams.getMemoryId();
+    private List<ChatMessage> createChatMessages(ChatModelRequest chatModelRequest) {
+        String memoryId = chatModelRequest.getMemoryId();
         List<Content> userContents = new ArrayList<>();
-        userContents.add(TextContent.from(chatModelRequestParams.getUserMessage()));
+        userContents.add(TextContent.from(chatModelRequest.getUserMessage()));
         List<ChatMessage> chatMessages = new ArrayList<>();
         if (StringUtils.isNotBlank(memoryId)) {
 
@@ -371,8 +418,8 @@ public abstract class AbstractLLMService extends CommonModelService {
                     .id(memoryId)
                     .maxTokens(aiModel.getMaxInputTokens(), tokenCountEstimator)
                     .build();
-            if (StringUtils.isNotBlank(chatModelRequestParams.getSystemMessage())) {
-                memory.add(SystemMessage.from(chatModelRequestParams.getSystemMessage()));
+            if (StringUtils.isNotBlank(chatModelRequest.getSystemMessage())) {
+                memory.add(SystemMessage.from(chatModelRequest.getSystemMessage()));
             }
 
             //处理重复的UserMessage
@@ -395,7 +442,7 @@ public abstract class AbstractLLMService extends CommonModelService {
             //AI services currently do not support multimodality, use the low-level API for this. https://docs.langchain4j.dev/tutorials/ai-services#multimodality
             //重新组装用户消息及追加图片消息到chatMessage
             // Reassemble user message and append image messages to chatMessage
-            List<Content> imageContents = ImageUtil.urlsToImageContent(chatModelRequestParams.getImageUrls());
+            List<Content> imageContents = ImageUtil.urlsToImageContent(chatModelRequest.getImageUrls());
             if (CollectionUtils.isNotEmpty(imageContents)) {
                 int lastIndex = chatMessages.size() - 1;
                 UserMessage lastMessage = (UserMessage) chatMessages.get(lastIndex);
@@ -407,10 +454,10 @@ public abstract class AbstractLLMService extends CommonModelService {
             }
             return chatMessages;
         } else {
-            if (StringUtils.isNotBlank(chatModelRequestParams.getSystemMessage())) {
-                chatMessages.add(SystemMessage.from(chatModelRequestParams.getSystemMessage()));
+            if (StringUtils.isNotBlank(chatModelRequest.getSystemMessage())) {
+                chatMessages.add(SystemMessage.from(chatModelRequest.getSystemMessage()));
             }
-            List<Content> imageContents = ImageUtil.urlsToImageContent(chatModelRequestParams.getImageUrls());
+            List<Content> imageContents = ImageUtil.urlsToImageContent(chatModelRequest.getImageUrls());
             if (CollectionUtils.isNotEmpty(imageContents)) {
                 userContents.addAll(imageContents);
             }
@@ -421,6 +468,9 @@ public abstract class AbstractLLMService extends CommonModelService {
 
     private Map<ToolSpecification, McpClient> getRequestTools(List<McpClient> mcpClients) {
         Map<ToolSpecification, McpClient> tools = new HashMap<>();
+        if (mcpClients == null || mcpClients.isEmpty()) {
+            return tools;
+        }
         // MCP Tools
         for (McpClient mcpClient : mcpClients) {
             for (ToolSpecification toolSpecification : mcpClient.listTools()) {
@@ -436,23 +486,13 @@ public abstract class AbstractLLMService extends CommonModelService {
         return tools;
     }
 
-    private ChatRequest createChatRequest(ChatModelRequestParams httpRequestParams) {
+    private ChatRequest createChatRequest(ChatModelRequest httpRequestParams) {
 
         log.info("sseChat,messageId:{}", httpRequestParams.getMemoryId());
         List<ChatMessage> chatMessages = createChatMessages(httpRequestParams);
 
-        // DeepSeek 深度思考模式与工具调用不兼容（langchain4j #3461: partialArguments cannot be null）
-        // DeepSeek deep thinking mode is incompatible with tool calls (langchain4j #3461: partialArguments cannot be null)
-        // TODO: 升级 langchain4j 后移除此 workaround / Remove this workaround after upgrading langchain4j
         List<ToolSpecification> toolSpecifications = new ArrayList<>();
         List<McpClient> mcpClients = httpRequestParams.getMcpClients();
-        boolean isDeepSeekThinking = Boolean.TRUE.equals(httpRequestParams.getReturnThinking())
-                && aiModel.getName().toLowerCase().contains("deepseek");
-        if (isDeepSeekThinking && !CollectionUtils.isEmpty(mcpClients)) {
-            log.warn("DeepSeek deep thinking mode skips MCP tools (langchain4j #3461 workaround, remove after upgrade)");
-            mcpClients = Collections.emptyList();
-            httpRequestParams.setMcpClients(mcpClients);
-        }
         if (!CollectionUtils.isEmpty(mcpClients)) {
             log.info("mcp clients configured, creating tool specs");
             ToolProvider toolProvider = McpToolProvider.builder()
@@ -489,11 +529,7 @@ public abstract class AbstractLLMService extends CommonModelService {
             customParameters.put(ENABLE_THINKING, httpRequestParams.getReturnThinking());
         }
         if (null != httpRequestParams.getEnableWebSearch()) {
-            if (isDeepSeekThinking) {
-                log.warn("DeepSeek deep thinking mode skips web search (langchain4j #3461 workaround, remove after upgrade)");
-            } else {
-                customParameters.put(ENABLE_WEB_SEARCH, httpRequestParams.getEnableWebSearch());
-            }
+            customParameters.put(ENABLE_WEB_SEARCH, httpRequestParams.getEnableWebSearch());
         }
         ChatRequestParameters parameters = doCreateChatRequestParameters(builder.build(), customParameters);
 
@@ -507,7 +543,7 @@ public abstract class AbstractLLMService extends CommonModelService {
         return defaultParameters;
     }
 
-    private List<ToolExecutionResultMessage> createToolExecutionMessages(AiMessage aiMessage, Map<ToolSpecification, McpClient> toolSpecificationMcpClientMap) {
+    private List<ToolExecutionResultMessage> createToolExecutionMessages(AiMessage aiMessage, Map<ToolSpecification, McpClient> toolSpecificationMcpClientMap, String sseUuid) {
         List<ToolExecutionResultMessage> toolExecutionMessages = new ArrayList<>();
         aiMessage.toolExecutionRequests().forEach(req -> {
             log.warn("tool exec request:{},", req);
@@ -523,13 +559,18 @@ public abstract class AbstractLLMService extends CommonModelService {
                         "No Tool executor found for this tool request"));
                 return;
             }
+            long toolStart = System.currentTimeMillis();
             try {
                 final ToolExecutionResult toolResult = selectedMcpClient.executeTool(req);
+                long toolDuration = System.currentTimeMillis() - toolStart;
                 final String result = toolResult.resultText();
-                log.info("tool execute result:{}", result);
+                log.info("tool execute result:{},duration:{}ms", result, toolDuration);
+                SseManager.sendToolCall(sseUuid, req.name(), toolDuration, true);
                 toolExecutionMessages.add(ToolExecutionResultMessage.from(req, result));
             } catch (Exception e) {
-                log.debug("Error executing tool " + req, e);
+                long toolDuration = System.currentTimeMillis() - toolStart;
+                log.debug("Error executing tool {},duration:{}ms,req:{}", req.name(), toolDuration, req, e);
+                SseManager.sendToolCall(sseUuid, req.name(), toolDuration, false);
                 toolExecutionMessages.add(ToolExecutionResultMessage.from(req, e.getMessage()));
             }
         });
@@ -545,7 +586,7 @@ public abstract class AbstractLLMService extends CommonModelService {
      * @param params          内部迭代方法入参 / Internal iteration method input
      * @param partialResponse 文本内容 / Text content
      */
-    private void ttsOnPartialMessage(InnerStreamChatParams params, String partialResponse) {
+    private void ttsOnPartialMessage(InnerStreamChatParam params, String partialResponse) {
         TtsJobInfo jobInfo = ttsJobCache.getIfPresent(params.getUser().getUuid());
         if (null != jobInfo && null != jobInfo.getTtsModelContext()
             && AdiConstant.TtsConstant.SYNTHESIZER_SERVER.equals(ttsSetting.getSynthesizerSide())
@@ -554,11 +595,14 @@ public abstract class AbstractLLMService extends CommonModelService {
         }
     }
 
-    private TtsJobInfo ttsOnComplete(InnerStreamChatParams params) {
+    private TtsJobInfo ttsOnComplete(InnerStreamChatParam params) {
         TtsJobInfo jobInfo = ttsJobCache.getIfPresent(params.getUser().getUuid());
         if (null != jobInfo && null != jobInfo.getTtsModelContext()) {
-            //TODO。。。 停止转换任务，此时有可能导致只合成部分音频，待处理
-            // TODO: Stop the conversion task, this may result in only partial audio synthesis, to be handled
+            // complete() 内部会阻塞至 TTS 异步回调结束（最多 30s），保证 jobInfo.filePath 已被回填。
+            // 详见 AbstractTtsModelService#complete 的模板方法实现。
+            // <p>
+            // complete() blocks until the TTS async callback finishes (up to 30s), guaranteeing that
+            // jobInfo.filePath has been populated. See the template method in AbstractTtsModelService#complete.
             jobInfo.getTtsModelContext().complete(jobInfo.getJobId());
         }
         //Remove job info
@@ -567,6 +611,9 @@ public abstract class AbstractLLMService extends CommonModelService {
     }
 
     private void closeMcpClients(List<McpClient> mcpClients) {
+        if (mcpClients == null) {
+            return;
+        }
         mcpClients.forEach(item -> {
             try {
                 item.close();

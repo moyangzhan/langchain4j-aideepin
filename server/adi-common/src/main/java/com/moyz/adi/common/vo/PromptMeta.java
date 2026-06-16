@@ -8,6 +8,6 @@ import lombok.Data;
 @Builder
 @AllArgsConstructor
 public class PromptMeta {
-    private Integer tokens;
+    private Integer inputTokens;
     private String uuid;
 }

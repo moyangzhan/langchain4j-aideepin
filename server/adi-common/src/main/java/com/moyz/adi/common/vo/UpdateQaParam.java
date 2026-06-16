@@ -11,12 +11,13 @@ import java.util.List;
 
 @Data
 @Builder
-public class UpdateQaParams {
+public class UpdateQaParam {
     private User user;
     private KnowledgeBaseQa qaRecord;
-    private SseAskParams sseAskParams;
+    private SseAskParam sseAskParam;
     @Nullable
     private List<ContentRetriever> retrievers;
     private String response;
+    private int duration;
     private boolean isTokenFree;
 }

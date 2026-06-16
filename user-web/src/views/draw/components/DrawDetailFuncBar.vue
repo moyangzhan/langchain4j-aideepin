@@ -8,6 +8,7 @@ import defaultAvatar from '@/assets/avatar.jpg'
 import NoPic from '@/assets/no_pic.png'
 import api from '@/api'
 import { emptyDraw, getRealFileUrl } from '@/utils/functions'
+import { formatDuration } from '@/utils/format'
 
 const props = withDefaults(defineProps<Props>(), {
   draw: () => emptyDraw(),
@@ -53,27 +54,30 @@ async function handleStar(uuid: string) {
 
 <template>
   <NFlex vertical>
-    <NFlex justify="space-between" align="center">
-      <!-- 不可点击按钮组 -->
-      <NFlex align="center">
-        <NTag size="large" :bordered="false" :color="{ color: '#ff000000' }">
-          {{ draw.userName }}
-          <template #avatar>
-            <NAvatar
-              :src="draw.userUuid ? `/api/user/avatar/${draw.userUuid}` : defaultAvatar" size="large" :fallback-src="defaultAvatar"
-              color="#ff0000000"
-            />
-          </template>
-        </NTag>
+    <!-- 用户行 -->
+    <NTag size="medium" :bordered="false" round :color="{ color: '#ff000000' }">
+      {{ draw.userName }}
+      <template #avatar>
+        <NAvatar
+          :src="draw.userUuid ? `/api/user/avatar/${draw.userUuid}` : defaultAvatar" size="medium" :fallback-src="defaultAvatar"
+          color="#ff0000000"
+        />
+      </template>
+    </NTag>
+    <!-- 标签行：信息靠左，操作靠右 -->
+    <NFlex justify="space-between" align="center" wrap :gap="4">
+      <NFlex align="center" :gap="4">
         <NTag size="medium" :bordered="false" round :color="{ color: '#ff000000' }">
           {{ draw.aiModelName }}
           <template #icon>
             <NIcon :component="ModelAlt" />
           </template>
         </NTag>
+        <NTag v-if="formatDuration(draw.duration)" size="medium" :bordered="false" round :color="{ color: '#ff000000' }">
+          ⏱ {{ formatDuration(draw.duration) }}
+        </NTag>
       </NFlex>
-      <!-- 可点击按钮组 -->
-      <NFlex align="center">
+      <NFlex align="center" :gap="4">
         <NTag
           size="medium" :bordered="false" round :color="{ color: '#ff000000' }"
           :checkable="userStore.userInfo.uuid === draw.userUuid" @click="handleSetPublic(draw.uuid, !draw.isPublic)"

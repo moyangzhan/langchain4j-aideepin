@@ -12,6 +12,7 @@ import com.moyz.adi.common.workflow.WfState;
 import com.moyz.adi.common.workflow.WorkflowUtil;
 import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
+import com.moyz.adi.common.workflow.metrics.LLMMetrics;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -34,6 +35,7 @@ public class KeywordExtractorNode extends AbstractWfNode {
 
     public KeywordExtractorNode(WorkflowComponent wfComponent, WorkflowNode nodeDef, WfState wfState, WfNodeState nodeState) {
         super(wfComponent, nodeDef, wfState, nodeState);
+        state.setMetrics(new LLMMetrics());
     }
 
     /**

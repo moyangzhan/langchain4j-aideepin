@@ -48,8 +48,15 @@ export const useAppStore = defineStore('app-store', {
       }
     },
     getFirstLLM(state: AppState) {
-      return () => {
-        const enableList = state.llms.filter(item => item.enable)
+      // Optional `type` arg restricts to a model type ('text' | 'vision' | …).
+      // Workflow text nodes need this — without it the first vision model wins
+      // when it happens to be free+healthy and ordered earlier in /model/llms.
+      return (type?: string) => {
+        const enableList = state.llms.filter(item =>
+          item.enable
+          && item.healthStatus !== 'UNHEALTHY'
+          && (!type || item.type === type),
+        )
         const freeLLM = enableList.find(item => item.isFree)
         if (freeLLM)
           return freeLLM
@@ -142,7 +149,7 @@ export const useAppStore = defineStore('app-store', {
     },
     setLLMs(llms: AiModelInfo[]) {
       llms.forEach((item) => {
-        item.disabled = !item.enable
+        item.disabled = !item.enable || item.healthStatus === 'UNHEALTHY'
         item.label = item.modelTitle || item.modelName
         item.key = item.modelId
         item.value = item.modelId

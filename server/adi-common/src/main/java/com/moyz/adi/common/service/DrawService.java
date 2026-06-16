@@ -20,6 +20,7 @@ import com.moyz.adi.common.util.LocalCache;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.moyz.adi.common.util.PrivilegeUtil;
 import com.moyz.adi.common.util.UuidUtil;
+import com.moyz.adi.common.util.NumberUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -181,6 +182,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
     public void createFromRemote(Draw draw, User user) {
         String drawingKey = MessageFormat.format(RedisKeyConstant.USER_DRAWING, user.getId());
         stringRedisTemplate.opsForValue().set(drawingKey, "1", 30, TimeUnit.SECONDS);
+        long startTime = System.currentTimeMillis();
 
         try {
             //Increase the number of the request
@@ -189,6 +191,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
 
             AbstractImageModelService imageModelService = ImageModelContext.getOrDefault(draw.getAiModelName());
             List<String> images = imageModelService.generateImage(user, draw);
+            long genDuration = System.currentTimeMillis() - startTime;
             List<String> imageUuids = new ArrayList<>();
             images.forEach(imageUrl -> {
                 AdiFile adiFile = fileService.saveImageFromUrl(user, imageUrl);
@@ -196,11 +199,11 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
             });
             String imageUuidsJoin = String.join(",", imageUuids);
             if (StringUtils.isBlank(imageUuidsJoin)) {
-                updateDrawFail(draw.getId(), "No image generated");
+                updateDrawFail(draw.getId(), "No image generated", genDuration);
                 return;
             }
             String respImagesPath = String.join(",", images);
-            updateDrawSuccess(draw.getId(), respImagesPath, imageUuidsJoin);
+            updateDrawSuccess(draw.getId(), respImagesPath, imageUuidsJoin, genDuration);
 
             //Update the cost of current user
             boolean modelIsFree = imageModelService.getAiModel().getIsFree();
@@ -218,18 +221,20 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
             userDayCostService.saveOrUpdate(saveOrUpdateInst);
         } catch (Exception e) {
             log.error("createFromRemote error", e);
-            updateDrawFail(draw.getId(), e.getMessage());
+            long failDuration = System.currentTimeMillis() - startTime;
+            updateDrawFail(draw.getId(), e.getMessage(), failDuration);
         } finally {
             stringRedisTemplate.delete(drawingKey);
         }
     }
 
-    public void updateDrawSuccess(Long drawId, String respImagesPath, String localImagesUuid) {
+    public void updateDrawSuccess(Long drawId, String respImagesPath, String localImagesUuid, long durationMs) {
         Draw updateImage = new Draw();
         updateImage.setId(drawId);
         updateImage.setRespImagesPath(respImagesPath);
         updateImage.setGeneratedImages(localImagesUuid);
         updateImage.setProcessStatus(STATUS_SUCCESS);
+        updateImage.setDuration(NumberUtil.saturatedCastToInt(durationMs));
         getBaseMapper().updateById(updateImage);
 
         if (StringUtils.isBlank(localImagesUuid)) {
@@ -241,11 +246,12 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         }
     }
 
-    public void updateDrawFail(Long drawId, String failMsg) {
+    public void updateDrawFail(Long drawId, String failMsg, long durationMs) {
         Draw updateImage = new Draw();
         updateImage.setId(drawId);
         updateImage.setProcessStatus(STATUS_FAIL);
         updateImage.setProcessStatusRemark(failMsg);
+        updateImage.setDuration(NumberUtil.saturatedCastToInt(durationMs));
         getBaseMapper().updateById(updateImage);
     }
 

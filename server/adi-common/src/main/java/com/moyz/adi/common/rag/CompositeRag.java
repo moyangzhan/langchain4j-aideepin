@@ -3,7 +3,7 @@ package com.moyz.adi.common.rag;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.LLMContext;
-import com.moyz.adi.common.helper.SSEEmitterHelper;
+import com.moyz.adi.common.helper.SseManager;
 import com.moyz.adi.common.interfaces.IStreamingChatAssistant;
 import com.moyz.adi.common.interfaces.ITempStreamingChatAssistant;
 import com.moyz.adi.common.interfaces.TriConsumer;
@@ -73,29 +73,28 @@ public class CompositeRag {
      * 使用RAG处理提问
      *
      * @param retrievers   ContentRetriever列表
-     * @param sseAskParams 请求参数
+     * @param sseAskParam 请求参数
      * @param consumer     回调
      */
-    public void ragChat(List<ContentRetriever> retrievers, SseAskParams sseAskParams, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
-        SSEEmitterHelper sseEmitterHelper = SpringUtil.getBean(SSEEmitterHelper.class);
-        User user = sseAskParams.getUser();
-        String askingKey = sseEmitterHelper.registerEventStreamListener(sseAskParams);
+    public void ragChat(List<ContentRetriever> retrievers, SseAskParam sseAskParam, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
+        SseManager sseManager = SpringUtil.getBean(SseManager.class);
+        User user = sseAskParam.getUser();
+        sseManager.registerEventStreamListener(sseAskParam);
         try {
-            query(retrievers, sseAskParams, (response, promptMeta, answerMeta) -> {
+            query(retrievers, sseAskParam, (response, promptMeta, answerMeta) -> {
                 try {
                     consumer.accept(response, promptMeta, answerMeta);
                 } catch (Exception e) {
                     log.error("ragProcess error", e);
-                } finally {
-                    sseEmitterHelper.deleteCache(askingKey);
                 }
             });
         } catch (Exception baseException) {
             if (baseException.getCause() instanceof BaseException && B_BREAK_SEARCH.getCode().equals(((BaseException) baseException.getCause()).getCode())) {
-                sseEmitterHelper.sendStartAndComplete(user.getId(), sseAskParams.getSseEmitter(), "");
-                consumer.accept("", PromptMeta.builder().tokens(0).build(), AnswerMeta.builder().tokens(0).build());
+                sseManager.sendStartAndComplete(user.getId(), sseAskParam.getSseUuid(), "");
+                consumer.accept("", PromptMeta.builder().inputTokens(0).build(), AnswerMeta.builder().outputTokens(0).build());
             } else {
                 log.error("ragProcess error", baseException);
+                sseManager.sendErrorAndComplete(user.getId(), sseAskParam.getSseUuid(), baseException.getMessage());
             }
         }
 
@@ -111,7 +110,7 @@ public class CompositeRag {
      * @param params     前端传过来的请求参数
      * @param consumer   LLM响应内容的消费者
      */
-    private void query(List<ContentRetriever> retrievers, SseAskParams params, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
+    private void query(List<ContentRetriever> retrievers, SseAskParam params, TriConsumer<String, PromptMeta, AnswerMeta> consumer) {
         AbstractLLMService llmService = LLMContext.getServiceOrDefault(params.getModelPlatform(), params.getModelName());
         if (!llmService.isEnabled()) {
             log.error("llm service is disabled");
@@ -120,8 +119,8 @@ public class CompositeRag {
 
         QueryRouter queryRouter = new DefaultQueryRouter(retrievers);
         TokenStream tokenStream;
-        ChatModelRequestParams chatModelRequestParams = params.getHttpRequestParams();
-        if (StringUtils.isNotBlank(chatModelRequestParams.getMemoryId())) {
+        ChatModelRequest chatModelRequest = params.getHttpRequestParams();
+        if (StringUtils.isNotBlank(chatModelRequest.getMemoryId())) {
             ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.builder()
                     .id(memoryId)
                     .maxMessages(2)
@@ -137,29 +136,29 @@ public class CompositeRag {
                     .retrievalAugmentor(retrievalAugmentor)
                     .chatMemoryProvider(chatMemoryProvider)
                     .build();
-            if (StringUtils.isNotBlank(chatModelRequestParams.getSystemMessage())) {
-                tokenStream = assistant.chatWithSystem(chatModelRequestParams.getMemoryId(), chatModelRequestParams.getSystemMessage(), chatModelRequestParams.getUserMessage(), new ArrayList<>());
+            if (StringUtils.isNotBlank(chatModelRequest.getSystemMessage())) {
+                tokenStream = assistant.chatWithSystem(chatModelRequest.getMemoryId(), chatModelRequest.getSystemMessage(), chatModelRequest.getUserMessage(), new ArrayList<>());
             } else {
-                tokenStream = assistant.chat(chatModelRequestParams.getMemoryId(), chatModelRequestParams.getUserMessage(), new ArrayList<>());
+                tokenStream = assistant.chat(chatModelRequest.getMemoryId(), chatModelRequest.getUserMessage(), new ArrayList<>());
             }
         } else {
             ITempStreamingChatAssistant assistant = AiServices.builder(ITempStreamingChatAssistant.class)
                     .streamingChatModel(llmService.buildStreamingChatModel(params.getModelProperties()))
                     .retrievalAugmentor(DefaultRetrievalAugmentor.builder().queryRouter(queryRouter).build())
                     .build();
-            if (StringUtils.isNotBlank(chatModelRequestParams.getSystemMessage())) {
-                tokenStream = assistant.chatWithSystem(chatModelRequestParams.getSystemMessage(), chatModelRequestParams.getUserMessage(), new ArrayList<>());
+            if (StringUtils.isNotBlank(chatModelRequest.getSystemMessage())) {
+                tokenStream = assistant.chatWithSystem(chatModelRequest.getSystemMessage(), chatModelRequest.getUserMessage(), new ArrayList<>());
             } else {
-                tokenStream = assistant.chatSimple(chatModelRequestParams.getUserMessage(), new ArrayList<>());
+                tokenStream = assistant.chatSimple(chatModelRequest.getUserMessage(), new ArrayList<>());
             }
         }
         tokenStream
-                .onPartialResponse(content -> SSEEmitterHelper.parseAndSendPartialMsg(params.getSseEmitter(), content))
+                .onPartialResponse(content -> SseManager.parseAndSendPartialMsg(params.getSseUuid(), content))
                 .onCompleteResponse(response -> {
-                    Pair<PromptMeta, AnswerMeta> pair = SSEEmitterHelper.calculateToken(response, params.getUuid());
+                    Pair<PromptMeta, AnswerMeta> pair = SseManager.calculateToken(response, params.getUuid());
                     consumer.accept(response.aiMessage().text(), pair.getLeft(), pair.getRight());
                 })
-                .onError(error -> SSEEmitterHelper.errorAndShutdown(error, params.getSseEmitter()))
+                .onError(error -> SseManager.errorAndShutdown(error, params.getSseUuid()))
                 .start();
     }
 

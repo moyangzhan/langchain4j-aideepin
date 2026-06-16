@@ -7,7 +7,7 @@ import { Reload } from '@vicons/ionicons5'
 import AvatarComponent from './Avatar.vue'
 import TextComponent from './Text.vue'
 import { SvgIcon } from '@/components/common'
-import { copyText } from '@/utils/format'
+import { copyText, formatDuration } from '@/utils/format'
 import { useIconRender } from '@/hooks/useIconRender'
 import { t } from '@/locales'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
@@ -39,6 +39,10 @@ interface Props {
   type: string // text,text-image,image
 
   aiModelPlatform?: string // openai,dashscope,qianfan,ollama,deepseek
+  inputTokens?: number
+  outputTokens?: number
+  duration?: number
+  toolCalls?: { toolName: string; durationMs: number; success: boolean }[]
 }
 
 interface Emit {
@@ -164,6 +168,15 @@ watch(() => props.thinking, (thinking) => {
     <div class="overflow-hidden text-sm " :class="[inversion ? 'items-end' : 'items-start']">
       <p class="text-xs text-[#b4bbc4]" :class="[inversion ? 'text-right' : 'text-left']">
         {{ dateTime }}
+        <span v-if="inputTokens != null" class="ml-1">📥 {{ inputTokens }}</span>
+        <span v-if="outputTokens != null" class="ml-1">📤 {{ outputTokens }}</span>
+        <span v-if="duration != null" class="ml-1">⏱ {{ formatDuration(duration) }}</span>
+        <template v-if="toolCalls?.length">
+          <span class="ml-1">🔧 {{ toolCalls.length }}</span>
+          <span v-for="(tool, idx) in toolCalls" :key="idx" class="ml-1 text-[10px] opacity-70">
+            {{ tool.toolName }}({{ formatDuration(tool.durationMs) }}{{ tool.success ? '' : '✗' }})
+          </span>
+        </template>
       </p>
       <div class="flex items-start gap-1 mt-2" :class="[inversion ? 'flex-row-reverse' : 'flex-row']">
         <!-- 消息框侧边下拉选择列表 -->

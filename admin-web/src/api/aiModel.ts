@@ -53,6 +53,20 @@ function deleteOne(id: string) {
   })
 }
 
+function getHealth() {
+  return http.request({
+    url: '/admin/model/health',
+    method: 'get',
+  })
+}
+
+function triggerHealthCheck() {
+  return http.request({
+    url: '/admin/model/health/check',
+    method: 'post',
+  })
+}
+
 export default {
   addOne,
   edit,
@@ -60,4 +74,6 @@ export default {
   disable,
   enable,
   deleteOne,
+  getHealth,
+  triggerHealthCheck,
 }

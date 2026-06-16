@@ -155,6 +155,9 @@ values (replace(gen_random_uuid()::text, '-', ''), 'MailSend', '邮件发送', '
 insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'HttpRequest', 'Http请求',
         '通过Http协议发送请求，可将其他组件的输出作为参数，也可设置常量作为参数。', 10, true);
+insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'Agent', 'Agent',
+        '调用角色的全部能力：系统提示词、知识库RAG、MCP工具、记忆、网络搜索', 3, true);
 -- 工作流示例
 insert into adi_workflow(uuid, title, user_id, is_public, is_enable)
 values ('c40cfc1792264130b1c1f82d1448648f', '中文转英文', 1, true, true);

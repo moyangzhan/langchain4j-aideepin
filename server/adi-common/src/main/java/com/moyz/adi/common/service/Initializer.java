@@ -16,7 +16,6 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.Locale;
@@ -55,9 +54,6 @@ public class Initializer {
     private EmbeddingStore<TextSegment> characterMemoryEmbeddingStore;
     @Lazy
     @Resource
-    private EmbeddingStore<TextSegment> aiSearchEmbeddingStore;
-    @Lazy
-    @Resource
     private EmbeddingModel embeddingModel;
 
     /**
@@ -78,17 +74,8 @@ public class Initializer {
         // 使用召回内容来源(RetrieveContentFrom)做为RAG名称以区分不同RAG实例
         EmbeddingRagContext.add(new EmbeddingRag(AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE, embeddingModel, kbEmbeddingStore));
         EmbeddingRagContext.add(new EmbeddingRag(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY, embeddingModel, characterMemoryEmbeddingStore));
-        EmbeddingRagContext.add(new EmbeddingRag(AdiConstant.RetrieveContentFrom.WEB, embeddingModel, aiSearchEmbeddingStore));
 
         GraphRagContext.add(new GraphRag(AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE, kbGraphStore));
-    }
-
-    /**
-     * 10分钟重刷一次配置信息
-     */
-    @Scheduled(initialDelay = 10 * 60 * 1000, fixedDelay = 10 * 60 * 1000)
-    public void reloadConfig() {
-        sysConfigService.loadAndCache();
     }
 
     /**

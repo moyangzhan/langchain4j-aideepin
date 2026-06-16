@@ -2,12 +2,12 @@ package com.moyz.adi.common.rag;
 
 import com.moyz.adi.common.interfaces.IRAGService;
 import com.moyz.adi.common.util.InputAdaptor;
+import com.moyz.adi.common.vo.EmbeddingIngestParam;
 import com.moyz.adi.common.vo.InputAdaptorMsg;
 import com.moyz.adi.common.vo.RetrieverCreateParam;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
@@ -40,12 +40,15 @@ public class EmbeddingRag implements IRAGService {
      * 对文档切块、向量化并存储到数据库
      *
      * @param document 知识库文档
-     * @param overlap  重叠token数
+     * @param params   入库配置参数
      */
     @Override
-    public void ingest(Document document, int overlap, String strategy, int maxSegmentSize, String customSeparator, String tokenEstimator, ChatModel ChatModel) {
-        log.info("EmbeddingRag ingest, strategy:{}, maxSegmentSize:{}, TokenCountEstimator:{}", strategy, maxSegmentSize, tokenEstimator);
-        DocumentSplitter documentSplitter = DocumentSplitterFactory.create(strategy, maxSegmentSize, overlap, customSeparator, TokenEstimatorFactory.create(tokenEstimator));
+    public void ingest(Document document, EmbeddingIngestParam params) {
+        log.info("EmbeddingRag ingest, strategy:{}, maxSegmentSize:{}, TokenCountEstimator:{}",
+                params.getStrategy(), params.getMaxSegmentSize(), params.getTokenEstimator());
+        DocumentSplitter documentSplitter = DocumentSplitterFactory.create(
+                params.getStrategy(), params.getMaxSegmentSize(), params.getOverlap(),
+                params.getCustomSeparator(), TokenEstimatorFactory.create(params.getTokenEstimator()));
         EmbeddingStoreIngestor embeddingStoreIngestor = EmbeddingStoreIngestor.builder()
                 .documentSplitter(documentSplitter)
                 .embeddingModel(embeddingModel)

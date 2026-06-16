@@ -15,12 +15,11 @@ import java.util.List;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class ChatModelRequestParams {
+public class ChatModelRequest {
     private String memoryId;
     private String systemMessage;
     private String userMessage;
-//Image URL, only effective for multimodal LLM
-    //图片地址，多模态LLM才生效
+    //Image URL, only effective for multimodal LLM
     private List<String> imageUrls;
     private List<McpClient> mcpClients;
     private String responseFormat;

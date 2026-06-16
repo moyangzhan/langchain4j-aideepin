@@ -55,6 +55,7 @@ export default {
     name: '名称',
     view: '查看',
     detail: '详情',
+    noAnswer: '[无答案]',
     config: '配置',
     enable: '启用',
     status: '状态',
@@ -105,6 +106,7 @@ export default {
     failRetryMsg: '失败，将重新操作',
     countdown: '倒计时：',
     second: '秒',
+    promptLabel: '提示词',
   },
   menu: {
     chat: '聊天',
@@ -206,7 +208,6 @@ export default {
     hitMemory: '命中记忆',
     reference: '引用',
     graph: '图谱',
-    noAnswer: '[无答案]',
     referenceMaterial: '引用资料',
     referenceGraph: '引用图谱',
     knowledgeBaseManage: '知识库管理',
@@ -446,6 +447,11 @@ export default {
     questionAndAnswer: '提问及对应的答案会一起删除，继续执行？',
   },
   workflow: {
+    characterLabel: '角色',
+    selectCharacter: '选择角色',
+    capabilities: '能力',
+    toolsLabel: '工具',
+    webSearch: '联网搜索',
     onlyCreatorCanSave: '只有工作流的创建者才能保存',
     saving: '正在保存中...',
     startNodeOnlyOne: '开始节点只能有一个',
@@ -637,6 +643,7 @@ export default {
       HumanFeedback: '人机交互',
       MailSend: '邮件发送',
       HttpRequest: 'HTTP 请求',
+      Agent: 'Agent 节点',
     },
   },
   mcp: {
@@ -674,17 +681,6 @@ export default {
   gallery: {
     publicImage: '公开图片',
     myLikes: '我的点赞',
-  },
-  aiSearch: {
-    deleteConfirmContent: '提问及对应的答案会一起删除，继续执行？',
-    generating: '生成中...',
-    loading: '加载中...',
-    noMore: '没有更多了',
-    systemTip: '系统提示：',
-    briefMode: '摘要模式',
-    detailMode: '详细模式',
-    quote: '引用',
-    noAnswer: '[无答案]',
   },
   extApi: {
     apiAccess: 'API',

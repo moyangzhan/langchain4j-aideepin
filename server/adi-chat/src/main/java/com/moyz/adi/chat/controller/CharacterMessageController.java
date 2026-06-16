@@ -1,6 +1,5 @@
 package com.moyz.adi.chat.controller;
 
-import com.moyz.adi.common.dto.AskReq;
 import com.moyz.adi.common.dto.RefEmbeddingDto;
 import com.moyz.adi.common.dto.RefGraphDto;
 import com.moyz.adi.common.service.CharacterMessageRefEmbeddingService;
@@ -8,14 +7,17 @@ import com.moyz.adi.common.service.CharacterMessageRefGraphService;
 import com.moyz.adi.common.service.CharacterMessageRefMemoryEmbeddingService;
 import com.moyz.adi.common.service.CharacterMessageService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
-import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
+/**
+ * Message CRUD controller: handles message query, delete, and reference viewing only.
+ */
+@Tag(name = "Character Message")
 @RestController
 @RequestMapping("/character/message")
 @Validated
@@ -32,12 +34,6 @@ public class CharacterMessageController {
 
     @Resource
     private CharacterMessageRefGraphService characterMessageRefGraphService;
-
-    @Operation(summary = "发送一个prompt给模型 | Send Prompt to Model")
-    @PostMapping(value = "/process", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter ask(@RequestBody @Validated AskReq askReq) {
-        return characterMessageService.sseAsk(askReq);
-    }
 
     @Operation(summary = "根据音频uuid获取对应的文本 | Get Text by Audio UUID")
     @GetMapping("/text/{audioUuid}")

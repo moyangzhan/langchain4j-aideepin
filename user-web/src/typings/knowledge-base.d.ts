@@ -87,6 +87,13 @@ declare namespace KnowledgeBase {
     loading?: boolean
     error?: boolean
     aiModelPlatform?: string
+    promptTokens?: number
+    answerTokens?: number
+    //SSE 实时写入的 token 数据 | Token data from SSE live stream
+    inputTokens?: number
+    outputTokens?: number
+    //调用耗时（毫秒） | Call duration (ms)
+    duration?: number
   }
 
   interface QaRecordEmbeddingRef {

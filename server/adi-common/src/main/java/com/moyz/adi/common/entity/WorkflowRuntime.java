@@ -40,4 +40,22 @@ public class WorkflowRuntime extends BaseEntity {
 
     @TableField("status_remark")
     private String statusRemark;
+
+    /**
+     * Total input tokens aggregated from LLM-typed nodes. Written at terminal status (success / fail / waiting_input).
+     */
+    @TableField("input_tokens")
+    private Integer inputTokens;
+
+    /**
+     * Total output tokens aggregated from LLM-typed nodes. Written at terminal status.
+     */
+    @TableField("output_tokens")
+    private Integer outputTokens;
+
+    /**
+     * Total run duration in milliseconds aggregated from all nodes. Written at terminal status.
+     */
+    @TableField("duration")
+    private Integer duration;
 }

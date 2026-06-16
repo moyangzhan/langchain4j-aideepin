@@ -13,6 +13,7 @@ import com.moyz.adi.common.workflow.WfState;
 import com.moyz.adi.common.workflow.WorkflowUtil;
 import com.moyz.adi.common.workflow.data.NodeIOData;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
+import com.moyz.adi.common.workflow.metrics.MailMetrics;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
@@ -29,6 +30,7 @@ public class MailSendNode extends AbstractWfNode {
 
     public MailSendNode(WorkflowComponent wfComponent, WorkflowNode node, WfState wfState, WfNodeState nodeState) {
         super(wfComponent, node, wfState, nodeState);
+        state.setMetrics(new MailMetrics());
     }
 
     @Override
@@ -72,6 +74,10 @@ public class MailSendNode extends AbstractWfNode {
             AdiMailSender adiMailSender = SpringUtil.getBean(AdiMailSender.class);
             adiMailSender.send(subject, content, toMails, ccMails);
         }
+        //记录邮件发送指标 | Record mail send metrics
+        MailMetrics mailMetrics = (MailMetrics) state.getMetrics();
+        mailMetrics.setRecipientCount(toMails.split(",").length);
+        mailMetrics.setSendSuccess(true);
         NodeIOData output = NodeIOData.createByText(DEFAULT_OUTPUT_PARAM_NAME, "", "Email sent successfully");
         return NodeProcessResult.builder().content(List.of(output)).build();
     }

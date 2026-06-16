@@ -20,8 +20,6 @@ public class CharacterDto {
 
     private String remark;
 
-    private Integer tokens;
-
     @Schema(title = "set the system message to ai, ig: you are a lawyer")
     private String aiSystemMessage;
 

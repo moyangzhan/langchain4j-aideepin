@@ -155,6 +155,9 @@ values (replace(gen_random_uuid()::text, '-', ''), 'MailSend', 'Email Send', 'Se
 insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'HttpRequest', 'HTTP Request',
         'Send requests via HTTP protocol. Outputs from other components can be used as parameters, and constants can also be set as parameters.', 10, true);
+insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'Agent', 'Agent',
+        'Invoke a Character with full capabilities: system prompt, knowledge base RAG, MCP tools, memory, web search', 3, true);
 
 -- Demo workflow: Translate to Chinese
 insert into adi_workflow(uuid, title, user_id, is_public, is_enable)

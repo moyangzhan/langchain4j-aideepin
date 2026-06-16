@@ -8,6 +8,7 @@ import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.CollectionUtil;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.SpringUtil;
+import com.moyz.adi.common.workflow.NodeExecutionMetrics;
 import com.moyz.adi.common.workflow.NodeProcessResult;
 import com.moyz.adi.common.workflow.WfNodeInputConfig;
 import com.moyz.adi.common.workflow.WfNodeState;
@@ -55,6 +56,9 @@ public abstract class AbstractWfNode {
         this.wfComponent = wfComponent;
         this.state = nodeState;
         this.node = node;
+        if (this.state.getMetrics() == null) {
+            this.state.setMetrics(new NodeExecutionMetrics());
+        }
     }
 
     public void initInput() {
@@ -131,6 +135,7 @@ public abstract class AbstractWfNode {
 
     public NodeProcessResult process(Consumer<WfNodeState> inputConsumer, Consumer<WfNodeState> outputConsumer) {
         log.info("↓↓↓↓↓ node process start,name:{},uuid:{}", node.getTitle(), node.getUuid());
+        long startTime = System.currentTimeMillis();
         state.setProcessStatus(NODE_PROCESS_STATUS_DOING);
         initInput();
 //HumanFeedback case
@@ -150,6 +155,7 @@ public abstract class AbstractWfNode {
         try {
             processResult = onProcess();
         } catch (Exception e) {
+            state.getMetrics().setDurationMs(System.currentTimeMillis() - startTime);
             state.setProcessStatus(NODE_PROCESS_STATUS_FAIL);
             state.setProcessStatusRemark("process error:" + e.getMessage());
             wfState.setProcessStatus(WORKFLOW_PROCESS_STATUS_FAIL);
@@ -163,6 +169,7 @@ public abstract class AbstractWfNode {
         if (!processResult.getContent().isEmpty()) {
             state.setOutputs(processResult.getContent());
         }
+        state.getMetrics().setDurationMs(System.currentTimeMillis() - startTime);
         state.setProcessStatus(NODE_PROCESS_STATUS_SUCCESS);
 //Let langgraph4j execute the next node
         //交由langgraph4j执行下一个节点
@@ -175,7 +182,7 @@ public abstract class AbstractWfNode {
 //            wfNodeState.setProcessStateDesc("workflow complete");
 //        }
         wfState.getCompletedNodes().add(this);
-        log.info("↑↑↑↑↑ node process end,name:{},uuid:{},output:{}", node.getTitle(), node.getUuid(), JsonUtil.toJson(state.getOutputs()));
+        log.info("↑↑↑↑↑ node process end,name:{},uuid:{},duration:{}ms,output:{}", node.getTitle(), node.getUuid(), state.getMetrics().getDurationMs(), JsonUtil.toJson(state.getOutputs()));
         if (null != outputConsumer) {
             outputConsumer.accept(state);
         }

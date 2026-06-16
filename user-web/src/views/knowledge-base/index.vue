@@ -103,6 +103,9 @@ async function handleSubmit() {
           const meta = chunk.replace('[META]', '')
           const metaData: Chat.MetaData = JSON.parse(meta)
           console.info('metaData', metaData)
+          qaRecord.inputTokens = metaData.answer.inputTokens
+          qaRecord.outputTokens = metaData.answer.outputTokens
+          qaRecord.duration = metaData.answer.duration
         } else {
           kbStore.appendChunk(
             currKbUuid,
@@ -327,8 +330,10 @@ onActivated(async () => {
                 :inversion="true" :error="qaRecord.error" :loading="false" @delete="handleDelete(qaRecord.uuid)"
               />
               <Message
-                :date-time="qaRecord.createTime" :text="!!qaRecord.answer ? qaRecord.answer : t('aiSearch.noAnswer')"
+                :date-time="qaRecord.createTime" :text="!!qaRecord.answer ? qaRecord.answer : t('common.noAnswer')"
                 :regenerate="false" type="text" :inversion="false" :error="qaRecord.error" :loading="qaRecord.loading"
+                :input-tokens="qaRecord.inputTokens" :output-tokens="qaRecord.outputTokens"
+                :duration="qaRecord.duration"
                 :ai-model-platform="qaRecord.aiModelPlatform" @delete="handleDelete(qaRecord.uuid)"
               >
                 <NFlex>
@@ -387,7 +392,7 @@ onActivated(async () => {
       </div>
       <NCollapse v-show="references.length > 0" :default-expanded-names="['refer_0']">
         <NCollapseItem
-          v-for="(reference, idx) of references" :key="reference.embeddingId" :title="`${t('aiSearch.quote')}${idx + 1}`"
+          v-for="(reference, idx) of references" :key="reference.embeddingId" :title="`${t('chat.reference')}${idx + 1}`"
           :name="`refer_${idx}`"
         >
           {{ reference.text }}

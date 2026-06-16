@@ -26,8 +26,9 @@ import static com.moyz.adi.common.cosntant.AdiConstant.CustomChatRequestParamete
 /**
  * DeepSeek API格式兼容OpenAi
  * <p>
- * 1. 根据 returnThinking 配置，设置 OpenAiStreamingChatModel.returnThinking(true) 以捕获 reasoning_content
- * 2. 将 ENABLE_THINKING 转换为 DeepSeek 要求的 {"thinking": {"type": "enabled/disabled"}} 格式
+ * 1. 根据 returnThinking 配置，设置 returnThinking(true) 以捕获 reasoning_content
+ * 2. 同时设置 sendThinking(true)，在多轮工具调用场景中将 reasoning_content 回传 API（DeepSeek 官方要求）
+ * 3. 将 ENABLE_THINKING 转换为 DeepSeek 要求的 {"thinking": {"type": "enabled/disabled"}} 格式
  */
 @Slf4j
 @Accessors(chain = true)
@@ -50,6 +51,7 @@ public class DeepSeekLLMService extends OpenAiLLMService {
                 .apiKey(platform.getApiKey());
         if (Boolean.TRUE.equals(properties.getReturnThinking())) {
             builder.returnThinking(true);
+            builder.sendThinking(true);
         }
         if (StringUtils.isNotBlank(platform.getBaseUrl())) {
             builder.baseUrl(platform.getBaseUrl());
@@ -76,6 +78,7 @@ public class DeepSeekLLMService extends OpenAiLLMService {
                 .timeout(Duration.of(60, ChronoUnit.SECONDS));
         if (Boolean.TRUE.equals(properties.getReturnThinking())) {
             builder.returnThinking(true);
+            builder.sendThinking(true);
         }
         if (null != proxyAddress && platform.getIsProxyEnable()) {
             HttpClient.Builder httpClientBuilder = HttpClient.newBuilder().proxy(ProxySelector.of(proxyAddress));

@@ -37,8 +37,14 @@ public class CharacterMsgDto {
     @Schema(title = "产生该消息的角色：1: 用户,2:系统,3:助手 | Message Role: 1=User, 2=System, 3=Assistant")
     private Integer messageRole;
 
-    @Schema(title = "消耗的token数量 | Token Count Consumed")
-    private Integer tokens;
+    @Schema(title = "输入token数量 | Input Token Count")
+    private Integer inputTokens;
+
+    @Schema(title = "输出token数量 | Output Token Count")
+    private Integer outputTokens;
+
+    @Schema(title = "调用耗时（毫秒） | Call Duration (ms)")
+    private Integer duration;
 
     @Schema(title = "创建时间 | Create Time")
     private LocalDateTime createTime;

@@ -36,4 +36,5 @@ public class DrawDto {
     private String userName;
     private List<String> imageUuids;
     private List<String> imageUrls;
+    private Integer duration;
 }

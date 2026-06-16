@@ -1,6 +1,7 @@
 package com.moyz.adi.common.dto.workflow;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.moyz.adi.common.workflow.NodeExecutionMetrics;
 import lombok.Data;
 import org.springframework.validation.annotation.Validated;
 
@@ -14,4 +15,6 @@ public class WfRuntimeNodeDto {
     private ObjectNode input;
     private ObjectNode output;
     private Integer status;
+    private Integer duration;
+    private NodeExecutionMetrics metadata;
 }

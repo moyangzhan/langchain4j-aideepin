@@ -4,6 +4,7 @@ import com.moyz.adi.common.entity.WorkflowComponent;
 import com.moyz.adi.common.entity.WorkflowNode;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
 import com.moyz.adi.common.workflow.node.EndNode;
+import com.moyz.adi.common.workflow.node.agent.AgentNode;
 import com.moyz.adi.common.workflow.node.answer.LLMAnswerNode;
 import com.moyz.adi.common.workflow.node.classifier.ClassifierNode;
 import com.moyz.adi.common.workflow.node.openaiimage.OpenAiImageNode;
@@ -68,6 +69,9 @@ public class WfNodeFactory {
                 break;
             case HTTP_REQUEST:
                 wfNode = new HttpRequestNode(wfComponent, nodeDefinition, wfState, nodeState);
+                break;
+            case AGENT:
+                wfNode = new AgentNode(wfComponent, nodeDefinition, wfState, nodeState);
                 break;
             case END:
                 wfNode = new EndNode(wfComponent, nodeDefinition, wfState, nodeState);

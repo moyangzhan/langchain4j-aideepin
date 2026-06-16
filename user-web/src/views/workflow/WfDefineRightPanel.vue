@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { onMounted, ref, watch } from 'vue'
 import { NInput } from 'naive-ui'
-import { AnswerNodeProperty, ClassifierNodeProperty, DocumentExtractorNodeProperty, EndNodeProperty, FaqExtractorNodeProperty, GoogleNodeProperty, HttpRequestNodeProperty, HumanFeedbackNodeProperty, KeywordExtractorNodeProperty, KnowledgeRetrievalNodeProperty, MailSendNodeProperty, OpenAiImageNodeProperty, StartNodeProperty, SwticherNodeProperty, TemplateNodeProperty, TongyiwanxNodeProperty } from './components/nodes'
+import { AgentNodeProperty, AnswerNodeProperty, ClassifierNodeProperty, DocumentExtractorNodeProperty, EndNodeProperty, FaqExtractorNodeProperty, GoogleNodeProperty, HttpRequestNodeProperty, HumanFeedbackNodeProperty, KeywordExtractorNodeProperty, KnowledgeRetrievalNodeProperty, MailSendNodeProperty, OpenAiImageNodeProperty, StartNodeProperty, SwticherNodeProperty, TemplateNodeProperty, TongyiwanxNodeProperty } from './components/nodes'
 import { useWfStore } from '@/store'
 import { t } from '@/locales'
 import { SvgIcon } from '@/components/common'
@@ -128,6 +128,10 @@ onMounted(() => {
         <HttpRequestNodeProperty
           v-else-if="wfNode.wfComponent.name === 'HttpRequest'" :key="`httprequest_${wfNode.uuid}`"
           :workflow="workflow" :ui-workflow="uiWorkflow" :wf-node="wfNode"
+        />
+        <AgentNodeProperty
+          v-else-if="wfNode.wfComponent.name === 'Agent'" :key="`agent_${wfNode.uuid}`"
+          :workflow="workflow" :wf-node="wfNode"
         />
         <EndNodeProperty
           v-else-if="wfNode.wfComponent.name === 'End'" :key="`end_${wfNode.uuid}`" :workflow="workflow"

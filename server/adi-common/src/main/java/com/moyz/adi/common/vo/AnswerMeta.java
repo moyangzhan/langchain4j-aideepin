@@ -8,8 +8,12 @@ import lombok.Data;
 @Builder
 @AllArgsConstructor
 public class AnswerMeta {
-    private Integer tokens;
+
+    private Integer inputTokens;
+    private Integer outputTokens;
     private String uuid;
+    @Builder.Default
+    private Integer duration = 0;
     @Builder.Default
     private Boolean isRefEmbedding = false;
     @Builder.Default

@@ -7,7 +7,7 @@ import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.Character;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.service.AiModelService;
-import com.moyz.adi.common.service.CharacterMessageService;
+import com.moyz.adi.common.service.CharacterChatService;
 import com.moyz.adi.common.service.CharacterService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,7 +26,7 @@ import static com.moyz.adi.common.enums.ErrorEnum.A_MODEL_NOT_AVAILABLE;
 public class ExtCharacterController {
 
     @Resource
-    private CharacterMessageService characterMessageService;
+    private CharacterChatService characterChatService;
 
     @Resource
     private CharacterService characterService;
@@ -60,9 +60,9 @@ public class ExtCharacterController {
         }
 
         if ("blocking".equalsIgnoreCase(req.getResponseMode())) {
-            return characterMessageService.blockingAsk(askReq);
+            return characterChatService.blockingAsk(askReq);
         }
 
-        return characterMessageService.sseAsk(askReq);
+        return characterChatService.sseAsk(askReq);
     }
 }

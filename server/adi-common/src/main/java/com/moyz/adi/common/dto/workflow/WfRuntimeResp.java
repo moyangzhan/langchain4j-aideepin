@@ -20,4 +20,17 @@ public class WfRuntimeResp {
     private String workflowUuid;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
+
+    /**
+     * Total input tokens aggregated from LLM-typed nodes (terminal snapshot).
+     */
+    private Long inputTokens;
+    /**
+     * Total output tokens aggregated from LLM-typed nodes (terminal snapshot).
+     */
+    private Long outputTokens;
+    /**
+     * Total run duration in milliseconds aggregated from all nodes (terminal snapshot).
+     */
+    private Long duration;
 }

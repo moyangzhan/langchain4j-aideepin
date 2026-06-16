@@ -8,9 +8,15 @@ import AvatarComponent from '@/views/chat/components/Message/Avatar.vue'
 
 const props = defineProps<NodeProps>()
 const appStore = useAppStore()
-const modelPlatform = computed(() => {
-  return appStore.getLLMByName(props.data.nodeConfig.model_name)?.modelPlatform || ''
+// Resolve by platform+name when both are present (avoids cross-platform name
+// collisions); fall back to name-only for legacy nodes saved before the
+// platform field existed.
+const currentLLM = computed(() => {
+  const cfg = props.data.nodeConfig as Workflow.NodeConfigClassifier
+  return appStore.getLLMByPlatformAndName(cfg.model_platform || '', cfg.model_name || '')
 })
+const modelPlatform = computed(() => currentLLM.value?.modelPlatform || '')
+const modelLabel = computed(() => currentLLM.value?.modelTitle || currentLLM.value?.modelName || (props.data.nodeConfig as Workflow.NodeConfigClassifier).model_name || '')
 </script>
 
 <template>
@@ -20,7 +26,7 @@ const modelPlatform = computed(() => {
     <div clas="flex-1 flex-col">
       <div class="content_line flex items-center">
         <AvatarComponent :name="modelPlatform" :image-size="20" class="mx-1.5" />
-        {{ data.nodeConfig.model_name }}
+        <span class="truncate" :title="modelLabel">{{ modelLabel }}</span>
       </div>
       <div v-for="(category, idx) in data.nodeConfig.categories" :key="category.category_uuid" class="content_line">
         {{ category.category_name }}

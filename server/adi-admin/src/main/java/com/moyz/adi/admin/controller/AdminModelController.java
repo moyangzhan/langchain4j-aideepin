@@ -7,6 +7,7 @@ import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.interfaces.AiModelAddGroup;
 import com.moyz.adi.common.interfaces.AiModelEditGroup;
 import com.moyz.adi.common.service.AiModelService;
+import com.moyz.adi.common.service.ModelHealthService;
 import com.moyz.adi.common.util.AiModelUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,6 +17,8 @@ import jakarta.validation.constraints.NotNull;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_PARAMS_ERROR;
 
@@ -27,6 +30,9 @@ public class AdminModelController {
 
     @Resource
     private AiModelService aiModelService;
+
+    @Resource
+    private ModelHealthService modelHealthService;
 
     @Operation(summary = "搜索模型 | Search Models")
     @PostMapping("/search")
@@ -52,6 +58,19 @@ public class AdminModelController {
     @PostMapping("/del/{id}")
     public void delete(@PathVariable Long id) {
         aiModelService.softDelete(id);
+    }
+
+    @Operation(summary = "模型健康状态 | Model Health Status")
+    @GetMapping("/health")
+    public Map<String, ModelHealthService.HealthCheckResult> health() {
+        return modelHealthService.getAllStatuses();
+    }
+
+    @Operation(summary = "手动触发健康探测 | Trigger Health Check")
+    @PostMapping("/health/check")
+    public Map<String, ModelHealthService.HealthCheckResult> healthCheck() {
+        modelHealthService.checkAll();
+        return modelHealthService.getAllStatuses();
     }
 
     private void check(String type) {

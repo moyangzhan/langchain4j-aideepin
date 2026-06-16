@@ -9,7 +9,7 @@ import com.moyz.adi.common.service.KnowledgeBaseGraphSegmentService;
 import com.moyz.adi.common.service.UserDayCostService;
 import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.util.UuidUtil;
-import com.moyz.adi.common.vo.GraphIngestParams;
+import com.moyz.adi.common.vo.GraphIngestParam;
 import com.moyz.adi.common.vo.RetrieverCreateParam;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.message.UserMessage;
@@ -51,15 +51,15 @@ public class GraphRag {
         return knowledgeBaseGraphSegmentService;
     }
 
-    public void ingest(GraphIngestParams graphIngestParams) {
+    public void ingest(GraphIngestParam graphIngestParam) {
         log.info("GraphRag ingest");
-        User user = graphIngestParams.getUser();
+        User user = graphIngestParam.getUser();
         DocumentSplitter documentSplitter = DocumentSplitterFactory.create(
-                graphIngestParams.getStrategy(),
-                graphIngestParams.getMaxSegmentSize(),
-                graphIngestParams.getOverlap(),
-                graphIngestParams.getCustomSeparator(),
-                TokenEstimatorFactory.create(graphIngestParams.getTokenEstimator()));
+                graphIngestParam.getStrategy(),
+                graphIngestParam.getMaxSegmentSize(),
+                graphIngestParam.getOverlap(),
+                graphIngestParam.getCustomSeparator(),
+                TokenEstimatorFactory.create(graphIngestParam.getTokenEstimator()));
         GraphStoreIngestor ingestor = GraphStoreIngestor.builder()
                 .documentSplitter(documentSplitter)
                 .segmentsFunction(segments -> {
@@ -78,7 +78,7 @@ public class GraphRag {
 
                         String response = "";
                         if (StringUtils.isNotBlank(segment.text())) {
-                            if (!graphIngestParams.isFreeToken()) {
+                            if (!graphIngestParam.isFreeToken()) {
                                 ErrorEnum errorMsg = SpringUtil.getBean(QuotaHelper.class).checkTextQuota(user);
                                 if (null != errorMsg) {
                                     log.warn("Quota exceeded during knowledge graph extraction, user:{}, errorInfo:{}", user.getName(), SpringUtil.getMessage(errorMsg.getInfo()));
@@ -86,20 +86,20 @@ public class GraphRag {
                                 }
                             }
                             log.info("Requesting LLM to extract entities and relations from text, segmentId:{}", segmentId);
-                            ChatResponse aiMessageResponse = graphIngestParams.getChatModel().chat(UserMessage.from(GraphExtractPrompt.GRAPH_EXTRACTION_PROMPT.replace("{input_text}", segment.text())));
+                            ChatResponse aiMessageResponse = graphIngestParam.getChatModel().chat(UserMessage.from(GraphExtractPrompt.GRAPH_EXTRACTION_PROMPT.replace("{input_text}", segment.text())));
                             response = aiMessageResponse.aiMessage().text();
 
-                            SpringUtil.getBean(UserDayCostService.class).appendCostToUser(user, aiMessageResponse.tokenUsage().totalTokenCount(), graphIngestParams.isFreeToken());
+                            SpringUtil.getBean(UserDayCostService.class).appendCostToUser(user, aiMessageResponse.tokenUsage().totalTokenCount(), graphIngestParam.isFreeToken());
                         }
                         segmentIdToExtractContent.add(Triple.of(segment, segmentId, response));
                     }
                     return segmentIdToExtractContent;
                 })
-                .identifyColumns(graphIngestParams.getIdentifyColumns())
-                .appendColumns(graphIngestParams.getAppendColumns())
+                .identifyColumns(graphIngestParam.getIdentifyColumns())
+                .appendColumns(graphIngestParam.getAppendColumns())
                 .graphStore(graphStore)
                 .build();
-        ingestor.ingest(graphIngestParams.getDocument());
+        ingestor.ingest(graphIngestParam.getDocument());
     }
 
     public GraphStoreContentRetriever createRetriever(RetrieverCreateParam param) {

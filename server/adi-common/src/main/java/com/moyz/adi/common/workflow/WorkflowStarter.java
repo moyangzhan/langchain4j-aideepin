@@ -3,7 +3,7 @@ package com.moyz.adi.common.workflow;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.helper.SSEEmitterHelper;
+import com.moyz.adi.common.helper.SseManager;
 import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.service.*;
 import jakarta.annotation.Resource;
@@ -47,28 +47,36 @@ public class WorkflowStarter {
     private WorkflowRuntimeNodeService workflowRuntimeNodeService;
 
     @Resource
-    private SSEEmitterHelper sseEmitterHelper;
+    private SseManager sseManager;
 
 
     public SseEmitter streaming(User user, String workflowUuid, List<ObjectNode> userInputs) {
+        String sseUuid = com.moyz.adi.common.util.UuidUtil.createShort();
         SseEmitter sseEmitter = new SseEmitter(SSE_TIMEOUT);
-        if (!sseEmitterHelper.checkOrComplete(user, sseEmitter)) {
+        if (!sseManager.checkOrComplete(user, sseUuid, sseEmitter)) {
             return sseEmitter;
         }
+        // 工作流的 START 事件由异步线程在 WorkflowEngine.run 中发送（需携带 wfRuntimeResp 数据），
+        // 所以这里不能像聊天那样直接调 startSse；只注册 emitter，供异步线程通过 sseUuid 取回使用。
+        // <p>
+        // The workflow START event is sent from the async thread inside WorkflowEngine.run (it
+        // carries the wfRuntimeResp payload), so unlike chat we cannot call startSse here; we only
+        // register the emitter so the async thread can look it up by sseUuid.
+        sseManager.register(sseUuid, sseEmitter, user.getId());
         Workflow workflow = workflowService.getByUuid(workflowUuid);
         if (null == workflow) {
-            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, SpringUtil.getMessage(A_WF_NOT_FOUND.getInfo()));
+            sseManager.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage(A_WF_NOT_FOUND.getInfo()));
             return sseEmitter;
         } else if (Boolean.FALSE.equals(workflow.getIsEnable())) {
-            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, SpringUtil.getMessage(A_WF_DISABLED.getInfo()));
+            sseManager.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage(A_WF_DISABLED.getInfo()));
             return sseEmitter;
         }
-        self.asyncRun(user, workflow, userInputs, sseEmitter);
+        self.asyncRun(user, workflow, userInputs, sseUuid);
         return sseEmitter;
     }
 
     @Async
-    public void asyncRun(User user, Workflow workflow, List<ObjectNode> userInputs, SseEmitter sseEmitter) {
+    public void asyncRun(User user, Workflow workflow, List<ObjectNode> userInputs, String sseUuid) {
         log.info("WorkflowEngine run,userId:{},workflowUuid:{},userInputs:{}", user.getId(), workflow.getUuid(), userInputs);
         try {
             List<WorkflowComponent> components = workflowComponentService.getAllEnable();
@@ -81,16 +89,16 @@ public class WorkflowStarter {
                     .eq(WorkflowEdge::getIsDeleted, false)
                     .list();
             WorkflowEngine workflowEngine = new WorkflowEngine(workflow,
-                    sseEmitterHelper,
+                    sseManager,
                     components,
                     nodes,
                     edges,
                     workflowRuntimeService,
                     workflowRuntimeNodeService);
-            workflowEngine.run(user, userInputs, sseEmitter);
+            workflowEngine.run(user, userInputs, sseUuid);
         } catch (Throwable e) {
             log.error("asyncRun execution exception, workflowUuid:{}", workflow.getUuid(), e);
-            sseEmitterHelper.sendErrorAndComplete(user.getId(), sseEmitter, "Workflow execution error:" + e.getMessage());
+            sseManager.sendErrorAndComplete(user.getId(), sseUuid, "Workflow execution error:" + e.getMessage());
         }
     }
 
@@ -116,7 +124,7 @@ public class WorkflowStarter {
                 .list();
 
         WorkflowEngine workflowEngine = new WorkflowEngine(workflow,
-                sseEmitterHelper,
+                sseManager,
                 components,
                 nodes,
                 edges,

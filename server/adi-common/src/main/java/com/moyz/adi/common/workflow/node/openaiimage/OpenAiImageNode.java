@@ -14,6 +14,7 @@ import com.moyz.adi.common.workflow.WfState;
 import com.moyz.adi.common.workflow.WorkflowUtil;
 import com.moyz.adi.common.workflow.node.AbstractWfNode;
 import com.moyz.adi.common.workflow.node.DrawNodeUtil;
+import com.moyz.adi.common.workflow.metrics.ImageMetrics;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
@@ -24,6 +25,7 @@ public class OpenAiImageNode extends AbstractWfNode {
 
     public OpenAiImageNode(WorkflowComponent wfComponent, WorkflowNode nodeDef, WfState wfState, WfNodeState nodeState) {
         super(wfComponent, nodeDef, wfState, nodeState);
+        state.setMetrics(new ImageMetrics());
     }
 
     @Override
@@ -55,6 +57,10 @@ public class OpenAiImageNode extends AbstractWfNode {
             throw new BaseException(A_MODEL_NOT_FOUND);
         }
         String modelName = imageModelService.getAiModel().getName();
+        //记录图片生成指标 | Record image generation metrics
+        ImageMetrics imageMetrics = (ImageMetrics) state.getMetrics();
+        imageMetrics.setImageModelName(modelName);
+        imageMetrics.setImageSize(nodeConfigObj.getSize());
         Draw draw = new Draw();
         draw.setGenerateNumber(1);
         draw.setPrompt(prompt);

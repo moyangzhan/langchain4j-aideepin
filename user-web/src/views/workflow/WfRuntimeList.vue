@@ -205,6 +205,8 @@ onActivated(async () => {
             <Message
               :workflow="workflow" :wf-runtime="wfRuntime" :io-object="wfRuntime.output"
               :error-msg="wfRuntime.statusRemark" :inversion="false" :loading="wfRuntime.loading"
+              :input-tokens="wfRuntime.inputTokens" :output-tokens="wfRuntime.outputTokens"
+              :duration="wfRuntime.duration"
             >
               <NButton v-if="!wfRuntime.loading" size="tiny" text @click="onShowRuntimeDetail(wfRuntime.uuid)">
                 {{ t('workflow.runDetail') }}

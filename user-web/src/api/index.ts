@@ -103,6 +103,7 @@ function commonSseProcess(
     messageReceived: (chunk: string, eventName: string) => void
     audioDataReceived?: (chunk: string) => void
     stateChanged?: (state: string) => void
+    toolCallReceived?: (data: { toolName: string; durationMs: number; success: boolean }) => void
     doneCallback: (chunk: string) => void
     errorCallback: (error: string) => void
   },
@@ -152,6 +153,14 @@ function commonSseProcess(
       } else if (eventMessage.event === '[STATE_CHANGED]') {
         params.stateChanged && params.stateChanged(eventMessage.data)
         return
+      } else if (eventMessage.event === '[TOOL_CALL]') {
+        try {
+          params.toolCallReceived && params.toolCallReceived(JSON.parse(eventMessage.data))
+        }
+        catch (e) {
+          console.warn('[TOOL_CALL] parse error', e)
+        }
+        return
       }
       if (eventMessage.data.indexOf('-_wrap_-') === 0)
         eventMessage.data = eventMessage.data.replace('-_wrap_-', '\n')
@@ -176,10 +185,11 @@ function sseProcess(params: {
   thinkingDataReceived: (chunk: string) => void
   audioDataReceived?: (pcmPart: any) => void
   stateChanged?: (state: string) => void
+  toolCallReceived?: (data: { toolName: string; durationMs: number; success: boolean }) => void
   doneCallback: (chunk: string) => void
   errorCallback: (error: string) => void
 }) {
-  commonSseProcess('/api/character/message/process', params)
+  commonSseProcess('/api/chat/process', params)
 }
 
 function login<T>(email: string, password: string, captchaId: string, captchaCode: string) {
@@ -598,29 +608,6 @@ function loadImageModels<T = any>() {
   })
 }
 
-function aiSearchProcess(params: {
-  options: { searchText: string; engineName: string; modelName: string; briefSearch: boolean }
-  signal: AbortSignal
-  startCallback: (chunk: string) => void
-  messageReceived: (chunk: string, eventName?: string) => void
-  thinkingDataReceived: (chunk: string) => void
-  doneCallback: (chunk: string) => void
-  errorCallback: (error: string) => void
-}) {
-  commonSseProcess('/api/ai-search/process', params)
-}
-
-function aiSearchRecords<T = any>(maxId: number, keyword: string) {
-  return get<T>({
-    url: `/ai-search-record/list?maxId=${maxId}&keyword=${keyword}`,
-  })
-}
-
-function aiSearchRecordDel<T = any>(uuid: string) {
-  return post<T>({
-    url: `/ai-search-record/del/${uuid}`,
-  })
-}
 
 function loadFileContent(fileUrl: string) {
   return getRawAxios().get(fileUrl, {
@@ -858,9 +845,6 @@ export default {
   loadSearchEngines,
   loadLLMs,
   loadImageModels,
-  aiSearchProcess,
-  aiSearchRecords,
-  aiSearchRecordDel,
   loadFileContent,
   workflowAdd,
   workflowCopy,

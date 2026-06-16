@@ -39,6 +39,15 @@ export function getColumns(): BasicColumn<AiModelData>[] {
       },
     },
     {
+      title: t('columns.healthStatus'),
+      key: 'healthStatus',
+      width: 100,
+      render(row) {
+        if (!row.isEnable) return t('common.disable')
+        return row.healthStatus === 'UNHEALTHY' ? '🔴 ' + t('common.abnormal') : '🟢 ' + t('common.normal')
+      },
+    },
+    {
       title: t('columns.isFree'),
       key: 'isFree',
       width: 80,

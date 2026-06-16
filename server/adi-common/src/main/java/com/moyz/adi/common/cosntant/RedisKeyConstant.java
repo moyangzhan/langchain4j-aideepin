@@ -53,11 +53,21 @@ public class RedisKeyConstant {
     public static final String LOGIN_FAIL_COUNT = "user:login:fail:{0}";
 
     /**
-     * 用户是否请求ai中
-     * 参数：用户id
-     * 值: 1或者0
+     * 用户是否请求ai中（已废弃，由 USER_ACTIVE_SSE_COUNT 替代）
      */
+    @Deprecated
     public static final String USER_ASKING = "user:asking:{0}";
+
+    /**
+     * 用户活跃 SSE 连接计数（替代 USER_ASKING 的 0/1 锁）
+     * 参数：用户id
+     * 值: 当前并发 SSE 数量
+     * <p>
+     * Active SSE connection counter per user (replaces USER_ASKING 0/1 lock).
+     * Parameter: user id. Value: current concurrent SSE count.
+     * </p>
+     */
+    public static final String USER_ACTIVE_SSE_COUNT = "user:active-sse:{0}";
 
     /**
      * 用户是否画画中

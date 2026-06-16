@@ -19,8 +19,8 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import java.nio.ByteBuffer;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 import static com.alibaba.dashscope.audio.ttsv2.SpeechSynthesisAudioFormat.MP3_16000HZ_MONO_128KBPS;
@@ -30,8 +30,8 @@ import static com.moyz.adi.common.util.LocalDateTimeUtil.PATTERN_YYYYMMDDMMHHSS;
 @Slf4j
 public class DashScopeTtsService extends AbstractTtsModelService {
 
-    private final Map<String, SpeechSynthesizer> jobToSynthesizer = new HashMap<>();
-    private final Map<String, ByteBuffer> jobToAudioData = new HashMap<>();
+    private final Map<String, SpeechSynthesizer> jobToSynthesizer = new ConcurrentHashMap<>();
+    private final Map<String, ByteBuffer> jobToAudioData = new ConcurrentHashMap<>();
     private static final SpeechSynthesisAudioFormat AUDIO_FORMAT = SpeechSynthesisAudioFormat.PCM_22050HZ_MONO_16BIT;
 
     public DashScopeTtsService(AiModel model, ModelPlatform modelPlatform) {
@@ -39,7 +39,7 @@ public class DashScopeTtsService extends AbstractTtsModelService {
     }
 
     @Override
-    public void start(String jobId, String voice, Consumer<ByteBuffer> onProcess, Consumer<String> onComplete, Consumer<String> onError) {
+    protected void doStart(String jobId, String voice, Consumer<ByteBuffer> onProcess, Consumer<String> onComplete, Consumer<String> onError) {
         // Check or set default
         if (StringUtils.isBlank(voice)) {
             voice = DASHSCOPE_DEFAULT_VOICE;
@@ -94,7 +94,6 @@ public class DashScopeTtsService extends AbstractTtsModelService {
                 log.info("File saved successfully, path: " + pair.getLeft());
 
                 onComplete.accept(pair.getLeft());
-
             }
 
             @Override
@@ -130,7 +129,7 @@ public class DashScopeTtsService extends AbstractTtsModelService {
     }
 
     @Override
-    public void complete(String jobId) {
+    protected void doComplete(String jobId) {
         SpeechSynthesizer synthesizer = jobToSynthesizer.get(jobId);
         if (null != synthesizer) {
             synthesizer.streamingComplete();
