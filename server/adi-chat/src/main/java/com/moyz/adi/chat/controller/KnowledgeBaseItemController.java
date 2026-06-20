@@ -31,10 +31,7 @@ public class KnowledgeBaseItemController {
 
     @GetMapping("/info/{uuid}")
     public KnowledgeBaseItem info(@PathVariable String uuid) {
-        return knowledgeBaseItemService.lambdaQuery()
-                .eq(KnowledgeBaseItem::getUuid, uuid)
-                .eq(KnowledgeBaseItem::getIsDeleted, false)
-                .one();
+        return knowledgeBaseItemService.info(uuid);
     }
 
     @PostMapping("/del/{uuid}")
