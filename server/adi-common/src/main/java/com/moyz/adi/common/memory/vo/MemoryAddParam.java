@@ -61,4 +61,12 @@ public class MemoryAddParam {
      * LLM 模型对用户是否免费。
      */
     private final boolean isFreeToken;
+
+    /**
+     * Source message ID this memory is derived from. Used to set episodic
+     * metadata and to deduplicate when the same message is replayed.
+     * <p>
+     * 关联的源消息 ID。用于 episodic metadata 以及同一消息重发的幂等校验。
+     */
+    private final Long sourceMsgId;
 }

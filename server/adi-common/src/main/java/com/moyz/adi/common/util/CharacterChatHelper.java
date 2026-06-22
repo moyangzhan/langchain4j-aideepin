@@ -6,7 +6,10 @@ import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.Character;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.languagemodel.AbstractLLMService;
+import com.moyz.adi.common.rag.AdiEmbeddingStoreContentRetriever;
 import com.moyz.adi.common.rag.CompositeRag;
+import com.moyz.adi.common.rag.EmbeddingRag;
+import com.moyz.adi.common.rag.EmbeddingRagContext;
 import com.moyz.adi.common.service.UserMcpService;
 import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.util.AdiStringUtil;
@@ -17,9 +20,13 @@ import com.moyz.adi.common.vo.RetrieverWrapper;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsIn;
+import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
+import dev.langchain4j.store.embedding.filter.logical.And;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -32,6 +39,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CHARACTER_ID;
 import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.KB_UUID;
+import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.MEMORY_TYPE;
 import static com.moyz.adi.common.cosntant.AdiConstant.RAG_RETRIEVE_MIN_SCORE_DEFAULT;
 
 /**
@@ -72,15 +80,47 @@ public class CharacterChatHelper {
                         .temperature(AdiConstant.LLM_TEMPERATURE_DEFAULT)
                         .build());
 
-        //Create memory retriever
+        //Create memory retriever for SEMANTIC channel.
+        //Excludes records explicitly tagged as episodic. Old records without the
+        //memory_type metadata (created before this feature) are treated as semantic.
+        //<p>
+        //创建 SEMANTIC 通道的记忆 retriever。
+        //排除显式标记为 episodic 的记录；缺失 memory_type 字段的历史记录视为 semantic（pgvector 的
+        //IsNotEqualTo 在键缺失时返回 true，符合预期）。
+        Filter semanticFilter = new And(
+                new IsEqualTo(CHARACTER_ID, characterId),
+                new IsNotEqualTo(MEMORY_TYPE, AdiConstant.MemoryType.EPISODIC)
+        );
         RetrieverCreateParam memoryRetrieveParam = RetrieverCreateParam.builder()
                 .chatModel(chatModel)
-                .filter(new IsEqualTo(CHARACTER_ID, characterId))
+                .filter(semanticFilter)
                 .maxResults(3)
                 .minScore(RAG_RETRIEVE_MIN_SCORE_DEFAULT)
                 .breakIfSearchMissed(false)
                 .build();
         List<RetrieverWrapper> retrieverWrappers = new CompositeRag(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY).createRetriever(memoryRetrieveParam);
+
+        //Create episodic memory retriever (shares same vector store, different filter).
+        //Episodic memories are retrieved alongside semantic ones and presented as a
+        //timeline-structured "past events" section in the prompt.
+        //<p>
+        //创建情景记忆 retriever（共享同一向量库，使用不同的 filter）。
+        //episodic 记忆与 semantic 并行检索，在 prompt 中以时间轴结构的"过去事件"段落呈现。
+        EmbeddingRag memoryRag = EmbeddingRagContext.get(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY);
+        if (memoryRag != null) {
+            RetrieverCreateParam episodicRetrieveParam = RetrieverCreateParam.builder()
+                    .filter(new IsEqualTo(MEMORY_TYPE, AdiConstant.MemoryType.EPISODIC))
+                    .maxResults(3)
+                    .minScore(RAG_RETRIEVE_MIN_SCORE_DEFAULT)
+                    .breakIfSearchMissed(false)
+                    .build();
+            ContentRetriever episodicRetriever = memoryRag.createRetriever(episodicRetrieveParam);
+            retrieverWrappers.add(RetrieverWrapper.builder()
+                    .contentFrom(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY_EPISODIC)
+                    .retriever(episodicRetriever)
+                    .response(new ArrayList<>())
+                    .build());
+        }
 
         //Create knowledge base retriever
         if (!filteredKb.isEmpty()) {
@@ -128,11 +168,19 @@ public class CharacterChatHelper {
     /**
      * 将检索结果分离为记忆文本和知识文本
      * <p>
-     * Separate retrieved content into memory text and knowledge text.
+     * Separate retrieved content into memory text and knowledge text. Memory text
+     * combines two channels: stable semantic knowledge and a timeline-flavored
+     * "past events" section for episodic memories. Episodic items are formatted
+     * with their content from the vector segment as-is (timestamps/importance/event_type
+     * already live in the segment metadata and could be surfaced here later if needed).
+     * <p>
+     * 将检索结果分离为记忆文本和知识文本。记忆文本融合两个通道：稳定的语义知识 +
+     * "过往事件"段（episodic）。
      * </p>
      */
     public static Pair<String, String> buildMemoryAndKnowledge(List<RetrieverWrapper> wrappers) {
-        StringBuilder memory = new StringBuilder();
+        StringBuilder semanticMemory = new StringBuilder();
+        StringBuilder episodicMemory = new StringBuilder();
         StringBuilder knowledge = new StringBuilder();
         wrappers.forEach(item -> {
             String retrieveType = item.getContentFrom();
@@ -141,25 +189,36 @@ public class CharacterChatHelper {
                 return;
             }
             if (AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY.equals(retrieveType)) {
-                for (Content content : item.getResponse()) {
-                    memory.append(content.textSegment().text()).append("\n");
+                for (Content content : response) {
+                    semanticMemory.append("- ").append(content.textSegment().text()).append("\n");
                 }
-                if (memory.isEmpty()) {
-                    memory.append("None\n");
-                } else {
-                    memory.append("\n");
+            } else if (AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY_EPISODIC.equals(retrieveType)) {
+                for (Content content : response) {
+                    episodicMemory.append("- ").append(content.textSegment().text()).append("\n");
                 }
             } else if (AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE.equals(retrieveType)) {
-                for (Content content : item.getResponse()) {
+                for (Content content : response) {
                     knowledge.append(content.textSegment().text()).append("\n");
-                }
-                if (knowledge.isEmpty()) {
-                    knowledge.append("None\n");
-                } else {
-                    knowledge.append("\n");
                 }
             }
         });
+
+        StringBuilder memory = new StringBuilder();
+        if (semanticMemory.isEmpty() && episodicMemory.isEmpty()) {
+            memory.append("None\n");
+        } else {
+            if (!semanticMemory.isEmpty()) {
+                memory.append("[Stable knowledge about the user]\n").append(semanticMemory).append("\n");
+            }
+            if (!episodicMemory.isEmpty()) {
+                memory.append("[Past events you recall]\n").append(episodicMemory).append("\n");
+            }
+        }
+        if (knowledge.isEmpty()) {
+            knowledge.append("None\n");
+        } else {
+            knowledge.append("\n");
+        }
         return Pair.of(memory.toString(), knowledge.toString());
     }
 

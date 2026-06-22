@@ -109,6 +109,14 @@ public class AdiConstant {
     public static final Double LLM_TEMPERATURE_DEFAULT = 0.7D;
     public static final Double RAG_RETRIEVE_MIN_SCORE_DEFAULT = 0.6D;
 
+    /**
+     * 长期记忆提取时，向量检索旧记忆的最低相似度阈值。
+     * <p>
+     * Minimum similarity threshold for retrieving old memories during long-term memory extraction.
+     * 不同 embedding 模型尺度差异大，建议按模型配置化覆盖。
+     */
+    public static final double LONG_TERM_MEMORY_MIN_SCORE_DEFAULT = 0.7D;
+
     public static class CharacterConstant {
         private CharacterConstant() {
         }
@@ -148,6 +156,41 @@ public class AdiConstant {
         public static final String SEARCH_UUID = "search_uuid";
         public static final String CHARACTER_ID = "conv_id";
         public static final String CHARACTER_MSG_ID = "conv_msg_id";
+
+        /**
+         * 记忆类型 metadata key（semantic / episodic）。
+         * <p>
+         * Memory type metadata key. Old records without this field are treated as semantic.
+         */
+        public static final String MEMORY_TYPE = "memory_type";
+
+        /**
+         * 记忆创建时间（episodic 必填）。
+         * <p>
+         * Memory created-at timestamp (required for episodic).
+         */
+        public static final String CREATED_AT = "created_at";
+
+        /**
+         * 关联的源消息 ID（episodic 必填）。
+         * <p>
+         * Source message ID this memory was derived from (required for episodic).
+         */
+        public static final String SOURCE_MSG_ID = "source_msg_id";
+
+        /**
+         * 事件类型（episodic 用）。
+         * <p>
+         * Event type (episodic only).
+         */
+        public static final String EVENT_TYPE = "event_type";
+
+        /**
+         * 重要性 1-5（episodic 用）。
+         * <p>
+         * Importance 1-5 (episodic only).
+         */
+        public static final String IMPORTANCE = "importance";
 
         public static final String TEXT = "text";
     }
@@ -498,6 +541,44 @@ public class AdiConstant {
     }
 
     /**
+     * 长期记忆的类型。
+     * <p>
+     * Long-term memory types. Procedural is reserved for future extension.
+     */
+    public static class MemoryType {
+        private MemoryType() {
+        }
+
+        /**
+         * 语义记忆：稳定、可合并的事实型知识。
+         * <p>
+         * Semantic memory: stable, mergeable factual knowledge.
+         */
+        public static final String SEMANTIC = "semantic";
+
+        /**
+         * 情景记忆：绑定时间线、不可合并的事件。
+         * <p>
+         * Episodic memory: timeline-bound, non-mergeable events.
+         */
+        public static final String EPISODIC = "episodic";
+    }
+
+    /**
+     * 情景事件类型默认值。
+     * <p>
+     * Default event type label when the LLM does not assign one.
+     */
+    public static final String EVENT_TYPE_GENERAL = "general";
+
+    /**
+     * 情景事件重要性默认值（1-5）。
+     * <p>
+     * Default importance for episodic events.
+     */
+    public static final int EPISODIC_IMPORTANCE_DEFAULT = 3;
+
+    /**
      * 召回数据的来源：knowledge_base character_memory web
      */
     public static class RetrieveContentFrom {
@@ -506,6 +587,13 @@ public class AdiConstant {
 
         public static final String KNOWLEDGE_BASE = "knowledge_base";
         public static final String CHARACTER_MEMORY = "character_memory";
+        /**
+         * 情景记忆召回通道，与 CHARACTER_MEMORY 共享同一向量库但使用不同 filter。
+         * <p>
+         * Episodic memory retrieval channel. Shares the same vector store as CHARACTER_MEMORY
+         * but uses a type-specific filter.
+         */
+        public static final String CHARACTER_MEMORY_EPISODIC = "character_memory_episodic";
         public static final String WEB = "web";
     }
 

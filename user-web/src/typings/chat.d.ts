@@ -223,5 +223,25 @@ declare namespace Chat {
 	 interface MemoryEmbedding {
     embeddingId: string
     text: string
+    /**
+     * 记忆类型：semantic 或 episodic。
+     * Memory type: semantic or episodic.
+     */
+    memoryType?: string
+    /**
+     * 事件发生时间（仅 episodic）。
+     * Event timestamp (episodic only).
+     */
+    createdAt?: string
+    /**
+     * 事件类型（仅 episodic）。
+     * Event type (episodic only).
+     */
+    eventType?: string
+    /**
+     * 重要性 1-5（仅 episodic）。
+     * Importance 1-5 (episodic only).
+     */
+    importance?: number
   }
 }

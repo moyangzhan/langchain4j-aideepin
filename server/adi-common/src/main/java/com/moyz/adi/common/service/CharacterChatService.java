@@ -327,10 +327,15 @@ public class CharacterChatService {
                             RefGraphDto graphDto = graphStoreContentRetriever.getGraphRef();
                             isRefGraph = !graphDto.getVertices().isEmpty() || !graphDto.getEdges().isEmpty();
                         }
-                    } else if (RetrieveContentFrom.CHARACTER_MEMORY.equals(wrapper.getContentFrom())) {
+                    } else if (RetrieveContentFrom.CHARACTER_MEMORY.equals(wrapper.getContentFrom())
+                            || RetrieveContentFrom.CHARACTER_MEMORY_EPISODIC.equals(wrapper.getContentFrom())) {
                         //目前记忆相关内容只使用向量存储，后续如果增加了其他类型的记忆存储，也可以在这里增加判断
+                        //semantic 和 episodic 都聚合到 isRefMemoryEmbedding 这个总开关下
+                        //<p>
+                        //Both semantic and episodic memory retrievers feed into the unified isRefMemoryEmbedding flag.
                         if (wrapper.getRetriever() instanceof AdiEmbeddingStoreContentRetriever embeddingStoreContentRetriever) {
-                            isRefMemoryEmbedding = !embeddingStoreContentRetriever.getRetrievedEmbeddingToScore().isEmpty();
+                            isRefMemoryEmbedding = isRefMemoryEmbedding
+                                    || !embeddingStoreContentRetriever.getRetrievedEmbeddingToScore().isEmpty();
                         }
                     }
                 }
@@ -464,6 +469,7 @@ public class CharacterChatService {
                         .assistantMessage(response.getContent())
                         .user(user)
                         .isFreeToken(memoryIsFreeToken)
+                        .sourceMsgId(aiAnswer.getId())
                         .build());
             }
         } else {
@@ -475,6 +481,7 @@ public class CharacterChatService {
                     .assistantMessage(response.getContent())
                     .user(user)
                     .isFreeToken(memoryIsFreeToken)
+                    .sourceMsgId(aiAnswer.getId())
                     .build());
         }
     }
@@ -508,7 +515,11 @@ public class CharacterChatService {
                 } else if (wrapper.getRetriever() instanceof GraphStoreContentRetriever graphRetriever) {
                     characterMessageService.createGraphRefs(user, msgId, graphRetriever.getGraphRef());
                 }
-            } else if (RetrieveContentFrom.CHARACTER_MEMORY.equals(wrapper.getContentFrom())) {
+            } else if (RetrieveContentFrom.CHARACTER_MEMORY.equals(wrapper.getContentFrom())
+                    || RetrieveContentFrom.CHARACTER_MEMORY_EPISODIC.equals(wrapper.getContentFrom())) {
+                //semantic 与 episodic 共享同一 ref 表，按 embedding_id 落库即可。
+                //<p>
+                //Semantic and episodic memories share the same ref table — both record by embedding_id.
                 if (wrapper.getRetriever() instanceof AdiEmbeddingStoreContentRetriever knowledgeBaseRetriever) {
                     characterMessageService.createMemoryRefs(user, msgId, knowledgeBaseRetriever.getRetrievedEmbeddingToScore());
                 }
