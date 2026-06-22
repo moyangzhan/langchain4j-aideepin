@@ -152,10 +152,10 @@ VALUES ('qwen-turbo', 'Qwen-Turbo', 'text', 'dashscope', 131072, 98304, 16384, '
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, input_types,
                           is_enable)
 VALUES ('qwen2-vl-7b-instruct', 'Qwen-Vision', 'vision', 'dashscope', 32768, 16384, 16384, 'text,image', false);
--- https://help.aliyun.com/zh/model-studio/developer-reference/text-to-image-v2-api-reference?spm=a2c4g.11186623.0.i2
--- 通义万相-文生图（wanx2.1-t2i-plus、wanx2.1-t2i-turbo）
+-- 通义万相-文生图 wan2.7-image（新一代 image-generation 接口,同步调用;size 用档位 1K/2K,放 properties 驱动前端）
+-- Tongyi Wanx text-to-image wan2.7-image (new image-generation API, synchronous; size uses 1K/2K tiers in properties)
 INSERT INTO adi_ai_model (name, title, type, platform, properties, is_enable)
-VALUES ('wanx2.1-t2i-turbo', 'Qwen-Image', 'image', 'dashscope', '{"max_images": 4}', false);
+VALUES ('wan2.7-image', 'Qwen-Image', 'image', 'dashscope', '{"max_images": 4, "sizes": [{"value":"1K","label":"1K · 1024×1024"},{"value":"2K","label":"2K · 2048×2048"}]}', false);
 -- 通义万相-切换背景
 INSERT INTO adi_ai_model (name, title, type, platform, input_types, is_enable)
 VALUES ('wanx-background-generation-v2', 'Qwen-Background', 'image', 'dashscope', 'text,image', false);

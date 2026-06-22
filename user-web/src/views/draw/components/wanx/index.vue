@@ -33,10 +33,10 @@ function handleClick(tabOjb: TabObj) {
 
   // 重置图片模型下拉框选中项
   if (appStore.selectedImageModel.modelName.includes('wanx-background') && tabOjb.name === 'tab_generate_image') {
-    const imageModel = appStore.imageModelByPrefix('wanx2')
+    const imageModel = appStore.imageModelByPrefix('wan2')
     if (imageModel)
       appStore.setSelectedImageModel(imageModel.modelId)
-  } else if (appStore.selectedImageModel.modelName.includes('wanx2') && tabOjb.name === 'tab_change_background') {
+  } else if (appStore.selectedImageModel.modelName.includes('wan2') && tabOjb.name === 'tab_change_background') {
     const imageModel = appStore.imageModelByPrefix('wanx-background')
     if (imageModel)
       appStore.setSelectedImageModel(imageModel.modelId)
@@ -63,7 +63,7 @@ watch(
       interactingMethod.value = tabObjs.value[1].name
       lastClickTab = tabObjs.value[1].name
       resetTabName(tabObjs.value[1])
-    } else if (newVal.modelName.includes('wanx')) {
+    } else if (newVal.modelName.includes('wan')) {
       interactingMethod.value = tabObjs.value[0].name
       lastClickTab = tabObjs.value[0].name
       resetTabName(tabObjs.value[0])

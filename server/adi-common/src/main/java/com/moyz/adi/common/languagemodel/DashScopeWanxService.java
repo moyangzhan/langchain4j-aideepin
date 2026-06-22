@@ -9,6 +9,7 @@ import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.JsonUtil;
+import com.moyz.adi.common.languagemodel.wanx.AdiImageGenerationModel;
 import com.moyz.adi.common.languagemodel.wanx.AdiWanxImageModel;
 import com.moyz.adi.common.languagemodel.data.LLMException;
 import com.moyz.adi.common.vo.WanxBackgroundGenerationParams;
@@ -70,6 +71,24 @@ public class DashScopeWanxService extends AbstractImageModelService {
                 paramBuilder.parameter("model_version", "v3");
             }));
             return model;
+        } else if (draw.getAiModelName().startsWith("wan2.7")) {
+            // wan2.7 走新一代 image-generation 接口(同步调用,不支持 negative_prompt)
+            // wan2.7 uses the new image-generation API (synchronous, negative_prompt not supported)
+            List<String> allowedSizes = aiModel.getSizes();
+            if (!allowedSizes.isEmpty() && !allowedSizes.contains(draw.getGenerateSize())) {
+                log.warn("Invalid size {} for model {}, allowed: {}",
+                        draw.getGenerateSize(), draw.getAiModelName(), allowedSizes);
+                throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
+            }
+            AdiImageGenerationModel.AdiImageGenerationModelBuilder builder = AdiImageGenerationModel.builder()
+                    .apiKey(platform.getApiKey())
+                    .modelName(draw.getAiModelName())
+                    .size(draw.getGenerateSize())
+                    .baseUrl(platform.getBaseUrl());
+            if (null != draw.getGenerateSeed() && draw.getGenerateSeed() > 0) {
+                builder.seed(draw.getGenerateSeed());
+            }
+            return builder.build();
         } else {
             AdiWanxImageModel.WanxImageModelBuilder builder = AdiWanxImageModel.builder()
                     .baseUrl(platform.getBaseUrl())

@@ -1,5 +1,6 @@
 package com.moyz.adi.common.util;
 
+import com.alibaba.dashscope.aigc.imagegeneration.ImageGenerationResult;
 import com.alibaba.dashscope.aigc.imagesynthesis.ImageSynthesisOutput;
 import com.alibaba.dashscope.aigc.imagesynthesis.ImageSynthesisResult;
 import com.alibaba.dashscope.exception.NoApiKeyException;
@@ -165,6 +166,32 @@ public class ImageUtil {
                 .orElse(Collections.emptyList())
                 .stream()
                 .map(resultMap -> resultMap.get("url"))
+                .map(url -> dev.langchain4j.data.image.Image.builder().url(url).build())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 解析 wan2.7 新一代 image-generation 接口的响应,提取所有图片 URL。
+     * <p>
+     * Parse the response of the new wan2.7 image-generation API and extract all image URLs.
+     */
+    public static List<dev.langchain4j.data.image.Image> imagesFrom(ImageGenerationResult result) {
+        // SDK 的 message/content 是 Gson 默认值,缺字段时为 null,这里逐层过滤避免 NPE
+        // SDK leaves message/content as Gson defaults (null when absent); filter each layer to avoid NPE
+        return Optional.ofNullable(result)
+                .map(ImageGenerationResult::getOutput)
+                .map(output -> output.getChoices())
+                .orElse(Collections.emptyList())
+                .stream()
+                .map(choice -> choice.getMessage())
+                .filter(Objects::nonNull)
+                .map(message -> message.getContent())
+                .filter(Objects::nonNull)
+                .flatMap(List::stream)
+                .filter(content -> "image".equals(content.get("type")))
+                .map(content -> content.get("image"))
+                .filter(image -> image instanceof String)
+                .map(image -> (String) image)
                 .map(url -> dev.langchain4j.data.image.Image.builder().url(url).build())
                 .collect(Collectors.toList());
     }

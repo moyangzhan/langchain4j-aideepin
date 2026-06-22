@@ -11,6 +11,10 @@ import lombok.EqualsAndHashCode;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.type.JdbcType;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName(value = "adi_ai_model", autoResultMap = true)
@@ -102,5 +106,29 @@ public class AiModel extends BaseEntity {
         } catch (Exception e) {
             return 1;
         }
+    }
+
+    /**
+     * 从 properties.sizes 中提取可选尺寸的 value 列表,用于后端校验前端传入的 size 是否合法。
+     * <p>
+     * Extract the list of valid size values from properties.sizes; used to validate the size
+     * submitted by the frontend against the model's allowed options.
+     */
+    public List<String> getSizes() {
+        if (properties == null || properties.isEmpty()) {
+            return Collections.emptyList();
+        }
+        JsonNode sizes = properties.get("sizes");
+        if (sizes == null || !sizes.isArray() || sizes.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> result = new ArrayList<>();
+        for (JsonNode item : sizes) {
+            JsonNode value = item.get("value");
+            if (value != null && !value.isNull()) {
+                result.add(value.asText());
+            }
+        }
+        return result;
     }
 }

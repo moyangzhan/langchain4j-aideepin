@@ -125,7 +125,7 @@ onActivated(async () => {
     <footer :class="footerClass">
       <div class="w-full max-w-screen-xl m-auto">
         <GptImageEditor v-show="appStore.selectedImageModel.modelPlatform === 'openai'" @submitted="submitted" />
-        <Wanx v-show="appStore.selectedImageModel.modelName.indexOf('wanx') > -1" @submitted="submitted" />
+        <Wanx v-show="appStore.selectedImageModel.modelPlatform === 'dashscope'" @submitted="submitted" />
         <Siliconflow v-show="appStore.selectedImageModel.modelPlatform === 'siliconflow'" @submitted="submitted" />
       </div>
     </footer>

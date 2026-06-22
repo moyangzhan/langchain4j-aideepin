@@ -1,5 +1,5 @@
 <script setup lang='ts'>
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { AnimalCat24Regular } from '@vicons/fluent'
 import { NButton, NCol, NFlex, NIcon, NIconWrapper, NInputNumber, NRadio, NRadioGroup, NRow, NSlider, NSpace, useMessage } from 'naive-ui'
 import SearchInput from '@/views/draw/components/SearchInput.vue'
@@ -15,8 +15,19 @@ const emit = defineEmits<Emit>()
 const drawStore = useDrawStore()
 const appStore = useAppStore()
 const ms = useMessage()
-const imageSizes = ['1024*1024', '720*1280', '1280*720']
-const selectedImageSize = ref<string>('1024*1024')
+interface SizeOption { value: string; label: string }
+// 尺寸选项来自选中模型的 properties.sizes(DB 配置驱动),未配置时回退默认
+// Size options come from the selected model's properties.sizes (DB-driven); falls back if unset
+const imageSizes = computed<SizeOption[]>(() => {
+  const props = appStore.selectedImageModel.properties as { sizes?: SizeOption[] } | undefined
+  return props?.sizes?.length ? props.sizes : [{ value: '1024*1024', label: '1024*1024' }]
+})
+const selectedImageSize = ref<string>('')
+watch(() => imageSizes.value, (sizes) => {
+  if (sizes.length && !sizes.some(s => s.value === selectedImageSize.value)) {
+    selectedImageSize.value = sizes[0].value
+  }
+}, { immediate: true })
 const generateImageNumber = ref<number>(1)
 const randomSeed = ref<number>(-1)
 
@@ -62,8 +73,8 @@ async function handleSubmit(prompt: string) {
       <NCol :span="12">
         <NRadioGroup :value="selectedImageSize" name="radiogroup" :on-update:value="sizeChange">
           <NSpace>
-            <NRadio v-for="imageSize in imageSizes" :key="imageSize" :value="imageSize">
-              {{ imageSize }}
+            <NRadio v-for="imageSize in imageSizes" :key="imageSize.value" :value="imageSize.value">
+              {{ imageSize.label }}
             </NRadio>
           </NSpace>
         </NRadioGroup>
