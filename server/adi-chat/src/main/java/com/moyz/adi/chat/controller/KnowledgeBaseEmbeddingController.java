@@ -2,6 +2,7 @@ package com.moyz.adi.chat.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.dto.KbItemEmbeddingDto;
+import com.moyz.adi.common.service.KnowledgeBaseItemService;
 import com.moyz.adi.common.service.embedding.IKnowledgeEmbeddingService;
 import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
@@ -18,8 +19,12 @@ public class KnowledgeBaseEmbeddingController {
     @Resource
     private IKnowledgeEmbeddingService iKnowledgeEmbeddingService;
 
+    @Resource
+    private KnowledgeBaseItemService knowledgeBaseItemService;
+
     @GetMapping("/list/{kbItemUuid}")
     public Page<KbItemEmbeddingDto> list(@PathVariable String kbItemUuid, int currentPage, int pageSize) {
+        knowledgeBaseItemService.checkReadPrivilegeByItem(kbItemUuid);
         return iKnowledgeEmbeddingService.listByItemUuid(kbItemUuid, currentPage, pageSize);
     }
 }

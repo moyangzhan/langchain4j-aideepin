@@ -658,6 +658,25 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     }
 
     /**
+     * Read authorization for a knowledge base's content: allow the owner, an admin,
+     * or anyone when the knowledge base is public. This mirrors the (owner-only)
+     * write-side checkPrivilege so that the read endpoints are scoped too. Denials
+     * are reported as A_DATA_NOT_FOUND to avoid leaking the existence of other
+     * users' private knowledge bases.
+     */
+    public void checkReadPrivilege(String kbUuid) {
+        KnowledgeBase kb = getOrThrow(kbUuid);
+        if (Boolean.TRUE.equals(kb.getIsPublic())) {
+            return;
+        }
+        User user = ThreadContext.getCurrentUser();
+        if (null != user && (Boolean.TRUE.equals(user.getIsAdmin()) || user.getId().equals(kb.getOwnerId()))) {
+            return;
+        }
+        throw new BaseException(A_DATA_NOT_FOUND);
+    }
+
+    /**
      * Set update knowledge base stat signal
      *
      * @param kbUuid 知识库uuid

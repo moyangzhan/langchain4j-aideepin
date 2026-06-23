@@ -57,6 +57,10 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
     private KnowledgeBaseItemService self;
 
     @Resource
+    @Lazy
+    private KnowledgeBaseService knowledgeBaseService;
+
+    @Resource
     private StringRedisTemplate stringRedisTemplate;
 
     @Resource
@@ -101,9 +105,33 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
     }
 
     public Page<KbItemDto> search(String kbUuid, String keyword, Integer currentPage, Integer pageSize) {
+        knowledgeBaseService.checkReadPrivilege(kbUuid);
         Page<KbItemDto> page = baseMapper.searchByKb(new Page<>(currentPage, pageSize), kbUuid, keyword);
         page.getRecords().forEach(item -> item.setSourceFileUrl(fileService.getUrl(item.getSourceFileUuid())));
         return page;
+    }
+
+    /**
+     * Read authorization by knowledge-base item uuid: resolve the item's owning
+     * knowledge base and apply the owner/public read check.
+     */
+    public void checkReadPrivilegeByItem(String itemUuid) {
+        KnowledgeBaseItem item = lambdaQuery()
+                .eq(KnowledgeBaseItem::getUuid, itemUuid)
+                .eq(KnowledgeBaseItem::getIsDeleted, false)
+                .oneOpt().orElseThrow(() -> new BaseException(A_DATA_NOT_FOUND));
+        knowledgeBaseService.checkReadPrivilege(item.getKbUuid());
+    }
+
+    /**
+     * Fetch a knowledge-base item by uuid after a read-privilege check.
+     */
+    public KnowledgeBaseItem info(String uuid) {
+        checkReadPrivilegeByItem(uuid);
+        return lambdaQuery()
+                .eq(KnowledgeBaseItem::getUuid, uuid)
+                .eq(KnowledgeBaseItem::getIsDeleted, false)
+                .one();
     }
 
     /**
