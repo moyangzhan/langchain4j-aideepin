@@ -52,4 +52,23 @@
           and a.uuid = #{uuid}
           and (b.owner_id = #{userId} or b.is_public = true)
     </select>
+
+    <!-- Write privilege keyed by knowledge-base uuid: the kb owner must be the current user -->
+    <select id="checkWritePrivilegeByKb" resultType="Integer">
+        select count(1)
+        from adi_knowledge_base
+        where is_deleted = false
+          and uuid = #{kbUuid}
+          and owner_id = #{userId}
+    </select>
+
+    <!-- Write privilege keyed by item id: the owner of the item's knowledge base must be the current user -->
+    <select id="checkWritePrivilegeById" resultType="Integer">
+        select count(1)
+        from adi_knowledge_base_item a
+                 inner join adi_knowledge_base b on a.kb_id = b.id
+        where a.is_deleted = false
+          and a.id = #{id}
+          and b.owner_id = #{userId}
+    </select>
 </mapper>

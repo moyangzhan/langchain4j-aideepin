@@ -43,4 +43,27 @@ public interface KnowledgeBaseItemMapper extends BaseMapper<KnowledgeBaseItem> {
      * @return >0 means the read is allowed
      */
     Integer checkReadPrivilege(@Param("uuid") String uuid, @Param("userId") Long userId);
+
+    /**
+     * Write-privilege check keyed by knowledge-base uuid: the owner of knowledge
+     * base {kbUuid} must be {userId}. Used when authorizing creation of a new item
+     * (no item uuid exists yet). Admin bypass is handled in the Java layer.
+     *
+     * @param kbUuid knowledge-base uuid
+     * @param userId current user id
+     * @return >0 means the write is allowed
+     */
+    Integer checkWritePrivilegeByKb(@Param("kbUuid") String kbUuid, @Param("userId") Long userId);
+
+    /**
+     * Write-privilege check keyed by item id: the owner of the knowledge base
+     * that owns item {id} must be {userId}. Used when authorizing an update, where
+     * the client-controlled uuid cannot be trusted and the real target is resolved
+     * by id. Admin bypass is handled in the Java layer.
+     *
+     * @param id     knowledge-base item id
+     * @param userId current user id
+     * @return >0 means the write is allowed
+     */
+    Integer checkWritePrivilegeById(@Param("id") Long id, @Param("userId") Long userId);
 }

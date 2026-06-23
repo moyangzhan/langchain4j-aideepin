@@ -67,6 +67,14 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
 
     public KnowledgeBaseItem saveOrUpdate(KbItemEditReq itemEditReq) {
         String uuid = itemEditReq.getUuid();
+        // Authorize before mutating: by knowledge-base uuid when creating (no item
+        // uuid exists yet), by item id when updating (the client-controlled uuid
+        // cannot be trusted; the real target is resolved by id).
+        if (null == itemEditReq.getId() || itemEditReq.getId() < 1) {
+            checkWritePrivilegeByKb(itemEditReq.getKbUuid());
+        } else {
+            checkWritePrivilegeById(itemEditReq.getId());
+        }
         KnowledgeBaseItem item = new KnowledgeBaseItem();
         item.setTitle(itemEditReq.getTitle());
         if (StringUtils.isNotBlank(itemEditReq.getBrief())) {
@@ -323,6 +331,67 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
             return true;
         }
         return baseMapper.checkWritePrivilege(uuid, user.getId()) > 0;
+    }
+
+    /**
+     * Write-privilege check keyed by knowledge-base uuid: allows the owner of the
+     * knowledge base or an admin. Throws
+     * {@link com.moyz.adi.common.enums.ErrorEnum#A_USER_NOT_AUTH} on denial.
+     * Used when creating a new item, where no item uuid exists yet.
+     */
+    public void checkWritePrivilegeByKb(String kbUuid) {
+        if (!hasWritePrivilegeByKb(kbUuid)) {
+            throw new BaseException(A_USER_NOT_AUTH);
+        }
+    }
+
+    /**
+     * Write-privilege probe keyed by knowledge-base uuid: returns whether the
+     * owner of the knowledge base or an admin may write, without throwing.
+     */
+    public boolean hasWritePrivilegeByKb(String kbUuid) {
+        if (StringUtils.isBlank(kbUuid)) {
+            throw new BaseException(A_PARAMS_ERROR);
+        }
+        User user = ThreadContext.getCurrentUser();
+        if (null == user) {
+            throw new BaseException(A_USER_NOT_EXIST);
+        }
+        if (Boolean.TRUE.equals(user.getIsAdmin())) {
+            return true;
+        }
+        return baseMapper.checkWritePrivilegeByKb(kbUuid, user.getId()) > 0;
+    }
+
+    /**
+     * Write-privilege check keyed by item id: allows the owner of the item's
+     * knowledge base or an admin. Throws
+     * {@link com.moyz.adi.common.enums.ErrorEnum#A_USER_NOT_AUTH} on denial.
+     * Used when updating an item, where the real target is resolved by id rather
+     * than the client-controlled uuid.
+     */
+    public void checkWritePrivilegeById(Long id) {
+        if (!hasWritePrivilegeById(id)) {
+            throw new BaseException(A_USER_NOT_AUTH);
+        }
+    }
+
+    /**
+     * Write-privilege probe keyed by item id: returns whether the owner of the
+     * item's knowledge base or an admin may write, without throwing.
+     */
+    public boolean hasWritePrivilegeById(Long id) {
+        if (null == id || id < 1) {
+            throw new BaseException(A_PARAMS_ERROR);
+        }
+        User user = ThreadContext.getCurrentUser();
+        if (null == user) {
+            throw new BaseException(A_USER_NOT_EXIST);
+        }
+        if (Boolean.TRUE.equals(user.getIsAdmin())) {
+            return true;
+        }
+        return baseMapper.checkWritePrivilegeById(id, user.getId()) > 0;
     }
 
     /**
