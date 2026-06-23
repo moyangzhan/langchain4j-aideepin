@@ -24,7 +24,7 @@ public class KnowledgeBaseEmbeddingController {
 
     @GetMapping("/list/{kbItemUuid}")
     public Page<KbItemEmbeddingDto> list(@PathVariable String kbItemUuid, int currentPage, int pageSize) {
-        knowledgeBaseItemService.checkReadPrivilegeByItem(kbItemUuid);
+        knowledgeBaseItemService.checkReadPrivilege(kbItemUuid);
         return iKnowledgeEmbeddingService.listByItemUuid(kbItemUuid, currentPage, pageSize);
     }
 }

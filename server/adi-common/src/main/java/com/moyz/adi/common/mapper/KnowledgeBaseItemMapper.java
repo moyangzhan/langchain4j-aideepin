@@ -23,11 +23,24 @@ public interface KnowledgeBaseItemMapper extends BaseMapper<KnowledgeBaseItem> {
     Integer countAllCreated();
 
     /**
-     * 检查知识点{uuid}是否属于用户{userId}
+     * Write-privilege check: the owner of the knowledge base that owns item {uuid}
+     * must be {userId}. Admin bypass is handled in the Java layer; this query only
+     * checks ownership.
      *
-     * @param uuid
-     * @param userId
-     * @return
+     * @param uuid   knowledge-base item uuid
+     * @param userId current user id
+     * @return >0 means the write is allowed
      */
-    Integer belongToUser(@Param("uuid") String uuid, @Param("userId") Long userId);
+    Integer checkWritePrivilege(@Param("uuid") String uuid, @Param("userId") Long userId);
+
+    /**
+     * Read-privilege check: the owner of the knowledge base that owns item {uuid}
+     * is {userId}, or that knowledge base is public. Admin bypass is handled in
+     * the Java layer; this query only checks ownership / public flag.
+     *
+     * @param uuid   knowledge-base item uuid
+     * @param userId current user id
+     * @return >0 means the read is allowed
+     */
+    Integer checkReadPrivilege(@Param("uuid") String uuid, @Param("userId") Long userId);
 }

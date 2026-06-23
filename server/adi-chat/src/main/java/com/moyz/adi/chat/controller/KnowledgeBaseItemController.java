@@ -5,6 +5,7 @@ import com.moyz.adi.common.dto.KbItemDto;
 import com.moyz.adi.common.dto.KbItemEditReq;
 import com.moyz.adi.common.entity.KnowledgeBaseItem;
 import com.moyz.adi.common.service.KnowledgeBaseItemService;
+import com.moyz.adi.common.service.KnowledgeBaseService;
 import jakarta.annotation.Resource;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -19,6 +20,9 @@ public class KnowledgeBaseItemController {
     @Resource
     private KnowledgeBaseItemService knowledgeBaseItemService;
 
+    @Resource
+    private KnowledgeBaseService knowledgeBaseService;
+
     @PostMapping("/saveOrUpdate")
     public KnowledgeBaseItem saveOrUpdate(@RequestBody KbItemEditReq itemEditReq) {
         return knowledgeBaseItemService.saveOrUpdate(itemEditReq);
@@ -26,6 +30,7 @@ public class KnowledgeBaseItemController {
 
     @GetMapping("/search")
     public Page<KbItemDto> search(String kbUuid, String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
+        knowledgeBaseService.checkReadPrivilege(kbUuid);
         return knowledgeBaseItemService.search(kbUuid, keyword, currentPage, pageSize);
     }
 

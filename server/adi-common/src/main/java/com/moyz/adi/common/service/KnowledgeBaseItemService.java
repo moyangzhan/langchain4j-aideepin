@@ -57,10 +57,6 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
     private KnowledgeBaseItemService self;
 
     @Resource
-    @Lazy
-    private KnowledgeBaseService knowledgeBaseService;
-
-    @Resource
     private StringRedisTemplate stringRedisTemplate;
 
     @Resource
@@ -104,34 +100,13 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                 .one();
     }
 
+    /**
+     * Search items in a knowledge base by keyword.
+     */
     public Page<KbItemDto> search(String kbUuid, String keyword, Integer currentPage, Integer pageSize) {
-        knowledgeBaseService.checkReadPrivilege(kbUuid);
         Page<KbItemDto> page = baseMapper.searchByKb(new Page<>(currentPage, pageSize), kbUuid, keyword);
         page.getRecords().forEach(item -> item.setSourceFileUrl(fileService.getUrl(item.getSourceFileUuid())));
         return page;
-    }
-
-    /**
-     * Read authorization by knowledge-base item uuid: resolve the item's owning
-     * knowledge base and apply the owner/public read check.
-     */
-    public void checkReadPrivilegeByItem(String itemUuid) {
-        KnowledgeBaseItem item = lambdaQuery()
-                .eq(KnowledgeBaseItem::getUuid, itemUuid)
-                .eq(KnowledgeBaseItem::getIsDeleted, false)
-                .oneOpt().orElseThrow(() -> new BaseException(A_DATA_NOT_FOUND));
-        knowledgeBaseService.checkReadPrivilege(item.getKbUuid());
-    }
-
-    /**
-     * Fetch a knowledge-base item by uuid after a read-privilege check.
-     */
-    public KnowledgeBaseItem info(String uuid) {
-        checkReadPrivilegeByItem(uuid);
-        return lambdaQuery()
-                .eq(KnowledgeBaseItem::getUuid, uuid)
-                .eq(KnowledgeBaseItem::getIsDeleted, false)
-                .one();
     }
 
     /**
@@ -146,7 +121,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
         String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
         boolean hasTask = false;
         for (String kbItemUuid : kbItemUuids) {
-            if (checkPrivilege(kbItemUuid)) {
+            if (hasWritePrivilege(kbItemUuid)) {
                 KnowledgeBaseItem item = getEnable(kbItemUuid);
                 if (item != null) {
                     if (!hasTask) {
@@ -274,8 +249,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
 
     @Transactional
     public boolean softDelete(String uuid) {
-        boolean privilege = checkPrivilege(uuid);
-        if (!privilege) throw new BaseException(A_USER_NOT_AUTH);
+        checkWritePrivilege(uuid);
         boolean success = ChainWrappers.lambdaUpdateChain(baseMapper)
                 .eq(KnowledgeBaseItem::getUuid, uuid)
                 .set(KnowledgeBaseItem::getIsDeleted, true)
@@ -311,7 +285,33 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
         return baseMapper.countAllCreated();
     }
 
-    private boolean checkPrivilege(String uuid) {
+    /**
+     * Fetch a knowledge-base item by uuid after a read-privilege check. Both the
+     * check and the query operate on the item itself, so they are kept together
+     * here rather than split across the controller.
+     */
+    public KnowledgeBaseItem info(String uuid) {
+        checkReadPrivilege(uuid);
+        return getEnable(uuid);
+    }
+
+    /**
+     * Write-privilege check: allows the owner or an admin. Throws
+     * {@link com.moyz.adi.common.enums.ErrorEnum#A_USER_NOT_AUTH} on denial.
+     * Used by single write operations such as delete.
+     */
+    public void checkWritePrivilege(String uuid) {
+        if (!hasWritePrivilege(uuid)) {
+            throw new BaseException(A_USER_NOT_AUTH);
+        }
+    }
+
+    /**
+     * Write-privilege probe: returns whether the owner or an admin may write,
+     * without throwing. Used by batch flows (e.g. indexing) that skip items the
+     * current user is not allowed to touch instead of aborting the whole batch.
+     */
+    public boolean hasWritePrivilege(String uuid) {
         if (StringUtils.isBlank(uuid)) {
             throw new BaseException(A_PARAMS_ERROR);
         }
@@ -322,7 +322,29 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
         if (Boolean.TRUE.equals(user.getIsAdmin())) {
             return true;
         }
-        int belongToUser = baseMapper.belongToUser(uuid, user.getId());
-        return belongToUser > 0;
+        return baseMapper.checkWritePrivilege(uuid, user.getId()) > 0;
+    }
+
+    /**
+     * Read-privilege check: allows the owner, an admin, or anyone when the
+     * owning knowledge base is public. Used by reads of an item and its derived
+     * content (embeddings, graph). Denials are reported as
+     * {@link com.moyz.adi.common.enums.ErrorEnum#A_DATA_NOT_FOUND} to avoid
+     * leaking the existence of other users' private knowledge bases.
+     */
+    public void checkReadPrivilege(String uuid) {
+        if (StringUtils.isBlank(uuid)) {
+            throw new BaseException(A_PARAMS_ERROR);
+        }
+        User user = ThreadContext.getCurrentUser();
+        if (null == user) {
+            throw new BaseException(A_USER_NOT_EXIST);
+        }
+        if (Boolean.TRUE.equals(user.getIsAdmin())) {
+            return;
+        }
+        if (baseMapper.checkReadPrivilege(uuid, user.getId()) == 0) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
     }
 }

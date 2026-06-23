@@ -121,7 +121,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             knowledgeBase.setOwnerName(user.getName());
             baseMapper.insert(knowledgeBase);
         } else {
-            checkPrivilege(kbEditReq.getId(), null);
+            checkWritePrivilege(kbEditReq.getId(), null);
             knowledgeBase.setId(kbEditReq.getId());
             baseMapper.updateById(knowledgeBase);
         }
@@ -132,7 +132,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         if (ArrayUtils.isEmpty(docs)) {
             return Collections.emptyList();
         }
-        checkPrivilege(null, kbUuid);
+        checkWritePrivilege(null, kbUuid);
         List<AdiFile> result = new ArrayList<>();
         KnowledgeBase knowledgeBase = ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(KnowledgeBase::getUuid, kbUuid)
@@ -205,7 +205,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
      * @return 成功或失败
      */
     public boolean indexing(String kbUuid, List<String> indexTypes) {
-        checkPrivilege(null, kbUuid);
+        checkWritePrivilege(null, kbUuid);
         KnowledgeBase knowledgeBase = this.getOrThrow(kbUuid);
         LambdaQueryWrapper<KnowledgeBaseItem> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeBaseItem::getIsDeleted, false);
@@ -301,7 +301,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     }
 
     public boolean softDelete(String uuid) {
-        checkPrivilege(null, uuid);
+        checkWritePrivilege(null, uuid);
         return ChainWrappers.lambdaUpdateChain(baseMapper)
                 .eq(KnowledgeBase::getUuid, uuid)
                 .set(KnowledgeBase::getIsDeleted, true)
@@ -660,7 +660,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     /**
      * Read authorization for a knowledge base's content: allow the owner, an admin,
      * or anyone when the knowledge base is public. This mirrors the (owner-only)
-     * write-side checkPrivilege so that the read endpoints are scoped too. Denials
+     * write-side checkWritePrivilege so that the read endpoints are scoped too. Denials
      * are reported as A_DATA_NOT_FOUND to avoid leaking the existence of other
      * users' private knowledge bases.
      */
@@ -720,7 +720,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         }
     }
 
-    private void checkPrivilege(Long kbId, String kbUuid) {
+    private void checkWritePrivilege(Long kbId, String kbUuid) {
         if (null == kbId && StringUtils.isBlank(kbUuid)) {
             throw new BaseException(A_PARAMS_ERROR);
         }

@@ -98,10 +98,10 @@ public class KnowledgeBaseController {
     }
 
     /**
-* Knowledge base details
+     * Knowledge base details
      * 知识库详情
      *
-* @param uuid 知识库uuid / Knowledge base UUID
+     * @param uuid 知识库uuid / Knowledge base UUID
      * @return 知识库详情
      */
     @GetMapping("/info/{uuid}")

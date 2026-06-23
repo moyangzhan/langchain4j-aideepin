@@ -33,12 +33,23 @@
         where is_deleted = false
     </select>
 
-    <select id="belongToUser" resultType="Integer">
+    <!-- Write privilege: the owner of the item's knowledge base must be the current user -->
+    <select id="checkWritePrivilege" resultType="Integer">
         select count(1)
         from adi_knowledge_base_item a
                  inner join adi_knowledge_base b on a.kb_id = b.id
         where a.is_deleted = false
           and a.uuid = #{uuid}
           and b.owner_id = #{userId}
+    </select>
+
+    <!-- Read privilege: the item's knowledge base is owned by the current user, or is public -->
+    <select id="checkReadPrivilege" resultType="Integer">
+        select count(1)
+        from adi_knowledge_base_item a
+                 inner join adi_knowledge_base b on a.kb_id = b.id
+        where a.is_deleted = false
+          and a.uuid = #{uuid}
+          and (b.owner_id = #{userId} or b.is_public = true)
     </select>
 </mapper>
