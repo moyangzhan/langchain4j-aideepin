@@ -10,10 +10,18 @@ import com.pgvector.PGvector;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+/**
+ * Episodic memory vector row, mirroring {@link CharacterMemoryEmbedding} but
+ * mapped to the physically isolated {@code adi_character_episodic_memory_embedding}
+ * table managed by langchain4j.
+ * <p>
+ * 情景记忆向量行实体，结构与 {@link CharacterMemoryEmbedding} 对称，映射到由 langchain4j
+ * 管理的物理隔离表 {@code adi_character_episodic_memory_embedding}。
+ */
 @Data
-@TableName(value = "adi_character_memory_embedding", autoResultMap = true)
-@Schema(title = "角色-记忆-嵌入实体 | Character Memory Embedding Entity", description = "角色记忆嵌入表 | Character Memory Embedding Table")
-public class CharacterMemoryEmbedding {
+@TableName(value = "adi_character_episodic_memory_embedding", autoResultMap = true)
+@Schema(title = "角色-情景记忆-嵌入实体 | Character Episodic Memory Embedding Entity")
+public class EpisodicMemoryEmbedding {
 
     @Schema(title = "embedding_id")
     @TableId(value = "embedding_id", type = IdType.AUTO)
@@ -28,12 +36,8 @@ public class CharacterMemoryEmbedding {
     private String text;
 
     /**
-     * langchain4j 写入时存储的 JSONB metadata（character_id / memory_type /
-     * event_type / importance / created_at / source_msg_id 等）。读路径用于
-     * 反查时区分语义/情景记忆并填充结构化字段。
-     * <p>
-     * JSONB metadata written by langchain4j on ingest. Read path uses it to
-     * distinguish semantic vs episodic and pull structured fields for the UI.
+     * JSONB metadata written by langchain4j on ingest (character_id / memory_type=episodic /
+     * event_type / importance / created_at / source_msg_id).
      */
     @Schema(title = "metadata")
     @TableField(value = "metadata", typeHandler = JsonNodeTypeHandler.class)

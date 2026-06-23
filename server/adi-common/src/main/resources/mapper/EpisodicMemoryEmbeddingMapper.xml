@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moyz.adi.common.mapper.EpisodicMemoryEmbeddingMapper">
+
+    <!--
+      Timeline retrieval: most recent N episodic events for a character.
+      Table name is rewritten at runtime by EmbeddingTableNameHandler to add the dimension suffix.
+      created_at is stored as ISO-8601 (LocalDateTime.toString()) so lexicographic order = chronological order.
+      <p>
+      时间轴检索：返回某角色最近 N 条情景事件。
+      表名由 EmbeddingTableNameHandler 在运行时追加维度后缀。
+      created_at 以 ISO-8601 字符串（LocalDateTime.toString()）存储，字典序即时间序。
+    -->
+    <select id="listRecentByCharacter" resultType="com.moyz.adi.common.entity.EpisodicMemoryEmbedding">
+        select *
+        from adi_character_episodic_memory_embedding
+        where metadata ->> 'conv_id' = #{characterId}
+        order by metadata ->> 'created_at' desc
+        limit #{limit}
+    </select>
+</mapper>

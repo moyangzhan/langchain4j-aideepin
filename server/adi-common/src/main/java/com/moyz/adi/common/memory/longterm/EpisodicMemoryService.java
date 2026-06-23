@@ -1,9 +1,8 @@
 package com.moyz.adi.common.memory.longterm;
 
 import com.moyz.adi.common.cosntant.AdiConstant;
-import com.moyz.adi.common.entity.CharacterEpisodicMemory;
+import com.moyz.adi.common.enums.EventType;
 import com.moyz.adi.common.memory.vo.ExtractedEpisodicEvent;
-import com.moyz.adi.common.service.CharacterEpisodicMemoryService;
 import com.moyz.adi.common.util.UuidUtil;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -14,59 +13,68 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.*;
 
 /**
- * Append-only service for episodic memory. Each invocation creates new rows in both the
- * vector store (for similarity search) and the relational table (for time-line retrieval).
+ * Append-only writer for episodic memory. Each event becomes a row in the dedicated
+ * {@code episodicMemoryEmbeddingStore} (physically isolated from semantic memory so the
+ * two never compete for top-K). All structured fields (event_type, importance,
+ * created_at, source_msg_id) live in the vector store's metadata — no relational table.
  * <p>
- * 情景记忆 append-only 写入服务。每次写入同时在向量库（语义检索用）和关系表（时间轴检索用）中创建新行。
+ * 情景记忆 append-only 写入服务。事件写入独立的 {@code episodicMemoryEmbeddingStore}
+ * （与语义记忆物理隔离，互不抢占 top-K 召回）。所有结构化字段（事件类型、重要性、创建时间、
+ * 来源消息）都存在向量库 metadata 中，不再需要关系表。
  */
 @Slf4j
 @Service
 public class EpisodicMemoryService {
 
     @Resource
-    private EmbeddingStore<TextSegment> characterMemoryEmbeddingStore;
+    @Qualifier("episodicMemoryEmbeddingStore")
+    private EmbeddingStore<TextSegment> episodicMemoryEmbeddingStore;
+
     @Resource
     private EmbeddingModel embeddingModel;
-    @Resource
-    private CharacterEpisodicMemoryService characterEpisodicMemoryService;
 
     /**
-     * Batch add episodic events — idempotent by sourceMsgId.
+     * Batch add episodic events to the dedicated episodic vector store.
      * <p>
-     * 批量写入情景事件，按 sourceMsgId 幂等。
+     * Idempotency was previously enforced via a relational table; it has been dropped
+     * in favour of architectural simplicity. The trade-off is that retried calls with
+     * the same {@code sourceMsgId} will produce duplicate episodic rows — acceptable
+     * because (a) retries are rare and (b) duplicate episodic events have negligible
+     * impact on LLM analysis quality.
+     * <p>
+     * 批量写入情景事件到独立向量库。原先按 sourceMsgId 做的幂等检查已被移除以换取架构简化：
+     * 同一消息的重试会产生重复的 episodic 记录，但重试罕见且重复对 LLM 分析质量影响可忽略。
      *
-     * @param characterId    角色 ID
-     * @param userId         用户 ID
-     * @param sourceMsgId    源消息 ID（用于幂等判断）
-     * @param events         事件列表
-     * @param isFreeToken    是否免费模型
+     * @param characterId 角色 ID
+     * @param userId      用户 ID
+     * @param sourceMsgId 源消息 ID（仅写入 metadata 用于回溯，不再做幂等）
+     * @param events      事件列表
+     * @param isFreeToken 是否免费模型（保留入参，调度器侧用于成本结算时透传）
      */
     public void batchAdd(Long characterId, Long userId, Long sourceMsgId,
                          List<ExtractedEpisodicEvent> events, boolean isFreeToken) {
         if (CollectionUtils.isEmpty(events)) {
             return;
         }
-
-        // Idempotency: if this source message already produced episodic records, skip.
+        // userId / isFreeToken are reserved for future per-user filtering and cost
+        // accounting; they're carried through the signature so callers don't have to
+        // change when those features arrive.
         // <p>
-        // 幂等判断：同一消息已有 episodic 记录则跳过。
-        if (sourceMsgId != null && characterEpisodicMemoryService.existsBySourceMsgId(sourceMsgId)) {
-            log.info("Episodic events already exist for sourceMsgId={}, skip", sourceMsgId);
-            return;
-        }
+        // userId / isFreeToken 保留入参以便未来支持用户级过滤和成本结算，避免后续改签名。
 
         LocalDateTime now = LocalDateTime.now();
-        List<CharacterEpisodicMemory> episodicRows = new ArrayList<>();
         List<String> embeddingIds = new ArrayList<>();
         List<Embedding> embeddings = new ArrayList<>();
         List<TextSegment> segments = new ArrayList<>();
@@ -76,50 +84,35 @@ public class EpisodicMemoryService {
                 continue;
             }
 
-            String uuid = UuidUtil.createShort();
+            String embeddingId = UuidUtil.createShort();
             Embedding embedding = embeddingModel.embed(event.getSummary()).content();
-            String embeddingId = uuid;
 
-            String eventType = StringUtils.isNotBlank(event.getEventType())
-                    ? event.getEventType()
-                    : AdiConstant.EVENT_TYPE_GENERAL;
+            String eventType = EventType.fromString(event.getEventType()).getCode();
             int importance = event.getImportance() != null
                     ? Math.max(1, Math.min(5, event.getImportance()))
                     : AdiConstant.EPISODIC_IMPORTANCE_DEFAULT;
 
-            // Build metadata with null-safe sourceMsgId (Map.of rejects null values).
-            // Keep CHARACTER_ID as Long to match the filter type used in IsEqualTo lookups.
+            // Build metadata. Use a mutable HashMap so sourceMsgId can be conditionally
+            // added (Map.of rejects null values). CHARACTER_ID stays as Long to match
+            // the type used by IsEqualTo filters.
             // <p>
-            // 构建 metadata，sourceMsgId 需 null 安全（Map.of 拒收 null）。
-            // CHARACTER_ID 保持 Long 类型，与 IsEqualTo 过滤条件类型一致。
-            Metadata metadata = new Metadata(Map.of(
-                    CHARACTER_ID, characterId,
-                    MEMORY_TYPE, AdiConstant.MemoryType.EPISODIC,
-                    CREATED_AT, now.toString(),
-                    EVENT_TYPE, eventType,
-                    IMPORTANCE, importance
-            ));
+            // 用可变 Map 构建 metadata：sourceMsgId 可能为 null，Map.of 不接受 null。
+            // CHARACTER_ID 保持 Long 以匹配 IsEqualTo 过滤条件类型。
+            Map<String, Object> meta = new HashMap<>();
+            meta.put(CHARACTER_ID, characterId);
+            meta.put(MEMORY_TYPE, AdiConstant.MemoryType.EPISODIC);
+            meta.put(CREATED_AT, now.toString());
+            meta.put(EVENT_TYPE, eventType);
+            meta.put(IMPORTANCE, importance);
             if (sourceMsgId != null) {
-                metadata.put(SOURCE_MSG_ID, sourceMsgId);
+                meta.put(SOURCE_MSG_ID, sourceMsgId);
             }
+            Metadata metadata = new Metadata(meta);
             TextSegment segment = TextSegment.from(event.getSummary(), metadata);
+
             embeddingIds.add(embeddingId);
             embeddings.add(embedding);
             segments.add(segment);
-
-            CharacterEpisodicMemory row = new CharacterEpisodicMemory();
-            row.setUuid(uuid);
-            row.setCharacterId(characterId);
-            row.setUserId(userId);
-            row.setSummary(event.getSummary());
-            row.setSourceMsgId(sourceMsgId);
-            row.setEventType(eventType);
-            row.setImportance(importance);
-            row.setEmbeddingId(embeddingId);
-            row.setCreatedAt(now);
-            row.setIsActive(true);
-            row.setIsDeleted(false);
-            episodicRows.add(row);
         }
 
         if (segments.isEmpty()) {
@@ -127,29 +120,7 @@ public class EpisodicMemoryService {
             return;
         }
 
-        // 关系表先写：作为幂等的事实来源，向量库写失败时可重试不会重复落库。
-        // 反过来，若向量库先写而 DB 写失败，下次重试会绕过幂等再次写入向量库，造成重复。
-        // <p>
-        // Relational table first: it's the source of truth for idempotency. If the vector
-        // write fails afterwards we can retry safely (a future retry will hit the idempotency
-        // guard and short-circuit). The reverse order would leak duplicate vectors on partial
-        // failure because the idempotency guard only sees the relational table.
-        characterEpisodicMemoryService.saveBatch(episodicRows);
-        try {
-            characterMemoryEmbeddingStore.addAll(embeddingIds, embeddings, segments);
-        } catch (Exception e) {
-            // Roll back the relational rows we just inserted; without rollback, the next attempt
-            // will see them and skip via idempotency, leaving these events without any vector.
-            // <p>
-            // 回滚刚插入的关系行：否则下次重试会被幂等拦截，导致这批事件永远没有对应向量。
-            log.error("Vector store write failed, rolling back relational rows. characterId={}, count={}",
-                    characterId, episodicRows.size(), e);
-            List<Long> ids = episodicRows.stream().map(CharacterEpisodicMemory::getId).filter(java.util.Objects::nonNull).toList();
-            if (!ids.isEmpty()) {
-                characterEpisodicMemoryService.removeBatchByIds(ids);
-            }
-            throw e;
-        }
-        log.info("Episodic memory batch added: characterId={}, count={}", characterId, episodicRows.size());
+        episodicMemoryEmbeddingStore.addAll(embeddingIds, embeddings, segments);
+        log.info("Episodic memory batch added: characterId={}, count={}", characterId, segments.size());
     }
 }

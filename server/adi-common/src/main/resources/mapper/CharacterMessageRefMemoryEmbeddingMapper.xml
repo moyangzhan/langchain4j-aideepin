@@ -2,9 +2,10 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.moyz.adi.common.mapper.CharacterMessageRefMemoryEmbeddingMapper">
     <select id="listByMsgUuid" resultType="com.moyz.adi.common.entity.CharacterMessageRefMemoryEmbedding">
-        select *
+        select a.*
         from adi_character_message_ref_memory_embedding a
                  inner join adi_character_message b on a.message_id = b.id
         where b.uuid = #{uuid}
+        order by a.id
     </select>
 </mapper>

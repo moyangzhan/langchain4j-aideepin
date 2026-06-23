@@ -78,6 +78,28 @@ public class Neo4jEmbeddingStoreConfig {
         return createEmbeddingStore(indexName, tableName, pair.getRight());
     }
 
+    /**
+     * 角色情景记忆使用的独立向量库。
+     * <p>
+     * Dedicated vector store for episodic memory, physically isolated from semantic
+     * memory so retrieval on either store never competes for top-K with the other.
+     *
+     * @return EmbeddingStore实例
+     */
+    @Bean(name = "episodicMemoryEmbeddingStore")
+    @DependsOn("initializer")
+    public EmbeddingStore<TextSegment> initEpisodicMemoryEmbeddingStore() {
+        log.info("Initializing episodicMemoryEmbeddingStore...");
+        String tableName = "adi_character_episodic_memory_embedding";
+        String indexName = "char_episodic_memory";
+        Pair<String, Integer> pair = AdiPropertiesUtil.getSuffixAndDimension(adiProperties);
+        if (StringUtils.isNotBlank(pair.getLeft())) {
+            tableName = tableName + "_" + pair.getLeft();
+            indexName = indexName + "_" + pair.getLeft();
+        }
+        return createEmbeddingStore(indexName, tableName, pair.getRight());
+    }
+
     private EmbeddingStore<TextSegment> createEmbeddingStore(String indexName, String tableName, int dimension) {
         log.info("Creating Neo4jEmbeddingStore with table name:{},dimension:{}", tableName, dimension);
         AdiProperties.Neo4j neo4j = adiProperties.getDatasource().getNeo4j();

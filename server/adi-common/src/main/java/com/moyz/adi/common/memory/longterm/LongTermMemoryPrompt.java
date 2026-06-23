@@ -1,5 +1,6 @@
 package com.moyz.adi.common.memory.longterm;
 
+import com.moyz.adi.common.enums.EventType;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
 
@@ -36,7 +37,7 @@ public class LongTermMemoryPrompt {
             ## Task B — Episodic events
             Specific events bound to a moment in time. They are NOT mergeable — every event is its own record. Capture:
             - What happened (one sentence summary)
-            - event_type (one of: travel, work, health, social, learning, entertainment, family, general)
+            - event_type (one of: %s)
             - importance (1=trivial, 3=normal, 5=highly significant)
 
             Episodic events are things like:
@@ -88,7 +89,7 @@ public class LongTermMemoryPrompt {
                 { "summary": "...", "event_type": "...", "importance": 1-5 }
               ]
             }
-            """.formatted(LocalDateTimeUtil.format(LocalDateTime.now(), PATTERN_YYYY_MM_DD));
+            """.formatted(EventType.codesJoined(), LocalDateTimeUtil.format(LocalDateTime.now(), PATTERN_YYYY_MM_DD));
 
     /**
      * Legacy single-task fact extraction prompt — kept for fallback / migration scenarios.

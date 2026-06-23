@@ -565,13 +565,6 @@ public class AdiConstant {
     }
 
     /**
-     * 情景事件类型默认值。
-     * <p>
-     * Default event type label when the LLM does not assign one.
-     */
-    public static final String EVENT_TYPE_GENERAL = "general";
-
-    /**
      * 情景事件重要性默认值（1-5）。
      * <p>
      * Default importance for episodic events.

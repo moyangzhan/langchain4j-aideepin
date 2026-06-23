@@ -85,6 +85,25 @@ public class PgVectorEmbeddingStoreConfig {
         return createEmbeddingStore(tableName, pair.getRight());
     }
 
+    /**
+     * 角色情景记忆使用的独立向量库。
+     * <p>
+     * Dedicated vector store for episodic memory, physically isolated from semantic
+     * memory so retrieval on either store never competes for top-K with the other.
+     *
+     * @return EmbeddingStore实例
+     */
+    @Bean(name = "episodicMemoryEmbeddingStore")
+    public EmbeddingStore<TextSegment> initEpisodicMemoryEmbeddingStore() {
+        log.info("Initializing episodicMemoryEmbeddingStore...");
+        String tableName = "adi_character_episodic_memory_embedding";
+        Pair<String, Integer> pair = AdiPropertiesUtil.getSuffixAndDimension(adiProperties);
+        if (StringUtils.isNotBlank(pair.getLeft())) {
+            tableName = tableName + "_" + pair.getLeft();
+        }
+        return createEmbeddingStore(tableName, pair.getRight());
+    }
+
     private EmbeddingStore<TextSegment> createEmbeddingStore(String tableName, int dimension) {
         // 正则表达式匹配
         String regex = "jdbc:postgresql://([^:/]+):(\\d+)/(\\w+).*";
