@@ -369,11 +369,11 @@ create table adi_character_message_ref_embedding
     user_id      bigint        default 0  not null
 );
 
-comment on table adi_character_message_ref_embedding is 'Character message - knowledge base embedding references';
-comment on column adi_character_message_ref_embedding.message_id is 'adi_character_message ID';
-comment on column adi_character_message_ref_embedding.embedding_id is 'Embedding UUID retrieved from vector store';
-comment on column adi_character_message_ref_embedding.score is 'Similarity score';
-comment on column adi_character_message_ref_embedding.user_id is 'User ID';
+comment on table adi_character_message_ref_embedding is '角色消息引用的知识库向量命中（溯源表）。embedding_id 指向 adi_knowledge_base_embedding[_<suffix>]。| Provenance of knowledge-base vector hits used by a character message. Sources adi_knowledge_base_embedding[_<suffix>]. Sibling tables: adi_character_message_ref_graph (KB graph hits), adi_character_message_ref_memory_embedding (character memory hits).';
+comment on column adi_character_message_ref_embedding.message_id is 'adi_character_message.id this hit was used by';
+comment on column adi_character_message_ref_embedding.embedding_id is 'UUID of the matched row in the KB vector store (adi_knowledge_base_embedding[_<suffix>])';
+comment on column adi_character_message_ref_embedding.score is 'Similarity score returned by the vector store at retrieval time (0-1)';
+comment on column adi_character_message_ref_embedding.user_id is 'Owner user id (denormalized from the message for fast filtering)';
 
 create table adi_character_message_ref_graph
 (
@@ -384,11 +384,11 @@ create table adi_character_message_ref_graph
     user_id                bigint default 0  not null
 );
 
-comment on table adi_character_message_ref_graph is 'Character message - knowledge base graph references';
-comment on column adi_character_message_ref_graph.message_id is 'adi_character_message ID';
-comment on column adi_character_message_ref_graph.entities_from_question is 'Entities parsed from question: vertexName1,vertexName2';
-comment on column adi_character_message_ref_graph.graph_from_store is 'Graph retrieved from graph database: {vertices:[{id:"111",name:"vertexName1"},{id:"222",name:"vertexName2"}],edges:[{id:"333",name:"edgeName1",start:"111",end:"222"}]';
-comment on column adi_character_message_ref_graph.user_id is 'User ID';
+comment on table adi_character_message_ref_graph is '角色消息引用的知识库图谱命中（溯源表）。每条消息一行（整张子图整体序列化为 JSON，不做边/点拆表）。来源：KB 图谱存储（Neo4j 或带 AGE 的 PgVector）。| Provenance of knowledge-base graph hits used by a character message. One row per message; the retrieved subgraph is stored as JSON, not normalized into edges. Source: KB graph store (Neo4j or PgVector with AGE). Sibling tables: adi_character_message_ref_embedding (KB vector hits), adi_character_message_ref_memory_embedding (character memory hits).';
+comment on column adi_character_message_ref_graph.message_id is 'adi_character_message.id this subgraph was used by';
+comment on column adi_character_message_ref_graph.entities_from_question is 'Vertex names extracted from the user question, comma-separated (e.g. "vertexName1,vertexName2")';
+comment on column adi_character_message_ref_graph.graph_from_store is 'Retrieved subgraph serialized as JSON: {"vertices":[{"id":"111","name":"vertexName1"}],"edges":[{"id":"333","name":"edgeName1","start":"111","end":"222"}]}';
+comment on column adi_character_message_ref_graph.user_id is 'Owner user id (denormalized from the message for fast filtering)';
 
 create table adi_character_message_ref_memory_embedding
 (
@@ -396,13 +396,15 @@ create table adi_character_message_ref_memory_embedding
     message_id   bigint        default 0  not null,
     embedding_id varchar(36)   default '' not null,
     score        numeric(3, 2) default 0  not null,
+    memory_type  smallint      default 1  not null,
     user_id      bigint        default 0  not null
 );
-comment on table adi_character_message_ref_memory_embedding is 'Character message - memory references';
-comment on column adi_character_message_ref_memory_embedding.message_id is 'adi_character_message ID';
-comment on column adi_character_message_ref_memory_embedding.embedding_id is 'Embedding UUID retrieved from memory vector store';
-comment on column adi_character_message_ref_memory_embedding.score is 'Similarity score';
-comment on column adi_character_message_ref_memory_embedding.user_id is 'User ID';
+comment on table adi_character_message_ref_memory_embedding is '角色消息引用的长期记忆命中（溯源表）。memory_type 列直接路由到对应的物理向量库（1=semantic、2=episodic、3=procedural 预留），新增类型只能 append，不得复用或重排。姊妹表：adi_character_message_ref_embedding（KB 向量命中）、adi_character_message_ref_graph（KB 图谱命中）。 | Provenance of long-term memory hits used by a character message. The memory_type column routes each row to its physical vector store (1=semantic, 2=episodic, 3=procedural-reserved). Codes are append-only — never reuse or reorder. Sibling tables: adi_character_message_ref_embedding (KB vector hits), adi_character_message_ref_graph (KB graph hits).';
+comment on column adi_character_message_ref_memory_embedding.message_id is 'adi_character_message.id this memory hit was used by';
+comment on column adi_character_message_ref_memory_embedding.embedding_id is 'UUID of the matched row in the semantic / episodic / procedural memory vector store; pick the store via memory_type';
+comment on column adi_character_message_ref_memory_embedding.score is 'Similarity score returned by the vector store at retrieval time (0-1)';
+comment on column adi_character_message_ref_memory_embedding.memory_type is 'Routing code: 1=semantic, 2=episodic, 3=procedural';
+comment on column adi_character_message_ref_memory_embedding.user_id is 'Owner user id (denormalized from the message for fast filtering)';
 
 -- ============================================================
 -- LLM Call Record: unified LLM call resource consumption tracking

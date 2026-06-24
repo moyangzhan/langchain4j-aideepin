@@ -23,11 +23,11 @@ public class RefEmbeddingDto {
     private String memoryType;
 
     /**
-     * 事件发生时间（仅 episodic 填充，用于按时间轴展示）。
+     * 事件发生时间（仅 episodic 填充，用于按时间轴展示）。格式 {@code yyyy-MM-dd HH:mm:ss}。
      * <p>
-     * Event timestamp (episodic only — for timeline display).
+     * Event timestamp (episodic only — for timeline display). Format {@code yyyy-MM-dd HH:mm:ss}.
      */
-    private String createdAt;
+    private String createTime;
 
     /**
      * 事件类型（仅 episodic 填充）。

@@ -2,10 +2,10 @@ package com.moyz.adi.common.service;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.KbItemEmbeddingDto;
 import com.moyz.adi.common.dto.RefEmbeddingDto;
 import com.moyz.adi.common.entity.CharacterMessageRefMemoryEmbedding;
+import com.moyz.adi.common.enums.MemoryType;
 import com.moyz.adi.common.mapper.CharacterMessageRefMemoryEmbeddingMapper;
 import com.moyz.adi.common.service.embedding.ICharacterMemoryEmbeddingService;
 import com.moyz.adi.common.service.embedding.IEpisodicMemoryEmbeddingService;
@@ -17,11 +17,12 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CREATED_AT;
+import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CREATE_TIME;
 import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.EVENT_TYPE;
 import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.IMPORTANCE;
 import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.MEMORY_TYPE;
@@ -40,45 +41,53 @@ public class CharacterMessageRefMemoryEmbeddingService extends ServiceImpl<Chara
      * List memory references attached to a message, enriched with memory-type metadata
      * so the frontend can group semantic vs episodic hits in the "Memory" popup.
      * <p>
-     * Looks up each {@code embeddingId} against the semantic store first, then any
-     * still-unresolved ids against the episodic store. Structured fields (event_type,
-     * importance, created_at) and the memory-type tag are read directly from the
-     * vector store's metadata — no relational table is consulted.
+     * Each ref row carries a {@code memory_type} routing code; rows are bucketed by
+     * code and each bucket is resolved against its dedicated physical vector store
+     * in a single batch lookup — no fallback probing across stores.
      * <p>
-     * 列出消息引用的记忆，并附带 memory type 元数据，让前端能在"记忆"弹窗中分组展示
-     * semantic / episodic。先在语义向量库反查，未命中的再去情景向量库反查；结构化字段
-     * 和类型标记直接从向量库 metadata 读取，不再依赖关系表。
+     * 列出消息引用的记忆。每条 ref 行带 memory_type 路由码，按 enum 分桶后各自走对应的
+     * 物理向量库一次性反查；不再做"先 semantic 后 episodic"的盲查 fallback。
      */
     public List<RefEmbeddingDto> listRefEmbeddings(String uuid) {
         List<CharacterMessageRefMemoryEmbedding> recordReferences = this.getBaseMapper().listByMsgUuid(uuid);
         if (CollectionUtils.isEmpty(recordReferences)) {
             return Collections.emptyList();
         }
-        List<String> embeddingIds = recordReferences.stream().map(CharacterMessageRefMemoryEmbedding::getEmbeddingId).toList();
-        if (CollectionUtils.isEmpty(embeddingIds)) {
+
+        // Bucket by routing code so each physical store is queried at most once.
+        // 按路由码分桶，每个物理向量库最多查一次。
+        Map<MemoryType, List<String>> byType = new EnumMap<>(MemoryType.class);
+        List<String> orderedIds = new ArrayList<>(recordReferences.size());
+        for (CharacterMessageRefMemoryEmbedding ref : recordReferences) {
+            if (ref.getEmbeddingId() == null || ref.getEmbeddingId().isEmpty()) {
+                continue;
+            }
+            MemoryType type = ref.getMemoryType();
+            byType.computeIfAbsent(type, k -> new ArrayList<>()).add(ref.getEmbeddingId());
+            orderedIds.add(ref.getEmbeddingId());
+        }
+        if (orderedIds.isEmpty()) {
             return Collections.emptyList();
         }
 
-        // First lookup: semantic store (also covers legacy rows without memory_type tag).
-        // 一查 semantic store（同时覆盖无 memory_type 标签的历史数据）。
-        List<KbItemEmbeddingDto> semanticHits = characterMemoryEmbeddingService.listByEmbeddingIds(embeddingIds);
         Map<String, KbItemEmbeddingDto> byId = new HashMap<>();
-        for (KbItemEmbeddingDto hit : semanticHits) {
-            byId.put(hit.getEmbeddingId(), hit);
-        }
-
-        // Second lookup: any ids not found in the semantic store must be in the
-        // episodic store (physically isolated since the split).
-        // 二查 episodic store：未命中的 id 应来自物理隔离后的情景表。
-        List<String> missingIds = new ArrayList<>();
-        for (String id : embeddingIds) {
-            if (!byId.containsKey(id)) {
-                missingIds.add(id);
+        for (Map.Entry<MemoryType, List<String>> entry : byType.entrySet()) {
+            List<String> ids = entry.getValue();
+            if (ids.isEmpty()) {
+                continue;
             }
-        }
-        if (!missingIds.isEmpty()) {
-            List<KbItemEmbeddingDto> episodicHits = episodicMemoryEmbeddingService.listByEmbeddingIds(missingIds);
-            for (KbItemEmbeddingDto hit : episodicHits) {
+            List<KbItemEmbeddingDto> hits = switch (entry.getKey()) {
+                case SEMANTIC -> characterMemoryEmbeddingService.listByEmbeddingIds(ids);
+                case EPISODIC -> episodicMemoryEmbeddingService.listByEmbeddingIds(ids);
+                case PROCEDURAL -> {
+                    // Procedural store is not implemented yet — log and skip so a stray
+                    // routing code can't crash the whole memory popup.
+                    // 程序性记忆尚未实现，忽略以保护现网调用。
+                    log.warn("Procedural memory store not implemented, skipping {} refs", ids.size());
+                    yield Collections.emptyList();
+                }
+            };
+            for (KbItemEmbeddingDto hit : hits) {
                 byId.put(hit.getEmbeddingId(), hit);
             }
         }
@@ -86,7 +95,7 @@ public class CharacterMessageRefMemoryEmbeddingService extends ServiceImpl<Chara
         // Preserve original ordering from the relational reference table.
         // 按关联表原始顺序输出。
         List<KbItemEmbeddingDto> orderedHits = new ArrayList<>();
-        for (String id : embeddingIds) {
+        for (String id : orderedIds) {
             KbItemEmbeddingDto hit = byId.get(id);
             if (hit != null) {
                 orderedHits.add(hit);
@@ -111,13 +120,13 @@ public class CharacterMessageRefMemoryEmbeddingService extends ServiceImpl<Chara
      */
     private void applyMemoryTypeAndFields(RefEmbeddingDto dto, JsonNode metadata) {
         String memoryType = readString(metadata, MEMORY_TYPE);
-        if (AdiConstant.MemoryType.EPISODIC.equals(memoryType)) {
-            dto.setMemoryType(AdiConstant.MemoryType.EPISODIC);
+        if (MemoryType.EPISODIC.getDesc().equals(memoryType)) {
+            dto.setMemoryType(MemoryType.EPISODIC.getDesc());
             dto.setEventType(readString(metadata, EVENT_TYPE));
-            dto.setCreatedAt(readString(metadata, CREATED_AT));
+            dto.setCreateTime(readString(metadata, CREATE_TIME));
             dto.setImportance(readInt(metadata, IMPORTANCE));
         } else {
-            dto.setMemoryType(AdiConstant.MemoryType.SEMANTIC);
+            dto.setMemoryType(MemoryType.SEMANTIC.getDesc());
         }
     }
 

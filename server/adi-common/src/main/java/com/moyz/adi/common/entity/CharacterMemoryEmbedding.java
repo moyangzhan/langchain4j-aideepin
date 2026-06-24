@@ -29,7 +29,7 @@ public class CharacterMemoryEmbedding {
 
     /**
      * langchain4j 写入时存储的 JSONB metadata（character_id / memory_type /
-     * event_type / importance / created_at / source_msg_id 等）。读路径用于
+     * event_type / importance / create_time / conv_msg_id 等）。读路径用于
      * 反查时区分语义/情景记忆并填充结构化字段。
      * <p>
      * JSONB metadata written by langchain4j on ingest. Read path uses it to

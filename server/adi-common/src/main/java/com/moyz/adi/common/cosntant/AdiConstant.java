@@ -154,8 +154,15 @@ public class AdiConstant {
         public static final String KB_ITEM_UUID = "kb_item_uuid";
         public static final String ENGINE_NAME = "engine_name";
         public static final String SEARCH_UUID = "search_uuid";
+        /**
+         * 关联的角色 ID。键值 {@code "conv_id"} 是 conversation→character 重命名时
+         * 保留的历史名，所有语义/情景记忆向量库都用它做 metadata 索引；常量名已规范化。
+         * <p>
+         * Owning character ID. The string literal {@code "conv_id"} is retained from the
+         * conversation→character rename for backward compatibility with existing vector
+         * store data — the Java constant name is normalized.
+         */
         public static final String CHARACTER_ID = "conv_id";
-        public static final String CHARACTER_MSG_ID = "conv_msg_id";
 
         /**
          * 记忆类型 metadata key（semantic / episodic）。
@@ -165,18 +172,27 @@ public class AdiConstant {
         public static final String MEMORY_TYPE = "memory_type";
 
         /**
-         * 记忆创建时间（episodic 必填）。
+         * 记忆创建时间（episodic 必填，格式 {@code yyyy-MM-dd HH:mm:ss}）。
+         * 注意这是写入 jsonb metadata 内部的 key，与表自带列 {@code create_time} 同名
+         * 但作用域不同——后者是 PG 列，前者是 metadata JSON 内的字段。
          * <p>
-         * Memory created-at timestamp (required for episodic).
+         * Memory created-at timestamp (required for episodic; formatted as
+         * {@code yyyy-MM-dd HH:mm:ss}). Same name as the table column {@code create_time}
+         * but lives inside the jsonb metadata — distinct scopes.
          */
-        public static final String CREATED_AT = "created_at";
+        public static final String CREATE_TIME = "create_time";
 
         /**
-         * 关联的源消息 ID（episodic 必填）。
+         * 关联的角色消息 ID（episodic 必填）。键值 {@code "conv_msg_id"} 是
+         * conversation→character 重命名时保留的历史名，与 {@link #CHARACTER_ID} 同源；
+         * episodic 表与 semantic 表共用此 key 以保持 metadata 命名一致。
          * <p>
-         * Source message ID this memory was derived from (required for episodic).
+         * Character message ID this memory was derived from (required for episodic).
+         * The literal {@code "conv_msg_id"} is retained from the conversation→character
+         * rename, same as {@link #CHARACTER_ID}; episodic and semantic stores share this
+         * key for metadata consistency.
          */
-        public static final String SOURCE_MSG_ID = "source_msg_id";
+        public static final String CHARACTER_MSG_ID = "conv_msg_id";
 
         /**
          * 事件类型（episodic 用）。
@@ -538,30 +554,6 @@ public class AdiConstant {
         public static final String ADD = "ADD";
         public static final String UPDATE = "UPDATE";
         public static final String DELETE = "DELETE";
-    }
-
-    /**
-     * 长期记忆的类型。
-     * <p>
-     * Long-term memory types. Procedural is reserved for future extension.
-     */
-    public static class MemoryType {
-        private MemoryType() {
-        }
-
-        /**
-         * 语义记忆：稳定、可合并的事实型知识。
-         * <p>
-         * Semantic memory: stable, mergeable factual knowledge.
-         */
-        public static final String SEMANTIC = "semantic";
-
-        /**
-         * 情景记忆：绑定时间线、不可合并的事件。
-         * <p>
-         * Episodic memory: timeline-bound, non-mergeable events.
-         */
-        public static final String EPISODIC = "episodic";
     }
 
     /**

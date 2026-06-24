@@ -12,9 +12,9 @@ public interface EpisodicMemoryEmbeddingMapper extends BaseMapper<EpisodicMemory
 
     /**
      * Timeline retrieval: list the most recent {@code limit} episodic events for a
-     * character, ordered by the {@code created_at} value stored in metadata.
+     * character, ordered by the {@code create_time} value stored in metadata.
      * <p>
-     * 时间轴检索：按 metadata 中的 {@code created_at} 倒序，返回某角色最近 {@code limit} 条事件。
+     * 时间轴检索：按 metadata 中的 {@code create_time} 倒序，返回某角色最近 {@code limit} 条事件。
      */
     List<EpisodicMemoryEmbedding> listRecentByCharacter(@Param("characterId") Long characterId,
                                                        @Param("limit") int limit);

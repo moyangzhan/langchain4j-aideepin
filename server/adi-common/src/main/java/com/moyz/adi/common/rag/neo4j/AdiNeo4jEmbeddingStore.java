@@ -132,15 +132,15 @@ public class AdiNeo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     /**
      * Timeline retrieval: match nodes satisfying {@code filter} and order by a
-     * metadata property (e.g. {@code created_at}) descending. Mirrors the SQL
-     * {@code order by metadata ->> 'created_at' desc} used by the pgvector
+     * metadata property (e.g. {@code create_time}) descending. Mirrors the SQL
+     * {@code order by metadata ->> 'create_time' desc} used by the pgvector
      * backend so callers behave identically across stores.
      * <p>
-     * 时间轴检索：按 filter 匹配，再按 metadata 字段（如 created_at）倒序。与 pgvector 后端
-     * 的 SQL {@code order by metadata ->> 'created_at' desc} 行为一致。
+     * 时间轴检索：按 filter 匹配，再按 metadata 字段（如 create_time）倒序。与 pgvector 后端
+     * 的 SQL {@code order by metadata ->> 'create_time' desc} 行为一致。
      */
     public EmbeddingSearchResult<TextSegment> searchByMetadataOrdered(Filter filter, String orderByProperty, int maxResult) {
-        // orderByProperty must come from a server-side constant (e.g. MetadataKey.CREATED_AT).
+        // orderByProperty must come from a server-side constant (e.g. MetadataKey.CREATE_TIME).
         // Reject anything that isn't a plain identifier so a future caller accidentally passing
         // user input cannot inject Cypher via this string.
         // <p>
@@ -156,10 +156,10 @@ public class AdiNeo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
                     .isNotNull()
                     .and(neo4jFilterMapper.getCondition(filter));
             // Inline the property name as a literal — dynamic-property access via
-            // node[$param] depends on Neo4j 5.x; literal access (node.created_at)
+            // node[$param] depends on Neo4j 5.x; literal access (node.create_time)
             // is supported across versions.
             // <p>
-            // 用字面属性访问（node.created_at），避免 node[$param] 动态访问的版本依赖。
+            // 用字面属性访问（node.create_time），避免 node[$param] 动态访问的版本依赖。
             Statement statement = match(node)
                     .where(condition)
                     .with(node)

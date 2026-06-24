@@ -5,17 +5,17 @@
     <!--
       Timeline retrieval: most recent N episodic events for a character.
       Table name is rewritten at runtime by EmbeddingTableNameHandler to add the dimension suffix.
-      created_at is stored as ISO-8601 (LocalDateTime.toString()) so lexicographic order = chronological order.
+      create_time is stored as 'yyyy-MM-dd HH:mm:ss' so lexicographic order = chronological order.
       <p>
       时间轴检索：返回某角色最近 N 条情景事件。
       表名由 EmbeddingTableNameHandler 在运行时追加维度后缀。
-      created_at 以 ISO-8601 字符串（LocalDateTime.toString()）存储，字典序即时间序。
+      create_time 以 'yyyy-MM-dd HH:mm:ss' 字符串存储，字典序即时间序。
     -->
     <select id="listRecentByCharacter" resultType="com.moyz.adi.common.entity.EpisodicMemoryEmbedding">
         select *
         from adi_character_episodic_memory_embedding
         where metadata ->> 'conv_id' = #{characterId}
-        order by metadata ->> 'created_at' desc
+        order by metadata ->> 'create_time' desc
         limit #{limit}
     </select>
 </mapper>

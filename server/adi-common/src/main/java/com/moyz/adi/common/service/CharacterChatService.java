@@ -14,6 +14,7 @@ import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ChatMessageRoleEnum;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.enums.LLMCallRecordSourceType;
+import com.moyz.adi.common.enums.MemoryType;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.file.FileOperatorContext;
 import com.moyz.adi.common.file.LocalFileUtil;
@@ -515,13 +516,21 @@ public class CharacterChatService {
                 } else if (wrapper.getRetriever() instanceof GraphStoreContentRetriever graphRetriever) {
                     characterMessageService.createGraphRefs(user, msgId, graphRetriever.getGraphRef());
                 }
-            } else if (RetrieveContentFrom.CHARACTER_MEMORY.equals(wrapper.getContentFrom())
-                    || RetrieveContentFrom.CHARACTER_MEMORY_EPISODIC.equals(wrapper.getContentFrom())) {
-                //semantic 与 episodic 共享同一 ref 表，按 embedding_id 落库即可。
-                //<p>
-                //Semantic and episodic memories share the same ref table — both record by embedding_id.
-                if (wrapper.getRetriever() instanceof AdiEmbeddingStoreContentRetriever knowledgeBaseRetriever) {
-                    characterMessageService.createMemoryRefs(user, msgId, knowledgeBaseRetriever.getRetrievedEmbeddingToScore());
+            } else if (RetrieveContentFrom.CHARACTER_MEMORY.equals(wrapper.getContentFrom())) {
+                // Semantic memory channel: route writes through memory_type=SEMANTIC so
+                // the reverse-lookup at read time can hit the right physical store in one shot.
+                // <p>
+                // 语义记忆通道：写入时附带 memory_type=SEMANTIC，反查时按 code 一次定位向量库。
+                if (wrapper.getRetriever() instanceof AdiEmbeddingStoreContentRetriever memoryRetriever) {
+                    characterMessageService.createMemoryRefs(user, msgId,
+                            memoryRetriever.getRetrievedEmbeddingToScore(), MemoryType.SEMANTIC);
+                }
+            } else if (RetrieveContentFrom.CHARACTER_MEMORY_EPISODIC.equals(wrapper.getContentFrom())) {
+                // Episodic memory channel: same ref table, distinct memory_type code.
+                // 情景记忆通道：共用 ref 表，写入时用不同的 memory_type 码。
+                if (wrapper.getRetriever() instanceof AdiEmbeddingStoreContentRetriever memoryRetriever) {
+                    characterMessageService.createMemoryRefs(user, msgId,
+                            memoryRetriever.getRetrievedEmbeddingToScore(), MemoryType.EPISODIC);
                 }
             }
 

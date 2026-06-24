@@ -2,6 +2,7 @@ package com.moyz.adi.common.memory.longterm;
 
 import com.moyz.adi.common.config.AdiProperties;
 import com.moyz.adi.common.cosntant.AdiConstant;
+import com.moyz.adi.common.enums.MemoryType;
 import com.moyz.adi.common.memory.vo.BatchActionMemories;
 import com.moyz.adi.common.rag.EmbeddingRagContext;
 import com.moyz.adi.common.vo.EmbeddingIngestParam;
@@ -139,7 +140,7 @@ public class SemanticMemoryService {
             }
             Metadata metadata = new Metadata(Map.of(
                     CHARACTER_ID, characterId,
-                    AdiConstant.MetadataKey.MEMORY_TYPE, AdiConstant.MemoryType.SEMANTIC));
+                    AdiConstant.MetadataKey.MEMORY_TYPE, MemoryType.SEMANTIC.getDesc()));
             Document document = new DefaultDocument(action.getText(), metadata);
             EmbeddingRagContext.get(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY).ingest(document,
                     EmbeddingIngestParam.builder()
@@ -188,7 +189,7 @@ public class SemanticMemoryService {
             semanticEmbeddingStore.remove(embeddingId);
             Metadata metadata = new Metadata(Map.of(
                     CHARACTER_ID, characterId,
-                    AdiConstant.MetadataKey.MEMORY_TYPE, AdiConstant.MemoryType.SEMANTIC));
+                    AdiConstant.MetadataKey.MEMORY_TYPE, MemoryType.SEMANTIC.getDesc()));
             TextSegment newSegment = TextSegment.from(action.getText(), metadata);
             semanticEmbeddingStore.addAll(List.of(embeddingId), List.of(match.embedding()), List.of(newSegment));
             return;

@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CHARACTER_ID;
-import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CREATED_AT;
+import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CREATE_TIME;
 
 /**
  * Neo4j implementation of {@link IEpisodicMemoryEmbeddingService}. Reverse-lookup
@@ -51,7 +51,7 @@ public class EpisodicMemoryEmbeddingService implements IEpisodicMemoryEmbeddingS
     @Override
     public List<KbItemEmbeddingDto> listRecentByCharacter(Long characterId, int limit) {
         EmbeddingSearchResult<TextSegment> searchResult = ((AdiNeo4jEmbeddingStore) embeddingStore)
-                .searchByMetadataOrdered(new IsEqualTo(CHARACTER_ID, characterId), CREATED_AT, limit);
+                .searchByMetadataOrdered(new IsEqualTo(CHARACTER_ID, characterId), CREATE_TIME, limit);
         return toDtos(searchResult);
     }
 

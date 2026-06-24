@@ -1,7 +1,6 @@
 <script setup lang='ts'>
 import { computed, onMounted, ref, watch } from 'vue'
 import { NCollapse, NCollapseItem } from 'naive-ui'
-import { format, parseISO } from 'date-fns'
 import { useChatStore } from '@/store'
 import api from '@/api'
 import { t } from '@/locales'
@@ -22,25 +21,6 @@ const memoryEmbeddings = ref<Chat.MemoryEmbedding[]>([])
 // 把命中的记忆按类型分组,语义记忆和情景记忆分别展示。
 const semanticMemoryItems = computed(() => memoryEmbeddings.value.filter(m => m.memoryType !== 'episodic'))
 const episodicMemoryItems = computed(() => memoryEmbeddings.value.filter(m => m.memoryType === 'episodic'))
-
-// 把后端 LocalDateTime ISO 串（如 "2026-06-24T13:44:19.620981600"）转成
-// 人类友好的 "yyyy-MM-dd HH:mm:ss"，与项目其他时间显示口径一致。
-// 解析失败时（数据格式异常 / 缺失毫秒微秒等）原样返回，保证不空。
-// <p>
-// Format the backend's LocalDateTime ISO string into "yyyy-MM-dd HH:mm:ss",
-// matching the rest of the app. Falls back to the raw string if parsing fails.
-function formatCreatedAt(raw?: string | null): string {
-  if (!raw)
-    return ''
-  try {
-    const date = parseISO(raw)
-    if (Number.isNaN(date.getTime()))
-      return raw
-    return format(date, 'yyyy-MM-dd HH:mm:ss')
-  } catch {
-    return raw
-  }
-}
 
 async function load(msgUuid: string) {
   if (!msgUuid) {
@@ -103,7 +83,7 @@ watch(() => props.msgUuid, newUuid => load(newUuid))
         >
           <template #header>
             <div class="flex items-center gap-2 text-sm">
-              <span>{{ formatCreatedAt(reference.createdAt) || `${t('chat.episodicMemory')} ${idx + 1}` }}</span>
+              <span>{{ reference.createTime || `${t('chat.episodicMemory')} ${idx + 1}` }}</span>
             </div>
           </template>
           {{ reference.text }}

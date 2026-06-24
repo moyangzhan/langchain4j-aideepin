@@ -9,6 +9,7 @@ import com.moyz.adi.common.entity.CharacterMessageRefEmbedding;
 import com.moyz.adi.common.entity.CharacterMessageRefGraph;
 import com.moyz.adi.common.entity.CharacterMessageRefMemoryEmbedding;
 import com.moyz.adi.common.entity.User;
+import com.moyz.adi.common.enums.MemoryType;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.CharacterMessageMapper;
 import com.moyz.adi.common.rag.AdiEmbeddingStoreContentRetriever;
@@ -98,14 +99,16 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
         }
     }
 
-    public void createMemoryRefs(User user, Long messageId, Map<String, Double> embeddingToScore) {
-        log.info("Creating memory vector reference, userId:{}, qaRecordId:{}, embeddingToScore.size:{}", user.getId(), messageId, embeddingToScore.size());
+    public void createMemoryRefs(User user, Long messageId, Map<String, Double> embeddingToScore, MemoryType memoryType) {
+        log.info("Creating memory vector reference, userId:{}, qaRecordId:{}, memoryType:{}, embeddingToScore.size:{}",
+                user.getId(), messageId, memoryType, embeddingToScore.size());
         for (Map.Entry<String, Double> entry : embeddingToScore.entrySet()) {
             String embeddingId = entry.getKey();
             CharacterMessageRefMemoryEmbedding refEmb = new CharacterMessageRefMemoryEmbedding();
             refEmb.setMessageId(messageId);
             refEmb.setEmbeddingId(embeddingId);
             refEmb.setScore(embeddingToScore.get(embeddingId));
+            refEmb.setMemoryType(memoryType);
             refEmb.setUserId(user.getId());
             characterMessageRefMemoryEmbeddingService.save(refEmb);
         }

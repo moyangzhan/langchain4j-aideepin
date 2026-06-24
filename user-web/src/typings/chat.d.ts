@@ -229,10 +229,10 @@ declare namespace Chat {
      */
     memoryType?: string
     /**
-     * 事件发生时间（仅 episodic）。
-     * Event timestamp (episodic only).
+     * 事件发生时间（仅 episodic）。格式 yyyy-MM-dd HH:mm:ss。
+     * Event timestamp (episodic only). Format yyyy-MM-dd HH:mm:ss.
      */
-    createdAt?: string
+    createTime?: string
     /**
      * 事件类型（仅 episodic）。
      * Event type (episodic only).

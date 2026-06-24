@@ -37,7 +37,7 @@ public class EpisodicMemoryEmbedding {
 
     /**
      * JSONB metadata written by langchain4j on ingest (character_id / memory_type=episodic /
-     * event_type / importance / created_at / source_msg_id).
+     * event_type / importance / create_time / conv_msg_id).
      */
     @Schema(title = "metadata")
     @TableField(value = "metadata", typeHandler = JsonNodeTypeHandler.class)

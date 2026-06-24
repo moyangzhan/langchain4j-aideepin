@@ -5,6 +5,7 @@ import com.moyz.adi.common.dto.KbInfoResp;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.Character;
 import com.moyz.adi.common.entity.User;
+import com.moyz.adi.common.enums.MemoryType;
 import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.rag.AdiEmbeddingStoreContentRetriever;
 import com.moyz.adi.common.rag.CompositeRag;
@@ -89,7 +90,7 @@ public class CharacterChatHelper {
         //IsNotEqualTo 在键缺失时返回 true，符合预期）。
         Filter semanticFilter = new And(
                 new IsEqualTo(CHARACTER_ID, characterId),
-                new IsNotEqualTo(MEMORY_TYPE, AdiConstant.MemoryType.EPISODIC)
+                new IsNotEqualTo(MEMORY_TYPE, MemoryType.EPISODIC.getDesc())
         );
         RetrieverCreateParam memoryRetrieveParam = RetrieverCreateParam.builder()
                 .chatModel(chatModel)

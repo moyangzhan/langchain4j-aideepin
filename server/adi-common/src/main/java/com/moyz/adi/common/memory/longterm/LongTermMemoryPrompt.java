@@ -48,22 +48,22 @@ public class LongTermMemoryPrompt {
 
             ## Task B — Episodic events
             Specific events bound to a moment in time. They are NOT mergeable — every event is its own record. Capture:
-            - What happened (one sentence summary)
+            - What happened (one sentence summary). The user is always the implicit subject — do NOT start with "用户" / "用户's" / "The user" / "User"; describe the event directly (e.g. "上周去附近超市买了一袋梨子" instead of "用户上周去附近超市买了一袋梨子"; "Had a 3pm meeting with John" instead of "User had a 3pm meeting with John")
             - event_type (one of: %s)
             - importance (1=trivial, 3=normal, 5=highly significant)
 
             Episodic events are things like:
-            - "User had a meeting with John at 3pm and discussed the new project"
-            - "User said they would visit Shenzhen next Friday for a business trip"
-            - "User reported feeling anxious after the medical check-up"
+            - "Had a meeting with John at 3pm and discussed the new project"
+            - "Said they would visit Shenzhen next Friday for a business trip"
+            - "Reported feeling anxious after the medical check-up"
 
             ## Boundary between the two
             - "Likes spicy food" → semantic (stable preference)
-            - "Today the user ate spicy hotpot at Haidilao with their team" → episodic (specific time + situation)
-            - "User is a software engineer" → semantic
-            - "User had their first day at the new job today" → episodic
-            - "User is a perfectionist" → semantic (stable trait)
-            - "User feels frustrated because today's release was delayed" → episodic (moment-bound emotion)
+            - "Ate spicy hotpot at Haidilao with the team today" → episodic (specific time + situation)
+            - "Is a software engineer" → semantic
+            - "Started a new job today" → episodic
+            - "Is a perfectionist" → semantic (stable trait)
+            - "Felt frustrated because today's release was delayed" → episodic (moment-bound emotion)
 
             ## Few-shot examples
 
@@ -89,7 +89,7 @@ public class LongTermMemoryPrompt {
 
             Input: 我下周五要去深圳出差，顺便去尝尝那家我喜欢的辣火锅。
             Output: {"semantic_facts": ["Likes spicy hotpot"], "episodic_events": [
-                {"summary": "用户计划下周五去深圳出差并打算吃辣火锅", "event_type": "travel", "importance": 3}
+                {"summary": "计划下周五去深圳出差，并打算吃辣火锅", "event_type": "travel", "importance": 3}
             ]}
 
             ## Rules
@@ -100,6 +100,7 @@ public class LongTermMemoryPrompt {
             - Only consider user and assistant messages — ignore system messages.
             - When unsure whether a piece of info is semantic or episodic, prefer episodic if it mentions a specific moment, action, or situation; otherwise prefer semantic.
             - Each semantic item should be one short self-contained statement. Prefer multiple atomic items over a single long sentence (e.g. two entries "Is a perfectionist" and "Pays close attention to details", not one entry "Is a perfectionist who pays close attention to details").
+            - Never include "用户" / "User" / "The user" as the subject of any semantic_facts text or episodic_events summary. The owning user is always the implicit subject — adding it is redundant, dilutes the embedding, and wastes tokens.
             - It is perfectly fine for either list to be empty.
             - Record memory in the same language as the user's input.
             - Return EXACTLY this JSON shape and nothing else:
