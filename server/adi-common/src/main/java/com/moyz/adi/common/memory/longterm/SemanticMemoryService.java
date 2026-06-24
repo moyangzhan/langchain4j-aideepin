@@ -43,8 +43,8 @@ import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CHARACTER_ID;
 public class SemanticMemoryService {
 
     @Resource
-    @Qualifier("characterMemoryEmbeddingStore")
-    private EmbeddingStore<TextSegment> characterMemoryEmbeddingStore;
+    @Qualifier("semanticEmbeddingStore")
+    private EmbeddingStore<TextSegment> semanticEmbeddingStore;
 
     @Resource
     private EmbeddingModel embeddingModel;
@@ -71,17 +71,13 @@ public class SemanticMemoryService {
                 continue;
             }
             Embedding embedding = embeddingModel.embed(fact).content();
-            // After the episodic/semantic store split, this store only contains semantic
-            // records — no need to filter by memory_type.
-            // <p>
-            // 物理隔离后 store 里只剩语义记忆，无需再按 memory_type 过滤。
             EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                     .queryEmbedding(embedding)
                     .maxResults(5)
                     .minScore(minScore)
                     .filter(new IsEqualTo(CHARACTER_ID, characterId))
                     .build();
-            EmbeddingSearchResult<TextSegment> searchResult = characterMemoryEmbeddingStore.search(searchRequest);
+            EmbeddingSearchResult<TextSegment> searchResult = semanticEmbeddingStore.search(searchRequest);
 
             Map<String, EmbeddingMatch<TextSegment>> embeddingIdToMatch = new LinkedHashMap<>();
             searchResult.matches().forEach(item -> embeddingIdToMatch.put(item.embeddingId(), item));
@@ -175,7 +171,7 @@ public class SemanticMemoryService {
         }
 
         if (AdiConstant.MemoryEvent.DELETE.equalsIgnoreCase(event)) {
-            characterMemoryEmbeddingStore.remove(embeddingId);
+            semanticEmbeddingStore.remove(embeddingId);
             return;
         }
 
@@ -189,12 +185,12 @@ public class SemanticMemoryService {
                 log.warn("UPDATE action embeddingId not found in match map, skip");
                 return;
             }
-            characterMemoryEmbeddingStore.remove(embeddingId);
+            semanticEmbeddingStore.remove(embeddingId);
             Metadata metadata = new Metadata(Map.of(
                     CHARACTER_ID, characterId,
                     AdiConstant.MetadataKey.MEMORY_TYPE, AdiConstant.MemoryType.SEMANTIC));
             TextSegment newSegment = TextSegment.from(action.getText(), metadata);
-            characterMemoryEmbeddingStore.addAll(List.of(embeddingId), List.of(match.embedding()), List.of(newSegment));
+            semanticEmbeddingStore.addAll(List.of(embeddingId), List.of(match.embedding()), List.of(newSegment));
             return;
         }
 

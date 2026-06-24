@@ -35,7 +35,7 @@ public class EpisodicMemoryEmbeddingService implements IEpisodicMemoryEmbeddingS
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Resource
-    @Qualifier("episodicMemoryEmbeddingStore")
+    @Qualifier("episodicEmbeddingStore")
     private EmbeddingStore<TextSegment> embeddingStore;
 
     @Override

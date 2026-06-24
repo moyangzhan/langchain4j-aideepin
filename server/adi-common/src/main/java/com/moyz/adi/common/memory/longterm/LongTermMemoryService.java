@@ -66,7 +66,7 @@ public class LongTermMemoryService {
 
         // ===== Stage 1: fact extraction (1 LLM call) =====
         ChatResponse response = llmService.chat(buildExtractionRequest(request, inputMessage));
-        recordLlmCall(request, response, "fact_extraction");
+        recordLlmCall(request, response, LLMCallRecordSourceType.LONG_TERM_MEMORY_EXTRACTION);
 
         log.info("Fact extraction response: {}", response.aiMessage().text());
         String factResponse = AdiStringUtil.removeCodeBlock(response.aiMessage().text());
@@ -114,7 +114,7 @@ public class LongTermMemoryService {
         // ===== Stage 3: batch memory analysis (1 LLM call for ALL facts) =====
         String analyzePrompt = LongTermMemoryPrompt.buildBatchUpdatePrompt(candidates.factToOldMemoriesForPrompt);
         ChatResponse analyzeResp = llmService.chat(buildAnalysisRequest(request, analyzePrompt));
-        recordLlmCall(request, analyzeResp, "memory_analysis");
+        recordLlmCall(request, analyzeResp, LLMCallRecordSourceType.LONG_TERM_MEMORY_ANALYSIS);
 
         String resp = analyzeResp.aiMessage().text();
         log.info("Batch memory analysis response: {}", resp);
@@ -165,11 +165,15 @@ public class LongTermMemoryService {
      * on every failure path.
      * <p>
      * 写入 LLM 调用记录并立即累加用户日消费——成对发生，避免"中途失败漏算"的复杂处理。
+     *
+     * @param sourceType identifies which LLM step produced this call; one value per
+     *                   request, so it doubles as the call's business provenance.
      */
-    private void recordLlmCall(MemoryAddParam request, ChatResponse response, String stage) {
+    private void recordLlmCall(MemoryAddParam request, ChatResponse response,
+                                LLMCallRecordSourceType sourceType) {
         int[] tokens = extractTokenUsage(response);
         saveCallRecord(request.getUser(), request.getModelPlatform(), request.getModelName(),
-                tokens[0], tokens[1], stage);
+                tokens[0], tokens[1], sourceType);
         appendCostSafely(request.getUser(), tokens[0] + tokens[1], request.isFreeToken());
     }
 
@@ -256,14 +260,14 @@ public class LongTermMemoryService {
     }
 
     private void saveCallRecord(User user, String modelPlatform, String modelName,
-                                int inputTokens, int outputTokens, String stage) {
+                                int inputTokens, int outputTokens, LLMCallRecordSourceType sourceType) {
         if (inputTokens == 0 && outputTokens == 0) {
             return;
         }
         try {
             LLMCallRecord record = new LLMCallRecord();
             record.setUuid(UuidUtil.createShort());
-            record.setSourceType(LLMCallRecordSourceType.LONG_TERM_MEMORY.getValue());
+            record.setSourceType(sourceType.getValue());
             record.setSourceId(0L);
             record.setUserId(user.getId());
             record.setModelPlatform(modelPlatform);
@@ -272,7 +276,7 @@ public class LongTermMemoryService {
             record.setOutputTokens(outputTokens);
             llmCallRecordService.saveAsync(record);
         } catch (Exception e) {
-            log.error("Failed to save LLM call record for long-term memory stage: {}", stage, e);
+            log.error("Failed to save LLM call record, sourceType: {}", sourceType, e);
         }
     }
 

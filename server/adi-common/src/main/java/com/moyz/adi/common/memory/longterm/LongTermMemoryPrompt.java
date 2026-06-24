@@ -13,26 +13,38 @@ import static com.moyz.adi.common.util.LocalDateTimeUtil.PATTERN_YYYY_MM_DD;
 public class LongTermMemoryPrompt {
 
     /**
-     * Dual-task memory extraction prompt — extracts semantic facts AND episodic events
-     * in a single LLM call. Loosely based on mem0's fact retrieval prompt, extended with
-     * an episodic task that captures timeline-bound events.
+     * Dual-task memory extraction prompt — extracts semantic memory AND episodic events
+     * in a single LLM call. The semantic channel covers any stable, time-agnostic
+     * knowledge about the user: facts, preferences, personality traits, values,
+     * communication style, long-term life context, etc. Each unit is stored as a short
+     * self-contained statement; the JSON field is kept as {@code semantic_facts} for
+     * backward compatibility with the unit-layer naming ("fact"). Loosely based on
+     * mem0's fact retrieval prompt, extended with an episodic task that captures
+     * timeline-bound events.
      * <p>
-     * 双任务记忆提取 prompt —— 在一次 LLM 调用中同时抽取 semantic 事实和 episodic 事件。
-     * 在 mem0 fact retrieval prompt 基础上扩展了 episodic 任务，用于捕获绑定时间线的事件。
+     * 双任务记忆提取 prompt —— 在一次 LLM 调用中同时抽取 semantic 记忆和 episodic 事件。
+     * Semantic 通道覆盖所有"与时间无关的、关于用户的稳定知识"，包括事实、偏好、性格特质、
+     * 价值观、沟通风格、长期生活情境等；每条以一句"短陈述"承载。JSON 字段沿用
+     * {@code semantic_facts}（单元层命名为 fact）以保持向后兼容。在 mem0 fact retrieval
+     * prompt 基础上扩展了 episodic 任务，用于捕获绑定时间线的事件。
      * <p>
      * Reference: <a href="https://github.com/mem0ai/mem0/blob/main/mem0/configs/prompts.py">mem0 prompts</a>
      */
     public static String FACT_RETRIEVAL_PROMPT = """
             You are a Personal Memory Organizer. You extract two complementary kinds of memory from a single conversation turn:
 
-            ## Task A — Semantic facts
-            Stable, mergeable knowledge about the user that does not depend on a specific time. Examples:
+            ## Task A — Semantic memory (stable knowledge about the user)
+            Stable, mergeable knowledge about the user that does not depend on a specific time. The unit is a short, self-contained statement (we call each one a "fact" in the output schema, but it covers more than literal facts). Include:
             1. Personal preferences (likes, dislikes, favorites in food / products / activities / entertainment)
             2. Important personal details (name, relationships, important dates)
             3. Long-standing goals or plans
             4. Activity / service / dietary / wellness preferences
-            5. Professional details (job title, work habits, career goals)
-            6. Miscellaneous stable interests (favorite books / movies / brands)
+            5. Professional details (job title, work habits, career goals, skill levels)
+            6. Personality traits (e.g. introverted, perfectionist, detail-oriented, impatient)
+            7. Values, beliefs and stances (e.g. values privacy, believes in open source, against overtime)
+            8. Communication style and language preferences (e.g. prefers concise answers, dislikes small talk, prefers Chinese)
+            9. Long-term life context (location, household, allergies, ongoing constraints)
+            10. Miscellaneous stable interests (favorite books / movies / brands)
 
             ## Task B — Episodic events
             Specific events bound to a moment in time. They are NOT mergeable — every event is its own record. Capture:
@@ -50,6 +62,8 @@ public class LongTermMemoryPrompt {
             - "Today the user ate spicy hotpot at Haidilao with their team" → episodic (specific time + situation)
             - "User is a software engineer" → semantic
             - "User had their first day at the new job today" → episodic
+            - "User is a perfectionist" → semantic (stable trait)
+            - "User feels frustrated because today's release was delayed" → episodic (moment-bound emotion)
 
             ## Few-shot examples
 
@@ -61,6 +75,12 @@ public class LongTermMemoryPrompt {
 
             Input: My favourite movies are Inception and Interstellar.
             Output: {"semantic_facts": ["Favourite movies are Inception and Interstellar"], "episodic_events": []}
+
+            Input: 我说话比较直，不喜欢绕弯子，回答尽量简洁点。
+            Output: {"semantic_facts": ["Communication style: direct, dislikes beating around the bush", "Prefers concise answers"], "episodic_events": []}
+
+            Input: 我是个完美主义者，做事追求细节，而且 Python 用得很熟，Rust 还在入门阶段。
+            Output: {"semantic_facts": ["Personality trait: perfectionist", "Pays close attention to details", "Proficient in Python", "Beginner in Rust"], "episodic_events": []}
 
             Input: Yesterday, I had a meeting with John at 3pm. We discussed the new project.
             Output: {"semantic_facts": [], "episodic_events": [
@@ -79,6 +99,7 @@ public class LongTermMemoryPrompt {
             - If the user asks where you fetched their information, answer that you found it from publicly available sources on the internet.
             - Only consider user and assistant messages — ignore system messages.
             - When unsure whether a piece of info is semantic or episodic, prefer episodic if it mentions a specific moment, action, or situation; otherwise prefer semantic.
+            - Each semantic item should be one short self-contained statement. Prefer multiple atomic items over a single long sentence (e.g. two entries "Is a perfectionist" and "Pays close attention to details", not one entry "Is a perfectionist who pays close attention to details").
             - It is perfectly fine for either list to be empty.
             - Record memory in the same language as the user's input.
             - Return EXACTLY this JSON shape and nothing else:

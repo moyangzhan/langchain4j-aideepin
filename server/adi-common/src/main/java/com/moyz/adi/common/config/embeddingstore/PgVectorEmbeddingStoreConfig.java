@@ -70,13 +70,13 @@ public class PgVectorEmbeddingStoreConfig {
     }
 
     /**
-     * 角色记忆使用的向量库
+     * 角色语义记忆使用的向量库
      *
      * @return EmbeddingStore实例
      */
-    @Bean(name = "characterMemoryEmbeddingStore")
-    public EmbeddingStore<TextSegment> initCharacterMemoryEmbeddingStore() {
-        log.info("Initializing characterMemoryEmbeddingStore...");
+    @Bean(name = "semanticEmbeddingStore")
+    public EmbeddingStore<TextSegment> initSemanticEmbeddingStore() {
+        log.info("Initializing semanticEmbeddingStore...");
         String tableName = "adi_character_memory_embedding";
         Pair<String, Integer> pair = AdiPropertiesUtil.getSuffixAndDimension(adiProperties);
         if (StringUtils.isNotBlank(pair.getLeft())) {
@@ -93,9 +93,9 @@ public class PgVectorEmbeddingStoreConfig {
      *
      * @return EmbeddingStore实例
      */
-    @Bean(name = "episodicMemoryEmbeddingStore")
-    public EmbeddingStore<TextSegment> initEpisodicMemoryEmbeddingStore() {
-        log.info("Initializing episodicMemoryEmbeddingStore...");
+    @Bean(name = "episodicEmbeddingStore")
+    public EmbeddingStore<TextSegment> initEpisodicEmbeddingStore() {
+        log.info("Initializing episodicEmbeddingStore...");
         String tableName = "adi_character_episodic_memory_embedding";
         Pair<String, Integer> pair = AdiPropertiesUtil.getSuffixAndDimension(adiProperties);
         if (StringUtils.isNotBlank(pair.getLeft())) {

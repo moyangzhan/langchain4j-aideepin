@@ -14,6 +14,7 @@ import PcHeader from './components/Header/pc.vue'
 import InputToolbar from './InputToolbar.vue'
 import InputEditor from './InputEditor.vue'
 import RefGraph from './RefGraph.vue'
+import RefMemory from './RefMemory.vue'
 import LoginTip from '@/views/user/LoginTip.vue'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
 import { useAppStore, useAuthStore, useChatStore } from '@/store'
@@ -48,16 +49,10 @@ const currCharacter = computed(() => chatStore.getCurCharacter || getDefaultChar
 const imageUuids = ref<string[]>([])
 const isChatting = ref<boolean>(false)
 const loadingMsgs = ref<boolean>(false)
-const loaddingMemory = ref<boolean>(false)
 const loaddingEmbeddingRef = ref<boolean>(false)
 const inputRef = ref<Ref | null>(null)
 const showMemoryModal = ref<boolean>(false)
 const selectedMemoryMsgUuid = ref<string>('')
-const memoryEmbeddings = ref<Chat.MemoryEmbedding[]>([])
-// Split memory hits into two groups for display.
-// 把命中的记忆按类型分组,语义记忆和情景记忆分别展示。
-const semanticMemoryItems = computed(() => memoryEmbeddings.value.filter(m => m.memoryType !== 'episodic'))
-const episodicMemoryItems = computed(() => memoryEmbeddings.value.filter(m => m.memoryType === 'episodic'))
 const showRefEmbeddingModal = ref<boolean>(false)
 const showRefEmbeddingMsgUuid = ref<string>('')
 const knowledgeEmbeddingRef = ref<KnowledgeBase.QaRecordEmbeddingRef[]>([])
@@ -100,23 +95,9 @@ function handleStop() {
 }
 
 // 打开记忆
-async function handleMemoryRefClick(qaRecordUuid: string) {
-  console.log('handleMemoryRefClick', qaRecordUuid)
+function handleMemoryRefClick(qaRecordUuid: string) {
   showMemoryModal.value = true
   selectedMemoryMsgUuid.value = qaRecordUuid
-  memoryEmbeddings.value = chatStore.getMemory(qaRecordUuid)
-  if (memoryEmbeddings.value.length === 0) {
-    loaddingMemory.value = true
-    try {
-      const { data } = await api.memoryEmbeddingRef(qaRecordUuid)
-      chatStore.setMemoryRefs(qaRecordUuid, data)
-
-      // 显示最后一次点击的引用
-      memoryEmbeddings.value = chatStore.getMemory(selectedMemoryMsgUuid.value)
-    } finally {
-      loaddingMemory.value = false
-    }
-  }
 }
 
 // 打开知识库引用
@@ -712,53 +693,11 @@ onDeactivated(() => {
       </NCollapse>
     </NModal>
 
-    <NModal v-model:show="showMemoryModal" style="max-width: 80%;" preset="card" :title="t('chat.hitMemory')">
-      <div v-show="memoryEmbeddings.length === 0" class="flex items-center justify-center h-64">
-        <span v-show="!loaddingMemory">{{ t('common.noData') }}</span>
-        <SvgIcon v-show="loaddingMemory" icon="line-md:loading-loop" class="text-2xl text-green-800 w-12 h-12" />
-      </div>
-      <div v-show="memoryEmbeddings.length > 0">
-        <!-- Semantic memory group -->
-        <div v-if="semanticMemoryItems.length > 0" class="mb-4">
-          <div class="font-semibold text-sm mb-2 text-gray-700 dark:text-gray-300">
-            {{ t('chat.semanticMemory') }} ({{ semanticMemoryItems.length }})
-          </div>
-          <NCollapse :default-expanded-names="['sem_0']">
-            <NCollapseItem
-              v-for="(reference, idx) of semanticMemoryItems" :key="reference.embeddingId"
-              :title="`${t('chat.memory')} ${idx + 1}`"
-              :name="`sem_${idx}`"
-            >
-              {{ reference.text }}
-            </NCollapseItem>
-          </NCollapse>
-        </div>
-        <!-- Episodic memory group -->
-        <div v-if="episodicMemoryItems.length > 0">
-          <div class="font-semibold text-sm mb-2 text-gray-700 dark:text-gray-300">
-            {{ t('chat.episodicMemory') }} ({{ episodicMemoryItems.length }})
-          </div>
-          <NCollapse :default-expanded-names="['epi_0']">
-            <NCollapseItem
-              v-for="(reference, idx) of episodicMemoryItems" :key="reference.embeddingId"
-              :name="`epi_${idx}`"
-            >
-              <template #header>
-                <div class="flex items-center gap-2 text-sm">
-                  <span>{{ reference.createdAt || `${t('chat.episodicMemory')} ${idx + 1}` }}</span>
-                  <span v-if="reference.eventType" class="px-1.5 py-0.5 text-xs rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200">
-                    {{ reference.eventType }}
-                  </span>
-                  <span v-if="reference.importance" class="text-xs text-gray-500">
-                    {{ t('chat.importance') }}: {{ reference.importance }}/5
-                  </span>
-                </div>
-              </template>
-              {{ reference.text }}
-            </NCollapseItem>
-          </NCollapse>
-        </div>
-      </div>
+    <NModal
+      v-model:show="showMemoryModal" display-directive="show" style="max-width: 80%;"
+      preset="card" :title="t('chat.hitMemory')"
+    >
+      <RefMemory :msg-uuid="selectedMemoryMsgUuid" />
     </NModal>
 
     <NModal

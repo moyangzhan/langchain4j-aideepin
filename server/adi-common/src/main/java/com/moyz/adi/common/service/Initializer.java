@@ -51,7 +51,10 @@ public class Initializer {
     private EmbeddingStore<TextSegment> kbEmbeddingStore;
     @Lazy
     @Resource
-    private EmbeddingStore<TextSegment> characterMemoryEmbeddingStore;
+    private EmbeddingStore<TextSegment> semanticEmbeddingStore;
+    @Lazy
+    @Resource
+    private EmbeddingStore<TextSegment> episodicEmbeddingStore;
     @Lazy
     @Resource
     private EmbeddingModel embeddingModel;
@@ -73,7 +76,12 @@ public class Initializer {
 
         // 使用召回内容来源(RetrieveContentFrom)做为RAG名称以区分不同RAG实例
         EmbeddingRagContext.add(new EmbeddingRag(AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE, embeddingModel, kbEmbeddingStore));
-        EmbeddingRagContext.add(new EmbeddingRag(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY, embeddingModel, characterMemoryEmbeddingStore));
+        EmbeddingRagContext.add(new EmbeddingRag(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY, embeddingModel, semanticEmbeddingStore));
+        // 情景记忆走独立向量库（与语义记忆物理隔离），单独注册一个 RAG 实例供 retrieve 使用。
+        // <p>
+        // Episodic memory lives in its own physically isolated vector store; register a
+        // dedicated RAG instance so retrieval routes to that store instead of the semantic one.
+        EmbeddingRagContext.add(new EmbeddingRag(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY_EPISODIC, embeddingModel, episodicEmbeddingStore));
 
         GraphRagContext.add(new GraphRag(AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE, kbGraphStore));
     }

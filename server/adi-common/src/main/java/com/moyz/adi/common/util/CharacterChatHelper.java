@@ -100,21 +100,21 @@ public class CharacterChatHelper {
                 .build();
         List<RetrieverWrapper> retrieverWrappers = new CompositeRag(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY).createRetriever(memoryRetrieveParam);
 
-        //Create episodic memory retriever (shares same vector store, different filter).
+        //Create episodic memory retriever (its own physically isolated vector store).
         //Episodic memories are retrieved alongside semantic ones and presented as a
         //timeline-structured "past events" section in the prompt.
         //<p>
-        //创建情景记忆 retriever（共享同一向量库，使用不同的 filter）。
+        //创建情景记忆 retriever（独立向量库，与语义记忆物理隔离）。
         //episodic 记忆与 semantic 并行检索，在 prompt 中以时间轴结构的"过去事件"段落呈现。
-        EmbeddingRag memoryRag = EmbeddingRagContext.get(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY);
-        if (memoryRag != null) {
+        EmbeddingRag episodicRag = EmbeddingRagContext.get(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY_EPISODIC);
+        if (episodicRag != null) {
             RetrieverCreateParam episodicRetrieveParam = RetrieverCreateParam.builder()
-                    .filter(new IsEqualTo(MEMORY_TYPE, AdiConstant.MemoryType.EPISODIC))
+                    .filter(new IsEqualTo(CHARACTER_ID, characterId))
                     .maxResults(3)
                     .minScore(RAG_RETRIEVE_MIN_SCORE_DEFAULT)
                     .breakIfSearchMissed(false)
                     .build();
-            ContentRetriever episodicRetriever = memoryRag.createRetriever(episodicRetrieveParam);
+            ContentRetriever episodicRetriever = episodicRag.createRetriever(episodicRetrieveParam);
             retrieverWrappers.add(RetrieverWrapper.builder()
                     .contentFrom(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY_EPISODIC)
                     .retriever(episodicRetriever)

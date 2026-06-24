@@ -59,14 +59,14 @@ public class Neo4jEmbeddingStoreConfig {
     }
 
     /**
-     * 角色(会话)的长期记忆使用的向量库
+     * 角色(会话)的语义记忆使用的向量库
      *
      * @return EmbeddingStore实例
      */
-    @Bean(name = "characterMemoryEmbeddingStore")
+    @Bean(name = "semanticEmbeddingStore")
     @DependsOn("initializer")
-    public EmbeddingStore<TextSegment> initCharacterMemoryEmbeddingStore() {
-        log.info("Initializing characterMemoryEmbeddingStore...");
+    public EmbeddingStore<TextSegment> initSemanticEmbeddingStore() {
+        log.info("Initializing semanticEmbeddingStore...");
         // Neo4j label/index names intentionally kept as "conversation" to avoid complex label rename + vector index rebuild
         String tableName = "adi_conversation_memory_embedding";
         String indexName = "conv_memory";
@@ -86,10 +86,10 @@ public class Neo4jEmbeddingStoreConfig {
      *
      * @return EmbeddingStore实例
      */
-    @Bean(name = "episodicMemoryEmbeddingStore")
+    @Bean(name = "episodicEmbeddingStore")
     @DependsOn("initializer")
-    public EmbeddingStore<TextSegment> initEpisodicMemoryEmbeddingStore() {
-        log.info("Initializing episodicMemoryEmbeddingStore...");
+    public EmbeddingStore<TextSegment> initEpisodicEmbeddingStore() {
+        log.info("Initializing episodicEmbeddingStore...");
         String tableName = "adi_character_episodic_memory_embedding";
         String indexName = "char_episodic_memory";
         Pair<String, Integer> pair = AdiPropertiesUtil.getSuffixAndDimension(adiProperties);

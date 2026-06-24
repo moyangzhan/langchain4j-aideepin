@@ -26,7 +26,7 @@ public class CharacterMemoryEmbeddingService implements ICharacterMemoryEmbeddin
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Resource
-    @Qualifier("characterMemoryEmbeddingStore")
+    @Qualifier("semanticEmbeddingStore")
     private EmbeddingStore<TextSegment> embeddingStore;
 
     @Override

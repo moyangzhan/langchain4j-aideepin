@@ -581,10 +581,10 @@ public class AdiConstant {
         public static final String KNOWLEDGE_BASE = "knowledge_base";
         public static final String CHARACTER_MEMORY = "character_memory";
         /**
-         * 情景记忆召回通道，与 CHARACTER_MEMORY 共享同一向量库但使用不同 filter。
+         * 情景记忆召回通道，使用独立的向量库（与 CHARACTER_MEMORY 物理隔离）。
          * <p>
-         * Episodic memory retrieval channel. Shares the same vector store as CHARACTER_MEMORY
-         * but uses a type-specific filter.
+         * Episodic memory retrieval channel. Uses its own physically isolated vector store
+         * (separate from CHARACTER_MEMORY) so the two channels never compete for top-K.
          */
         public static final String CHARACTER_MEMORY_EPISODIC = "character_memory_episodic";
         public static final String WEB = "web";
