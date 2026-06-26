@@ -248,7 +248,7 @@ CREATE TABLE adi_character
     title                     varchar(45)   default ''                not null,
     remark                    varchar(500)  default ''                not null,
     ai_system_message         varchar(1000) default ''                not null,
-    understand_context_enable boolean       default false             not null,
+    understand_context_enable boolean       default true              not null,
     llm_temperature           numeric(2, 1) default 0.7               not null,
     mcp_ids                   varchar(1000) default ''                not null,
     kb_ids                    varchar(1000) default ''                not null,
@@ -325,7 +325,6 @@ CREATE TABLE adi_character_message
     message_role                    integer       default 1                 not null,
     user_id                         bigint        default 0                 not null,
     ai_model_id                     bigint        default 0                 not null,
-    understand_context_msg_pair_num integer       default 0                 not null,
     attachments                     varchar(1000) default ''                not null,
     create_time                     timestamp     default CURRENT_TIMESTAMP not null,
     update_time                     timestamp     default CURRENT_TIMESTAMP not null,
@@ -348,7 +347,6 @@ COMMENT ON COLUMN adi_character_message.audio_duration IS 'Audio duration in sec
 COMMENT ON COLUMN adi_character_message.message_role IS 'Message role: 1=User, 2=System, 3=Assistant';
 COMMENT ON COLUMN adi_character_message.user_id IS 'User ID';
 COMMENT ON COLUMN adi_character_message.ai_model_id IS 'adi_ai_model id';
-COMMENT ON COLUMN adi_character_message.understand_context_msg_pair_num IS 'Number of context message pairs';
 COMMENT ON COLUMN adi_character_message.attachments IS 'Attachments, stored as: uuid,uuid';
 COMMENT ON COLUMN adi_character_message.is_ref_embedding IS 'Whether knowledge base embeddings are referenced';
 COMMENT ON COLUMN adi_character_message.is_ref_graph IS 'Whether knowledge graph is referenced';
@@ -553,8 +551,6 @@ CREATE TABLE adi_user
     quota_by_token_monthly          integer                default 0                 not null,
     quota_by_request_daily          integer                default 0                 not null,
     quota_by_request_monthly        integer                default 0                 not null,
-    understand_context_enable       smallint               default '0'::smallint     not null,
-    understand_context_msg_pair_num integer                default 3                 not null,
     quota_by_image_daily            integer                default 0                 not null,
     quota_by_image_monthly          integer                default 0                 not null,
     locale                          character varying(10)  default ''                not null,
@@ -578,8 +574,6 @@ COMMENT ON COLUMN adi_user.quota_by_token_daily IS 'Daily token quota';
 COMMENT ON COLUMN adi_user.quota_by_token_monthly IS 'Monthly token quota';
 COMMENT ON COLUMN adi_user.quota_by_request_daily IS 'Daily request quota';
 COMMENT ON COLUMN adi_user.quota_by_request_monthly IS 'Monthly request quota';
-COMMENT ON COLUMN adi_user.understand_context_enable IS 'Context understanding switch';
-COMMENT ON COLUMN adi_user.understand_context_msg_pair_num IS 'Number of context message pairs';
 COMMENT ON COLUMN adi_user.quota_by_image_daily IS 'Daily image quota';
 COMMENT ON COLUMN adi_user.quota_by_image_monthly IS 'Monthly image quota';
 

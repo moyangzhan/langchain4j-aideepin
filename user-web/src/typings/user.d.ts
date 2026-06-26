@@ -44,8 +44,6 @@ declare namespace User {
 
     interface Config{
         secretKey?: string
-        contextEnable?: boolean
-        contextMsgPairNum?: number
         locale?: string
         userQuota: UserQuota
         quotaCost: QuotaCost

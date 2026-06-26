@@ -348,7 +348,6 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         ConfigResp result = new ConfigResp();
         User user = ThreadContext.getCurrentUser();
 
-        result.setContextMsgPairNum(user.getUnderstandContextMsgPairNum());
         //User quota
         result.setUserQuota(UserQuota.builder().requestTimesByDay(user.getQuotaByRequestDaily()).requestTimesByMonth(user.getQuotaByRequestMonthly()).drawByDay(user.getQuotaByImageDaily()).drawByMonth(user.getQuotaByImageMonthly()).tokenByDay(user.getQuotaByTokenDaily()).tokenByMonth(user.getQuotaByTokenMonthly()).build());
         //User cost

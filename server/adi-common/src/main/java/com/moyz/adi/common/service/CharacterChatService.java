@@ -383,7 +383,6 @@ public class CharacterChatService {
             question.setAiModelId(aiModel.getId());
             question.setAudioUuid(askReq.getAudioUuid());
             question.setAudioDuration(askReq.getAudioDuration());
-            question.setUnderstandContextMsgPairNum(user.getUnderstandContextMsgPairNum());
             question.setAttachments(String.join(",", askReq.getImageUrls()));
             characterMessageService.save(question);
 

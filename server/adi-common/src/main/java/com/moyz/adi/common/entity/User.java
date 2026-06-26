@@ -28,10 +28,6 @@ public class User extends BaseEntity {
     @TableField("uuid")
     private String uuid;
 
-    @Schema(name = "上下文理解中需要携带的消息对数量（提示词及回复） | Message Pair Count for Context Understanding (Prompt and Reply)")
-    @TableField("understand_context_msg_pair_num")
-    private Integer understandContextMsgPairNum;
-
     @Schema(name = "token quota in one day")
     @TableField("quota_by_token_daily")
     private Integer quotaByTokenDaily;

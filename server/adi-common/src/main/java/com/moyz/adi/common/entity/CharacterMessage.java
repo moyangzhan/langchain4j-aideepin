@@ -56,10 +56,6 @@ public class CharacterMessage extends BaseEntity {
     @TableField("message_role")
     private Integer messageRole;
 
-    @Schema(name = "上下文理解中携带的消息对数量 | Message Pair Count in Context Understanding")
-    @TableField("understand_context_msg_pair_num")
-    private Integer understandContextMsgPairNum;
-
     @Schema(name = "adi_ai_model id")
     @TableField("ai_model_id")
     private Long aiModelId;
