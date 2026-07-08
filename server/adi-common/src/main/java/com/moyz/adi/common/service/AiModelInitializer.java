@@ -14,6 +14,7 @@ import com.moyz.adi.common.helper.TtsModelContext;
 import com.moyz.adi.common.languagemodel.*;
 import com.moyz.adi.common.searchengine.GoogleSearchEngineService;
 import com.moyz.adi.common.searchengine.SearchEngineServiceContext;
+import com.moyz.adi.common.searchengine.YouComSearchEngineService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -114,6 +115,7 @@ public class AiModelInitializer {
 
         //search engine
         SearchEngineServiceContext.addWebSearcher(AdiConstant.SearchEngineName.GOOGLE, new GoogleSearchEngineService(proxyAddress));
+        SearchEngineServiceContext.addWebSearcher(AdiConstant.SearchEngineName.YOUCOM, new YouComSearchEngineService(proxyAddress));
     }
 
     /**
