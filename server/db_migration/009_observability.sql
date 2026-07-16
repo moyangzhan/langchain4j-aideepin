@@ -65,7 +65,7 @@ COMMENT ON COLUMN adi_llm_call_record.request_time IS 'Request start time';
 -- Migrate from chat messages
 INSERT INTO adi_llm_call_record (uuid, source_type, source_id, user_id, model_platform, model_name, input_tokens, output_tokens, request_time, create_time)
 SELECT
-    gen_random_uuid(),
+    replace(gen_random_uuid()::text, '-', ''),
     1,
     a.id,
     a.user_id,
@@ -85,7 +85,7 @@ WHERE a.message_role = 3
 -- Migrate from knowledge base QA
 INSERT INTO adi_llm_call_record (uuid, source_type, source_id, user_id, model_platform, model_name, input_tokens, output_tokens, request_time, create_time)
 SELECT
-    gen_random_uuid(),
+    replace(gen_random_uuid()::text, '-', ''),
     2,
     id,
     user_id,
