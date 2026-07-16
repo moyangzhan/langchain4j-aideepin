@@ -1047,7 +1047,7 @@ create table adi_mcp
     is_deleted                   boolean       default false             not null
 );
 COMMENT ON TABLE adi_mcp is 'MCP server template';
-COMMENT ON COLUMN adi_mcp.transport_type IS 'Transport type: 1:sse, 2:stdio';
+COMMENT ON COLUMN adi_mcp.transport_type IS 'Transport type: sse, streamable_http, stdio';
 COMMENT ON COLUMN adi_mcp.preset_params IS 'Admin-preset parameters, e.g., [{"name":"BAIDU_MAP_API_KEY","title":"Baidu Map Service","value":"111111","require_encrypt":true,"encrypted":true}]';
 COMMENT ON COLUMN adi_mcp.customized_param_definitions IS 'User-configurable parameter definitions, merged with preset_params at runtime, e.g., [{"name":"GITHUB_TOKEN","title":"GitHub access token","require_encrypt":true}]';
 COMMENT ON COLUMN adi_mcp.install_type IS 'Installation type: docker, local, remote, wasm';

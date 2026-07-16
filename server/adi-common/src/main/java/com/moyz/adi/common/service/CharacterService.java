@@ -355,9 +355,7 @@ public class CharacterService extends ServiceImpl<CharacterMapper, Character> {
         }
         if (null != characterEditReq.getMcpIds()) {
             List<Long> filteredMcpIds = filterEnableMcpIds(characterEditReq.getMcpIds());
-            if (filteredMcpIds.isEmpty()) {
-                one.setMcpIds(StringUtils.join(filteredMcpIds, ","));
-            }
+            one.setMcpIds(StringUtils.join(filteredMcpIds, ","));
         }
         if (null != characterEditReq.getKbIds()) {
             if (characterEditReq.getKbIds().isEmpty()) {

@@ -22,6 +22,7 @@ export function getColumns(): BasicColumn<McpInfo>[] {
       render(row) {
         const types: Record<string, string> = {
           sse: t('constants.sse'),
+          streamable_http: t('constants.streamableHttp'),
           stdio: t('constants.stdio'),
         }
         return types[row.transportType] || row.transportType

@@ -230,6 +230,8 @@ export default {
   mcp: {
     title: 'MCP Management',
     transportType: 'Transport Type',
+    deprecated: 'Deprecated',
+    sseDeprecatedTip: 'SSE is deprecated by the newer MCP spec. Streamable HTTP is recommended for new services.',
     installType: 'Install Type',
     sseUrl: 'SSE URL',
     sseUrlPlaceholder: 'Enter SSE URL',
@@ -464,6 +466,7 @@ export default {
     video: 'Video',
     // MCP transport types
     sse: 'SSE (Network)',
+    streamableHttp: 'Streamable HTTP',
     stdio: 'Standard I/O',
     // MCP install types
     docker: 'Docker',

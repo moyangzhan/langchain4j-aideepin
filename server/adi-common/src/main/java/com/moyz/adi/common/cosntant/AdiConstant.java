@@ -507,6 +507,7 @@ public class AdiConstant {
     public static class McpConstant {
         public static final String TRANSPORT_TYPE_SSE = "sse";
         public static final String TRANSPORT_TYPE_STDIO = "stdio";
+        public static final String TRANSPORT_TYPE_STREAMABLE_HTTP = "streamable_http";
         public static final String INSTALL_TYPE_REMOTE = "remote";
         public static final String INSTALL_TYPE_WASM = "wasm";
         public static final String INSTALL_TYPE_LOCAL = "local";

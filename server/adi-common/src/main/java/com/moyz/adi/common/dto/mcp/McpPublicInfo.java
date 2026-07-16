@@ -13,7 +13,7 @@ public class McpPublicInfo {
     @Schema(title = "标题 | Title")
     private String title;
 
-    @Schema(title = "传输类型：sse, stdio | Transport type: sse, stdio")
+    @Schema(title = "传输类型：sse, streamable_http, stdio | Transport type: sse, streamable_http, stdio")
     private String transportType;
 
     @Schema(title = "SSE URL")

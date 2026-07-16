@@ -389,7 +389,7 @@ VALUES ('768794ce3d9d4484b2f3d1fcf7cf29ad', 1, '4892a70af36b498e89ae461e9d9a9525
 -- 此处preset_params中填充了高德的API密钥，preset_params表示的是系统预设的通用配置，用户无需到高德地图的网站获取key即可使用本mcp
 insert into adi_mcp (uuid, title, transport_type, sse_url, sse_timeout, install_type, preset_params, website, remark,
                      is_enable)
-values (replace(gen_random_uuid()::text, '-', ''), '高德地图', 'sse', 'https://mcp.amap.com/sse', 30, 'remote',
+values (replace(gen_random_uuid()::text, '-', ''), '高德地图', 'streamable_http', 'https://mcp.amap.com/mcp', 30, 'remote',
         '[
           {
             "name": "key",

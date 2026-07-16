@@ -390,7 +390,7 @@ VALUES ('768794ce3d9d4484b2f3d1fcf7cf29ad', 1, '4892a70af36b498e89ae461e9d9a9525
 -- The preset_params here contain the Amap API key. preset_params represent system-wide shared default configuration, so users do not need to obtain a key from the Amap website to use this MCP
 insert into adi_mcp (uuid, title, transport_type, sse_url, sse_timeout, install_type, preset_params, website, remark,
                      is_enable)
-values (replace(gen_random_uuid()::text, '-', ''), 'Amap (Gaode Maps)', 'sse', 'https://mcp.amap.com/sse', 30, 'remote',
+values (replace(gen_random_uuid()::text, '-', ''), 'Amap (Gaode Maps)', 'streamable_http', 'https://mcp.amap.com/mcp', 30, 'remote',
         '[
           {
             "name": "key",
@@ -402,7 +402,7 @@ values (replace(gen_random_uuid()::text, '-', ''), 'Amap (Gaode Maps)', 'sse', '
         ]', 'https://lbs.amap.com/api/mcp-server/summary',
         '## Product Features
 
-* Easy to use: Suitable for regular users via MCP (SSE) mode. No local service deployment needed -- simply configure via URL.
+* Easy to use: Suitable for regular users via MCP (Streamable HTTP) mode. No local service deployment needed -- simply configure via URL.
 * Automatic updates: We continuously iterate and update without any additional user action required.
 * Easier for LLM understanding: We have performed semantic conversion on the original JSON results, making them easier for LLMs to understand.
 * Zero maintenance cost: Fully managed cloud service architecture. Users do not need to worry about server maintenance, resource scaling, or other infrastructure concerns.

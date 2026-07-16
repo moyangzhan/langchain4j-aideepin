@@ -22,6 +22,7 @@ import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.client.transport.http.HttpMcpTransport;
+import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import dev.langchain4j.mcp.client.transport.stdio.StdioMcpTransport;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -194,12 +195,19 @@ public class UserMcpService extends ServiceImpl<UserMcpMapper, UserMcp> {
             McpTransport transport;
             if (AdiConstant.McpConstant.TRANSPORT_TYPE_SSE.equals(mcp.getTransportType())) {
                 String httpQueryString = createHttpQueryString(mcp, userMcp);
-                String url = mcp.getSseUrl();
-                if (!url.contains("?")) {
-                    url = url + "?";
-                }
+                String url = buildUrlWithQuery(mcp.getSseUrl(), httpQueryString);
                 transport = new HttpMcpTransport.Builder()
-                        .sseUrl(url + httpQueryString)
+                        .sseUrl(url)
+                        .timeout(Duration.ofSeconds(mcp.getSseTimeout() > 0 ? mcp.getSseTimeout() : 30))
+                        .logRequests(true)
+                        .logResponses(true)
+                        .build();
+            } else if (AdiConstant.McpConstant.TRANSPORT_TYPE_STREAMABLE_HTTP.equals(mcp.getTransportType())) {
+                // Reuse sseUrl/sseTimeout: streamable-HTTP also needs a POST endpoint URL + timeout
+                String httpQueryString = createHttpQueryString(mcp, userMcp);
+                String url = buildUrlWithQuery(mcp.getSseUrl(), httpQueryString);
+                transport = new StreamableHttpMcpTransport.Builder()
+                        .url(url)
                         .timeout(Duration.ofSeconds(mcp.getSseTimeout() > 0 ? mcp.getSseTimeout() : 30))
                         .logRequests(true)
                         .logResponses(true)
@@ -211,10 +219,21 @@ public class UserMcpService extends ServiceImpl<UserMcpMapper, UserMcp> {
                         .environment(environment)
                         .build();
             }
-            McpClient mcpClient = new DefaultMcpClient.Builder()
-                    .transport(transport)
-                    .build();
-            result.add(mcpClient);
+            try {
+                McpClient mcpClient = new DefaultMcpClient.Builder()
+                        .transport(transport)
+                        .build();
+                result.add(mcpClient);
+            } catch (Exception e) {
+                // A single MCP build failure should not abort the whole request; log and skip, continue with the rest
+                log.error("Failed to build MCP client, mcpId: {}, title: {}, transportType: {}", mcp.getId(), mcp.getTitle(), mcp.getTransportType(), e);
+                // On build failure the transport is not owned by any McpClient; close it to avoid connection/subprocess leaks
+                try {
+                    transport.close();
+                } catch (Exception closeEx) {
+                    log.warn("Failed to close MCP transport after build failure, mcpId: {}", mcp.getId(), closeEx);
+                }
+            }
         }
 
         return result;
@@ -298,6 +317,22 @@ public class UserMcpService extends ServiceImpl<UserMcpMapper, UserMcp> {
             return ""; // 如果没有参数，则返回空字符串
         }
         return httpQueryParams.substring(0, httpQueryParams.length() - 1); // 去掉最后的&
+    }
+
+    /**
+     * 将查询参数拼接到基础URL上：有参数时按baseUrl是否已含"?"决定用"?"或"&"连接，避免拼接出缺少分隔符的非法URL
+     * Append query params to a base URL: when params exist, use "?" or "&" based on whether baseUrl already contains "?",
+     * to avoid producing an invalid URL with a missing separator.
+     *
+     * @param baseUrl    基础URL | Base URL
+     * @param queryParam 查询参数字符串，可为空 | Query string, may be empty
+     * @return 拼接后的完整URL | Full URL with query params
+     */
+    private String buildUrlWithQuery(String baseUrl, String queryParam) {
+        if (queryParam == null || queryParam.isEmpty()) {
+            return baseUrl;
+        }
+        return baseUrl + (baseUrl.contains("?") ? "&" : "?") + queryParam;
     }
 
 

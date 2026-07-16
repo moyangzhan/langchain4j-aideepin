@@ -225,6 +225,8 @@ export default {
   mcp: {
     title: 'MCP管理',
     transportType: '传输类型',
+    deprecated: '已过时',
+    sseDeprecatedTip: 'SSE 已被 MCP 新规范弃用，新接入的服务建议使用 Streamable HTTP',
     installType: '安装类型',
     sseUrl: 'SSE地址',
     sseUrlPlaceholder: '请输入SSE地址',
@@ -455,6 +457,7 @@ export default {
     video: '视频',
     // MCP transport types
     sse: '网络传输(sse)',
+    streamableHttp: '流式传输(streamable-http)',
     stdio: '标准输入输出',
     // MCP install types
     docker: 'docker',

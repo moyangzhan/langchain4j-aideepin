@@ -20,6 +20,7 @@ public class McpAddOrEditReq {
 
     @ElementInArray(acceptedValues = {
             TRANSPORT_TYPE_SSE,
+            TRANSPORT_TYPE_STREAMABLE_HTTP,
             TRANSPORT_TYPE_STDIO
     }, required = true)
     private String transportType;

@@ -187,6 +187,10 @@ export function getMcpTransportType() {
       value: 'sse',
     },
     {
+      label: t('constants.streamableHttp'),
+      value: 'streamable_http',
+    },
+    {
       label: t('constants.stdio'),
       value: 'stdio',
     },
@@ -198,6 +202,10 @@ export const mcpTransportType = [
   {
     label: 'SSE (Network)',
     value: 'sse',
+  },
+  {
+    label: 'Streamable HTTP',
+    value: 'streamable_http',
   },
   {
     label: 'Standard I/O',

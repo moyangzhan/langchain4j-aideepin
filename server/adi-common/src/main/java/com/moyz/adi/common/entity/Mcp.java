@@ -27,7 +27,7 @@ public class Mcp extends BaseEntity {
     @TableField(value = "title")
     private String title;
 
-    @Schema(title = "传输类型(1:sse,2:stdio) | Transport Type (1: SSE, 2: stdio)")
+    @Schema(title = "传输类型(sse,streamable_http,stdio) | Transport Type (sse, streamable_http, stdio)")
     @TableField(value = "transport_type")
     private String transportType;
 

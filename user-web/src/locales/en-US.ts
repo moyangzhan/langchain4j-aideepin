@@ -751,7 +751,7 @@ export default {
     docDrawUuid: 'Draw task UUID, used to query task status',
     docMcpUuid: 'MCP service UUID',
     docMcpTitle: 'MCP service title',
-    docMcpTransportType: 'Transport type: sse or stdio',
+    docMcpTransportType: 'Transport type: sse, streamable_http or stdio',
     docMcpSseUrl: 'SSE connection URL',
     docMcpRemark: 'MCP service description',
     docMcpIsEnable: 'Whether enabled',

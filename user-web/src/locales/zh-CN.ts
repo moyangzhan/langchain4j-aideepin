@@ -751,7 +751,7 @@ export default {
     docDrawUuid: '绘图任务 UUID，用于查询任务状态',
     docMcpUuid: 'MCP 服务 UUID',
     docMcpTitle: 'MCP 服务标题',
-    docMcpTransportType: '传输类型：sse 或 stdio',
+    docMcpTransportType: '传输类型：sse、streamable_http 或 stdio',
     docMcpSseUrl: 'SSE 连接地址',
     docMcpRemark: 'MCP 服务描述',
     docMcpIsEnable: '是否启用',

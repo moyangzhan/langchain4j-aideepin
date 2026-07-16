@@ -38,10 +38,27 @@
             <n-radio-group v-model:value="editFormParams.transportType" name="rg1">
               <n-radio v-for="opt in mcpTransportType" :key="opt.value" :value="opt.value">
                 {{ opt.label }}
+                <n-tag
+                  v-if="opt.value === 'sse'"
+                  size="small"
+                  type="warning"
+                  round
+                  :bordered="false"
+                >
+                  {{ t('mcp.deprecated') }}
+                </n-tag>
               </n-radio>
             </n-radio-group>
           </n-form-item>
-          <n-form-item :label="t('mcp.installType')" path="installType">
+          <n-form-item
+          v-if="editFormParams.transportType === 'sse'"
+          :show-label="false"
+        >
+          <n-alert type="warning" :bordered="false" :show-icon="true">
+            {{ t('mcp.sseDeprecatedTip') }}
+          </n-alert>
+        </n-form-item>
+        <n-form-item :label="t('mcp.installType')" path="installType">
             <n-radio-group v-model:value="editFormParams.installType" name="rg2">
               <n-radio v-for="opt in mcpInstallType" :key="opt.value" :value="opt.value">
                 {{ opt.label }}
@@ -49,7 +66,7 @@
             </n-radio-group>
           </n-form-item>
           <n-form-item
-            v-if="editFormParams.transportType === 'sse'"
+            v-if="editFormParams.transportType === 'sse' || editFormParams.transportType === 'streamable_http'"
             :label="t('mcp.sseUrl')"
             path="sseUrl"
           >
@@ -59,7 +76,7 @@
             />
           </n-form-item>
           <n-form-item
-            v-if="editFormParams.transportType === 'sse'"
+            v-if="editFormParams.transportType === 'sse' || editFormParams.transportType === 'streamable_http'"
             :label="t('mcp.sseTimeout')"
             path="sseTimeout"
           >

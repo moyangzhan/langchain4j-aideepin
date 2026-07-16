@@ -23,7 +23,7 @@ declare namespace Mcp {
     id: string
     uuid: string
     title: string
-    //sse | stdio
+    //sse | streamable_http | stdio
     transportType: string
     sseUrl: string
     sseTimeout: number
