@@ -10,7 +10,8 @@ RUN pnpm install --no-frozen-lockfile
 
 COPY . .
 
-RUN pnpm run build
+# Skip type-check to speed up the build and cut memory (run type-check in CI or locally via `pnpm run build`)
+RUN pnpm run build-only
 
 FROM nginx:alpine
 

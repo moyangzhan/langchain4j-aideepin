@@ -10,7 +10,7 @@ RUN pnpm install --no-frozen-lockfile
 
 COPY . .
 
-RUN pnpm run build
+RUN pnpm run build-only
 
 FROM nginx:alpine
 
