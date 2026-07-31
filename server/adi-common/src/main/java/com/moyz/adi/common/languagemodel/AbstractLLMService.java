@@ -36,6 +36,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolProvider;
@@ -389,10 +390,12 @@ public abstract class AbstractLLMService extends CommonModelService {
      * @param chatResponse 聊天响应 / Chat response
      */
     private void cacheTokenUsage(String uuid, ChatResponse chatResponse) {
-        int inputTokenCount = chatResponse.metadata().tokenUsage().inputTokenCount();
-        int outputTokenCount = chatResponse.metadata().tokenUsage().outputTokenCount();
-        log.info("ChatModel token cost,uuid:{},inputTokenCount:{},outputTokenCount:{}", uuid, inputTokenCount, outputTokenCount);
-        LLMTokenUtil.cacheTokenUsage(getStringRedisTemplate(), uuid, chatResponse.metadata().tokenUsage());
+        if (chatResponse.metadata() == null || chatResponse.metadata().tokenUsage() == null) {
+            return;
+        }
+        TokenUsage tokenUsage = chatResponse.metadata().tokenUsage();
+        log.info("ChatModel token cost,uuid:{},inputTokenCount:{},outputTokenCount:{}", uuid, tokenUsage.inputTokenCount(), tokenUsage.outputTokenCount());
+        LLMTokenUtil.cacheTokenUsage(getStringRedisTemplate(), uuid, tokenUsage);
     }
 
 
