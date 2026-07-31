@@ -19,12 +19,15 @@ import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.helper.SseManager;
 import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
+import com.moyz.adi.common.memory.shortterm.MapDBChatMemoryStore;
 import com.moyz.adi.common.rag.*;
 import com.moyz.adi.common.service.embedding.IKnowledgeEmbeddingService;
 import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.util.NumberUtil;
 import com.moyz.adi.common.vo.*;
 import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.rag.content.Content;
@@ -330,6 +333,15 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
      * @return JSON response with answer
      */
     public Map<String, Object> blockingAsk(User user, KnowledgeBase knowledgeBase, KbQaDto qaDto) {
+        TokenEstimatorThreadLocal.setTokenEstimator(knowledgeBase.getIngestTokenEstimator());
+        try {
+            return doBlockingAsk(user, knowledgeBase, qaDto);
+        } finally {
+            TokenEstimatorThreadLocal.clearTokenEstimator();
+        }
+    }
+
+    private Map<String, Object> doBlockingAsk(User user, KnowledgeBase knowledgeBase, KbQaDto qaDto) {
         checkRequestTimesOrThrow();
         KnowledgeBaseQa qaRecord = knowledgeBaseQaRecordService.getOrThrow(qaDto.getUuid());
         AiModel aiModel = qaRecord.getAiModelId() > 0
@@ -339,7 +351,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         int maxInputTokens = aiModel.getMaxInputTokens();
         int maxResults = knowledgeBase.getRetrieveMaxResults();
         if (maxResults < 1) {
-            maxResults = EmbeddingRag.getRetrieveMaxResults(qaRecord.getQuestion(), maxInputTokens);
+            String memoryId = knowledgeBase.getUuid() + "_" + user.getUuid();
+            int reservedTokens = computeReservedTokens(memoryId, knowledgeBase.getQuerySystemMessage());
+            maxResults = EmbeddingRag.getRetrieveMaxResults(qaRecord.getQuestion(), maxInputTokens, reservedTokens);
         }
 
         // Retrieve from knowledge base
@@ -515,7 +529,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 //maxResults < 1 means the system auto-calculates based on model maxInputTokens
             //maxResults < 1 表示由系统根据设置的模型maxInputTokens自动计算大小
             if (maxResults < 1) {
-                maxResults = EmbeddingRag.getRetrieveMaxResults(qaRecord.getQuestion(), maxInputTokens);
+                String memoryId = qaRecord.getKbUuid() + "_" + user.getUuid();
+                int reservedTokens = computeReservedTokens(memoryId, knowledgeBase.getQuerySystemMessage());
+                maxResults = EmbeddingRag.getRetrieveMaxResults(qaRecord.getQuestion(), maxInputTokens, reservedTokens);
             }
 
             SseAskParam sseAskParam = new SseAskParam();
@@ -593,6 +609,29 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         } finally {
             TokenEstimatorThreadLocal.clearTokenEstimator();
         }
+    }
+
+    /**
+     * Calculates the number of tokens to reserve from the retrieval budget (chat history + system message).
+     * <p>The tokenizer is taken from {@link TokenEstimatorThreadLocal} so it stays consistent with the one used
+     * elsewhere in the same request. Reading short-term memory is best-effort: on failure it is treated as 0
+     * and does not affect the main flow.</p>
+     */
+    private static int computeReservedTokens(String memoryId, String systemMessage) {
+        TokenCountEstimator tokenizer = TokenEstimatorFactory.create(TokenEstimatorThreadLocal.getTokenEstimator());
+        int tokens = 0;
+        try {
+            List<ChatMessage> messages = MapDBChatMemoryStore.getSingleton().getMessages(memoryId);
+            if (messages != null && !messages.isEmpty()) {
+                tokens += tokenizer.estimateTokenCountInMessages(messages);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to load chat memory for token estimation, memoryId:{}", memoryId, e);
+        }
+        if (StringUtils.isNotBlank(systemMessage)) {
+            tokens += tokenizer.estimateTokenCountInText(systemMessage);
+        }
+        return tokens;
     }
 
     private void updateQaRecord(UpdateQaParam updateQaParam) {

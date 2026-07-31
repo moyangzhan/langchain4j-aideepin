@@ -394,9 +394,9 @@ public class AdiConstant {
     public static final double RAG_MIN_SCORE = 0.6;
 
     /**
-     * 默认的最大输入token数
+     * <p>Default fallback used only when a model has no explicit maxInputTokens configured.</p>
      */
-    public static final int LLM_MAX_INPUT_TOKENS_DEFAULT = 4096;
+    public static final int LLM_MAX_INPUT_TOKENS_DEFAULT = 32768;
 
     public static final String LLM_INPUT_TYPE_TEXT = "text";
     public static final String LLM_INPUT_TYPE_IMAGE = "image";

@@ -76,14 +76,17 @@ public class EmbeddingRag implements IRAGService {
     }
 
     /**
-     * 根据模型的contentWindow计算使用该模型最多召回的文档数量
-     * <br/>以分块时的最大文本段对应的token数量{maxSegmentSizeInTokens}为计算因子
+     * Calculates the maximum number of documents that can be retrieved based on the model's max input tokens.
+     * <br/>Uses the maximum segment size in tokens ({@code RAG_MAX_SEGMENT_SIZE_IN_TOKENS}) from chunking as the factor.
+     * <p>maxInputTokens must first subtract the tokens consumed by the user question, chat history, and system message;
+     * the remaining space is then converted into the number of documents that can be accommodated.</p>
      *
-     * @param userQuestion   用户的问题
-     * @param maxInputTokens AI模型所能容纳的窗口大小
-     * @return
+     * @param userQuestion   the user's question
+     * @param maxInputTokens the model's input token limit (maxInputTokens), not the full context window size
+     * @param reservedTokens tokens already consumed by chat history and system message, which will be deducted from the budget
+     * @return the maximum number of documents that can be retrieved (0 means no remaining space)
      */
-    public static int getRetrieveMaxResults(String userQuestion, int maxInputTokens) {
+    public static int getRetrieveMaxResults(String userQuestion, int maxInputTokens, int reservedTokens) {
         if (maxInputTokens == 0) {
             return RAG_RETRIEVE_NUMBER_MAX;
         }
@@ -91,14 +94,12 @@ public class EmbeddingRag implements IRAGService {
         if (inputAdaptorMsg.getTokenTooMuch() == TOKEN_TOO_MUCH_QUESTION) {
             log.warn("User question too long, not enough tokens left for retrieved content");
             return 0;
-        } else {
-            int maxRetrieveDocLength = maxInputTokens - inputAdaptorMsg.getUserQuestionTokenCount();
-            if (maxRetrieveDocLength > RAG_RETRIEVE_NUMBER_MAX * RAG_MAX_SEGMENT_SIZE_IN_TOKENS) {
-                return RAG_RETRIEVE_NUMBER_MAX;
-            } else {
-                return maxRetrieveDocLength / RAG_MAX_SEGMENT_SIZE_IN_TOKENS;
-            }
         }
-
+        int maxRetrieveDocLength = Math.max(0,
+                maxInputTokens - inputAdaptorMsg.getUserQuestionTokenCount() - reservedTokens);
+        if (maxRetrieveDocLength > RAG_RETRIEVE_NUMBER_MAX * RAG_MAX_SEGMENT_SIZE_IN_TOKENS) {
+            return RAG_RETRIEVE_NUMBER_MAX;
+        }
+        return maxRetrieveDocLength / RAG_MAX_SEGMENT_SIZE_IN_TOKENS;
     }
 }
