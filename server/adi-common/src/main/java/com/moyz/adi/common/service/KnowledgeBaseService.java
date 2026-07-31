@@ -422,12 +422,16 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         updateRecord.setAnswer(chatResponse.aiMessage().text());
         knowledgeBaseQaRecordService.updateById(updateRecord);
 
+        // Aggregate token usage across all LLM calls in this request (a single chat() may
+        // recurse through multiple tool calls, each cached under the same uuid in Redis).
+        Pair<Integer, Integer> tokenCost = LLMTokenUtil.calAllTokenCostByUuid(stringRedisTemplate, uuid);
+        int totalInputTokens = tokenCost.getLeft();
+        int totalOutputTokens = tokenCost.getRight();
+        int allToken = totalInputTokens + totalOutputTokens;
+
         // Record token consumption and save LLM call record
-        if (chatResponse.metadata() != null && chatResponse.metadata().tokenUsage() != null) {
-            int allToken = chatResponse.metadata().tokenUsage().totalTokenCount().intValue();
-            if (allToken > 0) {
-                userDayCostService.appendCostToUser(user, allToken, false);
-            }
+        if (allToken > 0) {
+            userDayCostService.appendCostToUser(user, allToken, false);
             LLMCallRecord callRecord = new LLMCallRecord();
             callRecord.setUuid(UuidUtil.createShort());
             callRecord.setSourceType(LLMCallRecordSourceType.KNOWLEDGE_BASE_QA.getValue());
@@ -435,8 +439,8 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             callRecord.setUserId(user.getId());
             callRecord.setModelPlatform(aiModel.getPlatform());
             callRecord.setModelName(aiModel.getName());
-            callRecord.setInputTokens(chatResponse.metadata().tokenUsage().inputTokenCount());
-            callRecord.setOutputTokens(chatResponse.metadata().tokenUsage().outputTokenCount());
+            callRecord.setInputTokens(totalInputTokens);
+            callRecord.setOutputTokens(totalOutputTokens);
             callRecord.setDuration(llmDuration);
             llmCallRecordService.saveAsync(callRecord);
         }
@@ -445,11 +449,11 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("message_id", uuid);
         data.put("answer", chatResponse.aiMessage().text());
-        if (chatResponse.metadata() != null && chatResponse.metadata().tokenUsage() != null) {
+        if (allToken > 0) {
             Map<String, Object> usage = new LinkedHashMap<>();
-            usage.put("prompt_tokens", chatResponse.metadata().tokenUsage().inputTokenCount());
-            usage.put("completion_tokens", chatResponse.metadata().tokenUsage().outputTokenCount());
-            usage.put("total_tokens", chatResponse.metadata().tokenUsage().totalTokenCount());
+            usage.put("prompt_tokens", totalInputTokens);
+            usage.put("completion_tokens", totalOutputTokens);
+            usage.put("total_tokens", allToken);
             data.put("usage", usage);
         }
         return data;

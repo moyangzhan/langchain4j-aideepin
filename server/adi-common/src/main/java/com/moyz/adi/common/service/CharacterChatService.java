@@ -41,6 +41,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.core.task.AsyncTaskExecutor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -95,6 +96,9 @@ public class CharacterChatService {
 
     @Resource
     private LongTermMemoryService longTermMemoryService;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     @Resource
     private LLMCallRecordService llmCallRecordService;
@@ -412,6 +416,12 @@ public class CharacterChatService {
         aiAnswer.setContentType(answerContentType);
         characterMessageService.save(aiAnswer);
 
+        //Aggregate token usage across all LLM calls in this request (streaming chat may
+        //recurse through multiple tool calls, each cached under the same uuid in Redis).
+        Pair<Integer, Integer> tokenCost = LLMTokenUtil.calAllTokenCostByUuid(stringRedisTemplate, questionMeta.getUuid());
+        int totalInputTokens = tokenCost.getLeft();
+        int totalOutputTokens = tokenCost.getRight();
+
         //Save LLM call record
         LLMCallRecord callRecord = new LLMCallRecord();
         callRecord.setUuid(UuidUtil.createShort());
@@ -420,14 +430,14 @@ public class CharacterChatService {
         callRecord.setUserId(user.getId());
         callRecord.setModelPlatform(modelPlatform);
         callRecord.setModelName(modelName);
-        callRecord.setInputTokens(answerMeta.getInputTokens());
-        callRecord.setOutputTokens(answerMeta.getOutputTokens());
+        callRecord.setInputTokens(totalInputTokens);
+        callRecord.setOutputTokens(totalOutputTokens);
         callRecord.setDuration(answerMeta.getDuration());
         llmCallRecordService.saveAsync(callRecord);
 
         createRef(retrievers, user, aiAnswer.getId());
 
-        calcTodayCost(user, character, questionMeta, answerMeta, aiModel.getIsFree());
+        calcTodayCost(user, totalInputTokens + totalOutputTokens, aiModel.getIsFree());
 
         //Short-term memory
         if (Boolean.TRUE.equals(character.getUnderstandContextEnable())) {
@@ -486,9 +496,7 @@ public class CharacterChatService {
         }
     }
 
-    private void calcTodayCost(User user, Character character, PromptMeta questionMeta, AnswerMeta answerMeta, boolean isFreeToken) {
-
-        int todayTokenCost = answerMeta.getInputTokens() + answerMeta.getOutputTokens();
+    private void calcTodayCost(User user, int todayTokenCost, boolean isFreeToken) {
         try {
             // 用户级 token 累计；按 character 维度的 token 总量可在需要时从 llm_call_record 聚合得到。
             // <p>

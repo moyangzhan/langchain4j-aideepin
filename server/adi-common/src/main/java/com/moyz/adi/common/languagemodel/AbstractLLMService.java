@@ -275,6 +275,10 @@ public abstract class AbstractLLMService extends CommonModelService {
                     // If there are tool execution requests
                     List<ToolExecutionResultMessage> toolExecutionMessages = createToolExecutionMessages(responseAiMessage, toolSpecificationMcpClientMap, params.getSseUuid());
 
+                    //Cache this intermediate (tool-call) step's tokens so the request total in Redis
+                    //covers every LLM call, not just the final response (mirrors innerChatWithDepth).
+                    cacheTokenUsage(params.getUuid(), response);
+
                     //mcp调用消息格式参考：https://docs.langchain4j.dev/tutorials/tools/
                     AiMessage aiMessage = AiMessage.aiMessage(responseAiMessage.toolExecutionRequests());
                     List<ChatMessage> messages = new ArrayList<>(params.getChatRequest().messages());
