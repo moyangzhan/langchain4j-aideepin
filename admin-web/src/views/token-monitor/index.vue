@@ -1,6 +1,11 @@
 <template>
   <n-card :bordered="false" class="proCard">
-    <BasicForm @register="register" @submit="handleSubmit" @reset="handleReset" />
+    <BasicForm
+      :collapsed="false"
+      @register="register"
+      @submit="handleSubmit"
+      @reset="handleReset"
+    />
 
     <BasicTable
       :columns="columns"
@@ -79,7 +84,6 @@
     gridProps: { cols: '1 s:1 m:2 l:3 xl:4 2xl:4' },
     labelWidth: 120,
     schemas,
-    collapsed: false,
   })
 
   onMounted(async () => {
