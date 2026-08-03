@@ -15,6 +15,7 @@ import com.moyz.adi.common.service.LLMCallRecordService;
 import com.moyz.adi.common.service.UserDayCostService;
 import com.moyz.adi.common.util.AdiStringUtil;
 import com.moyz.adi.common.util.JsonUtil;
+import com.moyz.adi.common.util.NumberUtil;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.ChatModelRequest;
 import com.moyz.adi.common.vo.SseAskParam;
@@ -65,8 +66,10 @@ public class LongTermMemoryService {
         AbstractLLMService llmService = LLMContext.getServiceOrDefault(request.getModelPlatform(), request.getModelName());
 
         // ===== Stage 1: fact extraction (1 LLM call) =====
+        long extractionStart = System.currentTimeMillis();
         ChatResponse response = llmService.chat(buildExtractionRequest(request, inputMessage));
-        recordLlmCall(request, response, LLMCallRecordSourceType.LONG_TERM_MEMORY_EXTRACTION);
+        recordLlmCall(request, response, LLMCallRecordSourceType.LONG_TERM_MEMORY_EXTRACTION,
+                System.currentTimeMillis() - extractionStart);
 
         log.info("Fact extraction response: {}", response.aiMessage().text());
         String factResponse = AdiStringUtil.removeCodeBlock(response.aiMessage().text());
@@ -113,8 +116,10 @@ public class LongTermMemoryService {
 
         // ===== Stage 3: batch memory analysis (1 LLM call for ALL facts) =====
         String analyzePrompt = LongTermMemoryPrompt.buildBatchUpdatePrompt(candidates.factToOldMemoriesForPrompt);
+        long analysisStart = System.currentTimeMillis();
         ChatResponse analyzeResp = llmService.chat(buildAnalysisRequest(request, analyzePrompt));
-        recordLlmCall(request, analyzeResp, LLMCallRecordSourceType.LONG_TERM_MEMORY_ANALYSIS);
+        recordLlmCall(request, analyzeResp, LLMCallRecordSourceType.LONG_TERM_MEMORY_ANALYSIS,
+                System.currentTimeMillis() - analysisStart);
 
         String resp = analyzeResp.aiMessage().text();
         log.info("Batch memory analysis response: {}", resp);
@@ -170,10 +175,19 @@ public class LongTermMemoryService {
      *                   request, so it doubles as the call's business provenance.
      */
     private void recordLlmCall(MemoryAddParam request, ChatResponse response,
-                                LLMCallRecordSourceType sourceType) {
+                                LLMCallRecordSourceType sourceType, long durationMs) {
         int[] tokens = extractTokenUsage(response);
-        saveCallRecord(request.getUser(), request.getModelPlatform(), request.getModelName(),
-                tokens[0], tokens[1], sourceType);
+        LLMCallRecord record = new LLMCallRecord();
+        record.setUuid(UuidUtil.createShort());
+        record.setSourceType(sourceType.getValue());
+        record.setSourceId(request.getSourceMsgId() != null ? request.getSourceMsgId() : 0L);
+        record.setUserId(request.getUser().getId());
+        record.setModelPlatform(request.getModelPlatform());
+        record.setModelName(request.getModelName());
+        record.setInputTokens(tokens[0]);
+        record.setOutputTokens(tokens[1]);
+        record.setDuration(NumberUtil.saturatedCastToInt(durationMs));
+        saveCallRecord(record);
         appendCostSafely(request.getUser(), tokens[0] + tokens[1], request.isFreeToken());
     }
 
@@ -259,24 +273,14 @@ public class LongTermMemoryService {
         return new int[]{0, 0};
     }
 
-    private void saveCallRecord(User user, String modelPlatform, String modelName,
-                                int inputTokens, int outputTokens, LLMCallRecordSourceType sourceType) {
-        if (inputTokens == 0 && outputTokens == 0) {
+    private void saveCallRecord(LLMCallRecord record) {
+        if (record.getInputTokens() == 0 && record.getOutputTokens() == 0) {
             return;
         }
         try {
-            LLMCallRecord record = new LLMCallRecord();
-            record.setUuid(UuidUtil.createShort());
-            record.setSourceType(sourceType.getValue());
-            record.setSourceId(0L);
-            record.setUserId(user.getId());
-            record.setModelPlatform(modelPlatform);
-            record.setModelName(modelName);
-            record.setInputTokens(inputTokens);
-            record.setOutputTokens(outputTokens);
             llmCallRecordService.saveAsync(record);
         } catch (Exception e) {
-            log.error("Failed to save LLM call record, sourceType: {}", sourceType, e);
+            log.error("Failed to save LLM call record, sourceType: {}", record.getSourceType(), e);
         }
     }
 
