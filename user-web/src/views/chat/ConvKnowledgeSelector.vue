@@ -175,7 +175,7 @@ watch(() => props.character.kbIds, (newVal) => {
       </div>
     </div>
     <div>
-      <div class="flex justify-between">
+      <div class="flex justify-between mb-2">
         <NInput v-model:value="searchValue" class="mr-2" :placeholder="t('chat.searchTitlePlaceholder')" clearable @keyup="onKeyUpSearch" />
         <NButton type="primary" ghost @click="search(1)">
           {{ t('common.search') }}

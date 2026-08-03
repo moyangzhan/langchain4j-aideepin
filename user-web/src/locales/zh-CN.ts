@@ -218,6 +218,9 @@ export default {
     characterKnowledgeDescription: '描述',
     characterKnowledgeAttribute: '属性',
     configCharacterKnowledge: '配置角色使用的知识库',
+    noSelectedData: '暂未选择知识库',
+    searchTitlePlaceholder: '请输入标题搜索',
+    characterKnowledgeSaved: '知识库保存成功',
     submitting: '正在提交，请稍候',
     titleRequired: '标题不能为空',
     state: {

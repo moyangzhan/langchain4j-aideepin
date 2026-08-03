@@ -41,6 +41,7 @@ export interface FormProps {
   submitFunc?: () => Promise<void>
   submitOnReset?: boolean
   baseGridStyle?: CSSProperties
+  collapsed?: boolean
   collapsedRows?: number
 }
 

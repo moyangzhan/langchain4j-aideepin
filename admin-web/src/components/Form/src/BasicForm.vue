@@ -152,7 +152,7 @@
       const propsRef = ref<Partial<FormProps>>({})
       const schemaRef = ref<Nullable<FormSchema[]>>(null)
       const formElRef = ref<Nullable<FormActionType>>(null)
-      const gridCollapsed = ref(true)
+      const gridCollapsed = ref(props.collapsed)
       const loadingSub = ref(false)
       const isUpdateDefaultRef = ref(false)
 

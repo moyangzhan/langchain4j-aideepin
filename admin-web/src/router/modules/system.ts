@@ -23,7 +23,7 @@ const routes: Array<RouteRecordRaw> = [
     meta: {
       title: 'route.systemSettings',
       icon: renderIcon(OptionsSharp),
-      sort: 6,
+      sort: 7,
     },
     children: [
       {

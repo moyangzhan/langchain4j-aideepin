@@ -218,6 +218,9 @@ export default {
     characterKnowledgeDescription: 'Description',
     characterKnowledgeAttribute: 'Attribute',
     configCharacterKnowledge: 'Configure knowledge base for character',
+    noSelectedData: 'No knowledge base selected',
+    searchTitlePlaceholder: 'Search by title',
+    characterKnowledgeSaved: 'Knowledge base saved',
     submitting: 'Submitting, please wait',
     titleRequired: 'Title cannot be empty',
     state: {
