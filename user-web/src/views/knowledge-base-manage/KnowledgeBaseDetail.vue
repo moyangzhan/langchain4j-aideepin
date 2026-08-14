@@ -1,9 +1,9 @@
 <script setup lang='ts'>
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { NAlert, NBreadcrumb, NBreadcrumbItem, NButton, NCard, NCheckbox, NCheckboxGroup, NDataTable, NFlex, NIcon, NInput, NModal, NP, NSpace, NTag, NText, NUpload, NUploadDragger, useDialog, useMessage } from 'naive-ui'
 import { ArchiveOutline } from '@vicons/ionicons5'
 import { Cloud32Regular, LockClosed32Regular } from '@vicons/fluent'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type { UploadFileInfo, UploadInst } from 'naive-ui'
 import ItemEmbeddingList from './ItemEmbeddingList.vue'
 import ItemGraph from './ItemGraph.vue'
@@ -17,6 +17,7 @@ import api from '@/api'
 const ms = useMessage()
 const dialog = useDialog()
 const route = useRoute()
+const router = useRouter()
 const { kbUuid: curKbUuid } = route.params as { kbUuid: string; kbId: string }
 console.log('knowledge-base uuid', curKbUuid)
 
@@ -28,8 +29,6 @@ const kbItemUuidForGraph = ref<string>('')
 const modalMainHeight = ref<number>(500)
 const tableMaxHeight = ref<number>(500)
 const loading = ref<boolean>(false)
-const submitting = ref<boolean>(false)
-const showItemEditModal = ref<boolean>(false)
 const showUploadModal = ref<boolean>(false)
 const showIndexModal = ref<boolean>(false)
 const itemList = ref<KnowledgeBase.Item[]>([])
@@ -43,11 +42,9 @@ const paginationReactive = reactive({
   page: 1,
   pageSize: 10,
   itemCount: 0,
+  prefix: () => t('common.total', { n: paginationReactive.itemCount }),
 })
 const searchValue = ref<string>('')
-const tmpItem = reactive<KnowledgeBase.Item>(knowledgeBaseEmptyItem())
-// 控制 input 按钮
-const inputStatus = computed(() => tmpItem.title.trim().length < 1 && !submitting.value)
 const { isMobile } = useBasicLayout()
 const authStore = useAuthStore()
 const token = ref<string>(authStore.token)
@@ -128,22 +125,31 @@ const showGraph = (selected: KnowledgeBase.Item = knowledgeBaseEmptyItem()) => {
   kbItemUuidForGraph.value = selected.uuid
 }
 
-const changeEditModal = (selected: KnowledgeBase.Item = knowledgeBaseEmptyItem()) => {
-  if (selected.kbId !== '0') {
-    Object.assign(tmpItem, selected)
-  } else {
-    Object.assign(tmpItem, knowledgeBaseEmptyItem())
-    tmpItem.kbId = curKnowledgeBase.id
-    tmpItem.kbUuid = curKnowledgeBase.uuid
-  }
-  showItemEditModal.value = !showItemEditModal.value
+const editItem = (row: KnowledgeBase.Item) => {
+  router.push({ name: 'KnowledgeBaseItemEdit', params: { kbUuid: curKbUuid, itemUuid: row.uuid } })
 }
 
 function rowKey(row: KnowledgeBase.Item) {
   return row.uuid
 }
 
-const columns = createColumns(showEmbeddingList, showGraph, showFileContent, changeEditModal, deleteKbItem)
+// 序号列宽度按总条数位数自适应，恰好容纳最大序号
+// Serial-number column width auto-fits to the digit count of total rows
+const serialColWidth = computed(() => {
+  const digits = String(Math.max(paginationReactive.itemCount, 1)).length
+  return Math.max(40, digits * 8 + 24)
+})
+const columns = computed(() => {
+  const cols = createColumns(showEmbeddingList, showGraph, showFileContent, editItem, deleteKbItem, toggleStatus)
+  cols.splice(1, 0, {
+    title: '#',
+    key: 'serialNumber',
+    width: serialColWidth.value,
+    align: 'center',
+    render: (_row, index) => (paginationReactive.page - 1) * paginationReactive.pageSize + index + 1,
+  })
+  return cols
+})
 
 function changeIndexModal() {
   showIndexModal.value = true
@@ -290,19 +296,6 @@ function setResp(currentPage: number, data: PageResponse) {
   paginationReactive.itemCount = data.total
 }
 
-async function saveOrUpdate() {
-  try {
-    submitting.value = true
-    const resp = await api.knowledgeBaseItemSaveOrUpdate<KnowledgeBase.Item>(tmpItem)
-    Object.assign(tmpItem, resp.data)
-  } finally {
-    submitting.value = false
-    showItemEditModal.value = false
-    Object.assign(tmpItem, knowledgeBaseEmptyItem())
-    search(1)
-  }
-}
-
 function deleteKbItem(row: KnowledgeBase.Item) {
   dialog.warning({
     title: t('knowledgeBase.deleteConfirmTitle'),
@@ -318,17 +311,39 @@ function deleteKbItem(row: KnowledgeBase.Item) {
   })
 }
 
+function toggleStatus(row: KnowledgeBase.Item, isEnabled: boolean) {
+  const action = isEnabled ? t('knowledgeBase.enable') : t('knowledgeBase.disable')
+  dialog.warning({
+    title: t('knowledgeBase.deleteConfirmTitle'),
+    content: t('knowledgeBase.toggleStatusConfirm', { action }),
+    positiveText: t('common.yes'),
+    negativeText: t('common.no'),
+    onPositiveClick: async () => {
+      await api.knowledgeBaseItemToggleStatus(row.uuid, isEnabled)
+      row.isEnabled = isEnabled
+    },
+  })
+}
+
 async function initData() {
   search(1)
   const resp = await api.knowledgeBaseInfo<KnowledgeBase.Info>(curKbUuid)
   Object.assign(curKnowledgeBase, resp.data)
 }
 
+const inited = ref<boolean>(false)
 onMounted(async () => {
   modalMainHeight.value = window.innerHeight - 150
   tableMaxHeight.value = window.innerHeight - 420
   if (curKnowledgeBase.title === '')
     await initData()
+  inited.value = true
+})
+// 从编辑页返回时刷新当前页，确保新增/修改的文档可见
+// Refresh current page when returning from the edit page so new/modified docs are visible
+onActivated(() => {
+  if (inited.value)
+    search(paginationReactive.page)
 })
 watch(
   () => token,
@@ -368,7 +383,7 @@ watch(
     <NCard style="margin-top: 12px" :title="t('knowledgeBase.generatedKnowledge')" hoverable>
       <div class="flex gap-3 mb-4" :class="[isMobile ? 'flex-col' : 'flex-row justify-between']">
         <div class="flex items-left gap-2">
-          <NButton type="primary" size="small" @click="changeEditModal()">
+          <NButton type="primary" size="small" @click="router.push({ name: 'KnowledgeBaseItemAdd', params: { kbUuid: curKbUuid } })">
             {{ t('knowledgeBase.addByForm') }}
           </NButton>
           <NButton type="primary" size="small" @click="() => showUploadModal = !showUploadModal">
@@ -395,27 +410,6 @@ watch(
       />
     </NCard>
   </div>
-
-  <NModal
-    v-model:show="showItemEditModal" style="width: 90%" preset="card"
-    :title="t('knowledgeBase.knowledgeItemAddEdit')"
-  >
-    <NSpace vertical>
-      {{ t('store.title') }}
-      <NInput v-model:value="tmpItem.title" maxlength="100" show-count />
-      {{ t('knowledgeBase.brief') }}
-      <NInput v-model:value="tmpItem.brief" type="textarea" show-count :autosize="{ minRows: 2, maxRows: 5 }" />
-      {{ t('common.content') }}
-      <NInput v-model:value="tmpItem.remark" type="textarea" show-count :rows="10" />
-    </NSpace>
-    <template #footer>
-      <div class="flex justify-end">
-        <NButton type="primary" :disabled="inputStatus" @click="() => { saveOrUpdate() }">
-          {{ t('common.confirm') }}
-        </NButton>
-      </div>
-    </template>
-  </NModal>
 
   <!-- Upload files -->
   <NModal v-model:show="showUploadModal" style="width: 90%;  min-height: 700px;" preset="card" :title="t('knowledgeBase.knowledgeItemUpload')">

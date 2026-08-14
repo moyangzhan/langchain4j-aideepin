@@ -55,6 +55,13 @@ public class EpisodicMemoryEmbeddingService implements IEpisodicMemoryEmbeddingS
         return toDtos(searchResult);
     }
 
+    @Override
+    public void incrementHitCount(List<String> embeddingIds) {
+        if (embeddingIds != null && !embeddingIds.isEmpty()) {
+            ((AdiNeo4jEmbeddingStore) embeddingStore).incrementHitCount(embeddingIds);
+        }
+    }
+
     private List<KbItemEmbeddingDto> toDtos(EmbeddingSearchResult<TextSegment> searchResult) {
         List<KbItemEmbeddingDto> result = new ArrayList<>();
         for (EmbeddingMatch<TextSegment> embeddingMatch : searchResult.matches()) {

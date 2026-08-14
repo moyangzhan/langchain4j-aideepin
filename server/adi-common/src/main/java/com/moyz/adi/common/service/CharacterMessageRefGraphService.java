@@ -34,7 +34,7 @@ public class CharacterMessageRefGraphService extends ServiceImpl<CharacterMessag
         if (StringUtils.isNotBlank(graphStr)) {
             result = JsonUtils.fromJson(graphStr, RefGraphDto.class);
         }
-        result.setEntitiesFromQuestion(Arrays.stream(refGraph.getGraphFromLlm().split(",")).filter(StringUtils::isNotBlank).toList());
+        result.setEntitiesFromQuestion(Arrays.stream(refGraph.getEntitiesFromQuestion().split(",")).filter(StringUtils::isNotBlank).toList());
         if (null == result.getVertices()) {
             result.setVertices(Collections.emptyList());
         }

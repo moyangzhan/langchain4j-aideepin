@@ -23,9 +23,9 @@ public class CharacterMessageRefGraph implements Serializable {
     @TableField("message_id")
     private Long messageId;
 
-    @Schema(title = "LLM解析出来的图谱 | Graph Parsed by LLM")
-    @TableField("graph_from_llm")
-    private String graphFromLlm;
+    @Schema(title = "从用户问题中解析出来的实体 | Entities Parsed from User Question")
+    @TableField("entities_from_question")
+    private String entitiesFromQuestion;
 
     @Schema(title = "从图数据库中查找得到的图谱 | Graph Retrieved from Graph Database")
     @TableField("graph_from_store")

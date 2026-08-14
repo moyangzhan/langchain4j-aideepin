@@ -1,10 +1,10 @@
 import type { DataTableColumns } from 'naive-ui'
 import { h } from 'vue'
 import type { VNode } from 'vue'
-import { NButton, NEllipsis } from 'naive-ui'
+import { NButton, NEllipsis, NSwitch } from 'naive-ui'
 import { t } from '@/locales'
 
-export const createColumns = (showEmbeddingListFn: Function, showGraphFn: Function, showFileContentFn: Function, changeItemShowModalFn: Function, deleteKbItemFn: Function): DataTableColumns<KnowledgeBase.Item> => {
+export const createColumns = (showEmbeddingListFn: Function, showGraphFn: Function, showFileContentFn: Function, changeItemShowModalFn: Function, deleteKbItemFn: Function, toggleStatusFn: Function): DataTableColumns<KnowledgeBase.Item> => {
   return [
     {
       type: 'selection',
@@ -96,6 +96,34 @@ export const createColumns = (showEmbeddingListFn: Function, showGraphFn: Functi
         } else {
           return t('common.none')
         }
+      },
+    },
+    {
+      title: t('knowledgeBase.wordCount'),
+      key: 'wordCount',
+      width: 100,
+    },
+    {
+      title: t('knowledgeBase.embeddingHitCount'),
+      key: 'embeddingHitCount',
+      width: 100,
+    },
+    {
+      title: t('knowledgeBase.graphHitCount'),
+      key: 'graphHitCount',
+      width: 100,
+    },
+    {
+      title: t('knowledgeBase.enabled'),
+      key: 'isEnabled',
+      width: 100,
+      align: 'center',
+      render(row) {
+        return h(NSwitch, {
+          value: row.isEnabled,
+          size: 'small',
+          onUpdateValue: (val: boolean) => toggleStatusFn(row, val),
+        })
       },
     },
     {

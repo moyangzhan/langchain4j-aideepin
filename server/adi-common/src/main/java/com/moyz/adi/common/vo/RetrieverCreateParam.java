@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Set;
+
 /**
  * Content Retriever创建参数
  */
@@ -35,4 +37,9 @@ public class RetrieverCreateParam {
      * 如果数据库中搜索不到数据，是否强行中断该搜索，不继续往下执行（即不继续请求LLM进行回答）
      */
     private boolean breakIfSearchMissed;
+    /**
+     * 停用文档的 UUID 集合。向量路径将其组合为 IsNotIn filter 在数据库层面排除；
+     * 图谱路径在 Java 层后置过滤（因 kb_item_uuid 可能为逗号分隔多值）。
+     */
+    private Set<String> excludedItemUuids;
 }

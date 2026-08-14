@@ -6,6 +6,7 @@ import com.moyz.adi.common.dto.KbItemEmbeddingDto;
 import com.moyz.adi.common.entity.CharacterMemoryEmbedding;
 import com.moyz.adi.common.mapper.CharacterMemoryEmbeddingMapper;
 import com.moyz.adi.common.service.embedding.ICharacterMemoryEmbeddingService;
+import com.moyz.adi.common.util.AdiPropertiesUtil;
 import com.moyz.adi.common.util.MPPageUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -28,6 +29,13 @@ public class CharacterMemoryEmbeddingService extends ServiceImpl<CharacterMemory
             t.setEmbedding(s.getEmbedding().toArray());
             return t;
         });
+    }
+
+    @Override
+    public void incrementHitCount(List<String> embeddingIds) {
+        if (embeddingIds != null && !embeddingIds.isEmpty()) {
+            baseMapper.incrementHitCount(embeddingIds, AdiPropertiesUtil.EMBEDDING_TABLE_SUFFIX);
+        }
     }
 
 }

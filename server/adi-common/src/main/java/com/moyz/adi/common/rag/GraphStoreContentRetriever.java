@@ -25,6 +25,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.toSet;
 
 @Slf4j
 public class GraphStoreContentRetriever implements ContentRetriever {
@@ -43,6 +44,8 @@ public class GraphStoreContentRetriever implements ContentRetriever {
 
     private final boolean breakIfSearchMissed;
 
+    private final Set<String> excludedItemUuids;
+
     private final RefGraphDto kbQaRecordRefGraphDto = RefGraphDto.builder().vertices(Collections.emptyList()).edges(Collections.emptyList()).entitiesFromQuestion(Collections.emptyList()).build();
 
     @Builder
@@ -51,13 +54,15 @@ public class GraphStoreContentRetriever implements ContentRetriever {
                                        ChatModel chatModel,
                                        Function<Query, Integer> dynamicMaxResults,
                                        Function<Query, Filter> dynamicFilter,
-                                       Boolean breakIfSearchMissed) {
+                                       Boolean breakIfSearchMissed,
+                                       Set<String> excludedItemUuids) {
         this.displayName = getOrDefault(displayName, DEFAULT_DISPLAY_NAME);
         this.graphStore = ensureNotNull(graphStore, "graphStore");
         this.chatModel = ensureNotNull(chatModel, "ChatModel");
         this.maxResultsProvider = getOrDefault(dynamicMaxResults, DEFAULT_MAX_RESULTS);
         this.filterProvider = getOrDefault(dynamicFilter, DEFAULT_FILTER);
         this.breakIfSearchMissed = breakIfSearchMissed;
+        this.excludedItemUuids = excludedItemUuids;
     }
 
     public static GraphStoreContentRetriever from(GraphStore graphStore) {
@@ -117,6 +122,18 @@ public class GraphStoreContentRetriever implements ContentRetriever {
                         .build()
         );
 
+        // Post-filter: exclude vertices/edges whose kb_item_uuid is entirely disabled.
+        // Cannot use IsNotIn in the graph query because kb_item_uuid may be a
+        // comma-separated multi-value string (GraphStoreIngestor append logic).
+        if (excludedItemUuids != null && !excludedItemUuids.isEmpty()) {
+            vertices = vertices.stream()
+                    .filter(v -> shouldKeep(v.getMetadata()))
+                    .collect(toList());
+            edgeWithVerticeList = edgeWithVerticeList.stream()
+                    .filter(t -> shouldKeep(t.getMiddle().getMetadata()))
+                    .collect(toList());
+        }
+
         Map<String, GraphVertex> allVertices = new HashMap<>();
         List<GraphEdge> allEdges = new ArrayList<>();
         for (Triple<GraphVertex, GraphEdge, GraphVertex> triple : edgeWithVerticeList) {
@@ -137,6 +154,26 @@ public class GraphStoreContentRetriever implements ContentRetriever {
 
     public RefGraphDto getGraphRef() {
         return kbQaRecordRefGraphDto;
+    }
+
+    /**
+     * Check whether a graph element (vertex/edge) should be kept after disabled-document
+     * filtering. The metadata kb_item_uuid may be comma-separated (due to GraphStoreIngestor
+     * append logic); keep the element as long as at least one associated document is enabled.
+     */
+    private boolean shouldKeep(Map<String, Object> metadata) {
+        if (metadata == null || excludedItemUuids == null || excludedItemUuids.isEmpty()) {
+            return true;
+        }
+        Object raw = metadata.get(AdiConstant.MetadataKey.KB_ITEM_UUID);
+        if (raw == null) {
+            return true;
+        }
+        Set<String> itemUuids = Arrays.stream(String.valueOf(raw).split(","))
+                .map(String::trim)
+                .filter(StringUtils::isNotBlank)
+                .collect(toSet());
+        return itemUuids.stream().anyMatch(u -> !excludedItemUuids.contains(u));
     }
 
     public static class GraphStoreContentRetrieverBuilder {

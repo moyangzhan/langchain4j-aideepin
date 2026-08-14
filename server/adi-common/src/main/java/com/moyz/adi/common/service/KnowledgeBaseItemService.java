@@ -294,6 +294,39 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
     }
 
     /**
+     * Toggle the enabled/disabled status of a document. When disabled, the document's
+     * segments are excluded from vector and graph retrieval.
+     */
+    public boolean toggleStatus(String uuid, Boolean isEnabled) {
+        checkWritePrivilege(uuid);
+        return ChainWrappers.lambdaUpdateChain(baseMapper)
+                .eq(KnowledgeBaseItem::getUuid, uuid)
+                .set(KnowledgeBaseItem::getIsEnabled, isEnabled)
+                .set(KnowledgeBaseItem::getEnabledChangeTime, LocalDateTime.now())
+                .update();
+    }
+
+    /**
+     * List the UUIDs of disabled documents in a knowledge base, used to exclude
+     * their segments from retrieval.
+     */
+    public List<String> listDisabledItemUuids(String kbUuid) {
+        return baseMapper.listDisabledItemUuids(kbUuid);
+    }
+
+    public void incrementEmbeddingHitCount(List<String> uuids) {
+        if (uuids != null && !uuids.isEmpty()) {
+            baseMapper.incrementEmbeddingHitCount(uuids);
+        }
+    }
+
+    public void incrementGraphHitCount(List<String> uuids) {
+        if (uuids != null && !uuids.isEmpty()) {
+            baseMapper.incrementGraphHitCount(uuids);
+        }
+    }
+
+    /**
      * Fetch a knowledge-base item by uuid after a read-privilege check. Both the
      * check and the query operate on the item itself, so they are kept together
      * here rather than split across the controller.

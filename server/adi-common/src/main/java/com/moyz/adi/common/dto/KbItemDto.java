@@ -33,6 +33,16 @@ public class KbItemDto {
 
     private LocalDateTime graphicalStatusChangeTime;
 
+    private Integer embeddingHitCount;
+
+    private Integer graphHitCount;
+
+    private Integer wordCount;
+
+    private Boolean isEnabled;
+
+    private LocalDateTime enabledChangeTime;
+
     private String sourceFileName;
 
     private String sourceFileUuid;

@@ -71,4 +71,28 @@
           and a.id = #{id}
           and b.owner_id = #{userId}
     </select>
+
+    <update id="incrementEmbeddingHitCount">
+        update adi_knowledge_base_item
+        set embedding_hit_count = embedding_hit_count + 1
+        where is_deleted = false
+          and uuid in
+        <foreach collection="uuids" open="(" separator="," close=")" item="id">#{id}</foreach>
+    </update>
+
+    <update id="incrementGraphHitCount">
+        update adi_knowledge_base_item
+        set graph_hit_count = graph_hit_count + 1
+        where is_deleted = false
+          and uuid in
+        <foreach collection="uuids" open="(" separator="," close=")" item="id">#{id}</foreach>
+    </update>
+
+    <select id="listDisabledItemUuids" resultType="java.lang.String">
+        select uuid
+        from adi_knowledge_base_item
+        where is_deleted = false
+          and kb_uuid = #{kbUuid}
+          and is_enabled = false
+    </select>
 </mapper>

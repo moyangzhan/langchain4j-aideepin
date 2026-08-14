@@ -383,7 +383,7 @@ public class SseManager {
         SseEntry entry = getEntry(uuid);
         if (entry == null) return;
         try {
-            entry.emitter().send(SseEmitter.event().name(AdiConstant.SSEEventName.THINKING).data(content));
+            entry.emitter().send(multiLineEvent(AdiConstant.SSEEventName.THINKING, content));
         } catch (IOException e) {
             log.error("stream onNext error", e);
             throw new RuntimeException(e);
@@ -405,18 +405,39 @@ public class SseManager {
         }
     }
 
+    /**
+     * 构建一个 SSE 事件，把含换行的内容按 SSE 标准拆成多行 data:（fetch-event-source
+     * 会用 \n 连接多行 data）。每行前加一个空格，会被 fetch-event-source 吞掉，用于
+     * 保护行首的真实空格。
+     * <p>
+     * Build an SSE event that splits newline-bearing content into multiple data: lines
+     * (fetch-event-source joins them with \n). A leading space is prepended per line and
+     * consumed by fetch-event-source, shielding a real leading space in the content.
+     * </p>
+     */
+    private static SseEmitter.SseEventBuilder multiLineEvent(String name, String content) {
+        // 规范换行 CRLF/CR -> LF，避免 \r\n 被当成两个换行 | Normalize CRLF/CR to LF
+        String normalized = content.replace("\r\n", "\n").replace("\r", "\n");
+        String[] lines = normalized.split("\n", -1);
+        SseEmitter.SseEventBuilder builder = SseEmitter.event();
+        if (StringUtils.isNotBlank(name)) {
+            builder.name(name);
+        }
+        for (String line : lines) {
+            builder.data(" " + line);
+        }
+        return builder;
+    }
+
     public static void parseAndSendPartialMsg(String uuid, String name, String content) {
         SseEntry entry = getEntry(uuid);
         if (entry == null) return;
-        String[] lines = content.split("[\\r\\n]", -1);
-        if (lines.length > 1) {
-            sendPartial(uuid, name, entry, " " + lines[0]);
-            for (int i = 1; i < lines.length; i++) {
-                sendPartial(uuid, name, entry, "-_wrap_-");
-                sendPartial(uuid, name, entry, " " + lines[i]);
-            }
-        } else {
-            sendPartial(uuid, name, entry, " " + content);
+        try {
+            entry.emitter().send(multiLineEvent(name, content));
+        } catch (IOException ioException) {
+            log.error("stream onNext error", ioException);
+            SpringUtil.getBean(SseManager.class).unregister(uuid);
+            throw new RuntimeException(ioException);
         }
     }
 

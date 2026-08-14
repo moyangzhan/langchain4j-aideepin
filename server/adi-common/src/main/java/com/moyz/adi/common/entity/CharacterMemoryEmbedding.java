@@ -38,4 +38,12 @@ public class CharacterMemoryEmbedding {
     @Schema(title = "metadata")
     @TableField(value = "metadata", typeHandler = JsonNodeTypeHandler.class)
     private JsonNode metadata;
+
+    @Schema(title = "命中次数 | Hit Count")
+    @TableField("hit_count")
+    private Integer hitCount;
+
+    @Schema(title = "字符数 | Word Count")
+    @TableField("word_count")
+    private Integer wordCount;
 }

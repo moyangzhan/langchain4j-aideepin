@@ -6,6 +6,8 @@ import com.moyz.adi.common.entity.KnowledgeBaseEmbedding;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
+
 @Mapper
 public interface KnowledgeBaseEmbeddingMapper extends BaseMapper<KnowledgeBaseEmbedding> {
 
@@ -14,4 +16,8 @@ public interface KnowledgeBaseEmbeddingMapper extends BaseMapper<KnowledgeBaseEm
     boolean deleteByItemUuid(@Param("kbItemUuid") String uuid, @Param("tableSuffix") String tableSuffix);
 
     Integer countByKbUuid(@Param("kbUuid") String kbUuid, @Param("tableSuffix") String tableSuffix);
+
+    int incrementHitCount(@Param("embeddingIds") List<String> embeddingIds, @Param("tableSuffix") String tableSuffix);
+
+    List<String> selectKbItemUuidsByEmbeddingIds(@Param("embeddingIds") List<String> embeddingIds, @Param("tableSuffix") String tableSuffix);
 }

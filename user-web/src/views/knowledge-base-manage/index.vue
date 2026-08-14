@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import type { DataTableColumns } from 'naive-ui'
-import { computed, h, reactive, ref, watch } from 'vue'
+import { computed, h, onMounted, reactive, ref, watch } from 'vue'
 import { NBreadcrumb, NBreadcrumbItem, NButton, NCollapse, NCollapseItem, NDataTable, NIcon, NInput, NInputNumber, NModal, NRadio, NRadioGroup, NSelect, NTooltip, useDialog, useMessage } from 'naive-ui'
 import { RouterLink, useRouter } from 'vue-router'
 import { QuestionCircle16Regular } from '@vicons/fluent'
@@ -17,6 +17,7 @@ const dialog = useDialog()
 const ms = useMessage()
 const appStore = useAppStore()
 const loading = ref(false)
+const tableMaxHeight = ref<number>(500)
 const submitting = ref(false)
 const showModal = ref(false)
 const infoList = ref<KnowledgeBase.Info[]>([])
@@ -24,6 +25,7 @@ const paginationReactive = reactive({
   page: 1,
   pageSize: 20,
   itemCount: 0,
+  prefix: () => t('common.total', { n: paginationReactive.itemCount }),
 })
 const searchValue = ref<string>('')
 const tmpKb = reactive<KnowledgeBase.Info>(knowledgeBaseEmptyInfo())
@@ -55,6 +57,15 @@ const changeShowModal = (selected: KnowledgeBase.Info = knowledgeBaseEmptyInfo()
 // table相关
 const createColumns = (): DataTableColumns<KnowledgeBase.Info> => {
   return [
+    {
+      title: '#',
+      key: 'serialNumber',
+      width: serialColWidth.value,
+      align: 'center',
+      render(_row, index) {
+        return (paginationReactive.page - 1) * paginationReactive.pageSize + index + 1
+      },
+    },
     {
       title: t('common.title'),
       key: 'title',
@@ -112,7 +123,7 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Info> => {
                   type: 'info',
                   onClick: () => router.push({ name: 'KnowledgeBaseManageDetail', params: { kbUuid: row.uuid } }),
                 },
-                { default: () => t('common.view') },
+                { default: () => t('knowledgeBase.docs') },
               ),
               h(
                 NButton,
@@ -157,7 +168,13 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Info> => {
   ]
 }
 
-const columns = createColumns()
+// 序号列宽度按总条数位数自适应，恰好容纳最大序号
+// Serial-number column width auto-fits to the digit count of total rows
+const serialColWidth = computed(() => {
+  const digits = String(Math.max(paginationReactive.itemCount, 1)).length
+  return Math.max(40, digits * 8 + 24)
+})
+const columns = computed(() => createColumns())
 
 async function onHandlePageChange(currentPage: number) {
   search(currentPage)
@@ -251,6 +268,10 @@ watch(
   },
   { immediate: true },
 )
+
+onMounted(() => {
+  tableMaxHeight.value = window.innerHeight - 220
+})
 </script>
 
 <template>
@@ -280,7 +301,7 @@ watch(
       </div>
     </div>
     <NDataTable
-      remote :loading="loading" :columns="columns" :data="infoList" :pagination="paginationReactive"
+      remote :loading="loading" :max-height="tableMaxHeight" :columns="columns" :data="infoList" :pagination="paginationReactive"
       :single-line="false" :bordered="true" @update:page="onHandlePageChange"
     />
   </div>

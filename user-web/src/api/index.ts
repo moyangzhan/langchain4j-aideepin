@@ -162,9 +162,6 @@ function commonSseProcess(
         }
         return
       }
-      if (eventMessage.data.indexOf('-_wrap_-') === 0)
-        eventMessage.data = eventMessage.data.replace('-_wrap_-', '\n')
-
       // 会自动处理后端返回内容的首个空格，需在后端的返回内容前多加个空格，相关源码：https://github.com/Azure/fetch-event-source/blob/45ac3cfffd30b05b79fbf95c21e67d4ef59aa56a/src/parse.ts#L129-L133
       params.messageReceived(eventMessage.data, eventMessage.event ? eventMessage.event : '')
     },
@@ -529,6 +526,19 @@ function knowledgeBaseItemDelete<T = any>(uuid: string) {
   })
 }
 
+function knowledgeBaseItemToggleStatus<T = any>(uuid: string, isEnabled: boolean) {
+  return post<T>({
+    url: '/knowledge-base-item/toggle-status',
+    data: { uuid, isEnabled },
+  })
+}
+
+function knowledgeBaseItemInfo<T = any>(uuid: string) {
+  return get<T>({
+    url: `/knowledge-base-item/info/${uuid}`,
+  })
+}
+
 function knowledgeBaseEmbedding<T = any>(kbItemUuid: string, currentPage: number, pageSize: number) {
   return get<T>({
     url: `/knowledge-base-embedding/list/${kbItemUuid}?currentPage=${currentPage}&pageSize=${pageSize}`,
@@ -830,6 +840,8 @@ export default {
   knowledgeBaseItemSaveOrUpdate,
   knowledgeBaseItemSearch,
   knowledgeBaseItemDelete,
+  knowledgeBaseItemToggleStatus,
+  knowledgeBaseItemInfo,
   knowledgeBaseItemsIndexing,
   knowledgeBaseIndexingCheck,
   knowledgeBaseEmbedding,

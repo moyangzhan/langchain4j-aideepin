@@ -41,6 +41,11 @@ declare namespace KnowledgeBase {
     graphicalStatus: string
     embeddingStatusChangeTime: string
     graphicalStatusChangeTime: string
+    embeddingHitCount: number
+    graphHitCount: number
+    wordCount: number
+    isEnabled: boolean
+    enabledChangeTime: string
     sourceFileName: string
     sourceFileUuid: string
     sourceFileUrl: string
@@ -55,6 +60,8 @@ declare namespace KnowledgeBase {
     embeddingId: string
     embedding: number[]
     text: string
+    hitCount: number
+    wordCount: number
   }
   interface KbEdge {
     id: number

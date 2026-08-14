@@ -24,4 +24,12 @@ public class KnowledgeBaseEmbedding {
     @Schema(title = "对应的文档 | Corresponding Document")
     @TableField("text")
     private String text;
+
+    @Schema(title = "命中次数 | Hit Count")
+    @TableField("hit_count")
+    private Integer hitCount;
+
+    @Schema(title = "字符数 | Word Count")
+    @TableField("word_count")
+    private Integer wordCount;
 }

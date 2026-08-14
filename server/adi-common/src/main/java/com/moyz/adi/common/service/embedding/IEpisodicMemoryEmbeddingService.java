@@ -14,6 +14,8 @@ public interface IEpisodicMemoryEmbeddingService {
 
     List<KbItemEmbeddingDto> listByEmbeddingIds(List<String> embeddingIds);
 
+    void incrementHitCount(List<String> embeddingIds);
+
     /**
      * Timeline retrieval: list a character's most recent episodic events, sorted by
      * the {@code create_time} field carried in vector store metadata. Vector

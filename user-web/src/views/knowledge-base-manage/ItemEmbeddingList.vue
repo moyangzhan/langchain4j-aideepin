@@ -68,6 +68,16 @@ const createColumns = (): DataTableColumns<KnowledgeBase.KbEmbedding> => {
         })
       },
     },
+    {
+      title: t('knowledgeBase.segmentHitCount'),
+      key: 'hitCount',
+      width: 100,
+    },
+    {
+      title: t('knowledgeBase.wordCount'),
+      key: 'wordCount',
+      width: 100,
+    },
   ]
 }
 

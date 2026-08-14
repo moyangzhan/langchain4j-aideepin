@@ -29,6 +29,8 @@ import com.moyz.adi.common.memory.shortterm.MapDBChatMemoryStore;
 import com.moyz.adi.common.memory.vo.MemoryAddParam;
 import com.moyz.adi.common.rag.AdiEmbeddingStoreContentRetriever;
 import com.moyz.adi.common.rag.GraphStoreContentRetriever;
+import com.moyz.adi.common.service.embedding.ICharacterMemoryEmbeddingService;
+import com.moyz.adi.common.service.embedding.IEpisodicMemoryEmbeddingService;
 import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.util.NumberUtil;
 import com.moyz.adi.common.vo.*;
@@ -102,6 +104,12 @@ public class CharacterChatService {
 
     @Resource
     private LLMCallRecordService llmCallRecordService;
+
+    @Resource
+    private ICharacterMemoryEmbeddingService characterMemoryEmbeddingService;
+
+    @Resource
+    private IEpisodicMemoryEmbeddingService episodicMemoryEmbeddingService;
 
     public SseEmitter sseAsk(AskReq askReq) {
         String sseUuid = UuidUtil.createShort();
@@ -529,15 +537,19 @@ public class CharacterChatService {
                 // <p>
                 // 语义记忆通道：写入时附带 memory_type=SEMANTIC，反查时按 code 一次定位向量库。
                 if (wrapper.getRetriever() instanceof AdiEmbeddingStoreContentRetriever memoryRetriever) {
-                    characterMessageService.createMemoryRefs(user, msgId,
-                            memoryRetriever.getRetrievedEmbeddingToScore(), MemoryType.SEMANTIC);
+                    Map<String, Double> embeddingToScore = memoryRetriever.getRetrievedEmbeddingToScore();
+                    characterMessageService.createMemoryRefs(user, msgId, embeddingToScore, MemoryType.SEMANTIC);
+                    // Increment segment-level hit count for admin observability
+                    characterMemoryEmbeddingService.incrementHitCount(new ArrayList<>(embeddingToScore.keySet()));
                 }
             } else if (RetrieveContentFrom.CHARACTER_MEMORY_EPISODIC.equals(wrapper.getContentFrom())) {
                 // Episodic memory channel: same ref table, distinct memory_type code.
                 // 情景记忆通道：共用 ref 表，写入时用不同的 memory_type 码。
                 if (wrapper.getRetriever() instanceof AdiEmbeddingStoreContentRetriever memoryRetriever) {
-                    characterMessageService.createMemoryRefs(user, msgId,
-                            memoryRetriever.getRetrievedEmbeddingToScore(), MemoryType.EPISODIC);
+                    Map<String, Double> embeddingToScore = memoryRetriever.getRetrievedEmbeddingToScore();
+                    characterMessageService.createMemoryRefs(user, msgId, embeddingToScore, MemoryType.EPISODIC);
+                    // Increment segment-level hit count for admin observability
+                    episodicMemoryEmbeddingService.incrementHitCount(new ArrayList<>(embeddingToScore.keySet()));
                 }
             }
 

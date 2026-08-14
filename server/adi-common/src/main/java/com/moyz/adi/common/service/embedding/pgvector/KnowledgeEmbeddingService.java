@@ -58,4 +58,22 @@ public class KnowledgeEmbeddingService extends ServiceImpl<KnowledgeBaseEmbeddin
     public Integer countByKbUuid(String kbUuid) {
         return baseMapper.countByKbUuid(kbUuid, AdiPropertiesUtil.EMBEDDING_TABLE_SUFFIX);
     }
+
+    @Override
+    public void incrementHitCount(List<String> embeddingIds) {
+        if (embeddingIds != null && !embeddingIds.isEmpty()) {
+            baseMapper.incrementHitCount(embeddingIds, AdiPropertiesUtil.EMBEDDING_TABLE_SUFFIX);
+        }
+    }
+
+    @Override
+    public List<String> selectKbItemUuidsByEmbeddingIds(List<String> embeddingIds) {
+        if (embeddingIds == null || embeddingIds.isEmpty()) {
+            return List.of();
+        }
+        return baseMapper.selectKbItemUuidsByEmbeddingIds(embeddingIds, AdiPropertiesUtil.EMBEDDING_TABLE_SUFFIX)
+                .stream()
+                .filter(uuid -> uuid != null && !uuid.isEmpty())
+                .toList();
+    }
 }

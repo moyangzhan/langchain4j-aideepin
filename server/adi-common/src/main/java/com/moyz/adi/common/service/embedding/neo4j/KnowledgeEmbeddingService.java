@@ -104,4 +104,24 @@ public class KnowledgeEmbeddingService implements IKnowledgeEmbeddingService {
     public Integer countByKbUuid(String kbUuid) {
         return ((AdiNeo4jEmbeddingStore) embeddingStore).countByMetadata(new IsEqualTo(AdiConstant.MetadataKey.KB_UUID, kbUuid));
     }
+
+    @Override
+    public void incrementHitCount(List<String> embeddingIds) {
+        if (embeddingIds != null && !embeddingIds.isEmpty()) {
+            ((AdiNeo4jEmbeddingStore) embeddingStore).incrementHitCount(embeddingIds);
+        }
+    }
+
+    @Override
+    public List<String> selectKbItemUuidsByEmbeddingIds(List<String> embeddingIds) {
+        if (embeddingIds == null || embeddingIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        EmbeddingSearchResult<TextSegment> searchResult = ((AdiNeo4jEmbeddingStore) embeddingStore).searchByIds(embeddingIds);
+        return searchResult.matches().stream()
+                .map(m -> m.embedded().metadata().getString(AdiConstant.MetadataKey.KB_ITEM_UUID))
+                .filter(v -> v != null && !v.isBlank())
+                .distinct()
+                .toList();
+    }
 }

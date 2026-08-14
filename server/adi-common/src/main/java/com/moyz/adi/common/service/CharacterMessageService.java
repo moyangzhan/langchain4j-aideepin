@@ -134,7 +134,7 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
         CharacterMessageRefGraph refGraph = new CharacterMessageRefGraph();
         refGraph.setMessageId(messageId);
         refGraph.setUserId(user.getId());
-        refGraph.setGraphFromLlm(entities);
+        refGraph.setEntitiesFromQuestion(entities);
         refGraph.setGraphFromStore(JsonUtil.toJson(graphFromStore));
         characterMessageRefGraphService.save(refGraph);
     }

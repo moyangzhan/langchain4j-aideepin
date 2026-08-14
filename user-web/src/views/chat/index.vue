@@ -37,13 +37,18 @@ const authStore = useAuthStore()
 const loaddingBar = useLoadingBar()
 const { isMobile } = useBasicLayout()
 const { unshiftAnswer, updateMessageSomeFields, appendChunk } = useChat()
-const { scrollRef, scrollToBottom, scrollToBottomIfAtBottom, scrollTo } = useScroll()
+const { scrollRef, isAtBottom, scrollToBottom, scrollToBottomIfAtBottom, scrollTo, checkAtBottom } = useScroll()
 const { uuid: curCharacterUuid } = route.params as { uuid: string }
 const regenerateQuestionUuid = ref<string>('')
 const inputEditorRef = ref()
 const tabsActiveTab = ref<string[]>([])
 const messages = computed(() => {
   return chatStore.getMsgsByCharacter(curCharacterUuid)
+})
+// 首页消息加载中（区分"加载中"与"真正无数据"的空状态）
+// | First page messages loading (distinguishes "loading" from a truly empty state)
+const firstPageLoading = computed(() => {
+  return !messages.value.length && chatStore.loadingMsgs.has(curCharacterUuid)
 })
 const currCharacter = computed(() => chatStore.getCurCharacter || getDefaultCharacter())
 const imageUuids = ref<string[]>([])
@@ -357,6 +362,7 @@ async function handleScroll(event: any) {
     })
   }
   prevScrollTop = scrollTop
+  checkAtBottom()
 }
 
 function handleDelete(questionUuid: string, answerUuid: string, isQuestion = false) {
@@ -450,7 +456,7 @@ onDeactivated(() => {
       @toggle-using-context="toggleUsingContext"
     />
     <PcHeader v-if="!isMobile" :character="currCharacter" />
-    <main class="flex-1 overflow-hidden">
+    <main class="relative flex-1 overflow-hidden">
       <div ref="scrollRef" class="h-full overflow-hidden overflow-y-auto" @scroll="handleScroll">
         <div
           class="w-full max-w-screen-xl m-auto dark:bg-[#101014]"
@@ -462,7 +468,8 @@ onDeactivated(() => {
           <template v-else-if="!messages.length">
             <div class="flex items-center justify-center mt-4 text-center text-neutral-400">
               <NIcon :component="Cat" size="32" />
-              <span class="pl-1">Roar~</span>
+              <SvgIcon v-if="firstPageLoading" icon="line-md:loading-loop" class="w-8 h-8 pl-1" />
+              <span v-else class="pl-1 text-sm">{{ t('chat.noRecord') }}</span>
             </div>
           </template>
 
@@ -666,6 +673,17 @@ onDeactivated(() => {
           </NButton>
         </div>
       </div>
+      <Transition name="scroll-to-bottom">
+        <button
+          v-if="!isAtBottom && messages.length > 0"
+          type="button"
+          class="absolute bottom-4 right-4 z-10 flex items-center justify-center w-8 h-8 rounded-full border border-neutral-200 bg-white/90 shadow-md transition-colors hover:bg-white dark:border-neutral-700 dark:bg-neutral-800/90 dark:hover:bg-neutral-800"
+          :aria-label="t('chat.scrollToBottom')"
+          @click="scrollToBottom(true)"
+        >
+          <SvgIcon icon="ri:arrow-down-s-line" class="text-lg" />
+        </button>
+      </Transition>
     </main>
     <footer :class="footerClass">
       <div class="w-full max-w-screen-xl m-auto border-t">
@@ -708,6 +726,19 @@ onDeactivated(() => {
     </NModal>
   </div>
 </template>
+
+<style scoped>
+.scroll-to-bottom-enter-active,
+.scroll-to-bottom-leave-active {
+  transition: all 0.2s ease;
+}
+.scroll-to-bottom-enter-from,
+.scroll-to-bottom-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+</style>
+
 <!-- <style scoped lang="less">
 .chat-box {
   :deep(.n-tabs-tab-wrapper) {

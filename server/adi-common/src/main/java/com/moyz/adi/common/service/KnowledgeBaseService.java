@@ -11,6 +11,7 @@ import com.moyz.adi.common.dto.KbEditReq;
 import com.moyz.adi.common.dto.KbInfoResp;
 import com.moyz.adi.common.dto.KbQaDto;
 import com.moyz.adi.common.dto.KbSearchReq;
+import com.moyz.adi.common.dto.RefGraphDto;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.enums.LLMCallRecordSourceType;
 import com.moyz.adi.common.exception.BaseException;
@@ -54,6 +55,7 @@ import java.text.MessageFormat;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE;
 import static com.moyz.adi.common.cosntant.AdiConstant.SSE_TIMEOUT;
@@ -375,6 +377,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                     .maxResults(maxResults)
                     .minScore(knowledgeBase.getRetrieveMinScore())
                     .breakIfSearchMissed(knowledgeBase.getIsStrict())
+                    .excludedItemUuids(new HashSet<>(knowledgeBaseItemService.listDisabledItemUuids(qaRecord.getKbUuid())))
                     .build();
             CompositeRag compositeRag = new CompositeRag(AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE);
             List<RetrieverWrapper> retrieverWrappers = compositeRag.createRetriever(createParam);
@@ -589,6 +592,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                         .maxResults(maxResults)
                         .minScore(knowledgeBase.getRetrieveMinScore())
                         .breakIfSearchMissed(knowledgeBase.getIsStrict())
+                        .excludedItemUuids(new HashSet<>(knowledgeBaseItemService.listDisabledItemUuids(qaRecord.getKbUuid())))
                         .build();
                 CompositeRag compositeRag = new CompositeRag(KNOWLEDGE_BASE);
                 List<RetrieverWrapper> retrieverWrappers = compositeRag.createRetriever(createParam);
@@ -684,12 +688,42 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         if (CollectionUtils.isEmpty(retrievers)) {
             return;
         }
+        Set<String> embeddingHitItemUuids = new HashSet<>();
+        Set<String> graphHitItemUuids = new HashSet<>();
         for (ContentRetriever retriever : retrievers) {
             if (retriever instanceof AdiEmbeddingStoreContentRetriever embeddingRetriever) {
-                knowledgeBaseQaRecordService.createEmbeddingRefs(user, qaId, embeddingRetriever.getRetrievedEmbeddingToScore());
+                Map<String, Double> embeddingToScore = embeddingRetriever.getRetrievedEmbeddingToScore();
+                knowledgeBaseQaRecordService.createEmbeddingRefs(user, qaId, embeddingToScore);
+                // Increment embedding segment hit count
+                List<String> embeddingIds = new ArrayList<>(embeddingToScore.keySet());
+                embeddingService.incrementHitCount(embeddingIds);
+                // Collect document UUIDs for document-level embedding hit count
+                embeddingHitItemUuids.addAll(embeddingService.selectKbItemUuidsByEmbeddingIds(embeddingIds));
             } else if (retriever instanceof GraphStoreContentRetriever graphRetriever) {
-                knowledgeBaseQaRecordService.createGraphRefs(user, qaId, graphRetriever.getGraphRef());
+                RefGraphDto graphDto = graphRetriever.getGraphRef();
+                knowledgeBaseQaRecordService.createGraphRefs(user, qaId, graphDto);
+                // Collect document UUIDs from graph vertices metadata (may be comma-separated)
+                if (graphDto.getVertices() != null) {
+                    for (GraphVertex vertex : graphDto.getVertices()) {
+                        if (vertex.getMetadata() != null) {
+                            Object raw = vertex.getMetadata().get(AdiConstant.MetadataKey.KB_ITEM_UUID);
+                            if (raw != null && StringUtils.isNotBlank(String.valueOf(raw)) && !"null".equals(String.valueOf(raw))) {
+                                graphHitItemUuids.addAll(Arrays.stream(String.valueOf(raw).split(","))
+                                        .map(String::trim)
+                                        .filter(StringUtils::isNotBlank)
+                                        .collect(Collectors.toSet()));
+                            }
+                        }
+                    }
+                }
             }
+        }
+        // Increment document-level hit counts (embedding and graph tracked independently)
+        if (!embeddingHitItemUuids.isEmpty()) {
+            knowledgeBaseItemService.incrementEmbeddingHitCount(new ArrayList<>(embeddingHitItemUuids));
+        }
+        if (!graphHitItemUuids.isEmpty()) {
+            knowledgeBaseItemService.incrementGraphHitCount(new ArrayList<>(graphHitItemUuids));
         }
     }
 

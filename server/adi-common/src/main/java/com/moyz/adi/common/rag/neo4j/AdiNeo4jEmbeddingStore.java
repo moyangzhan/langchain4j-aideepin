@@ -107,6 +107,51 @@ public class AdiNeo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
     }
 
+    /**
+     * Increment the hit_count property on embedding nodes matching the given IDs.
+     * Uses coalesce to handle the first increment (property may not exist yet).
+     */
+    public void incrementHitCount(List<String> ids) {
+        if (ids.isEmpty()) {
+            return;
+        }
+        try (var session = session()) {
+            String cypherQuery = """
+                    MATCH (node:%s)
+                    WHERE node.%s IS NOT NULL AND node.id IN $ids
+                    SET node.hit_count = coalesce(node.hit_count, 0) + 1
+                    """.formatted(this.sanitizedLabel, this.embeddingProperty);
+            log.info("incrementHitCount cypherQuery: {}", cypherQuery);
+            Map<String, Object> params = new HashMap<>();
+            params.put("ids", ids);
+            session.run(cypherQuery, params);
+        }
+    }
+
+    /**
+     * Set word_count to the character length of the text property on the given nodes.
+     * Called right after {@code add}/{@code addAll} so the property is always populated.
+     * Failures are logged but do not block the embedding insert — word_count is
+     * non-critical metadata for admin observability.
+     */
+    private void setWordCount(List<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        try (var session = session()) {
+            String cypherQuery = """
+                    MATCH (node:%s)
+                    WHERE node.%s IS NOT NULL AND node.id IN $ids
+                    SET node.word_count = coalesce(size(node.text), 0)
+                    """.formatted(this.sanitizedLabel, this.embeddingProperty);
+            Map<String, Object> params = new HashMap<>();
+            params.put("ids", ids);
+            session.run(cypherQuery, params);
+        } catch (Exception e) {
+            log.warn("Failed to set word_count for ids {}", ids, e);
+        }
+    }
+
     public EmbeddingSearchResult<TextSegment> searchByMetadata(Filter filter, int maxResult) {
         try (var session = session()) {
             Node node = node(this.sanitizedLabel).named("node");
@@ -205,7 +250,11 @@ public class AdiNeo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public String add(Embedding embedding, TextSegment textSegment) {
-        return neo4jEmbeddingStore.add(embedding, textSegment);
+        String id = neo4jEmbeddingStore.add(embedding, textSegment);
+        if (id != null) {
+            setWordCount(List.of(id));
+        }
+        return id;
     }
 
     @Override
@@ -215,12 +264,15 @@ public class AdiNeo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        return neo4jEmbeddingStore.addAll(embeddings, embedded);
+        List<String> ids = neo4jEmbeddingStore.addAll(embeddings, embedded);
+        setWordCount(ids);
+        return ids;
     }
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         neo4jEmbeddingStore.addAll(ids, embeddings, embedded);
+        setWordCount(ids);
     }
 
     @Override

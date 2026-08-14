@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface ICharacterMemoryEmbeddingService {
     List<KbItemEmbeddingDto> listByEmbeddingIds(List<String> embeddingIds);
+
+    void incrementHitCount(List<String> embeddingIds);
 }

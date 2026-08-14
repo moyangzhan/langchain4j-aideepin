@@ -18,5 +18,7 @@ public interface EpisodicMemoryEmbeddingMapper extends BaseMapper<EpisodicMemory
      */
     List<EpisodicMemoryEmbedding> listRecentByCharacter(@Param("characterId") Long characterId,
                                                        @Param("limit") int limit);
+
+    int incrementHitCount(@Param("embeddingIds") List<String> embeddingIds, @Param("tableSuffix") String tableSuffix);
 }
 

@@ -51,4 +51,11 @@ public class CharacterMemoryEmbeddingService implements ICharacterMemoryEmbeddin
         return result;
     }
 
+    @Override
+    public void incrementHitCount(List<String> embeddingIds) {
+        if (embeddingIds != null && !embeddingIds.isEmpty()) {
+            ((AdiNeo4jEmbeddingStore) embeddingStore).incrementHitCount(embeddingIds);
+        }
+    }
+
 }

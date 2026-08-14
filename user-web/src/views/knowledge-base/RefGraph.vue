@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import { nextTick, onMounted, onUpdated, ref } from 'vue'
-import { NButton, NDivider, NFlex } from 'naive-ui'
+import { NButton, NDivider, NFlex, NSpin } from 'naive-ui'
 import cytoscape from 'cytoscape'
 import { useKbStore } from '@/store'
 import api from '@/api'
@@ -69,21 +69,25 @@ async function loadGraph() {
     return
 
   kbStore.setLoadingGraphRef(curQaRecordUuid, true)
+  // 进入加载态：置位 loading 并清掉上一记录残留的"无数据"，避免加载期间显示空态
+  loading.value = true
+  isEmpty.value = false
   try {
     const resp = await api.knowledgeBaseGraphRef<KnowledgeBase.KbItemGraphResp>(curQaRecordUuid)
     if (resp.data)
       kbStore.setQaRecordGraphRef(curQaRecordUuid, { ...resp.data })
   } finally {
     kbStore.setLoadingGraphRef(curQaRecordUuid, false)
+    loading.value = false
 
     // 加载结束后判断是否还停留在加载时的页面，是的话则渲染图形
     if (curQaRecordUuid === props.qaRecordUuid) {
       const loadedRef = kbStore.getGraphRef(curQaRecordUuid)
       if (loadedRef)
         parseAndRender(loadedRef)
+      else
+        isEmpty.value = true
     }
-
-    loading.value = kbStore.isLoadingGraphRef(props.qaRecordUuid)
   }
 }
 
@@ -133,12 +137,17 @@ onMounted(() => {
 
 <template>
   <NFlex>
-    <div id="refGraphCy" style="width:80%; height: 400px;" class="border border-gray-300" />
+    <div class="relative border border-gray-300" style="width:80%; height: 400px;">
+      <div id="refGraphCy" class="w-full h-full" />
+      <div v-if="loading" class="absolute inset-0 flex items-start justify-center pt-4">
+        <NSpin size="small" />
+      </div>
+    </div>
     <div class="w-1/6 h-[400px] overflow-y-auto">
-      <NButton v-show="!isEmpty" size="small" :loading="loading" type="info" ghost @click="relayout">
+      <NButton v-show="!loading && !isEmpty" size="small" :loading="loading" type="info" ghost @click="relayout">
         {{ t('workflow.relayout') }}
       </NButton>
-      <NButton v-show="isEmpty" size="small" type="warning" ghost>
+      <NButton v-show="!loading && isEmpty" size="small" type="warning" ghost>
         {{ t('workflow.noData') }}
       </NButton>
       <NFlex v-if="selectedVertex" vertical>

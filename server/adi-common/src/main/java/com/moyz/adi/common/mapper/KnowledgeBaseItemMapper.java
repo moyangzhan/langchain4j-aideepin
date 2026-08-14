@@ -9,6 +9,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Mapper
 public interface KnowledgeBaseItemMapper extends BaseMapper<KnowledgeBaseItem> {
@@ -21,6 +22,12 @@ public interface KnowledgeBaseItemMapper extends BaseMapper<KnowledgeBaseItem> {
     Integer countCreatedByTimePeriod(@Param("beginTime") LocalDateTime beginTime, @Param("endTime") LocalDateTime endTime);
 
     Integer countAllCreated();
+
+    int incrementEmbeddingHitCount(@Param("uuids") List<String> uuids);
+
+    int incrementGraphHitCount(@Param("uuids") List<String> uuids);
+
+    List<String> listDisabledItemUuids(@Param("kbUuid") String kbUuid);
 
     /**
      * Write-privilege check: the owner of the knowledge base that owns item {uuid}

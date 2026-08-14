@@ -2,7 +2,7 @@
 import type { Ref } from 'vue'
 import { computed, nextTick, onActivated, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { NButton, NCollapse, NCollapseItem, NFlex, NIcon, NInput, NModal, useDialog, useLoadingBar, useMessage } from 'naive-ui'
+import { NButton, NCollapse, NCollapseItem, NFlex, NIcon, NInput, NModal, NSpin, useDialog, useLoadingBar, useMessage } from 'naive-ui'
 import { Cat } from '@vicons/fa'
 import { Message } from '../chat/components'
 import { useScroll } from '../chat/hooks/useScroll'
@@ -27,12 +27,13 @@ const kbStore = useKbStore()
 const authStore = useAuthStore()
 const loaddingBar = useLoadingBar()
 const { isMobile } = useBasicLayout()
-const { scrollRef, scrollToBottom, scrollToBottomIfAtBottom, scrollTo } = useScroll()
+const { scrollRef, isAtBottom, scrollToBottom, scrollToBottomIfAtBottom, scrollTo, checkAtBottom } = useScroll()
 const { kbUuid: currKbUuid } = route.params as { kbUuid: string }
 console.log('currKbUUid', currKbUuid)
 const showReferenceModal = ref<boolean>(false)
 const showReferenceRecordUuid = ref<string>('')
 const references = ref<KnowledgeBase.QaRecordEmbeddingRef[]>([])
+const refLoading = ref<boolean>(false)
 const showRefGraphModal = ref<boolean>(false)
 const showRefGraphRecordUuid = ref<string>('')
 const prompt = ref<string>('')
@@ -178,6 +179,7 @@ async function handleScroll(event: any) {
     })
   }
   prevScrollTop = scrollTop
+  checkAtBottom()
 }
 
 function handleDelete(qaRecordUuid: string) {
@@ -223,11 +225,16 @@ async function handleReferenceClick(qaRecordUuid: string) {
   references.value = []
   references.value = kbStore.getReferences(qaRecordUuid)
   if (references.value.length === 0) {
-    const { data } = await api.knowledgeBaseEmbeddingRef(qaRecordUuid)
-    kbStore.setQaRecordReferences(qaRecordUuid, data)
+    refLoading.value = true
+    try {
+      const { data } = await api.knowledgeBaseEmbeddingRef(qaRecordUuid)
+      kbStore.setQaRecordReferences(qaRecordUuid, data)
 
-    // 显示最后一次点击的引用
-    references.value = kbStore.getReferences(showReferenceRecordUuid.value)
+      // 显示最后一次点击的引用
+      references.value = kbStore.getReferences(showReferenceRecordUuid.value)
+    } finally {
+      refLoading.value = false
+    }
   }
 }
 
@@ -239,6 +246,11 @@ async function handleGraphClick(qaRecordUuid: string) {
 const qaRecords = computed(() => {
   console.log('qaRecords computed')
   return kbStore.getRecords(currKbUuid)
+})
+// 首页问答记录加载中（区分"加载中"与"真正无数据"的空状态）
+// | First page qa records loading (distinguishes "loading" from a truly empty state)
+const firstPageLoading = computed(() => {
+  return !qaRecords.value.length && !!kbStore.loadingRecords.get(currKbUuid)
 })
 
 const placeholder = computed(() => {
@@ -309,7 +321,7 @@ onActivated(async () => {
   <div class="chat-box flex flex-col w-full h-full">
     <HeaderComponent v-if="isMobile" :using-context="false" />
     <PCHeader v-else :knowledge-base="kbStore.getSelectedKb as KnowledgeBase.Info" />
-    <main class="flex-1 overflow-hidden">
+    <main class="relative flex-1 overflow-hidden">
       <div id="scrollRef" ref="scrollRef" class="h-full overflow-hidden overflow-y-auto" @scroll="handleScroll">
         <div
           id="image-wrapper" class="w-full max-w-screen-xl m-auto dark:bg-[#101014]"
@@ -319,7 +331,8 @@ onActivated(async () => {
           <template v-else-if="!qaRecords.length">
             <div class="flex items-center justify-center mt-4 text-center text-neutral-400">
               <NIcon :component="Cat" size="32" />
-              <span class="pl-1">Roar~</span>
+              <SvgIcon v-if="firstPageLoading" icon="line-md:loading-loop" class="w-8 h-8 pl-1" />
+              <span v-else class="pl-1 text-sm">{{ t('knowledgeBase.noRecord') }}</span>
             </div>
           </template>
 
@@ -330,7 +343,7 @@ onActivated(async () => {
                 :inversion="true" :error="qaRecord.error" :loading="false" @delete="handleDelete(qaRecord.uuid)"
               />
               <Message
-                :date-time="qaRecord.createTime" :text="!!qaRecord.answer ? qaRecord.answer : t('common.noAnswer')"
+                :date-time="qaRecord.createTime" :text="qaRecord.loading ? qaRecord.answer : (qaRecord.answer || t('common.noAnswer'))"
                 :regenerate="false" type="text" :inversion="false" :error="qaRecord.error" :loading="qaRecord.loading"
                 :input-tokens="qaRecord.inputTokens" :output-tokens="qaRecord.outputTokens"
                 :duration="qaRecord.duration"
@@ -364,6 +377,17 @@ onActivated(async () => {
           {{ t('common.stopRequest') }}
         </NButton>
       </div>
+      <Transition name="scroll-to-bottom">
+        <button
+          v-if="!isAtBottom && qaRecords.length > 0"
+          type="button"
+          class="absolute bottom-4 right-4 z-10 flex items-center justify-center w-8 h-8 rounded-full border border-neutral-200 bg-white/90 shadow-md transition-colors hover:bg-white dark:border-neutral-700 dark:bg-neutral-800/90 dark:hover:bg-neutral-800"
+          :aria-label="t('chat.scrollToBottom')"
+          @click="scrollToBottom(true)"
+        >
+          <SvgIcon icon="ri:arrow-down-s-line" class="text-lg" />
+        </button>
+      </Transition>
     </main>
     <footer :class="footerClass">
       <div class="w-full max-w-screen-xl m-auto">
@@ -387,10 +411,13 @@ onActivated(async () => {
     </footer>
 
     <NModal v-model:show="showReferenceModal" style="max-width: 80%;" preset="card" :title="t('chat.referenceMaterial')">
-      <div v-show="references.length === 0">
+      <div v-if="refLoading" class="flex justify-center py-6">
+        <NSpin size="small" />
+      </div>
+      <div v-else-if="references.length === 0">
         {{ t('common.none') }}
       </div>
-      <NCollapse v-show="references.length > 0" :default-expanded-names="['refer_0']">
+      <NCollapse v-else :default-expanded-names="['refer_0']">
         <NCollapseItem
           v-for="(reference, idx) of references" :key="reference.embeddingId" :title="`${t('chat.reference')}${idx + 1}`"
           :name="`refer_${idx}`"
@@ -405,3 +432,15 @@ onActivated(async () => {
     </NModal>
   </div>
 </template>
+
+<style scoped>
+.scroll-to-bottom-enter-active,
+.scroll-to-bottom-leave-active {
+  transition: all 0.2s ease;
+}
+.scroll-to-bottom-enter-from,
+.scroll-to-bottom-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+</style>

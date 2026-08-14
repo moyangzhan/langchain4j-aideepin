@@ -3,6 +3,7 @@ package com.moyz.adi.chat.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.dto.KbItemDto;
 import com.moyz.adi.common.dto.KbItemEditReq;
+import com.moyz.adi.common.dto.KbItemToggleStatusReq;
 import com.moyz.adi.common.entity.KnowledgeBaseItem;
 import com.moyz.adi.common.service.KnowledgeBaseItemService;
 import com.moyz.adi.common.service.KnowledgeBaseService;
@@ -42,5 +43,10 @@ public class KnowledgeBaseItemController {
     @PostMapping("/del/{uuid}")
     public boolean softDelete(@PathVariable String uuid) {
         return knowledgeBaseItemService.softDelete(uuid);
+    }
+
+    @PostMapping("/toggle-status")
+    public boolean toggleStatus(@RequestBody KbItemToggleStatusReq req) {
+        return knowledgeBaseItemService.toggleStatus(req.getUuid(), req.getIsEnabled());
     }
 }

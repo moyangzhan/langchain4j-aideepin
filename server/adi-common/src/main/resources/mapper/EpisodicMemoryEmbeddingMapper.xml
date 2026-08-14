@@ -18,4 +18,21 @@
         order by metadata ->> 'create_time' desc
         limit #{limit}
     </select>
+
+    <update id="incrementHitCount">
+        update
+        <include refid="getTableName"/>
+        set hit_count = hit_count + 1
+        where embedding_id in
+        <foreach collection="embeddingIds" open="(" separator="," close=")" item="id">#{id}::uuid</foreach>
+    </update>
+
+    <sql id="getTableName">
+        <if test="tableSuffix != null and tableSuffix != ''">
+            adi_character_episodic_memory_embedding_${tableSuffix}
+        </if>
+        <if test="tableSuffix == null or tableSuffix == ''">
+            adi_character_episodic_memory_embedding
+        </if>
+    </sql>
 </mapper>

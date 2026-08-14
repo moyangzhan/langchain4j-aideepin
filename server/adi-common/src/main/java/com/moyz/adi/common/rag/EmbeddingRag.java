@@ -11,6 +11,8 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
+import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -65,12 +67,17 @@ public class EmbeddingRag implements IRAGService {
      */
     @Override
     public AdiEmbeddingStoreContentRetriever createRetriever(RetrieverCreateParam param) {
+        Filter filter = param.getFilter();
+        if (param.getExcludedItemUuids() != null && !param.getExcludedItemUuids().isEmpty()) {
+            Filter excludeFilter = new IsNotIn(MetadataKey.KB_ITEM_UUID, param.getExcludedItemUuids());
+            filter = filter != null ? Filter.and(filter, excludeFilter) : excludeFilter;
+        }
         return AdiEmbeddingStoreContentRetriever.builder()
                 .embeddingStore(embeddingStore)
                 .embeddingModel(embeddingModel)
                 .maxResults(param.getMaxResults() <= 0 ? 3 : param.getMaxResults())
                 .minScore(param.getMinScore() <= 0 ? RAG_MIN_SCORE : param.getMinScore())
-                .filter(param.getFilter())
+                .filter(filter)
                 .breakIfSearchMissed(param.isBreakIfSearchMissed())
                 .build();
     }

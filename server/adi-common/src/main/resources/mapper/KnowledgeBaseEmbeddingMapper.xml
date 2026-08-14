@@ -17,7 +17,7 @@
         delete from <include refid="getTableName"/> where embedding_id in
         <foreach collection="ids" open="(" separator="," close=")" item="id">
             <if test="id != null and id != ''">
-                #{id}
+                #{id}::uuid
             </if>
         </foreach>
     </delete>
@@ -28,6 +28,22 @@
         <include refid="getTableName"/>
         where metadata ->> 'kb_item_uuid' = #{kbItemUuid}
     </delete>
+
+    <update id="incrementHitCount">
+        update
+        <include refid="getTableName"/>
+        set hit_count = hit_count + 1
+        where embedding_id in
+        <foreach collection="embeddingIds" open="(" separator="," close=")" item="id">#{id}::uuid</foreach>
+    </update>
+
+    <select id="selectKbItemUuidsByEmbeddingIds" resultType="java.lang.String">
+        select distinct metadata ->> 'kb_item_uuid'
+        from
+        <include refid="getTableName"/>
+        where embedding_id in
+        <foreach collection="embeddingIds" open="(" separator="," close=")" item="id">#{id}::uuid</foreach>
+    </select>
 
     <sql id="getTableName">
         <if test="tableSuffix != null and tableSuffix != ''">

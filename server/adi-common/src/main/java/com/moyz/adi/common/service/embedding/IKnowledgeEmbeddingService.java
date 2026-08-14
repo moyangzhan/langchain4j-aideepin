@@ -13,4 +13,8 @@ public interface IKnowledgeEmbeddingService {
     boolean deleteByItemUuid(String kbItemUuid);
 
     Integer countByKbUuid(String kbUuid);
+
+    void incrementHitCount(List<String> embeddingIds);
+
+    List<String> selectKbItemUuidsByEmbeddingIds(List<String> embeddingIds);
 }

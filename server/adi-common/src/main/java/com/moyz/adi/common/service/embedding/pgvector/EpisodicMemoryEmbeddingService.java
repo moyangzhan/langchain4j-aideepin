@@ -6,6 +6,7 @@ import com.moyz.adi.common.dto.KbItemEmbeddingDto;
 import com.moyz.adi.common.entity.EpisodicMemoryEmbedding;
 import com.moyz.adi.common.mapper.EpisodicMemoryEmbeddingMapper;
 import com.moyz.adi.common.service.embedding.IEpisodicMemoryEmbeddingService;
+import com.moyz.adi.common.util.AdiPropertiesUtil;
 import com.moyz.adi.common.util.MPPageUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -40,6 +41,13 @@ public class EpisodicMemoryEmbeddingService extends ServiceImpl<EpisodicMemoryEm
     public List<KbItemEmbeddingDto> listRecentByCharacter(Long characterId, int limit) {
         List<EpisodicMemoryEmbedding> rows = baseMapper.listRecentByCharacter(characterId, limit);
         return toDtos(rows);
+    }
+
+    @Override
+    public void incrementHitCount(List<String> embeddingIds) {
+        if (embeddingIds != null && !embeddingIds.isEmpty()) {
+            baseMapper.incrementHitCount(embeddingIds, AdiPropertiesUtil.EMBEDDING_TABLE_SUFFIX);
+        }
     }
 
     private List<KbItemEmbeddingDto> toDtos(List<EpisodicMemoryEmbedding> rows) {

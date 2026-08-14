@@ -109,6 +109,7 @@ public class GraphRag {
                 .maxResults(param.getMaxResults())
                 .filter(param.getFilter())
                 .breakIfSearchMissed(param.isBreakIfSearchMissed())
+                .excludedItemUuids(param.getExcludedItemUuids())
                 .build();
     }
 }

@@ -17,6 +17,10 @@ public class KbItemEmbeddingDto {
 
     private String text;
 
+    private Integer hitCount;
+
+    private Integer wordCount;
+
     /**
      * 向量库存储的 metadata（JSONB）。仅角色记忆反查时使用，知识库反查路径可为 null。
      * <p>

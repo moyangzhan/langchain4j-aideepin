@@ -377,7 +377,7 @@ create table adi_character_message_ref_graph
 (
     id                     bigserial primary key,
     message_id             bigint default 0  not null,
-    entities_from_question text   default '' not null,
+    entities_from_question text   default '' not null, -- formerly graph_from_llm
     graph_from_store       text   default '' not null,
     user_id                bigint default 0  not null
 );
@@ -723,21 +723,31 @@ create table adi_knowledge_base_item
     embedding_status_change_time timestamp    default CURRENT_TIMESTAMP not null,
     graphical_status             int          default 1                 not null,
     graphical_status_change_time timestamp    default CURRENT_TIMESTAMP not null,
+    embedding_hit_count          int          default 0                 not null,
+    graph_hit_count              int          default 0                 not null,
+    word_count                   int          GENERATED ALWAYS AS (char_length(remark)) STORED not null,
+    is_enabled                   boolean      default true              not null,
+    enabled_change_time          timestamp    default CURRENT_TIMESTAMP not null,
     create_time                  timestamp    default CURRENT_TIMESTAMP not null,
     update_time                  timestamp    default CURRENT_TIMESTAMP not null,
     is_deleted                   boolean      default false             not null
 );
 
-comment on table adi_knowledge_base_item is 'Knowledge Base Item';
+comment on table adi_knowledge_base_item is 'Knowledge Base Document';
 comment on column adi_knowledge_base_item.kb_id is 'Knowledge Base ID';
 comment on column adi_knowledge_base_item.source_file_id is 'Source File ID';
-comment on column adi_knowledge_base_item.title is 'Item Title';
-comment on column adi_knowledge_base_item.brief is 'Item Brief';
-comment on column adi_knowledge_base_item.remark is 'Item Content';
+comment on column adi_knowledge_base_item.title is 'Document Title';
+comment on column adi_knowledge_base_item.brief is 'Document Brief';
+comment on column adi_knowledge_base_item.remark is 'Document Content';
 comment on column adi_knowledge_base_item.embedding_status is 'Embedding status: 1=Not embedded, 2=Embedding, 3=Embedded, 4=Failed';
 comment on column adi_knowledge_base_item.embedding_status_change_time is 'Last embedding status change time';
 comment on column adi_knowledge_base_item.graphical_status is 'Graphical status: 1=Not graphed, 2=Graphing, 3=Graphed, 4=Failed';
 comment on column adi_knowledge_base_item.graphical_status_change_time is 'Last graphical status change time';
+comment on column adi_knowledge_base_item.embedding_hit_count is 'How many times this document was recalled via vector (embedding) retrieval';
+comment on column adi_knowledge_base_item.graph_hit_count is 'How many times this document was recalled via graph retrieval';
+comment on column adi_knowledge_base_item.word_count is 'Character count of the document content (auto-computed by PostgreSQL: char_length(remark))';
+comment on column adi_knowledge_base_item.is_enabled is 'Whether the document is enabled for retrieval (false = its segments are excluded from vector/graph search)';
+comment on column adi_knowledge_base_item.enabled_change_time is 'Last enabled/disabled status change time';
 comment on column adi_knowledge_base_item.create_time is 'Creation time';
 comment on column adi_knowledge_base_item.update_time is 'Last update time';
 comment on column adi_knowledge_base_item.is_deleted is 'Whether the record is soft-deleted';
