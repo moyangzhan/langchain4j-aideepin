@@ -485,3 +485,17 @@ values (replace(gen_random_uuid()::text, '-', ''), 1, 2, '[
     "encrypted": false
   }
 ]', true);
+
+-- Parallel Search，远程 Streamable HTTP 服务，无需帐户或 API 密钥
+insert into adi_mcp (uuid, title, transport_type, sse_url, sse_timeout, install_type, website, remark, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'Parallel Search', 'streamable_http',
+        'https://search.parallel.ai/mcp', 30, 'remote', 'https://parallel.ai',
+        '# Parallel Search MCP
+
+免费的远程 MCP 服务，用于实时网页搜索和网址内容提取。无需帐户或 API 密钥。
+
+## 工具
+
+- **web_search**：搜索网页上的最新信息。
+- **web_fetch**：从指定网址提取简洁的 Markdown 内容。',
+        true);
