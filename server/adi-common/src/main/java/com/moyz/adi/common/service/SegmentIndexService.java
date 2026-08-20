@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * 分段索引编排：切段显式化 + 三种模式的向量化。
@@ -74,8 +75,10 @@ public class SegmentIndexService {
     }
 
     /**
-     * 重建向量化索引。text/parent_child 模式重新切段重建段行；
-     * qa 模式的问答行是用户数据（导入/手动/生成），重跑不重建，仅重嵌全部问题。
+     * 重建向量化索引。text/parent_child 模式重新切段重建段行；停用段的停用状态按
+     * 内容匹配继承到新段行（重切后 uuid 已变，无法按行继承；切段参数未变时内容一致、
+     * 命中率高，参数变更后按内容漂移处理）；qa 模式的问答行是用户数据，重跑不重建，
+     * 仅重嵌全部问题。停用段及其名下问题/子块不参与重嵌。
      */
     public void reindexEmbedding(KnowledgeBase kb, KbDocument doc) {
         SegmentModeEnum mode = effectiveMode(doc);
@@ -84,8 +87,12 @@ public class SegmentIndexService {
         iKnowledgeEmbeddingService.deleteByItemUuid(doc.getUuid());
         switch (mode) {
             case TEXT, PARENT_CHILD -> {
+                Set<String> disabledContents = documentSegmentService.listByDocUuid(doc.getUuid()).stream()
+                        .filter(row -> Boolean.FALSE.equals(row.getIsEnabled()))
+                        .map(DocumentSegment::getContent)
+                        .collect(Collectors.toSet());
                 documentSegmentService.deleteByDocUuid(doc.getUuid());
-                splitIntoSegments(kb, doc);
+                splitIntoSegments(kb, doc, disabledContents);
             }
             case QA -> questionService.clearEmbeddingIds(doc.getUuid());
         }
@@ -99,25 +106,26 @@ public class SegmentIndexService {
     public List<DocumentSegment> ensureSegments(KnowledgeBase kb, KbDocument doc) {
         List<DocumentSegment> segments = documentSegmentService.listByDocUuid(doc.getUuid());
         if (segments.isEmpty()) {
-            splitIntoSegments(kb, doc);
+            splitIntoSegments(kb, doc, Set.of());
             segments = documentSegmentService.listByDocUuid(doc.getUuid());
         }
         return segments;
     }
 
     /**
-     * 按模式把文档 remark 物化为主表段行（qa 模式的段由问答数据流创建，不在此切分）
+     * 按模式把文档 remark 物化为主表段行（qa 模式的段由问答数据流创建，不在此切分）。
+     * disabledContents 为停用段内容集合：新段内容命中时继承停用状态（重跑向量化不复活停用段）。
      */
-    public void splitIntoSegments(KnowledgeBase kb, KbDocument doc) {
+    public void splitIntoSegments(KnowledgeBase kb, KbDocument doc, Set<String> disabledContents) {
         SegmentModeEnum mode = effectiveMode(doc);
         switch (mode) {
-            case TEXT -> splitText(kb, doc);
-            case PARENT_CHILD -> splitParentChild(kb, doc);
+            case TEXT -> splitText(kb, doc, disabledContents);
+            case PARENT_CHILD -> splitParentChild(kb, doc, disabledContents);
             case QA -> log.info("QA mode document {} does not split from remark; segments are created by QA flows", doc.getUuid());
         }
     }
 
-    private void splitText(KnowledgeBase kb, KbDocument doc) {
+    private void splitText(KnowledgeBase kb, KbDocument doc, Set<String> disabledContents) {
         Document document = new DefaultDocument(doc.getRemark(), baseMetadata(kb, doc));
         DocumentSplitter splitter = createSplitter(kb, kb.getIngestMaxSegmentSize());
         List<DocumentSegment> rows = new ArrayList<>();
@@ -126,12 +134,12 @@ public class SegmentIndexService {
             if (StringUtils.isBlank(chunk.text())) {
                 continue;
             }
-            rows.add(newSegmentRow(kb, doc, position++, chunk.text()));
+            rows.add(newSegmentRow(kb, doc, position++, chunk.text(), disabledContents.contains(chunk.text())));
         }
         documentSegmentService.saveBatch(rows);
     }
 
-    private void splitParentChild(KnowledgeBase kb, KbDocument doc) {
+    private void splitParentChild(KnowledgeBase kb, KbDocument doc, Set<String> disabledContents) {
         Document document = new DefaultDocument(doc.getRemark(), baseMetadata(kb, doc));
         DocumentSplitter parentSplitter = createSplitter(kb, kb.getIngestMaxSegmentSize());
         DocumentSplitter childSplitter = createSplitter(kb, childMaxSegmentSize(kb));
@@ -142,7 +150,8 @@ public class SegmentIndexService {
                 continue;
             }
             // 逐条保存以回填父段id，供子块引用
-            DocumentSegment parent = newSegmentRow(kb, doc, parentPosition++, parentText.text());
+            boolean parentDisabled = disabledContents.contains(parentText.text());
+            DocumentSegment parent = newSegmentRow(kb, doc, parentPosition++, parentText.text(), parentDisabled);
             documentSegmentService.save(parent);
             int childPosition = 0;
             for (TextSegment childText : childSplitter.split(new DefaultDocument(parentText.text(), parentText.metadata()))) {
@@ -164,7 +173,7 @@ public class SegmentIndexService {
         List<PendingVector> pending = new ArrayList<>();
         switch (mode) {
             case TEXT -> documentSegmentService.listByDocUuid(doc.getUuid()).stream()
-                    .filter(row -> row.getEmbeddingId() == null)
+                    .filter(row -> row.getEmbeddingId() == null && !Boolean.FALSE.equals(row.getIsEnabled()))
                     .forEach(row -> pending.add(new PendingVector(row.getUuid(), row.getContent(),
                             id -> documentSegmentService.updateEmbeddingId(row.getId(), id))));
             case QA -> {
@@ -175,10 +184,17 @@ public class SegmentIndexService {
                         .forEach(q -> pending.add(new PendingVector(q.getUuid(), q.getContent(),
                                 id -> questionService.updateEmbeddingId(q.getId(), id))));
             }
-            case PARENT_CHILD -> childChunkService.listByDocUuid(doc.getUuid()).stream()
-                    .filter(c -> c.getEmbeddingId() == null)
-                    .forEach(c -> pending.add(new PendingVector(c.getUuid(), c.getContent(),
-                            id -> childChunkService.updateEmbeddingId(c.getId(), id))));
+            case PARENT_CHILD -> {
+                // 停用父段的子块不重嵌（继承停用的父段在切段时已标记 is_enabled=false）
+                Set<Long> disabledParentIds = documentSegmentService.listByDocUuid(doc.getUuid()).stream()
+                        .filter(row -> Boolean.FALSE.equals(row.getIsEnabled()))
+                        .map(DocumentSegment::getId)
+                        .collect(Collectors.toSet());
+                childChunkService.listByDocUuid(doc.getUuid()).stream()
+                        .filter(c -> c.getEmbeddingId() == null && !disabledParentIds.contains(c.getParentSegmentId()))
+                        .forEach(c -> pending.add(new PendingVector(c.getUuid(), c.getContent(),
+                                id -> childChunkService.updateEmbeddingId(c.getId(), id))));
+            }
         }
         embedAndStore(kb, doc, pending);
     }
@@ -266,7 +282,7 @@ public class SegmentIndexService {
         return size == null || size < 1 ? DEFAULT_CHILD_MAX_SEGMENT_SIZE : size;
     }
 
-    private DocumentSegment newSegmentRow(KnowledgeBase kb, KbDocument doc, int position, String content) {
+    private DocumentSegment newSegmentRow(KnowledgeBase kb, KbDocument doc, int position, String content, boolean disabled) {
         DocumentSegment row = new DocumentSegment();
         row.setUuid(UuidUtil.createShort());
         row.setKbUuid(kb.getUuid());
@@ -275,6 +291,8 @@ public class SegmentIndexService {
         row.setContent(content);
         row.setHitCount(0);
         row.setSource(AdiConstant.SegmentSource.DOC);
+        // 重跑切段时继承停用段状态：新行保持停用、不参与重嵌与图谱抽取
+        row.setIsEnabled(!disabled);
         return row;
     }
 
