@@ -98,20 +98,20 @@ declare namespace KnowledgeBase {
     content: string
     wordCount: number
     hitCount: number
+    isEnabled: boolean
+    enabledChangeTime: string
     createTime: string
     updateTime: string
     questions?: SegmentQuestion[]
     children?: SegmentChildChunk[]
   }
   interface KbEdge {
-    id: number
-    label: string
-    startId: number
-    endId: number
+    sourceName: string
+    targetName: string
     description: string
+    weight: number
   }
   interface KbVertex {
-    id: number
     name: string
     description: string
   }

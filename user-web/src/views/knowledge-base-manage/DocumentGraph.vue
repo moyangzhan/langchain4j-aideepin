@@ -34,11 +34,12 @@ async function loadGraph(maxVertexId: number, maxEdgeId: number) {
     cy.$('edge').remove()
     const resp = await api.knowledgeBaseGraph<KnowledgeBase.KbItemGraphResp>(props.docUuid, maxVertexId, maxEdgeId, limit)
     vertexCount.value = resp.data.vertices.length
+    // 节点/边以实体名为键（后端账本聚合返回，不含图库内部 id）；节点 data.name 即 cytoscape 的节点 id
     const nodes = resp.data.vertices.map((item) => {
       return { group: 'nodes', data: item }
     })
     const edges = resp.data.edges.map((item) => {
-      return { group: 'edges', data: { source: `${item.startId}`, target: `${item.endId}`, ...item } }
+      return { group: 'edges', data: { source: item.sourceName, target: item.targetName, ...item } }
     })
     renderGraph(nodes, edges)
   } finally {
@@ -158,7 +159,7 @@ function relayout() {
         <NDivider title-placement="left">
           {{ t('workflow.entity') }}
         </NDivider>
-        <div>{{ selectedVertex.id }}</div>
+        <div>{{ selectedVertex.name }}</div>
         <NDivider title-placement="left">
           {{ t('workflow.nameLabel') }}
         </NDivider>
@@ -172,7 +173,7 @@ function relayout() {
         <NDivider title-placement="left">
           {{ t('workflow.relation') }}
         </NDivider>
-        <div>{{ selectedEdge.id }}</div>
+        <div>{{ selectedEdge.sourceName }} → {{ selectedEdge.targetName }}</div>
         <NDivider title-placement="left">
           {{ t('workflow.descriptionLabel') }}
         </NDivider>

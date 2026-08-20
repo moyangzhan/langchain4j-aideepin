@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import type { DataTableColumns } from 'naive-ui'
-import { NBreadcrumb, NBreadcrumbItem, NButton, NCard, NDataTable, NInput, NModal, NSpace, NSpin, useDialog, useMessage } from 'naive-ui'
+import { NBreadcrumb, NBreadcrumbItem, NButton, NCard, NDataTable, NInput, NModal, NSpace, NSpin, NSwitch, useDialog, useMessage } from 'naive-ui'
 import { computed, h, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { knowledgeBaseEmptyInfo, knowledgeBaseEmptyItem } from '@/utils/functions'
@@ -238,6 +238,26 @@ function truncated(text: string, len = 60) {
   return text.length > len ? `${text.substring(0, len)}...` : text
 }
 
+// 停用分段会删除其向量与图谱数据；启用会重新生成（图谱抽取消耗模型额度），操作前均需确认
+function confirmToggleStatus(row: KnowledgeBase.Segment, isEnabled: boolean) {
+  dialog.warning({
+    title: isEnabled ? t('knowledgeBase.enable') : t('knowledgeBase.disable'),
+    content: isEnabled ? t('knowledgeBase.segmentEnableConfirm') : t('knowledgeBase.segmentDisableConfirm'),
+    positiveText: t('common.confirm'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: async () => {
+      try {
+        await api.documentSegmentToggleStatus({ uuid: row.uuid, isEnabled })
+        ms.success(t('common.saveSuccess'))
+        loadList(paginationReactive.page)
+      }
+      catch (error: any) {
+        ms.error(error.message ?? 'error')
+      }
+    },
+  })
+}
+
 const createColumns = (): DataTableColumns<KnowledgeBase.Segment> => {
   const cols: DataTableColumns<KnowledgeBase.Segment> = [
     {
@@ -271,7 +291,8 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Segment> => {
               h(NButton, { text: true, type: 'error', size: 'tiny', onClick: () => confirmDelete('question', q.uuid) }, { default: () => t('common.delete') }),
             ],
           })),
-          h(NButton, { text: true, type: 'primary', size: 'tiny', onClick: () => openAddQuestion(row.id) }, { default: () => `+ ${t('knowledgeBase.qaQuestion')}` }),
+          // 停用段隐藏新增入口（后端已守卫不向量化，此处仅体验优化）
+          ...(row.isEnabled === false ? [] : [h(NButton, { text: true, type: 'primary', size: 'tiny', onClick: () => openAddQuestion(row.id) }, { default: () => `+ ${t('knowledgeBase.qaQuestion')}` })]),
         ],
       }),
     })
@@ -288,7 +309,7 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Segment> => {
               h(NButton, { text: true, type: 'error', size: 'tiny', onClick: () => confirmDelete('child', c.uuid) }, { default: () => t('common.delete') }),
             ],
           })),
-          h(NButton, { text: true, type: 'primary', size: 'tiny', onClick: () => openAddChild(row.id) }, { default: () => `+ ${t('knowledgeBase.childChunks')}` }),
+          ...(row.isEnabled === false ? [] : [h(NButton, { text: true, type: 'primary', size: 'tiny', onClick: () => openAddChild(row.id) }, { default: () => `+ ${t('knowledgeBase.childChunks')}` })]),
         ],
       }),
     })
@@ -303,6 +324,16 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Segment> => {
       title: t('knowledgeBase.wordCount'),
       key: 'wordCount',
       width: 90,
+    },
+    {
+      title: t('knowledgeBase.status'),
+      key: 'isEnabled',
+      width: 90,
+      render: row => h(NSwitch, {
+        size: 'small',
+        value: row.isEnabled !== false,
+        onUpdateValue: (value: boolean) => confirmToggleStatus(row, value),
+      }),
     },
     {
       title: t('common.action'),

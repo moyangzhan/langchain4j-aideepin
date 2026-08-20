@@ -584,6 +584,16 @@ function documentSegmentChildDel<T = any>(uuid: string) {
   })
 }
 
+function documentSegmentToggleStatus<T = any>(data: {
+  uuid: string
+  isEnabled: boolean
+}) {
+  return post<T>({
+    url: '/document-segment/toggle-status',
+    data,
+  })
+}
+
 function documentGenerateQa<T = any>(uuid: string) {
   return post<T>({
     url: `/document/generateQa/${uuid}`,
@@ -896,6 +906,7 @@ export default {
   documentSegmentDel,
   documentSegmentQuestionDel,
   documentSegmentChildDel,
+  documentSegmentToggleStatus,
   documentGenerateQa,
   knowledgeBaseGraph,
   knowledgeBaseQaSseAsk,
