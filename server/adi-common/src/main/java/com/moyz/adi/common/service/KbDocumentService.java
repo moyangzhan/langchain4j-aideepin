@@ -71,6 +71,9 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
     private KnowledgeBaseGraphService knowledgeBaseGraphService;
 
     @Resource
+    private IndexTaskService indexTaskService;
+
+    @Resource
     private FileService fileService;
 
     public KbDocument saveOrUpdate(KbDocumentEditReq itemEditReq) {
@@ -131,9 +134,26 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
         if (!modeChanged && !(remarkChanged && newMode != SegmentModeEnum.QA)) {
             return;
         }
-        iKnowledgeEmbeddingService.deleteByItemUuid(docUuid);
-        documentSegmentService.deleteByDocUuid(docUuid);
+        // “变更即失效”+自动重索引：版本推进使既有索引过期（在途任务经检查点作废并自清理）。
+        // 清理仅在无 running 任务时立即执行，否则移交在途任务的取消善后——清理与写入单线程化
+        bumpIndexVersion(docUuid);
+        if (!indexTaskService.hasRunningByDoc(docUuid)) {
+            iKnowledgeEmbeddingService.deleteByItemUuid(docUuid);
+            documentSegmentService.deleteByDocUuid(docUuid);
+        }
         markEmbeddingPending(docUuid);
+        // 自动触发仅向量化；图谱始终手动（LLM 昂贵，频繁保存不应反复抽取）
+        indexTaskService.enqueueDocument(old.getKbUuid(), docUuid, DOC_INDEX_TYPE_EMBEDDING, ThreadContext.getCurrentUser());
+    }
+
+    /**
+     * 索引版本原子推进：任何使既有索引过期的变更调用（竞态检测与合并去抖的信号源）
+     */
+    private void bumpIndexVersion(String docUuid) {
+        ChainWrappers.lambdaUpdateChain(baseMapper)
+                .eq(KbDocument::getUuid, docUuid)
+                .setSql("index_version = index_version + 1")
+                .update();
     }
 
     /**
@@ -149,9 +169,13 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
             if (SegmentIndexService.effectiveMode(doc) == SegmentModeEnum.QA) {
                 continue;
             }
-            iKnowledgeEmbeddingService.deleteByItemUuid(doc.getUuid());
-            documentSegmentService.deleteByDocUuid(doc.getUuid());
+            bumpIndexVersion(doc.getUuid());
+            if (!indexTaskService.hasRunningByDoc(doc.getUuid())) {
+                iKnowledgeEmbeddingService.deleteByItemUuid(doc.getUuid());
+                documentSegmentService.deleteByDocUuid(doc.getUuid());
+            }
             markEmbeddingPending(doc.getUuid());
+            indexTaskService.enqueueDocument(doc.getKbUuid(), doc.getUuid(), DOC_INDEX_TYPE_EMBEDDING, ThreadContext.getCurrentUser());
         }
     }
 
@@ -200,111 +224,14 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
                         stringRedisTemplate.opsForValue().set(userIndexKey, "0", 10, TimeUnit.MINUTES);
                         hasTask = true;
                     }
-                    self.asyncIndex(ThreadContext.getCurrentUser(), knowledgeBase, item, indexTypes);
+                    User user = ThreadContext.getCurrentUser();
+                    for (String indexType : indexTypes) {
+                        indexTaskService.enqueueDocument(knowledgeBase.getUuid(), kbItemUuid, indexType, user);
+                    }
                 }
             }
         }
         return true;
-    }
-
-    /**
-     * 对文档进行索引(向量化、图谱化)
-     *
-     * @param user          用户
-     * @param knowledgeBase 知识库
-     * @param kbItem        知识点
-     * @param indexTypes    索引类型，如embedding,graphical
-     */
-    @Async
-    public void asyncIndex(User user, KnowledgeBase knowledgeBase, KbDocument kbItem, List<String> indexTypes) {
-        String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
-        stringRedisTemplate.opsForValue().increment(userIndexKey);
-        stringRedisTemplate.expire(userIndexKey, 10, TimeUnit.MINUTES);
-        try {
-            if (indexTypes.contains(DOC_INDEX_TYPE_EMBEDDING) && kbItem.getEmbeddingStatus() != EmbeddingStatusEnum.DOING) {
-                indexingEmbedding(knowledgeBase, kbItem);
-            }
-            if (indexTypes.contains(DOC_INDEX_TYPE_GRAPHICAL) && kbItem.getGraphicalStatus() != GraphicalStatusEnum.DOING) {
-                indexingGraph(user, knowledgeBase, kbItem);
-            }
-        } finally {
-            stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, kbItem.getKbUuid());
-            Long remaining = stringRedisTemplate.opsForValue().decrement(userIndexKey);
-            if (remaining != null && remaining <= 0) {
-                stringRedisTemplate.delete(userIndexKey);
-            }
-        }
-
-    }
-
-    private void indexingEmbedding(KnowledgeBase knowledgeBase, KbDocument kbItem) {
-        try {
-            ChainWrappers.lambdaUpdateChain(baseMapper)
-                    .eq(KbDocument::getId, kbItem.getId())
-                    .set(KbDocument::getEmbeddingStatusChangeTime, LocalDateTime.now())
-                    .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
-                    .update();
-            // 切段显式化 + 按模式向量化（text 主表行 / qa 问题行 / parent_child 子块行）
-            segmentIndexService.reindexEmbedding(knowledgeBase, kbItem);
-            ChainWrappers.lambdaUpdateChain(baseMapper)
-                    .eq(KbDocument::getId, kbItem.getId())
-                    .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DONE)
-                    .update();
-        } catch (Exception e) {
-            log.error("ingestForEmbedding error", e);
-            ChainWrappers.lambdaUpdateChain(baseMapper)
-                    .eq(KbDocument::getId, kbItem.getId())
-                    .set(KbDocument::getEmbeddingStatusChangeTime, LocalDateTime.now())
-                    .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.FAIL)
-                    .update();
-        }
-    }
-
-    private void indexingGraph(User user, KnowledgeBase knowledgeBase, KbDocument kbItem) {
-        try {
-            ChainWrappers.lambdaUpdateChain(baseMapper)
-                    .eq(KbDocument::getId, kbItem.getId())
-                    .set(KbDocument::getGraphicalStatusChangeTime, LocalDateTime.now())
-                    .set(KbDocument::getGraphicalStatus, GraphicalStatusEnum.DOING)
-                    .update();
-            AbstractLLMService llmService = LLMContext.getServiceById(knowledgeBase.getIngestModelId(), true);
-            ChatModel ChatModel = llmService.buildChatLLM(
-                    ChatModelBuilderProperties.builder()
-                            .temperature(knowledgeBase.getQueryLlmTemperature())
-                            .build()
-            );
-
-            // 先清后抽：按账本清理该文档图谱足迹（幂等），重跑从"追加合并"变为"先清后建"——
-            // 同时充当存量文档的懒迁移入口与漂移修复入口；停用段不参与重抽
-            knowledgeBaseGraphService.removeDocumentGraphFootprint(knowledgeBase.getUuid(), kbItem.getUuid());
-            List<DocumentSegment> segments = segmentIndexService.ensureSegments(knowledgeBase, kbItem).stream()
-                    .filter(segment -> !Boolean.FALSE.equals(segment.getIsEnabled()))
-                    .toList();
-            GraphRagContext.get(KNOWLEDGE_BASE).ingest(
-                    GraphIngestParam.builder()
-                            .user(user)
-                            .segments(segments)
-                            .ChatModel(ChatModel)
-                            .identifyColumns(List.of(AdiConstant.MetadataKey.KB_UUID))
-                            .appendColumns(List.of(AdiConstant.MetadataKey.KB_ITEM_UUID))
-                            .isFreeToken(llmService.getAiModel().getIsFree())
-                            .sourceId(kbItem.getId())
-                            .modelPlatform(llmService.getAiModel().getPlatform())
-                            .modelName(llmService.getAiModel().getName())
-                            .build()
-            );
-            ChainWrappers.lambdaUpdateChain(baseMapper)
-                    .eq(KbDocument::getId, kbItem.getId())
-                    .set(KbDocument::getGraphicalStatus, GraphicalStatusEnum.DONE)
-                    .update();
-        } catch (Exception e) {
-            log.error("ingestForGraph error", e);
-            ChainWrappers.lambdaUpdateChain(baseMapper)
-                    .eq(KbDocument::getId, kbItem.getId())
-                    .set(KbDocument::getGraphicalStatusChangeTime, LocalDateTime.now())
-                    .set(KbDocument::getGraphicalStatus, GraphicalStatusEnum.FAIL)
-                    .update();
-        }
     }
 
     @Transactional
@@ -334,68 +261,6 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
         return true;
     }
 
-    /**
-     * 单段索引重建（启用分段时异步调用）：向量重嵌与图谱重抽两路独立执行、各自更新段级状态
-     * （embedding_status / graphical_status，失败标 FAIL，前端可对已启用段重复调用启停幂等重试）。
-     * 图谱路径先按账本幂等清理该段残留（防重复追加）再抽取，账本行随 ingest 双写重建。
-     */
-    @Async
-    public void asyncRebuildSegment(User user, KnowledgeBase knowledgeBase, KbDocument kbItem, DocumentSegment segment) {
-        String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
-        stringRedisTemplate.opsForValue().increment(userIndexKey);
-        stringRedisTemplate.expire(userIndexKey, 10, TimeUnit.MINUTES);
-        try {
-            try {
-                segmentIndexService.vectorizeSegment(knowledgeBase, kbItem, segment);
-                updateSegmentIndexStatus(segment.getId(), DocumentSegment::getEmbeddingStatus, EmbeddingStatusEnum.DONE);
-            } catch (Exception e) {
-                log.error("Rebuild segment embedding error, segmentUuid:{}", segment.getUuid(), e);
-                updateSegmentIndexStatus(segment.getId(), DocumentSegment::getEmbeddingStatus, EmbeddingStatusEnum.FAIL);
-            }
-            if (kbItem.getGraphicalStatus() == GraphicalStatusEnum.DONE) {
-                try {
-                    knowledgeBaseGraphService.removeSegmentGraphFootprint(knowledgeBase.getUuid(), segment.getUuid());
-                    AbstractLLMService llmService = LLMContext.getServiceById(knowledgeBase.getIngestModelId(), true);
-                    ChatModel chatModel = llmService.buildChatLLM(
-                            ChatModelBuilderProperties.builder()
-                                    .temperature(knowledgeBase.getQueryLlmTemperature())
-                                    .build()
-                    );
-                    GraphRagContext.get(KNOWLEDGE_BASE).ingest(
-                            GraphIngestParam.builder()
-                                    .user(user)
-                                    .segments(List.of(segment))
-                                    .ChatModel(chatModel)
-                                    .identifyColumns(List.of(AdiConstant.MetadataKey.KB_UUID))
-                                    .appendColumns(List.of(AdiConstant.MetadataKey.KB_ITEM_UUID))
-                                    .isFreeToken(llmService.getAiModel().getIsFree())
-                                    .sourceId(kbItem.getId())
-                                    .modelPlatform(llmService.getAiModel().getPlatform())
-                                    .modelName(llmService.getAiModel().getName())
-                                    .build()
-                    );
-                    updateSegmentIndexStatus(segment.getId(), DocumentSegment::getGraphicalStatus, GraphicalStatusEnum.DONE);
-                } catch (Exception e) {
-                    log.error("Rebuild segment graph error, segmentUuid:{}", segment.getUuid(), e);
-                    updateSegmentIndexStatus(segment.getId(), DocumentSegment::getGraphicalStatus, GraphicalStatusEnum.FAIL);
-                }
-            }
-        } finally {
-            Long remaining = stringRedisTemplate.opsForValue().decrement(userIndexKey);
-            if (remaining != null && remaining <= 0) {
-                stringRedisTemplate.delete(userIndexKey);
-            }
-        }
-    }
-
-    private void updateSegmentIndexStatus(Long segmentId,
-                                          SFunction<DocumentSegment, ?> column,
-                                          Object status) {
-        documentSegmentService.lambdaUpdate()
-                .eq(DocumentSegment::getId, segmentId)
-                .set(column, status)
-                .update();
-    }
 
     public int countByKbUuid(String kbUuid) {
         return ChainWrappers.lambdaQueryChain(baseMapper)

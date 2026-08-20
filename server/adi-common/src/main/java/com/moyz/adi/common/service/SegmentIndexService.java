@@ -212,17 +212,6 @@ public class SegmentIndexService {
     }
 
     /**
-     * 单条重嵌（段编辑用）：删除旧向量行后基于新内容重新嵌入。
-     * embeddingId 旧值对应的向量行一并删除。
-     */
-    public void reembedSingle(KnowledgeBase kb, KbDocument doc, String oldEmbeddingId, String segmentUuid, String content, Consumer<String> embeddingIdSetter) {
-        if (StringUtils.isNotBlank(oldEmbeddingId)) {
-            iKnowledgeEmbeddingService.deleteByIds(List.of(oldEmbeddingId));
-        }
-        embedAndStore(kb, doc, List.of(new PendingVector(segmentUuid, content, embeddingIdSetter)));
-    }
-
-    /**
      * 单段向量重建（启用分段用）：按模式收集该段名下 embeddingId 为空的待嵌条目
      * （停用时已全部置空）——text=本段；qa=答案下全部问题；parent_child=父段下全部子块。
      */

@@ -307,6 +307,10 @@ public class IndexTaskService {
         if (segment == null) {
             return false;
         }
+        // 停用段跳过（编辑/新增问题/子块对停用段照常入队，统一由这里跳过，不复活停用数据）
+        if (Boolean.FALSE.equals(segment.getIsEnabled())) {
+            return false;
+        }
         if (versionAdvanced(segment.getIndexVersion(), task.getVersion())) {
             reEnqueueSegment(task, segment);
             return true;
@@ -333,6 +337,10 @@ public class IndexTaskService {
                 .eq(DocumentSegment::getIsDeleted, false)
                 .one();
         if (segment == null) {
+            return false;
+        }
+        // 停用段跳过（编辑/新增问题/子块对停用段照常入队，统一由这里跳过，不复活停用数据）
+        if (Boolean.FALSE.equals(segment.getIsEnabled())) {
             return false;
         }
         if (versionAdvanced(segment.getIndexVersion(), task.getVersion())) {

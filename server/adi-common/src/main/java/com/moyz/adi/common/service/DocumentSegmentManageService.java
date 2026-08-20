@@ -68,6 +68,9 @@ public class DocumentSegmentManageService {
     private KnowledgeBaseGraphService knowledgeBaseGraphService;
 
     @Resource
+    private IndexTaskService indexTaskService;
+
+    @Resource
     private IKnowledgeEmbeddingService iKnowledgeEmbeddingService;
 
     /**
@@ -119,12 +122,14 @@ public class DocumentSegmentManageService {
         segment.setContent(req.getContent());
         documentSegmentService.updateById(segment);
 
+        // 一切索引写入走任务队列：text 模式删旧向量+置空后入队重建；qa/parent_child 主行编辑
+        // 仅推进段版本（使在途段级图谱任务诚实过期），向量由各自问题/子块编辑路径处理
+        bumpSegmentVersion(segment.getId());
         if (SegmentIndexService.effectiveMode(doc) == SegmentModeEnum.TEXT && oldEmbeddingId != null) {
             KnowledgeBase kb = knowledgeBaseService.getOrThrow(doc.getKbUuid());
-            String segmentUuid = segment.getUuid();
-            Long segmentId = segment.getId();
-            segmentIndexService.reembedSingle(kb, doc, oldEmbeddingId, segmentUuid, req.getContent(),
-                    embeddingId -> documentSegmentService.updateEmbeddingId(segmentId, embeddingId));
+            iKnowledgeEmbeddingService.deleteByIds(List.of(oldEmbeddingId));
+            documentSegmentService.updateEmbeddingId(segment.getId(), null);
+            indexTaskService.enqueueSegment(kb, doc, segment, AdiConstant.DOC_INDEX_TYPE_EMBEDDING, ThreadContext.getCurrentUser());
         }
         return true;
     }
@@ -143,8 +148,9 @@ public class DocumentSegmentManageService {
             question.setContent(req.getContent());
             questionService.updateById(question);
             if (oldEmbeddingId != null) {
-                segmentIndexService.reembedSingle(kb, doc, oldEmbeddingId, question.getUuid(), req.getContent(),
-                        embeddingId -> questionService.updateEmbeddingId(question.getId(), embeddingId));
+                iKnowledgeEmbeddingService.deleteByIds(List.of(oldEmbeddingId));
+                questionService.updateEmbeddingId(question.getId(), null);
+                enqueueSegmentEmbedding(kb, doc, question.getAnswerSegmentId());
             }
             return question;
         }
@@ -178,11 +184,8 @@ public class DocumentSegmentManageService {
         question.setContent(req.getContent());
         question.setHitCount(0);
         questionService.save(question);
-        // 挂靠答案段停用时不向量化（embeddingId 留空），否则停用段的问题向量复活
-        if (isSegmentEnabled(answerSegmentId)) {
-            segmentIndexService.reembedSingle(kb, doc, null, question.getUuid(), req.getContent(),
-                    embeddingId -> questionService.updateEmbeddingId(question.getId(), embeddingId));
-        }
+        // 入队重建（执行器跳过停用段；停用段的问题 embeddingId 留空，启用时统一重建）
+        enqueueSegmentEmbedding(kb, doc, answerSegmentId);
         return question;
     }
 
@@ -199,8 +202,9 @@ public class DocumentSegmentManageService {
             child.setContent(req.getContent());
             childChunkService.updateById(child);
             if (oldEmbeddingId != null) {
-                segmentIndexService.reembedSingle(kb, doc, oldEmbeddingId, child.getUuid(), req.getContent(),
-                        embeddingId -> childChunkService.updateEmbeddingId(child.getId(), embeddingId));
+                iKnowledgeEmbeddingService.deleteByIds(List.of(oldEmbeddingId));
+                childChunkService.updateEmbeddingId(child.getId(), null);
+                enqueueSegmentEmbedding(kb, doc, child.getParentSegmentId());
             }
             return child;
         }
@@ -220,11 +224,8 @@ public class DocumentSegmentManageService {
         child.setContent(req.getContent());
         child.setHitCount(0);
         childChunkService.save(child);
-        // 挂靠父段停用时不向量化（embeddingId 留空），否则停用段的子块向量复活
-        if (isSegmentEnabled(parent.getId())) {
-            segmentIndexService.reembedSingle(kb, doc, null, child.getUuid(), req.getContent(),
-                    embeddingId -> childChunkService.updateEmbeddingId(child.getId(), embeddingId));
-        }
+        // 入队重建（执行器跳过停用段；停用父段的子块 embeddingId 留空，启用时统一重建）
+        enqueueSegmentEmbedding(kb, doc, parent.getId());
         return child;
     }
 
@@ -332,6 +333,10 @@ public class DocumentSegmentManageService {
         if (doc.getEmbeddingStatus() == EmbeddingStatusEnum.DOING || doc.getGraphicalStatus() == GraphicalStatusEnum.DOING) {
             throw new BaseException(A_DOC_INDEX_DOING);
         }
+        // 同 doc 有队列任务在跑时拒绝：disable 的同步清理会与任务写入交错
+        if (indexTaskService.hasRunningByDoc(doc.getUuid())) {
+            throw new BaseException(A_DOC_INDEX_DOING);
+        }
         KnowledgeBase kb = knowledgeBaseService.getOrThrow(doc.getKbUuid());
         if (isEnabled) {
             enable(ThreadContext.getCurrentUser(), kb, doc, segment);
@@ -384,14 +389,32 @@ public class DocumentSegmentManageService {
                 .set(DocumentSegment::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
                 .set(DocumentSegment::getGraphicalStatus, graphRebuildNeeded ? GraphicalStatusEnum.DOING : GraphicalStatusEnum.DONE)
                 .update();
-        // 向量+图谱重建全异步（QA 答案下问题多时批量 embed 耗时可达数秒-数十秒，避免阻塞 HTTP）
-        kbDocumentService.asyncRebuildSegment(user, kb, doc, segment);
+        // 重建走任务队列（同 doc 串行，状态字段标记进度，失败可重试）
+        indexTaskService.enqueueSegment(kb, doc, segment, AdiConstant.DOC_INDEX_TYPE_EMBEDDING, user);
+        if (graphRebuildNeeded) {
+            indexTaskService.enqueueSegment(kb, doc, segment, AdiConstant.DOC_INDEX_TYPE_GRAPHICAL, user);
+        }
     }
 
-    private boolean isSegmentEnabled(Long segmentId) {
+    /**
+     * 段索引版本原子推进：段内容相关变更调用（在途段级任务经检查点作废）
+     */
+    private void bumpSegmentVersion(Long segmentId) {
+        documentSegmentService.lambdaUpdate()
+                .eq(DocumentSegment::getId, segmentId)
+                .setSql("index_version = index_version + 1")
+                .update();
+    }
+
+    /**
+     * 问题/子块编辑后按所属段入队重建（答案段/父段行即段级任务目标）
+     */
+    private void enqueueSegmentEmbedding(KnowledgeBase kb, KbDocument doc, Long segmentId) {
         DocumentSegment segment = documentSegmentService.getById(segmentId);
-        // 历史行 is_enabled 为 null 视为启用
-        return segment == null || !Boolean.FALSE.equals(segment.getIsEnabled());
+        if (segment != null) {
+            bumpSegmentVersion(segment.getId());
+            indexTaskService.enqueueSegment(kb, doc, segment, AdiConstant.DOC_INDEX_TYPE_EMBEDDING, ThreadContext.getCurrentUser());
+        }
     }
 
     /**

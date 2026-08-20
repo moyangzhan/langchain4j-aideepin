@@ -80,6 +80,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     private KbDocumentService kbDocumentService;
 
     @Resource
+    private IndexTaskService indexTaskService;
+
+    @Resource
     private KnowledgeBaseQaService knowledgeBaseQaRecordService;
 
     @Resource
@@ -248,7 +251,14 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         wrapper.eq(KbDocument::getIsDeleted, false);
         // 按知识库uuid过滤该库下所有文档（原误用文档uuid列匹配kbUuid，导致全库索引恒为空）
         wrapper.eq(KbDocument::getKbUuid, kbUuid);
-        BizPager.oneByOneWithAnchor(wrapper, kbDocumentService, KbDocument::getId, kbItem -> kbDocumentService.asyncIndex(ThreadContext.getCurrentUser(), knowledgeBase, kbItem, indexTypes));
+        // 整库重索引=fan-out 每文档一行任务（与任务队列粒度一致，可并行、独立失败隔离）
+        User user = ThreadContext.getCurrentUser();
+        BizPager.oneByOneWithAnchor(wrapper, kbDocumentService, KbDocument::getId,
+                kbItem -> {
+                    for (String indexType : indexTypes) {
+                        indexTaskService.enqueueDocument(knowledgeBase.getUuid(), kbItem.getUuid(), indexType, user);
+                    }
+                });
         return true;
     }
 
