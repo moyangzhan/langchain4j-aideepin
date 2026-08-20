@@ -342,14 +342,16 @@ public class ApacheAgeGraphStore implements GraphStore {
             String whereClause1 = GraphStoreUtil.buildWhereClause(edgeEditInfo.getSourceFilter(), "v1");
             String whereClause2 = GraphStoreUtil.buildWhereClause(edgeEditInfo.getTargetFilter(), "v2");
             String setClause = GraphStoreUtil.buildSetClause(edgeEditInfo.getEdge().getMetadata());
+            // 无向匹配：与 searchEdges/getEdge 的查找语义保持一致（边的身份不含方向）。
+            // 若按有向匹配，getEdge（无向）能找到、updateEdge 却更新不到方向相反的同一条边，静默丢失一次追加
             String prepareSql = """
-                    select * from cypher('%s', $$
-                       match (v1)-[e]->(v2)
-                       where %s
-                       set e.weight=$new_weight,e.text_segment_id=$new_text_segment_id,e.description=$new_description %s
-                       return v1,e,v2
-                    $$, ?) as (v1 agtype,e agtype,v2 agtype);
-                    """.formatted(graph, whereClause1 + " and " + whereClause2, setClause);
+                   select * from cypher('%s', $$
+                      match (v1)-[e]-(v2)
+                      where %s
+                      set e.weight=$new_weight,e.text_segment_id=$new_text_segment_id,e.description=$new_description %s
+                      return v1,e,v2
+                   $$, ?) as (v1 agtype,e agtype,v2 agtype);
+                   """.formatted(graph, whereClause1 + " and " + whereClause2, setClause);
             log.info("updateEdge prepareSql:{}", prepareSql);
             try (PreparedStatement upsertStmt = connection.prepareStatement(prepareSql)) {
                 Map<String, Object> whereArgs1 = GraphStoreUtil.buildWhereArgs(edgeEditInfo.getSourceFilter(), "v1");

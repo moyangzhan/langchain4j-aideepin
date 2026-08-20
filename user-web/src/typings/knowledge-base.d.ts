@@ -51,6 +51,8 @@ declare namespace KnowledgeBase {
     sourceFileName: string
     sourceFileUuid: string
     sourceFileUrl: string
+    createTime: string
+    updateTime: string
   }
   interface KbItemEditReq {
     id?: string

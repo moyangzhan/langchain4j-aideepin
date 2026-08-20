@@ -6,10 +6,10 @@ import api from '@/api'
 import { t } from '@/locales'
 
 interface Props {
-  kbItemUuid: string
+  docUuid: string
 }
 const props = withDefaults(defineProps<Props>(), {
-  kbItemUuid: '',
+  docUuid: '',
 })
 const limit = 100
 const loading = ref<boolean>(false)
@@ -23,8 +23,8 @@ async function loadGraph(maxVertexId: number, maxEdgeId: number) {
   if (loading.value)
     return
 
-  if (!props.kbItemUuid) {
-    console.log('loadGraph kbItemUuid is empty')
+  if (!props.docUuid) {
+    console.log('loadGraph docUuid is empty')
     return
   }
 
@@ -32,7 +32,7 @@ async function loadGraph(maxVertexId: number, maxEdgeId: number) {
   try {
     cy.$('node').remove()
     cy.$('edge').remove()
-    const resp = await api.knowledgeBaseGraph<KnowledgeBase.KbItemGraphResp>(props.kbItemUuid, maxVertexId, maxEdgeId, limit)
+    const resp = await api.knowledgeBaseGraph<KnowledgeBase.KbItemGraphResp>(props.docUuid, maxVertexId, maxEdgeId, limit)
     vertexCount.value = resp.data.vertices.length
     const nodes = resp.data.vertices.map((item) => {
       return { group: 'nodes', data: item }
@@ -47,14 +47,14 @@ async function loadGraph(maxVertexId: number, maxEdgeId: number) {
 }
 
 onUpdated(() => {
-  console.log('ItemGraph onUpdated')
+  console.log('DocumentGraph onUpdated')
   nextTick(() => {
     loadGraph(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)
   })
 })
 
 onMounted(() => {
-  console.log('ItemGraph onMounted')
+  console.log('DocumentGraph onMounted')
   nextTick(() => {
     initCy()
     loadGraph(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)

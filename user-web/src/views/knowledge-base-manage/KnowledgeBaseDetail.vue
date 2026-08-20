@@ -5,9 +5,8 @@ import { ArchiveOutline } from '@vicons/ionicons5'
 import { Cloud32Regular, LockClosed32Regular } from '@vicons/fluent'
 import { useRoute, useRouter } from 'vue-router'
 import type { UploadFileInfo, UploadInst } from 'naive-ui'
-import ItemEmbeddingList from './ItemEmbeddingList.vue'
-import ItemGraph from './ItemGraph.vue'
-import { createColumns } from './itemColumns'
+import DocumentGraph from './DocumentGraph.vue'
+import { createColumns } from './documentColumns'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
 import { useAuthStore } from '@/store'
 import { knowledgeBaseEmptyInfo, knowledgeBaseEmptyItem } from '@/utils/functions'
@@ -21,10 +20,8 @@ const router = useRouter()
 const { kbUuid: curKbUuid } = route.params as { kbUuid: string; kbId: string }
 console.log('knowledge-base uuid', curKbUuid)
 
-const showEmbeddingListModal = ref<boolean>(false)
 const showGraphModal = ref<boolean>(false)
-const kbItemUuidForEmbeddingList = ref<string>('')
-const kbItemUuidForGraph = ref<string>('')
+const docUuidForGraph = ref<string>('')
 
 const modalMainHeight = ref<number>(500)
 const tableMaxHeight = ref<number>(500)
@@ -159,18 +156,17 @@ function generateQa(row: KnowledgeBase.Item) {
   })
 }
 
-const showEmbeddingList = (selected: KnowledgeBase.Item = knowledgeBaseEmptyItem()) => {
-  showEmbeddingListModal.value = true
-  kbItemUuidForEmbeddingList.value = selected.uuid
+const viewSegments = (row: KnowledgeBase.Item) => {
+  router.push({ name: 'DocumentDetail', params: { kbUuid: curKbUuid, docUuid: row.uuid } })
 }
 
 const showGraph = (selected: KnowledgeBase.Item = knowledgeBaseEmptyItem()) => {
   showGraphModal.value = true
-  kbItemUuidForGraph.value = selected.uuid
+  docUuidForGraph.value = selected.uuid
 }
 
 const editItem = (row: KnowledgeBase.Item) => {
-  router.push({ name: 'KnowledgeBaseItemEdit', params: { kbUuid: curKbUuid, itemUuid: row.uuid } })
+  router.push({ name: 'DocumentEdit', params: { kbUuid: curKbUuid, docUuid: row.uuid } })
 }
 
 function rowKey(row: KnowledgeBase.Item) {
@@ -184,7 +180,7 @@ const serialColWidth = computed(() => {
   return Math.max(40, digits * 8 + 24)
 })
 const columns = computed(() => {
-  const cols = createColumns(showEmbeddingList, showGraph, showFileContent, editItem, deleteKbItem, toggleStatus, generateQa)
+  const cols = createColumns({ viewSegments, showGraph, showFileContent, editItem, deleteKbItem, toggleStatus, generateQa })
   cols.splice(1, 0, {
     title: '#',
     key: 'serialNumber',
@@ -226,7 +222,7 @@ async function textIndexing() {
     ms.error(error.message ?? 'error')
   } finally {
     loading.value = false
-    kbItemUuidForGraph.value = ''
+    docUuidForGraph.value = ''
   }
 }
 
@@ -427,7 +423,7 @@ watch(
     <NCard style="margin-top: 12px" :title="t('knowledgeBase.generatedKnowledge')" hoverable>
       <div class="flex gap-3 mb-4" :class="[isMobile ? 'flex-col' : 'flex-row justify-between']">
         <div class="flex items-left gap-2">
-          <NButton type="primary" size="small" @click="router.push({ name: 'KnowledgeBaseItemAdd', params: { kbUuid: curKbUuid } })">
+          <NButton type="primary" size="small" @click="router.push({ name: 'DocumentAdd', params: { kbUuid: curKbUuid } })">
             {{ t('knowledgeBase.addByForm') }}
           </NButton>
           <NButton type="primary" size="small" @click="() => (showQaImportModal = true)">
@@ -517,11 +513,8 @@ watch(
     </NSpace>
   </NModal>
 
-  <NModal v-model:show="showEmbeddingListModal" style="width: 90%; " preset="card" :title="t('knowledgeBase.embeddingList')">
-    <ItemEmbeddingList :kb-item-uuid="kbItemUuidForEmbeddingList" />
-  </NModal>
   <NModal v-model:show="showGraphModal" style="width: 90%;" display-directive="show" preset="card" :title="t('knowledgeBase.graphLabel')">
-    <ItemGraph :kb-item-uuid="kbItemUuidForGraph" />
+    <DocumentGraph :doc-uuid="docUuidForGraph" />
   </NModal>
   <NModal v-model:show="showIndexModal" style="width: 90%; max-width:550px" preset="card" :title="t('knowledgeBase.selectIndexType')">
     <NFlex vertical>

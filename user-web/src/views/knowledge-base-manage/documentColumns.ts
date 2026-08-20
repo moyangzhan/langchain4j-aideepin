@@ -2,9 +2,20 @@ import type { DataTableColumns } from 'naive-ui'
 import { h } from 'vue'
 import type { VNode } from 'vue'
 import { NButton, NEllipsis, NSwitch } from 'naive-ui'
+import { RouterLink } from 'vue-router'
 import { t } from '@/locales'
 
-export const createColumns = (showEmbeddingListFn: Function, showGraphFn: Function, showFileContentFn: Function, changeItemShowModalFn: Function, deleteKbItemFn: Function, toggleStatusFn: Function, generateQaFn: Function = () => {}): DataTableColumns<KnowledgeBase.Item> => {
+interface DocumentColumnCallbacks {
+  viewSegments: (row: KnowledgeBase.Item) => void
+  showGraph: (row: KnowledgeBase.Item) => void
+  showFileContent: (row: KnowledgeBase.Item) => void
+  editItem: (row: KnowledgeBase.Item) => void
+  deleteKbItem: (row: KnowledgeBase.Item) => void
+  toggleStatus: (row: KnowledgeBase.Item, isEnabled: boolean) => void
+  generateQa?: (row: KnowledgeBase.Item) => void
+}
+
+export const createColumns = (callbacks: DocumentColumnCallbacks): DataTableColumns<KnowledgeBase.Item> => {
   return [
     {
       type: 'selection',
@@ -13,6 +24,22 @@ export const createColumns = (showEmbeddingListFn: Function, showGraphFn: Functi
       title: t('knowledgeBase.itemTitle'),
       key: 'title',
       width: 200,
+      render(row) {
+        return h(
+          RouterLink,
+          {
+            class: 'hljs-link',
+            to: {
+              name: 'DocumentDetail',
+              params: {
+                kbUuid: row.kbUuid,
+                docUuid: row.uuid,
+              },
+            },
+          },
+          { default: () => row.title },
+        )
+      },
     },
     {
       title: t('knowledgeBase.brief'),
@@ -30,11 +57,9 @@ export const createColumns = (showEmbeddingListFn: Function, showGraphFn: Functi
         if (row.embeddingStatus === 'NONE') {
           renderElements.push(createText(t('knowledgeBase.statusPending')))
         } else if (row.embeddingStatus === 'DOING') {
-          renderElements.push(createShowListButton(showEmbeddingListFn, row))
           renderElements.push(createText(t('knowledgeBase.statusProcessing')))
           renderElements.push(createText(row.embeddingStatusChangeTime))
         } else if (row.embeddingStatus === 'DONE') {
-          renderElements.push(createShowListButton(showEmbeddingListFn, row))
           renderElements.push(createText(t('knowledgeBase.statusVectorized')))
           renderElements.push(createText(row.embeddingStatusChangeTime))
         } else if (row.embeddingStatus === 'FAIL') {
@@ -55,11 +80,11 @@ export const createColumns = (showEmbeddingListFn: Function, showGraphFn: Functi
         if (row.graphicalStatus === 'NONE') {
           renderElements.push(createText(t('knowledgeBase.statusPending')))
         } else if (row.graphicalStatus === 'DOING') {
-          renderElements.push(createShowListButton(showGraphFn, row))
+          renderElements.push(createShowListButton(callbacks.showGraph, row))
           renderElements.push(createText(t('knowledgeBase.statusProcessing')))
           renderElements.push(createText(row.graphicalStatusChangeTime))
         } else if (row.graphicalStatus === 'DONE') {
-          renderElements.push(createShowListButton(showGraphFn, row))
+          renderElements.push(createShowListButton(callbacks.showGraph, row))
           renderElements.push(createText(t('knowledgeBase.statusGraphitized')))
           renderElements.push(createText(row.graphicalStatusChangeTime))
         } else if (row.graphicalStatus === 'FAIL') {
@@ -80,7 +105,7 @@ export const createColumns = (showEmbeddingListFn: Function, showGraphFn: Functi
         if (soureFile) {
           return h('div', {
             class: 'flex flex-col',
-            onClick: () => showFileContentFn(row),
+            onClick: () => callbacks.showFileContent(row),
           },
           {
             default: () => [h(
@@ -122,7 +147,7 @@ export const createColumns = (showEmbeddingListFn: Function, showGraphFn: Functi
         return h(NSwitch, {
           value: row.isEnabled,
           size: 'small',
-          onUpdateValue: (val: boolean) => toggleStatusFn(row, val),
+          onUpdateValue: (val: boolean) => callbacks.toggleStatus(row, val),
         })
       },
     },
@@ -139,7 +164,7 @@ export const createColumns = (showEmbeddingListFn: Function, showGraphFn: Functi
     {
       title: t('common.action'),
       key: 'actions',
-      width: 100,
+      width: 120,
       align: 'center',
       render(row) {
         return h('div', { class: 'flex items-center flex-col gap-2' }, {
@@ -150,7 +175,17 @@ export const createColumns = (showEmbeddingListFn: Function, showGraphFn: Functi
                 tertiary: true,
                 size: 'small',
                 type: 'info',
-                onClick: () => changeItemShowModalFn(row),
+                onClick: () => callbacks.viewSegments(row),
+              },
+              { default: () => t('knowledgeBase.viewSegments') },
+            ),
+            h(
+              NButton,
+              {
+                tertiary: true,
+                size: 'small',
+                type: 'info',
+                onClick: () => callbacks.editItem(row),
               },
               { default: () => t('common.edit') },
             ),
@@ -160,7 +195,7 @@ export const createColumns = (showEmbeddingListFn: Function, showGraphFn: Functi
                 tertiary: true,
                 size: 'small',
                 type: 'error',
-                onClick: () => deleteKbItemFn(row),
+                onClick: () => callbacks.deleteKbItem(row),
               },
               { default: () => t('common.delete') },
             ),
@@ -171,7 +206,7 @@ export const createColumns = (showEmbeddingListFn: Function, showGraphFn: Functi
                     tertiary: true,
                     size: 'small',
                     type: 'warning',
-                    onClick: () => generateQaFn(row),
+                    onClick: () => callbacks.generateQa?.(row),
                   },
                   { default: () => t('knowledgeBase.generateQa') },
                 )
@@ -183,7 +218,7 @@ export const createColumns = (showEmbeddingListFn: Function, showGraphFn: Functi
   ]
 }
 
-function createShowListButton(showListFn: Function, row: KnowledgeBase.Item) {
+function createShowListButton(showListFn: (row: KnowledgeBase.Item) => void, row: KnowledgeBase.Item) {
   return h(
     NButton,
     {

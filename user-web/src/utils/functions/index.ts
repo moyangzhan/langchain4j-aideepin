@@ -61,6 +61,8 @@ export function knowledgeBaseEmptyItem() {
     sourceFileName: '',
     sourceFileUrl: '',
     sourceFileUuid: '',
+    createTime: '',
+    updateTime: '',
   }
 }
 

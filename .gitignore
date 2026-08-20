@@ -33,6 +33,7 @@ build/
 
 ### VS Code ###
 .vscode/
+.zcode
 
 ### Environment config ###
 application-dev.yml

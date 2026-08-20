@@ -75,6 +75,12 @@ Overall, keep your code style consistent with the existing codebase.
 
 - Use your IDE's default formatting
 - JDK 17 language features
+- **Comment convention for compatibility/transitional code**: transitional components (legacy-data migration runners, one-off backfills, e.g. `SegmentNeo4jBackfillRunner`) must document five points in their class-level Javadoc, all mandatory:
+  1. **Role**: mark it as compatibility code; reference the formal migration it mirrors (e.g. SQL migration number) and its activation condition (e.g. config flag);
+  2. **Purpose**: which refactor introduced it and what problem it solves;
+  3. **Behavior**: what it does, its inputs and outputs;
+  4. **Safety constraints**: ordering guarantees for irreversible operations (e.g. "confirm rows persisted before clearing source data"), idempotency and crash-recovery semantics;
+  5. **Removal criteria**: verifiable conditions (log signatures / queries) under which the class can be deleted entirely.
 
 #### Admin Web (admin-web)
 

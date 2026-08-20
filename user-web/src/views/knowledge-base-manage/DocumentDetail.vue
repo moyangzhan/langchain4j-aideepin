@@ -1,16 +1,24 @@
 <script setup lang='ts'>
 import type { DataTableColumns } from 'naive-ui'
-import { NButton, NDataTable, NInput, NModal, NSpace, useDialog, useMessage } from 'naive-ui'
-import { computed, h, reactive, ref, watch } from 'vue'
-import api from '@/api'
+import { NBreadcrumb, NBreadcrumbItem, NButton, NCard, NDataTable, NInput, NModal, NSpace, NSpin, useDialog, useMessage } from 'naive-ui'
+import { computed, h, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { knowledgeBaseEmptyInfo, knowledgeBaseEmptyItem } from '@/utils/functions'
 import { t } from '@/locales'
+import api from '@/api'
 
-interface Props {
-  kbItemUuid: string
-}
-const props = defineProps<Props>()
+const route = useRoute()
 const ms = useMessage()
 const dialog = useDialog()
+
+const { kbUuid } = route.params as { kbUuid: string; docUuid: string }
+const curDocUuid = ref<string>('')
+
+const curKb = reactive<KnowledgeBase.Info>(knowledgeBaseEmptyInfo())
+const curDoc = reactive<KnowledgeBase.Item>(knowledgeBaseEmptyItem())
+const docLoading = ref(false)
+
+const tableMaxHeight = ref<number>(400)
 
 const segments = ref<KnowledgeBase.Segment[]>([])
 const loading = ref(false)
@@ -18,8 +26,9 @@ const loading = ref(false)
 const segmentMode = ref<'text' | 'qa' | 'parent_child'>('text')
 const paginationReactive = reactive({
   page: 1,
-  pageSize: 10,
+  pageSize: 20,
   itemCount: 0,
+  prefix: () => t('common.total', { n: paginationReactive.itemCount }),
 })
 
 // 编辑/新增弹窗状态：type 决定调用哪个保存接口
@@ -42,6 +51,19 @@ const editState = reactive<{
 })
 const submitting = ref(false)
 
+const embeddingStatusLabel = computed(() => {
+  switch (curDoc.embeddingStatus) {
+    case 'DOING':
+      return t('knowledgeBase.statusProcessing')
+    case 'DONE':
+      return t('knowledgeBase.statusVectorized')
+    case 'FAIL':
+      return t('knowledgeBase.statusFailed')
+    default:
+      return t('knowledgeBase.statusPending')
+  }
+})
+
 function editTitle() {
   const prefix = editState.isNew
     ? (editState.type === 'question' ? t('knowledgeBase.qaQuestion') : t('knowledgeBase.childChunks'))
@@ -49,10 +71,31 @@ function editTitle() {
   return prefix
 }
 
+async function loadDocInfo(docUuid: string) {
+  docLoading.value = true
+  try {
+    const [kbResp, docResp] = await Promise.all([
+      api.knowledgeBaseInfo<KnowledgeBase.Info>(kbUuid),
+      api.knowledgeBaseItemInfo<KnowledgeBase.Item>(docUuid),
+    ])
+    Object.assign(curKb, kbResp.data)
+    Object.assign(curDoc, docResp.data)
+    // 列表为空时（如新建的 QA 文档）用文档自身的分段模式初始化，保证空态下也能新增
+    if (segments.value.length === 0 && curDoc.segmentMode)
+      segmentMode.value = curDoc.segmentMode as 'text' | 'qa' | 'parent_child'
+  }
+  catch (error: any) {
+    ms.error(error.message ?? 'error')
+  }
+  finally {
+    docLoading.value = false
+  }
+}
+
 async function loadList(currentPage: number) {
   loading.value = true
   try {
-    const resp = await api.documentSegmentList<PageResponse>(props.kbItemUuid, currentPage, paginationReactive.pageSize)
+    const resp = await api.documentSegmentList<PageResponse>(curDocUuid.value, currentPage, paginationReactive.pageSize)
     segments.value = resp.data.records
     if (segments.value.length > 0) {
       if (segments.value[0].questions)
@@ -64,6 +107,14 @@ async function loadList(currentPage: number) {
     }
     paginationReactive.page = currentPage
     paginationReactive.itemCount = resp.data.total
+    // 删除末页最后一条后回退到第一页，避免停留在空页
+    if (segments.value.length === 0 && currentPage > 1) {
+      await loadList(1)
+      return
+    }
+  }
+  catch (error: any) {
+    ms.error(error.message ?? 'error')
   }
   finally {
     loading.value = false
@@ -75,7 +126,7 @@ function openEdit(type: 'segment' | 'question' | 'child', row: any) {
     show: true,
     type,
     id: row.id,
-    docUuid: props.kbItemUuid,
+    docUuid: curDocUuid.value,
     answerSegmentId: row.answerSegmentId,
     parentSegmentId: row.parentSegmentId,
     content: row.content,
@@ -88,7 +139,7 @@ function openAddQaPair() {
     show: true,
     type: 'question',
     id: undefined,
-    docUuid: props.kbItemUuid,
+    docUuid: curDocUuid.value,
     answerSegmentId: undefined,
     answerContent: '',
     content: '',
@@ -101,7 +152,7 @@ function openAddQuestion(answerSegmentId: string) {
     show: true,
     type: 'question',
     id: undefined,
-    docUuid: props.kbItemUuid,
+    docUuid: curDocUuid.value,
     answerSegmentId,
     content: '',
     isNew: true,
@@ -113,7 +164,7 @@ function openAddChild(parentSegmentId: string) {
     show: true,
     type: 'child',
     id: undefined,
-    docUuid: props.kbItemUuid,
+    docUuid: curDocUuid.value,
     parentSegmentId,
     content: '',
     isNew: true,
@@ -270,53 +321,91 @@ async function onHandlePageChange(currentPage: number) {
 }
 
 watch(
-  () => props.kbItemUuid,
-  () => {
-    if (props.kbItemUuid)
+  () => route.params.docUuid,
+  (docUuid) => {
+    const uuid = Array.isArray(docUuid) ? docUuid[0] : docUuid
+    if (uuid) {
+      curDocUuid.value = uuid
+      loadDocInfo(uuid)
       loadList(1)
+    }
   },
   { immediate: true },
 )
+
+onMounted(() => {
+  tableMaxHeight.value = window.innerHeight - 420
+})
 </script>
 
 <template>
-  <NDataTable
-    remote :loading="loading" :max-height="400" :columns="columns" :data="segments"
-    :pagination="paginationReactive" :single-line="false" :bordered="true" @update:page="onHandlePageChange"
-  >
-    <template #empty>
-      <NSpace vertical align="center">
-        <NButton v-if="segmentMode === 'qa'" type="primary" size="small" @click="openAddQaPair">
-          + {{ t('knowledgeBase.qaQuestion') }}
-        </NButton>
-      </NSpace>
-    </template>
-  </NDataTable>
+  <div class="p-4">
+    <NBreadcrumb separator=">">
+      <NBreadcrumbItem href="/">
+        {{ t('common.home') }}
+      </NBreadcrumbItem>
+      <NBreadcrumbItem href="/#/kb-manage">
+        {{ t('knowledgeBase.myKnowledgeBase') }}
+      </NBreadcrumbItem>
+      <NBreadcrumbItem :href="`/#/kb-manage/${kbUuid}`">
+        {{ curKb.title }}
+      </NBreadcrumbItem>
+      <NBreadcrumbItem :clickable="false">
+        {{ curDoc.title }}
+      </NBreadcrumbItem>
+    </NBreadcrumb>
+    <NCard style="margin-top: 12px" :title="curDoc.title" hoverable>
+      <NSpin :show="docLoading">
+        {{ curDoc.brief }}
+        <div class="flex flex-wrap gap-x-6 gap-y-1 mt-2" style="font-size: 12px; opacity: 0.7;">
+          <span>{{ t('knowledgeBase.vectorize') }}: {{ embeddingStatusLabel }}</span>
+          <span>{{ t('knowledgeBase.wordCount') }}: {{ curDoc.wordCount }}</span>
+          <span>{{ t('knowledgeBase.embeddingHitCount') }}: {{ curDoc.embeddingHitCount }}</span>
+          <span>{{ t('knowledgeBase.createTime') }}: {{ curDoc.createTime }}</span>
+          <span>{{ t('knowledgeBase.updateTime') }}: {{ curDoc.updateTime }}</span>
+        </div>
+      </NSpin>
+    </NCard>
+    <NCard style="margin-top: 12px" :title="t('knowledgeBase.segmentList')" hoverable>
+      <NDataTable
+        remote :loading="loading" :max-height="tableMaxHeight" :columns="columns" :data="segments"
+        :pagination="paginationReactive" :single-line="false" :bordered="true" @update:page="onHandlePageChange"
+      >
+        <template #empty>
+          <NSpace vertical align="center">
+            <NButton v-if="segmentMode === 'qa'" type="primary" size="small" @click="openAddQaPair">
+              + {{ t('knowledgeBase.qaQuestion') }}
+            </NButton>
+          </NSpace>
+        </template>
+      </NDataTable>
+    </NCard>
 
-  <NModal v-model:show="editState.show" style="width: 60%;" preset="card" :title="editTitle()">
-    <NSpace vertical>
-      <template v-if="editState.type === 'question' && editState.isNew && !editState.answerSegmentId">
-        {{ t('knowledgeBase.qaAnswer') }}
+    <NModal v-model:show="editState.show" style="width: 60%;" preset="card" :title="editTitle()">
+      <NSpace vertical>
+        <template v-if="editState.type === 'question' && editState.isNew && !editState.answerSegmentId">
+          {{ t('knowledgeBase.qaAnswer') }}
+          <NInput
+            v-model:value="editState.answerContent"
+            type="textarea"
+            :autosize="{ minRows: 3, maxRows: 8 }"
+          />
+        </template>
+        {{ editState.type === 'question' ? t('knowledgeBase.qaQuestion') : '' }}
         <NInput
-          v-model:value="editState.answerContent"
+          v-model:value="editState.content"
           type="textarea"
-          :autosize="{ minRows: 3, maxRows: 8 }"
+          :autosize="{ minRows: 6, maxRows: 16 }"
         />
-      </template>
-      {{ editState.type === 'question' ? t('knowledgeBase.qaQuestion') : '' }}
-      <NInput
-        v-model:value="editState.content"
-        type="textarea"
-        :autosize="{ minRows: 6, maxRows: 16 }"
-      />
-      <div class="flex justify-end gap-2">
-        <NButton @click="editState.show = false">
-          {{ t('common.cancel') }}
-        </NButton>
-        <NButton type="primary" :loading="submitting" @click="saveEdit">
-          {{ t('common.confirm') }}
-        </NButton>
-      </div>
-    </NSpace>
-  </NModal>
+        <div class="flex justify-end gap-2">
+          <NButton @click="editState.show = false">
+            {{ t('common.cancel') }}
+          </NButton>
+          <NButton type="primary" :loading="submitting" @click="saveEdit">
+            {{ t('common.confirm') }}
+          </NButton>
+        </div>
+      </NSpace>
+    </NModal>
+  </div>
 </template>

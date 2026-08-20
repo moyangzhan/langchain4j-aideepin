@@ -10,8 +10,8 @@ const ms = useMessage()
 const route = useRoute()
 const router = useRouter()
 
-const { kbUuid, itemUuid } = route.params as { kbUuid: string; itemUuid?: string }
-const isEdit = computed(() => !!itemUuid)
+const { kbUuid, docUuid } = route.params as { kbUuid: string; docUuid?: string }
+const isEdit = computed(() => !!docUuid)
 
 const curKb = reactive<KnowledgeBase.Info>(knowledgeBaseEmptyInfo())
 const tmpItem = reactive<KnowledgeBase.Item>(knowledgeBaseEmptyItem())
@@ -53,8 +53,8 @@ onMounted(async () => {
   try {
     const kbResp = await api.knowledgeBaseInfo<KnowledgeBase.Info>(kbUuid)
     Object.assign(curKb, kbResp.data)
-    if (isEdit.value && itemUuid) {
-      const resp = await api.knowledgeBaseItemInfo<KnowledgeBase.Item>(itemUuid)
+    if (isEdit.value && docUuid) {
+      const resp = await api.knowledgeBaseItemInfo<KnowledgeBase.Item>(docUuid)
       Object.assign(tmpItem, resp.data)
       if (!tmpItem.segmentMode)
         tmpItem.segmentMode = 'text'

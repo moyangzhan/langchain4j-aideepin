@@ -62,14 +62,19 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/knowledge-base-manage/KnowledgeBaseDetail.vue'),
   },
   {
-    path: '/kb-manage/:kbUuid/item/new',
-    name: 'KnowledgeBaseItemAdd',
-    component: () => import('@/views/knowledge-base-manage/KnowledgeBaseItemEdit.vue'),
+    path: '/kb-manage/:kbUuid/document/new',
+    name: 'DocumentAdd',
+    component: () => import('@/views/knowledge-base-manage/DocumentEdit.vue'),
   },
   {
-    path: '/kb-manage/:kbUuid/item/:itemUuid',
-    name: 'KnowledgeBaseItemEdit',
-    component: () => import('@/views/knowledge-base-manage/KnowledgeBaseItemEdit.vue'),
+    path: '/kb-manage/:kbUuid/document/:docUuid',
+    name: 'DocumentEdit',
+    component: () => import('@/views/knowledge-base-manage/DocumentEdit.vue'),
+  },
+  {
+    path: '/kb-manage/:kbUuid/document/:docUuid/detail',
+    name: 'DocumentDetail',
+    component: () => import('@/views/knowledge-base-manage/DocumentDetail.vue'),
   },
   {
     path: '/workflow',
