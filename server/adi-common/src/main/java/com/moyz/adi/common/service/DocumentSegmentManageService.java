@@ -1,6 +1,7 @@
 package com.moyz.adi.common.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.DocumentSegmentChildChunkDto;
 import com.moyz.adi.common.dto.DocumentSegmentChildChunkEditReq;
 import com.moyz.adi.common.dto.DocumentSegmentDto;
@@ -12,6 +13,9 @@ import com.moyz.adi.common.entity.DocumentSegmentChildChunk;
 import com.moyz.adi.common.entity.DocumentSegmentQuestion;
 import com.moyz.adi.common.entity.KbDocument;
 import com.moyz.adi.common.entity.KnowledgeBase;
+import com.moyz.adi.common.entity.User;
+import com.moyz.adi.common.enums.EmbeddingStatusEnum;
+import com.moyz.adi.common.enums.GraphicalStatusEnum;
 import com.moyz.adi.common.enums.SegmentModeEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.service.embedding.IKnowledgeEmbeddingService;
@@ -23,6 +27,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,6 +35,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_DATA_NOT_FOUND;
+import static com.moyz.adi.common.enums.ErrorEnum.A_DOC_INDEX_DOING;
 import static com.moyz.adi.common.enums.ErrorEnum.A_PARAMS_ERROR;
 
 /**
@@ -57,6 +63,9 @@ public class DocumentSegmentManageService {
 
     @Resource
     private KnowledgeBaseService knowledgeBaseService;
+
+    @Resource
+    private KnowledgeBaseGraphService knowledgeBaseGraphService;
 
     @Resource
     private IKnowledgeEmbeddingService iKnowledgeEmbeddingService;
@@ -169,8 +178,11 @@ public class DocumentSegmentManageService {
         question.setContent(req.getContent());
         question.setHitCount(0);
         questionService.save(question);
-        segmentIndexService.reembedSingle(kb, doc, null, question.getUuid(), req.getContent(),
-                embeddingId -> questionService.updateEmbeddingId(question.getId(), embeddingId));
+        // 挂靠答案段停用时不向量化（embeddingId 留空），否则停用段的问题向量复活
+        if (isSegmentEnabled(answerSegmentId)) {
+            segmentIndexService.reembedSingle(kb, doc, null, question.getUuid(), req.getContent(),
+                    embeddingId -> questionService.updateEmbeddingId(question.getId(), embeddingId));
+        }
         return question;
     }
 
@@ -208,8 +220,11 @@ public class DocumentSegmentManageService {
         child.setContent(req.getContent());
         child.setHitCount(0);
         childChunkService.save(child);
-        segmentIndexService.reembedSingle(kb, doc, null, child.getUuid(), req.getContent(),
-                embeddingId -> childChunkService.updateEmbeddingId(child.getId(), embeddingId));
+        // 挂靠父段停用时不向量化（embeddingId 留空），否则停用段的子块向量复活
+        if (isSegmentEnabled(parent.getId())) {
+            segmentIndexService.reembedSingle(kb, doc, null, child.getUuid(), req.getContent(),
+                    embeddingId -> childChunkService.updateEmbeddingId(child.getId(), embeddingId));
+        }
         return child;
     }
 
@@ -300,6 +315,79 @@ public class DocumentSegmentManageService {
                 .eq(DocumentSegmentChildChunk::getId, child.getId())
                 .set(DocumentSegmentChildChunk::getIsDeleted, true)
                 .update();
+    }
+
+    /**
+     * 分段启停（文档级 DOING 中拒绝，避免与索引重跑互相覆盖）。
+     * 停用：先删该段名下全部向量 + 账本驱动的图谱足迹清理，最后置位——中途失败即报错、状态不变，
+     * 清理操作幂等可直接重试；启用：同步重嵌向量（失败抛异常、状态保持停用），成功后置位并异步重抽图谱。
+     */
+    public boolean toggleStatus(String uuid, boolean isEnabled) {
+        DocumentSegment segment = getDocumentByUuid(uuid);
+        KbDocument doc = kbDocumentService.getEnable(segment.getDocUuid());
+        if (doc == null) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
+        if (doc.getEmbeddingStatus() == EmbeddingStatusEnum.DOING || doc.getGraphicalStatus() == GraphicalStatusEnum.DOING) {
+            throw new BaseException(A_DOC_INDEX_DOING);
+        }
+        KnowledgeBase kb = knowledgeBaseService.getOrThrow(doc.getKbUuid());
+        if (isEnabled) {
+            enable(ThreadContext.getCurrentUser(), kb, doc, segment);
+        } else {
+            disable(kb, doc, segment);
+        }
+        return true;
+    }
+
+    private void disable(KnowledgeBase kb, KbDocument doc, DocumentSegment segment) {
+        // 收集该段名下全部向量条目（text=本段；qa=答案下全部问题；parent_child=父段下全部子块）
+        List<String> embeddingIds = new ArrayList<>();
+        if (segment.getEmbeddingId() != null) {
+            embeddingIds.add(segment.getEmbeddingId());
+        }
+        questionService.listByAnswerIds(List.of(segment.getId())).forEach(q -> {
+            if (q.getEmbeddingId() != null) {
+                embeddingIds.add(q.getEmbeddingId());
+            }
+        });
+        childChunkService.listByParentIds(List.of(segment.getId())).forEach(c -> {
+            if (c.getEmbeddingId() != null) {
+                embeddingIds.add(c.getEmbeddingId());
+            }
+        });
+        if (!embeddingIds.isEmpty()) {
+            iKnowledgeEmbeddingService.deleteByIds(embeddingIds);
+        }
+        // 置空三表 embedding_id：统计口径与"embeddingId==null 即待嵌"的既有判断自然正确
+        documentSegmentService.clearEmbeddingIdsBySegmentId(segment.getId());
+        // 图谱足迹清理（账本驱动：独占元素删除、共享元素保留；幂等）
+        knowledgeBaseGraphService.removeSegmentGraphFootprint(kb.getUuid(), segment.getUuid());
+        updateStatus(segment.getId(), false);
+    }
+
+    private void enable(User user, KnowledgeBase kb, KbDocument doc, DocumentSegment segment) {
+        // 同步重嵌（失败抛异常 → 状态保持停用）
+        segmentIndexService.vectorizeSegment(kb, doc, segment);
+        updateStatus(segment.getId(), true);
+        // 图谱异步重建：仅该文档图谱化过（graphicalStatus=DONE）；从未图谱化的文档启用段不触发抽取
+        if (doc.getGraphicalStatus() == GraphicalStatusEnum.DONE) {
+            kbDocumentService.asyncReGraphSegment(user, kb, doc, segment);
+        }
+    }
+
+    private void updateStatus(Long segmentId, boolean enabled) {
+        documentSegmentService.lambdaUpdate()
+                .eq(DocumentSegment::getId, segmentId)
+                .set(DocumentSegment::getIsEnabled, enabled)
+                .set(DocumentSegment::getEnabledChangeTime, LocalDateTime.now())
+                .update();
+    }
+
+    private boolean isSegmentEnabled(Long segmentId) {
+        DocumentSegment segment = documentSegmentService.getById(segmentId);
+        // 历史行 is_enabled 为 null 视为启用
+        return segment == null || !Boolean.FALSE.equals(segment.getIsEnabled());
     }
 
     /**

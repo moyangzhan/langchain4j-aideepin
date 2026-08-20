@@ -66,6 +66,9 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
     private DocumentSegmentService documentSegmentService;
 
     @Resource
+    private KnowledgeBaseGraphService knowledgeBaseGraphService;
+
+    @Resource
     private FileService fileService;
 
     public KbDocument saveOrUpdate(KbDocumentEditReq itemEditReq) {
@@ -215,8 +218,12 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
                             .build()
             );
 
-            // 图谱复用 document_segment：embedding 重跑重建段行，仅图谱重跑时复用现有段
-            List<DocumentSegment> segments = segmentIndexService.ensureSegments(knowledgeBase, kbItem);
+            // 先清后抽：按账本清理该文档图谱足迹（幂等），重跑从"追加合并"变为"先清后建"——
+            // 同时充当存量文档的懒迁移入口与漂移修复入口；停用段不参与重抽
+            knowledgeBaseGraphService.removeDocumentGraphFootprint(knowledgeBase.getUuid(), kbItem.getUuid());
+            List<DocumentSegment> segments = segmentIndexService.ensureSegments(knowledgeBase, kbItem).stream()
+                    .filter(segment -> !Boolean.FALSE.equals(segment.getIsEnabled()))
+                    .toList();
             GraphRagContext.get(KNOWLEDGE_BASE).ingest(
                     GraphIngestParam.builder()
                             .user(user)
@@ -256,9 +263,54 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
 
         KbDocument item = baseMapper.getByUuid(uuid);
         if (null != item) {
+            // 补齐存量缺口：文档删除时清理其图谱足迹（账本驱动，文档外无贡献者的元素定点删除）。
+            // 尽力而为：图库异常不应阻断文档删除，残留可由该库后续图谱操作收敛
+            try {
+                knowledgeBaseGraphService.removeDocumentGraphFootprint(item.getKbUuid(), uuid);
+            } catch (Exception e) {
+                log.error("Remove document graph footprint failed, docUuid:{}", uuid, e);
+            }
             stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, item.getKbUuid());
         }
         return true;
+    }
+
+    /**
+     * 单段图谱重建（启用分段时异步调用）：先按账本幂等清理该段残留（防重复追加），
+     * 再对单段重抽取，账本行随 ingest 双写重建。失败仅记录日志、不回滚段状态——
+     * 向量已恢复、图谱缺失，用户可再次停用→启用重试。
+     */
+    @Async
+    public void asyncReGraphSegment(User user, KnowledgeBase knowledgeBase, KbDocument kbItem, DocumentSegment segment) {
+        String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
+        stringRedisTemplate.opsForValue().increment(userIndexKey);
+        stringRedisTemplate.expire(userIndexKey, 10, TimeUnit.MINUTES);
+        try {
+            knowledgeBaseGraphService.removeSegmentGraphFootprint(knowledgeBase.getUuid(), segment.getUuid());
+            AbstractLLMService llmService = LLMContext.getServiceById(knowledgeBase.getIngestModelId(), true);
+            ChatModel chatModel = llmService.buildChatLLM(
+                    ChatModelBuilderProperties.builder()
+                            .temperature(knowledgeBase.getQueryLlmTemperature())
+                            .build()
+            );
+            GraphRagContext.get(KNOWLEDGE_BASE).ingest(
+                    GraphIngestParam.builder()
+                            .user(user)
+                            .segments(List.of(segment))
+                            .ChatModel(chatModel)
+                            .identifyColumns(List.of(AdiConstant.MetadataKey.KB_UUID))
+                            .appendColumns(List.of(AdiConstant.MetadataKey.KB_ITEM_UUID))
+                            .isFreeToken(llmService.getAiModel().getIsFree())
+                            .build()
+            );
+        } catch (Exception e) {
+            log.error("reGraphSegment error, segmentUuid:{}", segment.getUuid(), e);
+        } finally {
+            Long remaining = stringRedisTemplate.opsForValue().decrement(userIndexKey);
+            if (remaining != null && remaining <= 0) {
+                stringRedisTemplate.delete(userIndexKey);
+            }
+        }
     }
 
     public int countByKbUuid(String kbUuid) {

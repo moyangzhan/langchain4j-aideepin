@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -166,10 +167,14 @@ public class SegmentIndexService {
                     .filter(row -> row.getEmbeddingId() == null)
                     .forEach(row -> pending.add(new PendingVector(row.getUuid(), row.getContent(),
                             id -> documentSegmentService.updateEmbeddingId(row.getId(), id))));
-            case QA -> questionService.listByDocUuid(doc.getUuid()).stream()
-                    .filter(q -> q.getEmbeddingId() == null)
-                    .forEach(q -> pending.add(new PendingVector(q.getUuid(), q.getContent(),
-                            id -> questionService.updateEmbeddingId(q.getId(), id))));
+            case QA -> {
+                // 重跑向量化时 clearEmbeddingIds 已把全部问题置空，须过滤停用答案下的问题，避免停用段"复活"
+                Set<Long> enabledAnswerIds = documentSegmentService.listEnabledIdsByDocUuid(doc.getUuid());
+                questionService.listByDocUuid(doc.getUuid()).stream()
+                        .filter(q -> q.getEmbeddingId() == null && enabledAnswerIds.contains(q.getAnswerSegmentId()))
+                        .forEach(q -> pending.add(new PendingVector(q.getUuid(), q.getContent(),
+                                id -> questionService.updateEmbeddingId(q.getId(), id))));
+            }
             case PARENT_CHILD -> childChunkService.listByDocUuid(doc.getUuid()).stream()
                     .filter(c -> c.getEmbeddingId() == null)
                     .forEach(c -> pending.add(new PendingVector(c.getUuid(), c.getContent(),
@@ -190,11 +195,40 @@ public class SegmentIndexService {
     }
 
     /**
-     * 对文档下尚未向量化的问题行批量嵌入（QA 导入/LLM 生成完成后调用，不重嵌已有问题）
+     * 单段向量重建（启用分段用）：按模式收集该段名下 embeddingId 为空的待嵌条目
+     * （停用时已全部置空）——text=本段；qa=答案下全部问题；parent_child=父段下全部子块。
+     */
+    public void vectorizeSegment(KnowledgeBase kb, KbDocument doc, DocumentSegment segment) {
+        SegmentModeEnum mode = effectiveMode(doc);
+        List<PendingVector> pending = new ArrayList<>();
+        switch (mode) {
+            case TEXT -> {
+                if (segment.getEmbeddingId() == null) {
+                    pending.add(new PendingVector(segment.getUuid(), segment.getContent(),
+                            id -> documentSegmentService.updateEmbeddingId(segment.getId(), id)));
+                }
+            }
+            case QA -> questionService.listByAnswerIds(List.of(segment.getId())).stream()
+                    .filter(q -> q.getEmbeddingId() == null)
+                    .forEach(q -> pending.add(new PendingVector(q.getUuid(), q.getContent(),
+                            id -> questionService.updateEmbeddingId(q.getId(), id))));
+            case PARENT_CHILD -> childChunkService.listByParentIds(List.of(segment.getId())).stream()
+                    .filter(c -> c.getEmbeddingId() == null)
+                    .forEach(c -> pending.add(new PendingVector(c.getUuid(), c.getContent(),
+                            id -> childChunkService.updateEmbeddingId(c.getId(), id))));
+        }
+        embedAndStore(kb, doc, pending);
+    }
+
+    /**
+     * 对文档下尚未向量化的问题行批量嵌入（QA 导入/LLM 生成完成后调用，不重嵌已有问题）。
+     * 过滤停用答案下的问题——新问题挂停用答案时保存但不向量化（由 ManageService 守卫），
+     * 此处兜底防止导入/生成批量场景复活停用段。
      */
     public void vectorizePendingQuestions(KnowledgeBase kb, KbDocument doc) {
+        Set<Long> enabledAnswerIds = documentSegmentService.listEnabledIdsByDocUuid(doc.getUuid());
         List<PendingVector> pending = questionService.listByDocUuid(doc.getUuid()).stream()
-                .filter(q -> q.getEmbeddingId() == null)
+                .filter(q -> q.getEmbeddingId() == null && enabledAnswerIds.contains(q.getAnswerSegmentId()))
                 .map(q -> new PendingVector(q.getUuid(), q.getContent(), id -> questionService.updateEmbeddingId(q.getId(), id)))
                 .toList();
         embedAndStore(kb, doc, pending);

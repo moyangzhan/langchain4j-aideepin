@@ -5,6 +5,7 @@ import com.moyz.adi.common.dto.DocumentSegmentChildChunkEditReq;
 import com.moyz.adi.common.dto.DocumentSegmentDto;
 import com.moyz.adi.common.dto.DocumentSegmentEditReq;
 import com.moyz.adi.common.dto.DocumentSegmentQuestionEditReq;
+import com.moyz.adi.common.dto.DocumentSegmentToggleStatusReq;
 import com.moyz.adi.common.entity.DocumentSegmentChildChunk;
 import com.moyz.adi.common.entity.DocumentSegmentQuestion;
 import com.moyz.adi.common.entity.KbDocument;
@@ -80,6 +81,15 @@ public class DocumentSegmentController {
     public boolean del(@PathVariable @NotBlank String uuid) {
         assertWritePrivilegeBySegment(uuid);
         return documentSegmentManageService.deleteSegment(uuid);
+    }
+
+    /**
+     * 分段启停：停用删除该段向量与图谱足迹；启用重嵌向量并异步重抽图谱（消耗模型额度）
+     */
+    @PostMapping("/toggle-status")
+    public boolean toggleStatus(@RequestBody @Validated DocumentSegmentToggleStatusReq req) {
+        assertWritePrivilegeBySegment(req.getUuid());
+        return documentSegmentManageService.toggleStatus(req.getUuid(), req.getIsEnabled());
     }
 
     @PostMapping("/question/del/{uuid}")
