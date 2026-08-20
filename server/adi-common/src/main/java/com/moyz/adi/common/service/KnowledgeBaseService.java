@@ -130,10 +130,24 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             baseMapper.insert(knowledgeBase);
         } else {
             checkWritePrivilege(kbEditReq.getId(), null);
+            KnowledgeBase old = baseMapper.selectById(kbEditReq.getId());
             knowledgeBase.setId(kbEditReq.getId());
             baseMapper.updateById(knowledgeBase);
+            // "变更即失效"：切段参数变更即失效该库全部可切段文档的段行，下次重新向量化按新参数重切
+            if (old != null && splitParamsChanged(old, kbEditReq)) {
+                kbDocumentService.invalidateSegmentsByKb(old.getUuid());
+            }
         }
         return knowledgeBase;
+    }
+
+    private boolean splitParamsChanged(KnowledgeBase old, KbEditReq req) {
+        return !Objects.equals(old.getIngestMaxSegmentSize(), req.getIngestMaxSegmentSize())
+                || !Objects.equals(old.getIngestMaxOverlap(), req.getIngestMaxOverlap())
+                || !Objects.equals(old.getIngestSplitStrategy(), req.getIngestSplitStrategy())
+                || !Objects.equals(old.getIngestCustomSeparator(), req.getIngestCustomSeparator())
+                || !Objects.equals(old.getIngestTokenEstimator(), req.getIngestTokenEstimator())
+                || !Objects.equals(old.getIngestChildMaxSegmentSize(), req.getIngestChildMaxSegmentSize());
     }
 
     /**

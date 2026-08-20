@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * 分段索引编排：切段显式化 + 三种模式的向量化。
@@ -74,21 +75,33 @@ public class SegmentIndexService {
     }
 
     /**
-     * 重建向量化索引。text/parent_child 模式重新切段重建段行--重切即全量重新处理，
-     * 新段行一律默认启用（停用状态不继承：触发重切的场景下切段参数/内容已变，新旧段无对应关系）；
-     * qa 模式的问答行是用户数据，重跑不重建，仅重嵌全部问题（停用答案下的问题除外）。
+     * 重建向量化索引。段行不存在时切段（全量、新段一律默认启用）；段行已存在时为
+     * 增量重索引：不重建段行，按状态逐段处理--启用段重新向量化，停用段跳过（不复活）。
+     * 段行的失效（内容/模式变更后的重切需求）由文档保存侧负责（KbDocumentService.saveOrUpdate）。
      */
     public void reindexEmbedding(KnowledgeBase kb, KbDocument doc) {
         SegmentModeEnum mode = effectiveMode(doc);
         log.info("reindexEmbedding, docUuid:{}, mode:{}", doc.getUuid(), mode.getValue());
-        // 清旧向量（按 metadata kb_item_uuid 过滤删除，与切段重建配套）
+        // 清旧向量（按 metadata kb_item_uuid 过滤删除；停用段无向量，删除天然空转）
         iKnowledgeEmbeddingService.deleteByItemUuid(doc.getUuid());
+        ensureSegments(kb, doc);
         switch (mode) {
-            case TEXT, PARENT_CHILD -> {
-                documentSegmentService.deleteByDocUuid(doc.getUuid());
-                splitIntoSegments(kb, doc);
+            case TEXT -> {
+                // 启用段置空 embedding_id 待重嵌；停用段保持无向量状态（停用时已置空）
+                documentSegmentService.listEnabledByDocUuid(doc.getUuid()).forEach(row -> {
+                    if (row.getEmbeddingId() != null) {
+                        documentSegmentService.updateEmbeddingId(row.getId(), null);
+                    }
+                });
             }
             case QA -> questionService.clearEmbeddingIds(doc.getUuid());
+            case PARENT_CHILD -> {
+                // 启用父段下子块置空待重嵌；停用父段下子块跳过
+                List<Long> enabledParentIds = documentSegmentService.listEnabledByDocUuid(doc.getUuid()).stream()
+                        .map(DocumentSegment::getId)
+                        .toList();
+                childChunkService.clearEmbeddingIdsByParentIds(enabledParentIds);
+            }
         }
         vectorizePending(kb, doc, mode);
     }
@@ -161,25 +174,32 @@ public class SegmentIndexService {
      * 存入向量库的 TextSegment 文本置空；embedding 基于真实内容计算。
      */
     private void vectorizePending(KnowledgeBase kb, KbDocument doc, SegmentModeEnum mode) {
-        // 攒批后一次 embedAndStore，内部再按 EMBED_BATCH_SIZE 分批，避免逐条调用 embedding 接口
+        // 攒批后一次 embedAndStore，内部再按 EMBED_BATCH_SIZE 分批，避免逐条调用 embedding 接口。
+        // 停用段过滤：增量重索引（段行保留）场景下停用段不参与重嵌，避免停用数据"复活"
         List<PendingVector> pending = new ArrayList<>();
         switch (mode) {
             case TEXT -> documentSegmentService.listByDocUuid(doc.getUuid()).stream()
-                    .filter(row -> row.getEmbeddingId() == null)
+                    .filter(row -> row.getEmbeddingId() == null && !Boolean.FALSE.equals(row.getIsEnabled()))
                     .forEach(row -> pending.add(new PendingVector(row.getUuid(), row.getContent(),
                             id -> documentSegmentService.updateEmbeddingId(row.getId(), id))));
             case QA -> {
-                // 重跑向量化时 clearEmbeddingIds 已把全部问题置空，须过滤停用答案下的问题，避免停用段"复活"
+                // 重跑向量化时 clearEmbeddingIds 已把全部问题置空，须过滤停用答案下的问题
                 Set<Long> enabledAnswerIds = documentSegmentService.listEnabledIdsByDocUuid(doc.getUuid());
                 questionService.listByDocUuid(doc.getUuid()).stream()
                         .filter(q -> q.getEmbeddingId() == null && enabledAnswerIds.contains(q.getAnswerSegmentId()))
                         .forEach(q -> pending.add(new PendingVector(q.getUuid(), q.getContent(),
                                 id -> questionService.updateEmbeddingId(q.getId(), id))));
             }
-            case PARENT_CHILD -> childChunkService.listByDocUuid(doc.getUuid()).stream()
-                    .filter(c -> c.getEmbeddingId() == null)
-                    .forEach(c -> pending.add(new PendingVector(c.getUuid(), c.getContent(),
-                            id -> childChunkService.updateEmbeddingId(c.getId(), id))));
+            case PARENT_CHILD -> {
+                Set<Long> disabledParentIds = documentSegmentService.listByDocUuid(doc.getUuid()).stream()
+                        .filter(row -> Boolean.FALSE.equals(row.getIsEnabled()))
+                        .map(DocumentSegment::getId)
+                        .collect(Collectors.toSet());
+                childChunkService.listByDocUuid(doc.getUuid()).stream()
+                        .filter(c -> c.getEmbeddingId() == null && !disabledParentIds.contains(c.getParentSegmentId()))
+                        .forEach(c -> pending.add(new PendingVector(c.getUuid(), c.getContent(),
+                                id -> childChunkService.updateEmbeddingId(c.getId(), id))));
+            }
         }
         embedAndStore(kb, doc, pending);
     }

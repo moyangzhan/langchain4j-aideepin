@@ -37,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.DOC_INDEX_TYPE_EMBEDDING;
@@ -99,8 +100,10 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
             item.setKbUuid(itemEditReq.getKbUuid());
             baseMapper.insert(item);
         } else {
+            KbDocument old = baseMapper.selectById(itemEditReq.getId());
             item.setId(itemEditReq.getId());
             baseMapper.updateById(item);
+            invalidateSegmentsIfChanged(old, itemEditReq, uuid);
         }
 
         stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, itemEditReq.getKbUuid());
@@ -108,6 +111,58 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
         return ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(KbDocument::getUuid, uuid)
                 .one();
+    }
+
+    /**
+     * "变更即失效"模型：段行是 remark 的物化，内容变了段行即过期，下次重新向量化自动走
+     * 切段分支重建（全量、新段默认启用）。qa 模式的段行来自问答数据流、与 remark 无关，
+     * 仅 remark 变更不失效（模式切换仍失效，切换即放弃旧结构）。
+     * 顺带修复存量不一致：旧实现在重跑索引前，旧向量仍按旧内容命中检索。
+     * 图谱足迹不动——文档编辑从不触发图谱变更，图谱重跑自带先清后抽。
+     */
+    private void invalidateSegmentsIfChanged(KbDocument old, KbDocumentEditReq req, String docUuid) {
+        if (old == null) {
+            return;
+        }
+        SegmentModeEnum oldMode = old.getSegmentMode() == null ? SegmentModeEnum.TEXT : old.getSegmentMode();
+        SegmentModeEnum newMode = req.getSegmentMode() == null ? SegmentModeEnum.TEXT : req.getSegmentMode();
+        boolean modeChanged = newMode != oldMode;
+        boolean remarkChanged = !Objects.equals(old.getRemark(), req.getRemark());
+        if (!modeChanged && !(remarkChanged && newMode != SegmentModeEnum.QA)) {
+            return;
+        }
+        iKnowledgeEmbeddingService.deleteByItemUuid(docUuid);
+        documentSegmentService.deleteByDocUuid(docUuid);
+        markEmbeddingPending(docUuid);
+    }
+
+    /**
+     * KB 切段参数变更后失效该库下所有可切段文档的段行与向量（qa 文档除外——其段行来自问答数据流），
+     * 下次重新向量化按新参数切段重建。
+     */
+    public void invalidateSegmentsByKb(String kbUuid) {
+        List<KbDocument> docs = ChainWrappers.lambdaQueryChain(baseMapper)
+                .eq(KbDocument::getKbUuid, kbUuid)
+                .eq(KbDocument::getIsDeleted, false)
+                .list();
+        for (KbDocument doc : docs) {
+            if (SegmentIndexService.effectiveMode(doc) == SegmentModeEnum.QA) {
+                continue;
+            }
+            iKnowledgeEmbeddingService.deleteByItemUuid(doc.getUuid());
+            documentSegmentService.deleteByDocUuid(doc.getUuid());
+            markEmbeddingPending(doc.getUuid());
+        }
+    }
+
+    /**
+     * 段行失效后文档级向量化状态归 NONE，前端文档列表正确显示"待向量化"
+     */
+    private void markEmbeddingPending(String docUuid) {
+        ChainWrappers.lambdaUpdateChain(baseMapper)
+                .eq(KbDocument::getUuid, docUuid)
+                .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.NONE)
+                .update();
     }
 
     public KbDocument getEnable(String uuid) {
