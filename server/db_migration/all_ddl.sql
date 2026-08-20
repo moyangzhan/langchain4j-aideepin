@@ -655,6 +655,7 @@ create table adi_knowledge_base
     ingest_split_strategy  varchar(20)   default 'recursive'       not null,
     ingest_max_segment_size int          default 1000              not null,
     ingest_custom_separator varchar(100) default ''                not null,
+    ingest_child_max_segment_size int     default 200               not null,
     ingest_model_name      varchar(45)   default ''                not null,
     ingest_model_id        bigint        default 0                 not null,
     ingest_token_estimator varchar(45)   default ''                not null,
@@ -684,6 +685,7 @@ comment on column adi_knowledge_base.ingest_max_overlap is 'Max overlap (in toke
 comment on column adi_knowledge_base.ingest_split_strategy is 'Split strategy: recursive/paragraph/line/sentence/custom';
 comment on column adi_knowledge_base.ingest_max_segment_size is 'Max segment size in tokens when chunking documents';
 comment on column adi_knowledge_base.ingest_custom_separator is 'Custom separator for splitting, only used when strategy is custom';
+comment on column adi_knowledge_base.ingest_child_max_segment_size is 'Parent-child segment mode: max child chunk size in tokens. KB-level tuning knob, same level as the other ingest_* columns';
 comment on column adi_knowledge_base.ingest_model_name is 'LLM used for indexing/graphing documents, defaults to first available LLM';
 comment on column adi_knowledge_base.ingest_model_id is 'LLM ID for indexing/graphing, defaults to first available LLM';
 comment on column adi_knowledge_base.ingest_token_estimator is 'Token count estimator, default is OpenAiTokenizer';
@@ -709,7 +711,7 @@ create trigger trigger_kb_update_time
     for each row
 execute procedure update_modified_column();
 
-create table adi_knowledge_base_item
+create table adi_document
 (
     id                           bigserial primary key,
     uuid                         varchar(32)  default ''                not null,
@@ -719,6 +721,7 @@ create table adi_knowledge_base_item
     title                        varchar(250) default ''                not null,
     brief                        varchar(250) default ''                not null,
     remark                       text         default ''                not null,
+    segment_mode                 varchar(20)  default 'text'            not null,
     embedding_status             int          default 1                 not null,
     embedding_status_change_time timestamp    default CURRENT_TIMESTAMP not null,
     graphical_status             int          default 1                 not null,
@@ -733,28 +736,161 @@ create table adi_knowledge_base_item
     is_deleted                   boolean      default false             not null
 );
 
-comment on table adi_knowledge_base_item is 'Knowledge Base Document';
-comment on column adi_knowledge_base_item.kb_id is 'Knowledge Base ID';
-comment on column adi_knowledge_base_item.source_file_id is 'Source File ID';
-comment on column adi_knowledge_base_item.title is 'Document Title';
-comment on column adi_knowledge_base_item.brief is 'Document Brief';
-comment on column adi_knowledge_base_item.remark is 'Document Content';
-comment on column adi_knowledge_base_item.embedding_status is 'Embedding status: 1=Not embedded, 2=Embedding, 3=Embedded, 4=Failed';
-comment on column adi_knowledge_base_item.embedding_status_change_time is 'Last embedding status change time';
-comment on column adi_knowledge_base_item.graphical_status is 'Graphical status: 1=Not graphed, 2=Graphing, 3=Graphed, 4=Failed';
-comment on column adi_knowledge_base_item.graphical_status_change_time is 'Last graphical status change time';
-comment on column adi_knowledge_base_item.embedding_hit_count is 'How many times this document was recalled via vector (embedding) retrieval';
-comment on column adi_knowledge_base_item.graph_hit_count is 'How many times this document was recalled via graph retrieval';
-comment on column adi_knowledge_base_item.word_count is 'Character count of the document content (auto-computed by PostgreSQL: char_length(remark))';
-comment on column adi_knowledge_base_item.is_enabled is 'Whether the document is enabled for retrieval (false = its segments are excluded from vector/graph search)';
-comment on column adi_knowledge_base_item.enabled_change_time is 'Last enabled/disabled status change time';
-comment on column adi_knowledge_base_item.create_time is 'Creation time';
-comment on column adi_knowledge_base_item.update_time is 'Last update time';
-comment on column adi_knowledge_base_item.is_deleted is 'Whether the record is soft-deleted';
+comment on table adi_document is 'Knowledge Base Document';
+comment on column adi_document.kb_id is 'Knowledge Base ID';
+comment on column adi_document.source_file_id is 'Source File ID';
+comment on column adi_document.title is 'Document Title';
+comment on column adi_document.brief is 'Document Brief';
+comment on column adi_document.remark is 'Document Content';
+comment on column adi_document.segment_mode is 'Segment mode of this document: text | qa | parent_child. text: segments are chunks (vectorized). qa: document_segment rows are answers (not vectorized), questions live in adi_document_segment_question (vectorized). parent_child: document_segment rows are parent chunks (not vectorized), child chunks live in adi_document_segment_child_chunk (vectorized)';
+comment on column adi_document.embedding_status is 'Embedding status: 1=Not embedded, 2=Embedding, 3=Embedded, 4=Failed';
+comment on column adi_document.embedding_status_change_time is 'Last embedding status change time';
+comment on column adi_document.graphical_status is 'Graphical status: 1=Not graphed, 2=Graphing, 3=Graphed, 4=Failed';
+comment on column adi_document.graphical_status_change_time is 'Last graphical status change time';
+comment on column adi_document.embedding_hit_count is 'How many times this document was recalled via vector (embedding) retrieval';
+comment on column adi_document.graph_hit_count is 'How many times this document was recalled via graph retrieval';
+comment on column adi_document.word_count is 'Character count of the document content (auto-computed by PostgreSQL: char_length(remark))';
+comment on column adi_document.is_enabled is 'Whether the document is enabled for retrieval (false = its segments are excluded from vector/graph search)';
+comment on column adi_document.enabled_change_time is 'Last enabled/disabled status change time';
+comment on column adi_document.create_time is 'Creation time';
+comment on column adi_document.update_time is 'Last update time';
+comment on column adi_document.is_deleted is 'Whether the record is soft-deleted';
 
-create trigger trigger_kb_item_update_time
+create trigger trigger_document_update_time
     before update
-    on adi_knowledge_base_item
+    on adi_document
+    for each row
+execute procedure update_modified_column();
+
+-- Single source of truth for segment content:
+--   * text mode    -> one row per chunk; content = chunk text; embedding_id NOT NULL (vectorized)
+--   * qa mode      -> one row per answer; content = answer text; embedding_id NULL
+--                     (questions are vectorized, stored in adi_document_segment_question)
+--   * parent_child -> one row per parent chunk; content = parent text; embedding_id NULL
+--                     (child chunks are vectorized, stored in adi_document_segment_child_chunk)
+create table adi_document_segment
+(
+    id           bigserial primary key,
+    uuid         varchar(32) default ''                 not null,
+    kb_uuid      varchar(32) default ''                 not null,
+    doc_uuid     varchar(32) default ''                 not null,
+    position     int         default 0                  not null,
+    content      text                                    not null,
+    word_count   int         GENERATED ALWAYS AS (char_length(content)) STORED not null,
+    hit_count    int         default 0                  not null,
+    embedding_id varchar(64),
+    source       varchar(20) default 'doc'              not null,
+    create_time  timestamp   default CURRENT_TIMESTAMP  not null,
+    update_time  timestamp   default CURRENT_TIMESTAMP  not null,
+    is_deleted   boolean     default false              not null
+);
+
+comment on table adi_document_segment is 'Document Segment (text chunk / QA answer / parent-child parent chunk) - single source of truth for segment content and metadata';
+comment on column adi_document_segment.uuid is 'Segment UUID (also used as graph textSegmentId when the segment is graph-indexed)';
+comment on column adi_document_segment.kb_uuid is 'Knowledge Base UUID';
+comment on column adi_document_segment.doc_uuid is 'Document UUID (adi_document.uuid)';
+comment on column adi_document_segment.position is 'Zero-based order of the segment inside the document';
+comment on column adi_document_segment.content is 'text: chunk text / qa: answer text / parent_child: parent chunk text (the content returned to the LLM after retrieval expansion)';
+comment on column adi_document_segment.word_count is 'Character count of the content (auto-computed by PostgreSQL: char_length(content))';
+comment on column adi_document_segment.hit_count is 'text: direct hits; qa/parent_child: propagated +1 when a linked question/child chunk is hit';
+comment on column adi_document_segment.embedding_id is 'Vector store entry id; NOT NULL only in text mode (answers and parent chunks are not vectorized)';
+comment on column adi_document_segment.source is 'Origin of the segment: doc (from document ingestion) | manual (created manually) | annotation (reserved for the future annotation feature)';
+comment on column adi_document_segment.create_time is 'Creation time';
+comment on column adi_document_segment.update_time is 'Last update time';
+comment on column adi_document_segment.is_deleted is 'Whether the record is soft-deleted';
+
+create unique index uk_document_segment_uuid on adi_document_segment (uuid);
+create index idx_document_segment_doc on adi_document_segment (doc_uuid, position);
+create index idx_document_segment_embedding on adi_document_segment (embedding_id);
+create index idx_document_segment_kb on adi_document_segment (kb_uuid);
+
+create trigger trigger_document_segment_update_time
+    before update
+    on adi_document_segment
+    for each row
+execute procedure update_modified_column();
+
+create table adi_document_segment_question
+(
+    id                bigserial primary key,
+    uuid              varchar(32) default ''                 not null,
+    kb_uuid           varchar(32) default ''                 not null,
+    doc_uuid          varchar(32) default ''                 not null,
+    answer_segment_id bigint      default 0                  not null,
+    position          int         default 0                  not null,
+    content           text                                    not null,
+    word_count        int         GENERATED ALWAYS AS (char_length(content)) STORED not null,
+    hit_count         int         default 0                  not null,
+    embedding_id      varchar(64),
+    create_time       timestamp   default CURRENT_TIMESTAMP  not null,
+    update_time       timestamp   default CURRENT_TIMESTAMP  not null,
+    is_deleted        boolean     default false              not null
+);
+
+comment on table adi_document_segment_question is 'QA-mode question of a document segment; the question text is vectorized, the answer lives in adi_document_segment';
+comment on column adi_document_segment_question.uuid is 'Question UUID';
+comment on column adi_document_segment_question.kb_uuid is 'Knowledge Base UUID';
+comment on column adi_document_segment_question.doc_uuid is 'Document UUID (adi_document.uuid)';
+comment on column adi_document_segment_question.answer_segment_id is 'Answer segment id (adi_document_segment.id); multiple questions may point to the same answer';
+comment on column adi_document_segment_question.position is 'Zero-based order of the question within its answer segment';
+comment on column adi_document_segment_question.content is 'Question original text (this is the content that gets vectorized)';
+comment on column adi_document_segment_question.word_count is 'Character count of the question (auto-computed by PostgreSQL: char_length(content))';
+comment on column adi_document_segment_question.hit_count is 'How many times this question was hit by vector retrieval';
+comment on column adi_document_segment_question.embedding_id is 'Vector store entry id';
+comment on column adi_document_segment_question.create_time is 'Creation time';
+comment on column adi_document_segment_question.update_time is 'Last update time';
+comment on column adi_document_segment_question.is_deleted is 'Whether the record is soft-deleted';
+
+create unique index uk_document_segment_question_uuid on adi_document_segment_question (uuid);
+create index idx_document_segment_question_answer on adi_document_segment_question (answer_segment_id, position);
+create index idx_document_segment_question_doc on adi_document_segment_question (doc_uuid);
+create index idx_document_segment_question_embedding on adi_document_segment_question (embedding_id);
+
+create trigger trigger_document_segment_question_update_time
+    before update
+    on adi_document_segment_question
+    for each row
+execute procedure update_modified_column();
+
+create table adi_document_segment_child_chunk
+(
+    id                bigserial primary key,
+    uuid              varchar(32) default ''                 not null,
+    kb_uuid           varchar(32) default ''                 not null,
+    doc_uuid          varchar(32) default ''                 not null,
+    parent_segment_id bigint      default 0                  not null,
+    position          int         default 0                  not null,
+    content           text                                    not null,
+    word_count        int         GENERATED ALWAYS AS (char_length(content)) STORED not null,
+    hit_count         int         default 0                  not null,
+    embedding_id      varchar(64),
+    create_time       timestamp   default CURRENT_TIMESTAMP  not null,
+    update_time       timestamp   default CURRENT_TIMESTAMP  not null,
+    is_deleted        boolean     default false              not null
+);
+
+comment on table adi_document_segment_child_chunk is 'Parent-child mode child chunk of a document segment; the child text is vectorized, the parent lives in adi_document_segment';
+comment on column adi_document_segment_child_chunk.uuid is 'Child chunk UUID';
+comment on column adi_document_segment_child_chunk.kb_uuid is 'Knowledge Base UUID';
+comment on column adi_document_segment_child_chunk.doc_uuid is 'Document UUID (adi_document.uuid)';
+comment on column adi_document_segment_child_chunk.parent_segment_id is 'Parent segment id (adi_document_segment.id); multiple children belong to one parent';
+comment on column adi_document_segment_child_chunk.position is 'Zero-based order of the child chunk within its parent segment';
+comment on column adi_document_segment_child_chunk.content is 'Child chunk original text (this is the content that gets vectorized)';
+comment on column adi_document_segment_child_chunk.word_count is 'Character count of the child chunk (auto-computed by PostgreSQL: char_length(content))';
+comment on column adi_document_segment_child_chunk.hit_count is 'How many times this child chunk was hit by vector retrieval';
+comment on column adi_document_segment_child_chunk.embedding_id is 'Vector store entry id';
+comment on column adi_document_segment_child_chunk.create_time is 'Creation time';
+comment on column adi_document_segment_child_chunk.update_time is 'Last update time';
+comment on column adi_document_segment_child_chunk.is_deleted is 'Whether the record is soft-deleted';
+
+create unique index uk_document_segment_child_chunk_uuid on adi_document_segment_child_chunk (uuid);
+create index idx_document_segment_child_chunk_parent on adi_document_segment_child_chunk (parent_segment_id, position);
+create index idx_document_segment_child_chunk_doc on adi_document_segment_child_chunk (doc_uuid);
+create index idx_document_segment_child_chunk_embedding on adi_document_segment_child_chunk (embedding_id);
+
+create trigger trigger_document_segment_child_chunk_update_time
+    before update
+    on adi_document_segment_child_chunk
     for each row
 execute procedure update_modified_column();
 
@@ -853,7 +989,7 @@ create table adi_knowledge_base_graph_segment
 comment on table adi_knowledge_base_graph_segment is 'Knowledge Base - Graph Segment';
 comment on column adi_knowledge_base_graph_segment.uuid is 'Unique identifier';
 comment on column adi_knowledge_base_graph_segment.kb_uuid is 'adi_knowledge_base UUID';
-comment on column adi_knowledge_base_graph_segment.kb_item_uuid is 'adi_knowledge_base_item UUID';
+comment on column adi_knowledge_base_graph_segment.kb_item_uuid is 'adi_document UUID';
 comment on column adi_knowledge_base_graph_segment.remark is 'Content';
 comment on column adi_knowledge_base_graph_segment.user_id is 'adi_user ID';
 comment on column adi_knowledge_base_graph_segment.create_time is 'Creation time';

@@ -1,7 +1,9 @@
 package com.moyz.adi.common.rag;
 
+import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.interfaces.IRAGService;
 import com.moyz.adi.common.util.InputAdaptor;
+import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.vo.EmbeddingIngestParam;
 import com.moyz.adi.common.vo.InputAdaptorMsg;
 import com.moyz.adi.common.vo.RetrieverCreateParam;
@@ -31,6 +33,11 @@ public class EmbeddingRag implements IRAGService {
     private final EmbeddingModel embeddingModel;
 
     private final EmbeddingStore<TextSegment> embeddingStore;
+
+    /**
+     * 知识库实例的召回后置处理器（懒加载，避免构造期依赖 Spring 容器）
+     */
+    private volatile RetrievedContentProcessor segmentExpandProcessor;
 
     public EmbeddingRag(String name, EmbeddingModel embeddingModel, EmbeddingStore<TextSegment> embeddingStore) {
         this.name = name;
@@ -72,14 +79,26 @@ public class EmbeddingRag implements IRAGService {
             Filter excludeFilter = new IsNotIn(MetadataKey.KB_ITEM_UUID, param.getExcludedItemUuids());
             filter = filter != null ? Filter.and(filter, excludeFilter) : excludeFilter;
         }
-        return AdiEmbeddingStoreContentRetriever.builder()
+        AdiEmbeddingStoreContentRetriever.AdiEmbeddingStoreContentRetrieverBuilder builder = AdiEmbeddingStoreContentRetriever.builder()
                 .embeddingStore(embeddingStore)
                 .embeddingModel(embeddingModel)
                 .maxResults(param.getMaxResults() <= 0 ? 3 : param.getMaxResults())
                 .minScore(param.getMinScore() <= 0 ? RAG_MIN_SCORE : param.getMinScore())
                 .filter(filter)
-                .breakIfSearchMissed(param.isBreakIfSearchMissed())
-                .build();
+                .breakIfSearchMissed(param.isBreakIfSearchMissed());
+        if (AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE.equals(name)) {
+            // 知识库召回挂"按模式展开"后置处理器（text 直用 / 问题→答案 / 子块→父段上卷去重）；
+            // 角色记忆两条通道不设置，行为不变。四个检索入口（流式问答、阻塞问答、工作流、角色聊天KB通道）均经此处自动生效
+            builder.contentPostProcessor(getSegmentExpandProcessor());
+        }
+        return builder.build();
+    }
+
+    private RetrievedContentProcessor getSegmentExpandProcessor() {
+        if (null == segmentExpandProcessor) {
+            segmentExpandProcessor = SpringUtil.getBean(SegmentExpandProcessor.class);
+        }
+        return segmentExpandProcessor;
     }
 
     /**

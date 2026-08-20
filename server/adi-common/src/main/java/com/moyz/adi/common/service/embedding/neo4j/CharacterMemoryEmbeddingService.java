@@ -1,7 +1,7 @@
 package com.moyz.adi.common.service.embedding.neo4j;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.moyz.adi.common.dto.KbItemEmbeddingDto;
+import com.moyz.adi.common.dto.KbDocumentEmbeddingDto;
 import com.moyz.adi.common.rag.neo4j.AdiNeo4jEmbeddingStore;
 import com.moyz.adi.common.service.embedding.ICharacterMemoryEmbeddingService;
 import dev.langchain4j.data.segment.TextSegment;
@@ -30,16 +30,16 @@ public class CharacterMemoryEmbeddingService implements ICharacterMemoryEmbeddin
     private EmbeddingStore<TextSegment> embeddingStore;
 
     @Override
-    public List<KbItemEmbeddingDto> listByEmbeddingIds(List<String> embeddingIds) {
+    public List<KbDocumentEmbeddingDto> listByEmbeddingIds(List<String> embeddingIds) {
         if (embeddingIds.isEmpty()) {
             log.warn("listByMemoryEmbeddingIds embeddingIds is empty");
             return new ArrayList<>();
         }
         EmbeddingSearchResult<TextSegment> searchResult = ((AdiNeo4jEmbeddingStore) embeddingStore).searchByIds(embeddingIds);
-        List<KbItemEmbeddingDto> result = new ArrayList<>();
+        List<KbDocumentEmbeddingDto> result = new ArrayList<>();
         for (EmbeddingMatch<TextSegment> embeddingMatch : searchResult.matches()) {
             result.add(
-                    KbItemEmbeddingDto
+                    KbDocumentEmbeddingDto
                             .builder()
                             .embeddingId(embeddingMatch.embeddingId())
                             .embedding(embeddingMatch.embedding().vector())

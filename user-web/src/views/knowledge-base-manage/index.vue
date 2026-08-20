@@ -376,6 +376,10 @@ onMounted(() => {
                 <NInputNumber v-model:value="tmpKb.ingestMaxSegmentSize" :min="100" />
               </div>
               <div>
+                <div>{{ t('knowledgeBase.childMaxSegmentSize') }}</div>
+                <NInputNumber v-model:value="tmpKb.ingestChildMaxSegmentSize" :min="50" />
+              </div>
+              <div>
                 <div>
                   {{ t('knowledgeBase.tokenCounter') }}
                 </div>

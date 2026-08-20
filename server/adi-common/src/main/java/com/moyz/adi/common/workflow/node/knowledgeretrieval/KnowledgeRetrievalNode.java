@@ -7,7 +7,7 @@ import com.moyz.adi.common.entity.WorkflowNode;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.rag.EmbeddingRag;
 import com.moyz.adi.common.rag.EmbeddingRagContext;
-import com.moyz.adi.common.service.KnowledgeBaseItemService;
+import com.moyz.adi.common.service.KbDocumentService;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.vo.RetrieverCreateParam;
@@ -76,7 +76,7 @@ public class KnowledgeRetrievalNode extends AbstractWfNode {
                 .maxResults(nodeConfigObj.getTopN())
                 .minScore(nodeConfigObj.getScore())
                 .breakIfSearchMissed(nodeConfigObj.getIsStrict())
-                .excludedItemUuids(new HashSet<>(SpringUtil.getBean(KnowledgeBaseItemService.class).listDisabledItemUuids(kbUuid)))
+                .excludedItemUuids(new HashSet<>(SpringUtil.getBean(KbDocumentService.class).listDisabledItemUuids(kbUuid)))
                 .build();
         EmbeddingRag embeddingRag = EmbeddingRagContext.get(AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE);
         ContentRetriever retriever = embeddingRag.createRetriever(kbRetrieveParam);

@@ -1,18 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.moyz.adi.common.mapper.KnowledgeBaseEmbeddingMapper">
-    <select id="countByKbUuid" resultType="java.lang.Integer">
-        select count(1)
-        from <include refid="getTableName"/>
-        where metadata ->> 'kb_uuid' = #{kbUuid}
-    </select>
-
-    <select id="selectByItemUuid" resultType="com.moyz.adi.common.entity.KnowledgeBaseEmbedding">
-        select *
-        from <include refid="getTableName"/>
-        where metadata ->> 'kb_item_uuid' = #{kbItemUuid}
-    </select>
-
+    <!-- 向量表退化为纯检索索引：text 置空、hit_count/word_count 不再维护（段级职责在 adi_document_segment*），
+         此处仅保留向量行的删除能力 -->
     <delete id="deleteByIds">
         delete from <include refid="getTableName"/> where embedding_id in
         <foreach collection="ids" open="(" separator="," close=")" item="id">
@@ -28,22 +18,6 @@
         <include refid="getTableName"/>
         where metadata ->> 'kb_item_uuid' = #{kbItemUuid}
     </delete>
-
-    <update id="incrementHitCount">
-        update
-        <include refid="getTableName"/>
-        set hit_count = hit_count + 1
-        where embedding_id in
-        <foreach collection="embeddingIds" open="(" separator="," close=")" item="id">#{id}::uuid</foreach>
-    </update>
-
-    <select id="selectKbItemUuidsByEmbeddingIds" resultType="java.lang.String">
-        select distinct metadata ->> 'kb_item_uuid'
-        from
-        <include refid="getTableName"/>
-        where embedding_id in
-        <foreach collection="embeddingIds" open="(" separator="," close=")" item="id">#{id}::uuid</foreach>
-    </select>
 
     <sql id="getTableName">
         <if test="tableSuffix != null and tableSuffix != ''">

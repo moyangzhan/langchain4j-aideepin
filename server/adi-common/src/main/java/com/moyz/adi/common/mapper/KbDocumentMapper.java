@@ -3,8 +3,8 @@ package com.moyz.adi.common.mapper;
 import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.moyz.adi.common.dto.KbItemDto;
-import com.moyz.adi.common.entity.KnowledgeBaseItem;
+import com.moyz.adi.common.dto.KbDocumentDto;
+import com.moyz.adi.common.entity.KbDocument;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -12,12 +12,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Mapper
-public interface KnowledgeBaseItemMapper extends BaseMapper<KnowledgeBaseItem> {
+public interface KbDocumentMapper extends BaseMapper<KbDocument> {
 
     @InterceptorIgnore(tenantLine = "true")
-    Page<KbItemDto> searchByKb(Page<KbItemDto> page, @Param("kbUuid") String kbUuid, @Param("keyword") String keyword);
+    Page<KbDocumentDto> searchByKb(Page<KbDocumentDto> page, @Param("kbUuid") String kbUuid, @Param("keyword") String keyword);
 
-    KnowledgeBaseItem getByUuid(String uuid);
+    KbDocument getByUuid(String uuid);
 
     Integer countCreatedByTimePeriod(@Param("beginTime") LocalDateTime beginTime, @Param("endTime") LocalDateTime endTime);
 

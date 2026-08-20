@@ -54,6 +54,11 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
 
     private final boolean breakIfSearchMissed;
 
+    /**
+     * 可选的召回后置处理器（知识库场景做按模式展开；角色记忆不设置，行为不变）
+     */
+    private final RetrievedContentProcessor contentPostProcessor;
+
     public AdiEmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore,
                                              EmbeddingModel embeddingModel) {
         this(
@@ -63,7 +68,8 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
                 DEFAULT_MAX_RESULTS,
                 DEFAULT_MIN_SCORE,
                 DEFAULT_FILTER,
-                false
+                false,
+                null
         );
     }
 
@@ -77,7 +83,8 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
                 (query) -> maxResults,
                 DEFAULT_MIN_SCORE,
                 DEFAULT_FILTER,
-                false
+                false,
+                null
         );
     }
 
@@ -92,7 +99,8 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
                 (query) -> maxResults,
                 (query) -> minScore,
                 DEFAULT_FILTER,
-                false
+                false,
+                null
         );
     }
 
@@ -102,7 +110,8 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
                                               Function<Query, Integer> dynamicMaxResults,
                                               Function<Query, Double> dynamicMinScore,
                                               Function<Query, Filter> dynamicFilter,
-                                              Boolean breakIfSearchMissed) {
+                                              Boolean breakIfSearchMissed,
+                                              RetrievedContentProcessor contentPostProcessor) {
         this.displayName = getOrDefault(displayName, DEFAULT_DISPLAY_NAME);
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
         this.embeddingModel = ensureNotNull(
@@ -113,6 +122,7 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
         this.minScoreProvider = getOrDefault(dynamicMinScore, DEFAULT_MIN_SCORE);
         this.filterProvider = getOrDefault(dynamicFilter, DEFAULT_FILTER);
         this.breakIfSearchMissed = breakIfSearchMissed;
+        this.contentPostProcessor = contentPostProcessor;
     }
 
     private static EmbeddingModel loadEmbeddingModel() {
@@ -143,6 +153,8 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
         private Function<Query, Filter> dynamicFilter;
 
         private Boolean breakIfSearchMissed;
+
+        private RetrievedContentProcessor contentPostProcessor;
 
         AdiEmbeddingStoreContentRetrieverBuilder() {
         }
@@ -203,8 +215,13 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
             return this;
         }
 
+        public AdiEmbeddingStoreContentRetrieverBuilder contentPostProcessor(RetrievedContentProcessor contentPostProcessor) {
+            this.contentPostProcessor = contentPostProcessor;
+            return this;
+        }
+
         public AdiEmbeddingStoreContentRetriever build() {
-            return new AdiEmbeddingStoreContentRetriever(this.displayName, this.embeddingStore, this.embeddingModel, this.dynamicMaxResults, this.dynamicMinScore, this.dynamicFilter, this.breakIfSearchMissed);
+            return new AdiEmbeddingStoreContentRetriever(this.displayName, this.embeddingStore, this.embeddingModel, this.dynamicMaxResults, this.dynamicMinScore, this.dynamicFilter, this.breakIfSearchMissed, this.contentPostProcessor);
         }
 
 
@@ -235,17 +252,24 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
 
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
 
-        List<Content> result = searchResult.matches().stream()
-                .peek(item -> {
-                    embeddingToScore.put(item.embeddingId(), item.score());
-                    log.info("embeddingToScore,embeddingId:{},score:{}", item.embeddingId(), item.score());
-                })
-                .map(EmbeddingMatch::embedded)
-                .map(Content::from)
-                .collect(toList());
+        List<Content> result;
+        if (null != contentPostProcessor) {
+            // 按模式展开（问题→答案、子块→父段上卷去重），并由处理器登记保留下来的命中分数；
+            // 查不到关系行的命中会被丢弃（向量表 text 已置空，无回退来源）
+            result = contentPostProcessor.process(query, searchResult.matches(), embeddingToScore);
+        } else {
+            result = searchResult.matches().stream()
+                    .peek(item -> {
+                        embeddingToScore.put(item.embeddingId(), item.score());
+                        log.info("embeddingToScore,embeddingId:{},score:{}", item.embeddingId(), item.score());
+                    })
+                    .map(EmbeddingMatch::embedded)
+                    .map(Content::from)
+                    .collect(toList());
+        }
 
-//Determine whether to forcibly interrupt the query, if no match then stop further operations
-        //判断是否要强行中断查询，没有命中则不再进行下一步操作（比如说请求LLM），直接抛出异常中断流程
+//Determine whether to forcibly interrupt the query, if no valid content then stop further operations
+        //判断是否要强行中断查询：strict 模式的 miss 判断后移到展开+过滤之后，"无有效内容则中断"
         if (breakIfSearchMissed && CollectionUtils.isEmpty(result)) {
             log.warn("Embedding search missed,query:{}", query.text());
             throw new BaseException(B_BREAK_SEARCH);

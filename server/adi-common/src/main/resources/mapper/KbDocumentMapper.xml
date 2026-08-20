@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.moyz.adi.common.mapper.KnowledgeBaseItemMapper">
+<mapper namespace="com.moyz.adi.common.mapper.KbDocumentMapper">
 
-    <select id="searchByKb" parameterType="Map" resultType="com.moyz.adi.common.dto.KbItemDto">
+    <select id="searchByKb" parameterType="Map" resultType="com.moyz.adi.common.dto.KbDocumentDto">
         select a.*, b.name source_file_name, b.uuid source_file_uuid, b.storage_location
-        from adi_knowledge_base_item a
+        from adi_document a
         left join adi_file b on a.source_file_id = b.id
         where a.is_deleted = false
         and a.kb_uuid = #{kbUuid}
@@ -14,29 +14,29 @@
         order by create_time desc
     </select>
 
-    <select id="getByUuid" resultType="com.moyz.adi.common.entity.KnowledgeBaseItem">
+    <select id="getByUuid" resultType="com.moyz.adi.common.entity.KbDocument">
         select *
-        from adi_knowledge_base_item a
+        from adi_document a
         where uuid = #{uuid}
     </select>
 
     <select id="countCreatedByTimePeriod" resultType="Integer">
         select count(1)
-        from adi_knowledge_base_item
+        from adi_document
         where is_deleted = false
           and create_time between #{beginTime} and #{endTime}
     </select>
 
     <select id="countAllCreated" resultType="Integer">
         select count(1)
-        from adi_knowledge_base_item
+        from adi_document
         where is_deleted = false
     </select>
 
     <!-- Write privilege: the owner of the item's knowledge base must be the current user -->
     <select id="checkWritePrivilege" resultType="Integer">
         select count(1)
-        from adi_knowledge_base_item a
+        from adi_document a
                  inner join adi_knowledge_base b on a.kb_id = b.id
         where a.is_deleted = false
           and a.uuid = #{uuid}
@@ -46,7 +46,7 @@
     <!-- Read privilege: the item's knowledge base is owned by the current user, or is public -->
     <select id="checkReadPrivilege" resultType="Integer">
         select count(1)
-        from adi_knowledge_base_item a
+        from adi_document a
                  inner join adi_knowledge_base b on a.kb_id = b.id
         where a.is_deleted = false
           and a.uuid = #{uuid}
@@ -65,7 +65,7 @@
     <!-- Write privilege keyed by item id: the owner of the item's knowledge base must be the current user -->
     <select id="checkWritePrivilegeById" resultType="Integer">
         select count(1)
-        from adi_knowledge_base_item a
+        from adi_document a
                  inner join adi_knowledge_base b on a.kb_id = b.id
         where a.is_deleted = false
           and a.id = #{id}
@@ -73,7 +73,7 @@
     </select>
 
     <update id="incrementEmbeddingHitCount">
-        update adi_knowledge_base_item
+        update adi_document
         set embedding_hit_count = embedding_hit_count + 1
         where is_deleted = false
           and uuid in
@@ -81,7 +81,7 @@
     </update>
 
     <update id="incrementGraphHitCount">
-        update adi_knowledge_base_item
+        update adi_document
         set graph_hit_count = graph_hit_count + 1
         where is_deleted = false
           and uuid in
@@ -90,7 +90,7 @@
 
     <select id="listDisabledItemUuids" resultType="java.lang.String">
         select uuid
-        from adi_knowledge_base_item
+        from adi_document
         where is_deleted = false
           and kb_uuid = #{kbUuid}
           and is_enabled = false

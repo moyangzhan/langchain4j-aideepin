@@ -129,6 +129,32 @@ public class AdiNeo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     /**
+     * Clear the text property on the given embedding nodes (KB store only).
+     * Called by the neo4j segment backfill runner after the content has been
+     * materialized into adi_document_segment — the relational tables are the
+     * single source of truth and the vector store degrades to a pure index.
+     * <p>
+     * 仅用于知识库向量表：内容回填进关系表后清空节点 text，使向量表退化为纯检索索引。
+     */
+    public void clearText(List<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        try (var session = session()) {
+            String cypherQuery = """
+                    MATCH (node:%s)
+                    WHERE node.%s IS NOT NULL AND node.id IN $ids
+                    SET node.text = ''
+                    """.formatted(this.sanitizedLabel, this.embeddingProperty);
+            Map<String, Object> params = new HashMap<>();
+            params.put("ids", ids);
+            session.run(cypherQuery, params);
+        } catch (Exception e) {
+            log.warn("Failed to clear text for {} embedding nodes", ids.size(), e);
+        }
+    }
+
+    /**
      * Set word_count to the character length of the text property on the given nodes.
      * Called right after {@code add}/{@code addAll} so the property is always populated.
      * Failures are logged but do not block the embedding insert — word_count is

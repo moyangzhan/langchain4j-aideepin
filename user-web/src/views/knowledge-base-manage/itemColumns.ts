@@ -4,7 +4,7 @@ import type { VNode } from 'vue'
 import { NButton, NEllipsis, NSwitch } from 'naive-ui'
 import { t } from '@/locales'
 
-export const createColumns = (showEmbeddingListFn: Function, showGraphFn: Function, showFileContentFn: Function, changeItemShowModalFn: Function, deleteKbItemFn: Function, toggleStatusFn: Function): DataTableColumns<KnowledgeBase.Item> => {
+export const createColumns = (showEmbeddingListFn: Function, showGraphFn: Function, showFileContentFn: Function, changeItemShowModalFn: Function, deleteKbItemFn: Function, toggleStatusFn: Function, generateQaFn: Function = () => {}): DataTableColumns<KnowledgeBase.Item> => {
   return [
     {
       type: 'selection',
@@ -164,6 +164,18 @@ export const createColumns = (showEmbeddingListFn: Function, showGraphFn: Functi
               },
               { default: () => t('common.delete') },
             ),
+            row.segmentMode !== 'qa' && row.segmentMode !== 'parent_child'
+              ? h(
+                  NButton,
+                  {
+                    tertiary: true,
+                    size: 'small',
+                    type: 'warning',
+                    onClick: () => generateQaFn(row),
+                  },
+                  { default: () => t('knowledgeBase.generateQa') },
+                )
+              : null,
           ],
         })
       },

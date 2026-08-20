@@ -1,12 +1,9 @@
 package com.moyz.adi.common.service;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.moyz.adi.common.dto.KbItemEmbeddingDto;
 import com.moyz.adi.common.dto.RefEmbeddingDto;
 import com.moyz.adi.common.entity.KnowledgeBaseQaRefEmbedding;
 import com.moyz.adi.common.mapper.KnowledgeBaseQaRecordReferenceMapper;
-import com.moyz.adi.common.service.embedding.IKnowledgeEmbeddingService;
-import com.moyz.adi.common.util.EmbeddingUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -19,8 +16,11 @@ import java.util.List;
 @Service
 public class KnowledgeBaseQaRecordReferenceService extends ServiceImpl<KnowledgeBaseQaRecordReferenceMapper, KnowledgeBaseQaRefEmbedding> {
 
+    /**
+     * 段内容唯一事实源在关系表：text→段内容；问题→答案内容；子块→父段内容
+     */
     @Resource
-    private IKnowledgeEmbeddingService iKnowledgeEmbeddingService;
+    private DocumentSegmentService documentSegmentService;
 
     public List<RefEmbeddingDto> listRefEmbeddings(String aqRecordUuid) {
         List<KnowledgeBaseQaRefEmbedding> recordReferences = this.getBaseMapper().listByQaUuid(aqRecordUuid);
@@ -31,7 +31,6 @@ public class KnowledgeBaseQaRecordReferenceService extends ServiceImpl<Knowledge
         if (CollectionUtils.isEmpty(embeddingIds)) {
             return Collections.emptyList();
         }
-        List<KbItemEmbeddingDto> embeddings = iKnowledgeEmbeddingService.listByEmbeddingIds(embeddingIds);
-        return EmbeddingUtil.itemToRefEmbeddingDto(embeddings);
+        return documentSegmentService.listRefTextsByEmbeddingIds(embeddingIds);
     }
 }

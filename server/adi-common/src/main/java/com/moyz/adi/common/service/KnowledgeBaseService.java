@@ -14,6 +14,7 @@ import com.moyz.adi.common.dto.KbSearchReq;
 import com.moyz.adi.common.dto.RefGraphDto;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.enums.LLMCallRecordSourceType;
+import com.moyz.adi.common.enums.SegmentModeEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.file.FileOperatorContext;
 import com.moyz.adi.common.helper.LLMContext;
@@ -22,7 +23,6 @@ import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.memory.shortterm.MapDBChatMemoryStore;
 import com.moyz.adi.common.rag.*;
-import com.moyz.adi.common.service.embedding.IKnowledgeEmbeddingService;
 import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.util.NumberUtil;
 import com.moyz.adi.common.vo.*;
@@ -77,7 +77,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     private StringRedisTemplate stringRedisTemplate;
 
     @Resource
-    private KnowledgeBaseItemService knowledgeBaseItemService;
+    private KbDocumentService kbDocumentService;
 
     @Resource
     private KnowledgeBaseQaService knowledgeBaseQaRecordService;
@@ -98,7 +98,10 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     private AiModelService aiModelService;
 
     @Resource
-    private IKnowledgeEmbeddingService embeddingService;
+    private DocumentSegmentService documentSegmentService;
+
+    @Resource
+    private DocumentQaService documentQaService;
 
     @Resource
     private LLMCallRecordService llmCallRecordService;
@@ -131,6 +134,19 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             baseMapper.updateById(knowledgeBase);
         }
         return knowledgeBase;
+    }
+
+    /**
+     * 批量导入 QA 对（Dify 格式）：生成 qa 模式文档并触发向量化（含 USER_INDEXING 守卫）
+     */
+    public KbDocument uploadQa(String kbUuid, MultipartFile file) {
+        checkWritePrivilege(null, kbUuid);
+        KnowledgeBase knowledgeBase = getOrThrow(kbUuid);
+        String fileName = file.getOriginalFilename();
+        KbDocument doc = documentQaService.importQa(knowledgeBase, fileName == null || fileName.isBlank() ? "qa_import" : fileName, file);
+        indexItems(List.of(doc.getUuid()), List.of(AdiConstant.DOC_INDEX_TYPE_EMBEDDING));
+        stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, kbUuid);
+        return doc;
     }
 
     public List<AdiFile> uploadDocs(String kbUuid, Boolean embedding, MultipartFile[] docs, List<String> indexTypes) {
@@ -180,7 +196,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 //PostgreSQL does not support \u0000
             //postgresql不支持\u0000
             String content = document.text().replace("\u0000", "");
-            KnowledgeBaseItem knowledgeBaseItem = new KnowledgeBaseItem();
+            KbDocument knowledgeBaseItem = new KbDocument();
             knowledgeBaseItem.setUuid(uuid);
             knowledgeBaseItem.setKbId(knowledgeBase.getId());
             knowledgeBaseItem.setKbUuid(knowledgeBase.getUuid());
@@ -188,7 +204,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             knowledgeBaseItem.setTitle(fileName);
             knowledgeBaseItem.setBrief(StringUtils.substring(content, 0, 200));
             knowledgeBaseItem.setRemark(content);
-            boolean success = knowledgeBaseItemService.save(knowledgeBaseItem);
+            // 分段模式为文档级，普通文件上传默认 text；QA 模式文档由问答导入/生成流程创建
+            knowledgeBaseItem.setSegmentMode(SegmentModeEnum.TEXT);
+            boolean success = kbDocumentService.save(knowledgeBaseItem);
             if (success && Boolean.TRUE.equals(indexAfterUpload)) {
                 indexItems(List.of(uuid), indexTypes);
             }
@@ -212,10 +230,11 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     public boolean indexing(String kbUuid, List<String> indexTypes) {
         checkWritePrivilege(null, kbUuid);
         KnowledgeBase knowledgeBase = this.getOrThrow(kbUuid);
-        LambdaQueryWrapper<KnowledgeBaseItem> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(KnowledgeBaseItem::getIsDeleted, false);
-        wrapper.eq(KnowledgeBaseItem::getUuid, kbUuid);
-        BizPager.oneByOneWithAnchor(wrapper, knowledgeBaseItemService, KnowledgeBaseItem::getId, kbItem -> knowledgeBaseItemService.asyncIndex(ThreadContext.getCurrentUser(), knowledgeBase, kbItem, indexTypes));
+        LambdaQueryWrapper<KbDocument> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(KbDocument::getIsDeleted, false);
+        // 按知识库uuid过滤该库下所有文档（原误用文档uuid列匹配kbUuid，导致全库索引恒为空）
+        wrapper.eq(KbDocument::getKbUuid, kbUuid);
+        BizPager.oneByOneWithAnchor(wrapper, kbDocumentService, KbDocument::getId, kbItem -> kbDocumentService.asyncIndex(ThreadContext.getCurrentUser(), knowledgeBase, kbItem, indexTypes));
         return true;
     }
 
@@ -238,7 +257,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             throw new BaseException(A_DOC_INDEX_DOING);
         }
         try {
-            return knowledgeBaseItemService.checkAndIndexing(knowledgeBase, itemUuids, indexTypes);
+            return kbDocumentService.checkAndIndexing(knowledgeBase, itemUuids, indexTypes);
         } catch (Exception e) {
             log.error("indexItems error", e);
             throw e;
@@ -377,7 +396,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                     .maxResults(maxResults)
                     .minScore(knowledgeBase.getRetrieveMinScore())
                     .breakIfSearchMissed(knowledgeBase.getIsStrict())
-                    .excludedItemUuids(new HashSet<>(knowledgeBaseItemService.listDisabledItemUuids(qaRecord.getKbUuid())))
+                    .excludedItemUuids(new HashSet<>(kbDocumentService.listDisabledItemUuids(qaRecord.getKbUuid())))
                     .build();
             CompositeRag compositeRag = new CompositeRag(AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE);
             List<RetrieverWrapper> retrieverWrappers = compositeRag.createRetriever(createParam);
@@ -592,7 +611,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                         .maxResults(maxResults)
                         .minScore(knowledgeBase.getRetrieveMinScore())
                         .breakIfSearchMissed(knowledgeBase.getIsStrict())
-                        .excludedItemUuids(new HashSet<>(knowledgeBaseItemService.listDisabledItemUuids(qaRecord.getKbUuid())))
+                        .excludedItemUuids(new HashSet<>(kbDocumentService.listDisabledItemUuids(qaRecord.getKbUuid())))
                         .build();
                 CompositeRag compositeRag = new CompositeRag(KNOWLEDGE_BASE);
                 List<RetrieverWrapper> retrieverWrappers = compositeRag.createRetriever(createParam);
@@ -694,11 +713,11 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             if (retriever instanceof AdiEmbeddingStoreContentRetriever embeddingRetriever) {
                 Map<String, Double> embeddingToScore = embeddingRetriever.getRetrievedEmbeddingToScore();
                 knowledgeBaseQaRecordService.createEmbeddingRefs(user, qaId, embeddingToScore);
-                // Increment embedding segment hit count
+                // Increment segment-level hit count (text segment / question / child chunk, with propagation to answers/parents)
                 List<String> embeddingIds = new ArrayList<>(embeddingToScore.keySet());
-                embeddingService.incrementHitCount(embeddingIds);
-                // Collect document UUIDs for document-level embedding hit count
-                embeddingHitItemUuids.addAll(embeddingService.selectKbItemUuidsByEmbeddingIds(embeddingIds));
+                documentSegmentService.incrementHitCounts(embeddingIds);
+                // Collect document UUIDs for document-level embedding hit count (from the relational segment tables)
+                embeddingHitItemUuids.addAll(documentSegmentService.selectDocUuidsByEmbeddingIds(embeddingIds));
             } else if (retriever instanceof GraphStoreContentRetriever graphRetriever) {
                 RefGraphDto graphDto = graphRetriever.getGraphRef();
                 knowledgeBaseQaRecordService.createGraphRefs(user, qaId, graphDto);
@@ -720,10 +739,10 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         }
         // Increment document-level hit counts (embedding and graph tracked independently)
         if (!embeddingHitItemUuids.isEmpty()) {
-            knowledgeBaseItemService.incrementEmbeddingHitCount(new ArrayList<>(embeddingHitItemUuids));
+            kbDocumentService.incrementEmbeddingHitCount(new ArrayList<>(embeddingHitItemUuids));
         }
         if (!graphHitItemUuids.isEmpty()) {
-            knowledgeBaseItemService.incrementGraphHitCount(new ArrayList<>(graphHitItemUuids));
+            kbDocumentService.incrementGraphHitCount(new ArrayList<>(graphHitItemUuids));
         }
     }
 
@@ -784,7 +803,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             }
             for (String kbUuid : kbUuidList) {
                 try {
-                    int embeddingCount = embeddingService.countByKbUuid(kbUuid);
+                    int embeddingCount = documentSegmentService.countVectorizedByKbUuid(kbUuid);
                     baseMapper.updateStatByUuid(kbUuid, embeddingCount);
                 } catch (Exception e) {
                     log.error("Failed to update knowledge base statistics, kbUuid:{}", kbUuid, e);

@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { NBreadcrumb, NBreadcrumbItem, NButton, NCard, NInput, NSpace, NSpin, useMessage } from 'naive-ui'
+import { NBreadcrumb, NBreadcrumbItem, NButton, NCard, NInput, NSelect, NSpace, NSpin, useMessage } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 import { knowledgeBaseEmptyInfo, knowledgeBaseEmptyItem } from '@/utils/functions'
 import { t } from '@/locales'
@@ -18,6 +18,12 @@ const tmpItem = reactive<KnowledgeBase.Item>(knowledgeBaseEmptyItem())
 const submitting = ref<boolean>(false)
 const loading = ref<boolean>(false)
 
+const segmentModeOptions = [
+  { label: t('knowledgeBase.segmentModeText'), value: 'text' },
+  { label: t('knowledgeBase.segmentModeQa'), value: 'qa' },
+  { label: t('knowledgeBase.segmentModeParentChild'), value: 'parent_child' },
+]
+
 const pageTitle = computed(() => {
   return isEdit.value
     ? t('knowledgeBase.knowledgeItemEdit', { title: tmpItem.title })
@@ -33,9 +39,11 @@ async function saveOrUpdate() {
     await api.knowledgeBaseItemSaveOrUpdate<KnowledgeBase.Item>(tmpItem)
     ms.success(t('common.saveSuccess'))
     router.back()
-  } catch (error: any) {
+  }
+  catch (error: any) {
     ms.error(error.message ?? 'error')
-  } finally {
+  }
+  finally {
     submitting.value = false
   }
 }
@@ -48,11 +56,16 @@ onMounted(async () => {
     if (isEdit.value && itemUuid) {
       const resp = await api.knowledgeBaseItemInfo<KnowledgeBase.Item>(itemUuid)
       Object.assign(tmpItem, resp.data)
-    } else {
+      if (!tmpItem.segmentMode)
+        tmpItem.segmentMode = 'text'
+    }
+    else {
       tmpItem.kbId = curKb.id
       tmpItem.kbUuid = kbUuid
+      tmpItem.segmentMode = 'text'
     }
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 })
@@ -79,15 +92,22 @@ onMounted(async () => {
         <NSpace vertical>
           {{ t('store.title') }}
           <NInput v-model:value="tmpItem.title" maxlength="100" show-count />
+          {{ t('knowledgeBase.segmentMode') }}
+          <NSelect v-model:value="tmpItem.segmentMode" :options="segmentModeOptions" />
+          <div style="font-size: 12px; opacity: 0.7">
+            {{ t('knowledgeBase.segmentModeTip') }}
+          </div>
           {{ t('knowledgeBase.brief') }}
           <NInput v-model:value="tmpItem.brief" type="textarea" show-count :autosize="{ minRows: 2, maxRows: 3 }" />
-          {{ t('common.content') }}
-          <NInput
-            v-model:value="tmpItem.remark"
-            class="content-textarea"
-            type="textarea"
-            show-count
-          />
+          <template v-if="tmpItem.segmentMode !== 'qa'">
+            {{ t('common.content') }}
+            <NInput
+              v-model:value="tmpItem.remark"
+              class="content-textarea"
+              type="textarea"
+              show-count
+            />
+          </template>
         </NSpace>
       </NSpin>
       <template #footer>
@@ -106,7 +126,7 @@ onMounted(async () => {
 
 <style scoped>
 .content-textarea :deep(textarea) {
-  height: calc(100vh - 420px) !important;
+  height: calc(100vh - 480px) !important;
   resize: none;
 }
 </style>

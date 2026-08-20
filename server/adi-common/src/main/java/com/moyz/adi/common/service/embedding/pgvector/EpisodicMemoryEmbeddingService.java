@@ -2,7 +2,7 @@ package com.moyz.adi.common.service.embedding.pgvector;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.moyz.adi.common.dto.KbItemEmbeddingDto;
+import com.moyz.adi.common.dto.KbDocumentEmbeddingDto;
 import com.moyz.adi.common.entity.EpisodicMemoryEmbedding;
 import com.moyz.adi.common.mapper.EpisodicMemoryEmbeddingMapper;
 import com.moyz.adi.common.service.embedding.IEpisodicMemoryEmbeddingService;
@@ -27,7 +27,7 @@ import java.util.UUID;
 public class EpisodicMemoryEmbeddingService extends ServiceImpl<EpisodicMemoryEmbeddingMapper, EpisodicMemoryEmbedding> implements IEpisodicMemoryEmbeddingService {
 
     @Override
-    public List<KbItemEmbeddingDto> listByEmbeddingIds(List<String> embeddingIds) {
+    public List<KbDocumentEmbeddingDto> listByEmbeddingIds(List<String> embeddingIds) {
         if (embeddingIds == null || embeddingIds.isEmpty()) {
             return new ArrayList<>();
         }
@@ -38,7 +38,7 @@ public class EpisodicMemoryEmbeddingService extends ServiceImpl<EpisodicMemoryEm
     }
 
     @Override
-    public List<KbItemEmbeddingDto> listRecentByCharacter(Long characterId, int limit) {
+    public List<KbDocumentEmbeddingDto> listRecentByCharacter(Long characterId, int limit) {
         List<EpisodicMemoryEmbedding> rows = baseMapper.listRecentByCharacter(characterId, limit);
         return toDtos(rows);
     }
@@ -50,8 +50,8 @@ public class EpisodicMemoryEmbeddingService extends ServiceImpl<EpisodicMemoryEm
         }
     }
 
-    private List<KbItemEmbeddingDto> toDtos(List<EpisodicMemoryEmbedding> rows) {
-        return MPPageUtil.convertToList(rows, KbItemEmbeddingDto.class, (s, t) -> {
+    private List<KbDocumentEmbeddingDto> toDtos(List<EpisodicMemoryEmbedding> rows) {
+        return MPPageUtil.convertToList(rows, KbDocumentEmbeddingDto.class, (s, t) -> {
             if (s.getEmbedding() != null) {
                 t.setEmbedding(s.getEmbedding().toArray());
             }

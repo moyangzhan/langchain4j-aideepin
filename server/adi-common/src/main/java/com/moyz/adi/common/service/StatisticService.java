@@ -26,7 +26,7 @@ public class StatisticService {
     private KnowledgeBaseService knowledgeBaseService;
 
     @Resource
-    private KnowledgeBaseItemService knowledgeBaseItemService;
+    private KbDocumentService kbDocumentService;
 
     @Resource
     private CharacterService characterService;
@@ -82,8 +82,8 @@ public class StatisticService {
     public KbStatistic calKbStat() {
         int kbTodayCreated = knowledgeBaseService.countTodayCreated();
         int kbTotal = knowledgeBaseService.countAllCreated();
-        int itemTodayCreated = knowledgeBaseItemService.countTodayCreated();
-        int itemTotal = knowledgeBaseItemService.countAllCreated();
+        int itemTodayCreated = kbDocumentService.countTodayCreated();
+        int itemTotal = kbDocumentService.countAllCreated();
         KbStatistic stat = new KbStatistic();
         stat.setKbTodayCreated(kbTodayCreated);
         stat.setKbTotal(kbTotal);

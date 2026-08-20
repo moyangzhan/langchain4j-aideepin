@@ -2,7 +2,7 @@ package com.moyz.adi.common.service;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.moyz.adi.common.dto.KbItemEmbeddingDto;
+import com.moyz.adi.common.dto.KbDocumentEmbeddingDto;
 import com.moyz.adi.common.dto.RefEmbeddingDto;
 import com.moyz.adi.common.entity.CharacterMessageRefMemoryEmbedding;
 import com.moyz.adi.common.enums.MemoryType;
@@ -70,13 +70,13 @@ public class CharacterMessageRefMemoryEmbeddingService extends ServiceImpl<Chara
             return Collections.emptyList();
         }
 
-        Map<String, KbItemEmbeddingDto> byId = new HashMap<>();
+        Map<String, KbDocumentEmbeddingDto> byId = new HashMap<>();
         for (Map.Entry<MemoryType, List<String>> entry : byType.entrySet()) {
             List<String> ids = entry.getValue();
             if (ids.isEmpty()) {
                 continue;
             }
-            List<KbItemEmbeddingDto> hits = switch (entry.getKey()) {
+            List<KbDocumentEmbeddingDto> hits = switch (entry.getKey()) {
                 case SEMANTIC -> characterMemoryEmbeddingService.listByEmbeddingIds(ids);
                 case EPISODIC -> episodicMemoryEmbeddingService.listByEmbeddingIds(ids);
                 case PROCEDURAL -> {
@@ -87,16 +87,16 @@ public class CharacterMessageRefMemoryEmbeddingService extends ServiceImpl<Chara
                     yield Collections.emptyList();
                 }
             };
-            for (KbItemEmbeddingDto hit : hits) {
+            for (KbDocumentEmbeddingDto hit : hits) {
                 byId.put(hit.getEmbeddingId(), hit);
             }
         }
 
         // Preserve original ordering from the relational reference table.
         // 按关联表原始顺序输出。
-        List<KbItemEmbeddingDto> orderedHits = new ArrayList<>();
+        List<KbDocumentEmbeddingDto> orderedHits = new ArrayList<>();
         for (String id : orderedIds) {
-            KbItemEmbeddingDto hit = byId.get(id);
+            KbDocumentEmbeddingDto hit = byId.get(id);
             if (hit != null) {
                 orderedHits.add(hit);
             }

@@ -5,15 +5,16 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.moyz.adi.common.enums.EmbeddingStatusEnum;
 import com.moyz.adi.common.enums.GraphicalStatusEnum;
+import com.moyz.adi.common.enums.SegmentModeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.time.LocalDateTime;
 
 @Data
-@TableName("adi_knowledge_base_item")
+@TableName("adi_document")
 @Schema(title = "知识库文档实体 | Knowledge Base Document Entity", description = "知识库文档表 | Knowledge Base Document Table")
-public class KnowledgeBaseItem extends BaseEntity {
+public class KbDocument extends BaseEntity {
 
     @Schema(title = "知识库id | Knowledge Base ID")
     @TableField("kb_id")
@@ -42,6 +43,10 @@ public class KnowledgeBaseItem extends BaseEntity {
     @Schema(title = "内容 | Content")
     @TableField("remark")
     private String remark;
+
+    @Schema(title = "分段模式: text/qa/parent_child | Segment Mode")
+    @TableField("segment_mode")
+    private SegmentModeEnum segmentMode;
 
     @Schema(title = "向量化状态 | Embedding Status")
     @TableField("embedding_status")

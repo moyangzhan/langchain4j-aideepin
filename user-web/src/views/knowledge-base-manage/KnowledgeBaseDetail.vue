@@ -115,6 +115,50 @@ const showFileContent = (selected: KnowledgeBase.Item = knowledgeBaseEmptyItem()
   showFileContentModal.value = true
 }
 
+const showQaImportModal = ref<boolean>(false)
+
+function downloadQaTemplate() {
+  window.open('/api/document/qaImportTemplate')
+}
+
+function onQaUploadFinish({ event }: { event?: ProgressEvent }) {
+  showQaImportModal.value = false
+  try {
+    const resp = JSON.parse((event?.target as XMLHttpRequest)?.responseText || '{}')
+    if (resp.success) {
+      ms.success(t('common.uploadSuccess'))
+      indexingCheck()
+      search(1)
+    }
+    else {
+      ms.error(resp.message || t('common.uploadFailed'))
+    }
+  }
+  catch (e) {
+    ms.error(t('common.uploadFailed'))
+  }
+}
+
+function generateQa(row: KnowledgeBase.Item) {
+  dialog.warning({
+    title: t('knowledgeBase.generateQa'),
+    content: t('knowledgeBase.generateQaConfirm'),
+    positiveText: t('common.confirm'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: async () => {
+      try {
+        await api.documentGenerateQa(row.uuid)
+        ms.success(t('knowledgeBase.generateQa'))
+        indexingCheck()
+        search(1)
+      }
+      catch (error: any) {
+        ms.error(error.message ?? 'error')
+      }
+    },
+  })
+}
+
 const showEmbeddingList = (selected: KnowledgeBase.Item = knowledgeBaseEmptyItem()) => {
   showEmbeddingListModal.value = true
   kbItemUuidForEmbeddingList.value = selected.uuid
@@ -140,7 +184,7 @@ const serialColWidth = computed(() => {
   return Math.max(40, digits * 8 + 24)
 })
 const columns = computed(() => {
-  const cols = createColumns(showEmbeddingList, showGraph, showFileContent, editItem, deleteKbItem, toggleStatus)
+  const cols = createColumns(showEmbeddingList, showGraph, showFileContent, editItem, deleteKbItem, toggleStatus, generateQa)
   cols.splice(1, 0, {
     title: '#',
     key: 'serialNumber',
@@ -386,6 +430,9 @@ watch(
           <NButton type="primary" size="small" @click="router.push({ name: 'KnowledgeBaseItemAdd', params: { kbUuid: curKbUuid } })">
             {{ t('knowledgeBase.addByForm') }}
           </NButton>
+          <NButton type="primary" size="small" @click="() => (showQaImportModal = true)">
+            {{ t('knowledgeBase.importQa') }}
+          </NButton>
           <NButton type="primary" size="small" @click="() => showUploadModal = !showUploadModal">
             {{ t('knowledgeBase.addByFile') }}
           </NButton>
@@ -443,6 +490,31 @@ watch(
         </NFlex>
       </NSpace>
     </NCard>
+  </NModal>
+
+  <NModal v-model:show="showQaImportModal" style="width: 60%;" preset="card" :title="t('knowledgeBase.importQa')">
+    <NSpace vertical>
+      <NP>{{ t('knowledgeBase.importQaTip') }}</NP>
+      <NUpload
+        :max="1" accept=".xlsx,.xls,.csv" directory-dnd
+        :action="`/api/document/uploadQa/${curKbUuid}`"
+        :headers="headers" @finish="onQaUploadFinish"
+      >
+        <NUploadDragger>
+          <NText style="font-size: 16px">
+            {{ t('knowledgeBase.clickOrDragToUpload') }}
+          </NText>
+          <NP depth="3" style="margin: 8px 0 0 0">
+            XLSX / CSV
+          </NP>
+        </NUploadDragger>
+      </NUpload>
+      <NFlex>
+        <NButton type="primary" ghost @click="downloadQaTemplate">
+          {{ t('knowledgeBase.downloadTemplate') }}
+        </NButton>
+      </NFlex>
+    </NSpace>
   </NModal>
 
   <NModal v-model:show="showEmbeddingListModal" style="width: 90%; " preset="card" :title="t('knowledgeBase.embeddingList')">

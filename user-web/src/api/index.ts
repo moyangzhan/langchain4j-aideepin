@@ -509,39 +509,84 @@ function knowledgeBaseIndexingCheck<T = any>() {
 function knowledgeBaseItemSearch<T>(currentPage: number, pageSize: number, kbUuid: string, keyword?: string) {
   const search = keyword === undefined ? '' : `keyword=${keyword}&`
   return get<T>({
-    url: `/knowledge-base-item/search?${search}kbUuid=${kbUuid}&currentPage=${currentPage}&pageSize=${pageSize}`,
+    url: `/document/search?${search}kbUuid=${kbUuid}&currentPage=${currentPage}&pageSize=${pageSize}`,
   })
 }
 
 function knowledgeBaseItemSaveOrUpdate<T = any>(obj: KnowledgeBase.Item) {
   return post<T>({
-    url: '/knowledge-base-item/saveOrUpdate',
+    url: '/document/saveOrUpdate',
     data: obj,
   })
 }
 
 function knowledgeBaseItemDelete<T = any>(uuid: string) {
   return post<T>({
-    url: `/knowledge-base-item/del/${uuid}`,
+    url: `/document/del/${uuid}`,
   })
 }
 
 function knowledgeBaseItemToggleStatus<T = any>(uuid: string, isEnabled: boolean) {
   return post<T>({
-    url: '/knowledge-base-item/toggle-status',
+    url: '/document/toggle-status',
     data: { uuid, isEnabled },
   })
 }
 
 function knowledgeBaseItemInfo<T = any>(uuid: string) {
   return get<T>({
-    url: `/knowledge-base-item/info/${uuid}`,
+    url: `/document/info/${uuid}`,
   })
 }
 
-function knowledgeBaseEmbedding<T = any>(kbItemUuid: string, currentPage: number, pageSize: number) {
+function documentSegmentList<T = any>(docUuid: string, currentPage: number, pageSize: number) {
   return get<T>({
-    url: `/knowledge-base-embedding/list/${kbItemUuid}?currentPage=${currentPage}&pageSize=${pageSize}`,
+    url: `/document-segment/list/${docUuid}?currentPage=${currentPage}&pageSize=${pageSize}`,
+  })
+}
+
+function documentSegmentSaveOrUpdate<T = any>(obj: KnowledgeBase.Segment) {
+  return post<T>({
+    url: '/document-segment/saveOrUpdate',
+    data: obj,
+  })
+}
+
+function documentSegmentQuestionSaveOrUpdate<T = any>(obj: object) {
+  return post<T>({
+    url: '/document-segment/question/saveOrUpdate',
+    data: obj,
+  })
+}
+
+function documentSegmentChildSaveOrUpdate<T = any>(obj: object) {
+  return post<T>({
+    url: '/document-segment/child/saveOrUpdate',
+    data: obj,
+  })
+}
+
+function documentSegmentDel<T = any>(uuid: string) {
+  return post<T>({
+    url: `/document-segment/del/${uuid}`,
+  })
+}
+
+function documentSegmentQuestionDel<T = any>(uuid: string) {
+  return post<T>({
+    url: `/document-segment/question/del/${uuid}`,
+  })
+}
+
+function documentSegmentChildDel<T = any>(uuid: string) {
+  return post<T>({
+    url: `/document-segment/child/del/${uuid}`,
+  })
+}
+
+function documentGenerateQa<T = any>(uuid: string) {
+  return post<T>({
+    url: `/document/generateQa/${uuid}`,
   })
 }
 
@@ -844,7 +889,14 @@ export default {
   knowledgeBaseItemInfo,
   knowledgeBaseItemsIndexing,
   knowledgeBaseIndexingCheck,
-  knowledgeBaseEmbedding,
+  documentSegmentList,
+  documentSegmentSaveOrUpdate,
+  documentSegmentQuestionSaveOrUpdate,
+  documentSegmentChildSaveOrUpdate,
+  documentSegmentDel,
+  documentSegmentQuestionDel,
+  documentSegmentChildDel,
+  documentGenerateQa,
   knowledgeBaseGraph,
   knowledgeBaseQaSseAsk,
   knowledgeBaseQaRecordSearch,

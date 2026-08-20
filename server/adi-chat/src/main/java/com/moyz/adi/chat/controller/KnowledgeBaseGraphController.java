@@ -1,7 +1,7 @@
 package com.moyz.adi.chat.controller;
 
 import com.moyz.adi.common.service.KnowledgeBaseGraphService;
-import com.moyz.adi.common.service.KnowledgeBaseItemService;
+import com.moyz.adi.common.service.KbDocumentService;
 import com.moyz.adi.common.vo.GraphEdge;
 import com.moyz.adi.common.vo.GraphVertex;
 import jakarta.annotation.Resource;
@@ -23,11 +23,11 @@ public class KnowledgeBaseGraphController {
     private KnowledgeBaseGraphService knowledgeBaseGraphService;
 
     @Resource
-    private KnowledgeBaseItemService knowledgeBaseItemService;
+    private KbDocumentService kbDocumentService;
 
     @GetMapping("/list/{kbItemUuid}")
     public Map<String, Object> list(@PathVariable String kbItemUuid, @RequestParam(defaultValue = Long.MAX_VALUE + "") Long maxVertexId, @RequestParam(defaultValue = Long.MAX_VALUE + "") Long maxEdgeId, @RequestParam(defaultValue = "-1") int limit) {
-        knowledgeBaseItemService.checkReadPrivilege(kbItemUuid);
+        kbDocumentService.checkReadPrivilege(kbItemUuid);
         List<GraphVertex> vertices = knowledgeBaseGraphService.listVerticesByKbItemUuid(kbItemUuid, maxVertexId, limit);
         List<Triple<GraphVertex, GraphEdge, GraphVertex>> edgeWithVertices = knowledgeBaseGraphService.listEdgesByKbItemUuid(kbItemUuid, maxEdgeId, limit);
         Pair<List<GraphVertex>, List<GraphEdge>> pair = knowledgeBaseGraphService.getFromTriple(edgeWithVertices);

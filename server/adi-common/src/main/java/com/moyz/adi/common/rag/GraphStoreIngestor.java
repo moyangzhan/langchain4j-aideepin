@@ -5,12 +5,7 @@ import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.util.AdiStringUtil;
 import com.moyz.adi.common.vo.*;
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentSplitter;
-import dev.langchain4j.data.document.DocumentTransformer;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.data.segment.TextSegmentTransformer;
-import dev.langchain4j.spi.data.document.splitter.DocumentSplitterFactory;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import lombok.AllArgsConstructor;
@@ -22,27 +17,24 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.MAX_METADATA_VALUE_LENGTH;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.util.Collections.singletonList;
 
+/**
+ * 图谱存储入库器：把「段抽取结果」写入图数据库。
+ * <p>
+ * 切段职责已上移到 SegmentIndexService（document_segment 为唯一事实源），
+ * 本类只负责：LLM 已抽取出的实体/关系 → 顶点/边的合并写入。
+ * 每个元素为 Triple(段TextSegment, 段uuid即textSegmentId, LLM抽取响应)。
+ */
 @Builder
 @AllArgsConstructor
 @Slf4j
 public class GraphStoreIngestor {
 
-    private final DocumentTransformer documentTransformer;
-    private final TextSegmentTransformer textSegmentTransformer;
     private final GraphStore graphStore;
-    private final DocumentSplitter documentSplitter;
-    private final Function<List<TextSegment>, List<Triple<TextSegment, String, String>>> segmentsFunction;
 
     /**
      * 查询时 where 语句的条件字段名
@@ -55,80 +47,20 @@ public class GraphStoreIngestor {
      */
     private final List<String> appendColumns;
 
-    public GraphStoreIngestor(DocumentTransformer documentTransformer,
-                              DocumentSplitter documentSplitter,
-                              GraphStore graphStore,
-                              TextSegmentTransformer textSegmentTransformer,
-                              Function<List<TextSegment>, List<Triple<TextSegment, String, String>>> segmentsFunction,
-                              String identifyColumns,
-                              String appendColumns) {
-        this.graphStore = ensureNotNull(graphStore, "graphStore");
-        this.documentTransformer = documentTransformer;
-        this.documentSplitter = getOrDefault(documentSplitter, GraphStoreIngestor::loadDocumentSplitter);
-        this.textSegmentTransformer = textSegmentTransformer;
-        this.segmentsFunction = segmentsFunction;
-        this.identifyColumns = Arrays.asList(identifyColumns.split(","));
-        this.appendColumns = Arrays.asList(appendColumns.split(","));
-    }
-
-    private static DocumentSplitter loadDocumentSplitter() {
-        Collection<DocumentSplitterFactory> factories = loadFactories(DocumentSplitterFactory.class);
-        if (factories.size() > 1) {
-            throw new RuntimeException("Conflict: multiple document splitters have been found in the classpath. " +
-                                       "Please explicitly specify the one you wish to use.");
-        }
-
-        for (DocumentSplitterFactory factory : factories) {
-            DocumentSplitter documentSplitter = factory.create();
-            log.debug("Loaded the following document splitter through SPI: {}", documentSplitter);
-            return documentSplitter;
-        }
-
-        return null;
-    }
-
-    public void ingest(Document document) {
-        ingest(singletonList(document));
-    }
-
-    public void ingest(List<Document> documents) {
-
-        log.info("Starting to ingest {} documents", documents.size());
-
-        if (documentTransformer != null) {
-            documents = documentTransformer.transformAll(documents);
-            log.info("Documents were transformed into {} documents", documents.size());
-        }
-        List<TextSegment> segments;
-        if (documentSplitter != null) {
-            segments = documentSplitter.splitAll(documents);
-            log.info("Documents were split into {} text segments", segments.size());
-        } else {
-            segments = documents.stream()
-                    .map(Document::toTextSegment)
-                    .toList();
-        }
-        if (textSegmentTransformer != null) {
-            segments = textSegmentTransformer.transformAll(segments);
-            log.info("Text segments were transformed into {} text segments", documents.size());
-        }
-
-        // TODO handle failures, parallelize
-        log.info("Starting to extract {} text segments", segments.size());
-        List<Triple<TextSegment, String, String>> segmentIdToAiResponse = segmentsFunction.apply(segments);
-        for (Triple<TextSegment, String, String> triple : segmentIdToAiResponse) {
+    /**
+     * 把图谱抽取结果写入图数据库。extracted 为空时直接返回。
+     */
+    public void ingestExtracted(List<Triple<TextSegment, String, String>> extracted) {
+        log.info("Starting to store {} extracted segments into the graph store", extracted.size());
+        for (Triple<TextSegment, String, String> triple : extracted) {
             TextSegment segment = triple.getLeft();
             String textSegmentId = triple.getMiddle();
             String response = triple.getRight();
             Map<String, Object> metadata = segment.metadata().toMap();
-            log.info("Finished extract {} text segments", segments.size());
-            log.info("graph response:{}", response);
-            // TODO handle failures, parallelize
-            log.info("Starting to store {} text segments into the graph store", segments.size());
+            log.info("Graph response:{}", response);
             if (StringUtils.isBlank(response)) {
-                log.warn("Response is empty");
-                log.info("Finished storing {} text segments into the graph store", segments.size());
-                return;
+                log.warn("Response is empty, segmentId:{}", textSegmentId);
+                continue;
             }
 
             Filter filter = null;
@@ -294,7 +226,7 @@ public class GraphStoreIngestor {
             }
         }
 
-        log.info("Finished storing {} text segments into the graph store", segments.size());
+        log.info("Finished storing {} extracted segments into the graph store", extracted.size());
     }
 
     /**

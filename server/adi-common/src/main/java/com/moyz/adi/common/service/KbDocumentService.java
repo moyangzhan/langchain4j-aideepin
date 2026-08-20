@@ -5,27 +5,24 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.AdiConstant;
-import com.moyz.adi.common.dto.KbItemDto;
-import com.moyz.adi.common.dto.KbItemEditReq;
+import com.moyz.adi.common.dto.KbDocumentDto;
+import com.moyz.adi.common.dto.KbDocumentEditReq;
 import com.moyz.adi.common.entity.KnowledgeBase;
-import com.moyz.adi.common.entity.KnowledgeBaseItem;
+import com.moyz.adi.common.entity.DocumentSegment;
+import com.moyz.adi.common.entity.KbDocument;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.EmbeddingStatusEnum;
 import com.moyz.adi.common.enums.GraphicalStatusEnum;
+import com.moyz.adi.common.enums.SegmentModeEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.LLMContext;
-import com.moyz.adi.common.mapper.KnowledgeBaseItemMapper;
-import com.moyz.adi.common.rag.EmbeddingRagContext;
+import com.moyz.adi.common.mapper.KbDocumentMapper;
 import com.moyz.adi.common.rag.GraphRagContext;
 import com.moyz.adi.common.service.embedding.IKnowledgeEmbeddingService;
 import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.ChatModelBuilderProperties;
-import com.moyz.adi.common.vo.EmbeddingIngestParam;
 import com.moyz.adi.common.vo.GraphIngestParam;
-import dev.langchain4j.data.document.DefaultDocument;
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.model.chat.ChatModel;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -50,11 +47,11 @@ import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 @Slf4j
 @Service
-public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMapper, KnowledgeBaseItem> {
+public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument> {
 
     @Resource
     @Lazy
-    private KnowledgeBaseItemService self;
+    private KbDocumentService self;
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
@@ -63,9 +60,15 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
     private IKnowledgeEmbeddingService iKnowledgeEmbeddingService;
 
     @Resource
+    private SegmentIndexService segmentIndexService;
+
+    @Resource
+    private DocumentSegmentService documentSegmentService;
+
+    @Resource
     private FileService fileService;
 
-    public KnowledgeBaseItem saveOrUpdate(KbItemEditReq itemEditReq) {
+    public KbDocument saveOrUpdate(KbDocumentEditReq itemEditReq) {
         String uuid = itemEditReq.getUuid();
         // Authorize before mutating: by knowledge-base uuid when creating (no item
         // uuid exists yet), by item id when updating (the client-controlled uuid
@@ -75,7 +78,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
         } else {
             checkWritePrivilegeById(itemEditReq.getId());
         }
-        KnowledgeBaseItem item = new KnowledgeBaseItem();
+        KbDocument item = new KbDocument();
         item.setTitle(itemEditReq.getTitle());
         if (StringUtils.isNotBlank(itemEditReq.getBrief())) {
             item.setBrief(itemEditReq.getBrief());
@@ -83,6 +86,8 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
             item.setBrief(StringUtils.substring(itemEditReq.getRemark(), 0, 200));
         }
         item.setRemark(itemEditReq.getRemark());
+        // 分段模式（文档级）：未指定时按 text 处理；改动模式后需重新索引才生效
+        item.setSegmentMode(itemEditReq.getSegmentMode() == null ? SegmentModeEnum.TEXT : itemEditReq.getSegmentMode());
         if (null == itemEditReq.getId() || itemEditReq.getId() < 1) {
             uuid = UuidUtil.createShort();
             item.setUuid(uuid);
@@ -97,22 +102,22 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
         stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, itemEditReq.getKbUuid());
 
         return ChainWrappers.lambdaQueryChain(baseMapper)
-                .eq(KnowledgeBaseItem::getUuid, uuid)
+                .eq(KbDocument::getUuid, uuid)
                 .one();
     }
 
-    public KnowledgeBaseItem getEnable(String uuid) {
+    public KbDocument getEnable(String uuid) {
         return ChainWrappers.lambdaQueryChain(baseMapper)
-                .eq(KnowledgeBaseItem::getUuid, uuid)
-                .eq(KnowledgeBaseItem::getIsDeleted, false)
+                .eq(KbDocument::getUuid, uuid)
+                .eq(KbDocument::getIsDeleted, false)
                 .one();
     }
 
     /**
      * Search items in a knowledge base by keyword.
      */
-    public Page<KbItemDto> search(String kbUuid, String keyword, Integer currentPage, Integer pageSize) {
-        Page<KbItemDto> page = baseMapper.searchByKb(new Page<>(currentPage, pageSize), kbUuid, keyword);
+    public Page<KbDocumentDto> search(String kbUuid, String keyword, Integer currentPage, Integer pageSize) {
+        Page<KbDocumentDto> page = baseMapper.searchByKb(new Page<>(currentPage, pageSize), kbUuid, keyword);
         page.getRecords().forEach(item -> item.setSourceFileUrl(fileService.getUrl(item.getSourceFileUuid())));
         return page;
     }
@@ -130,7 +135,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
         boolean hasTask = false;
         for (String kbItemUuid : kbItemUuids) {
             if (hasWritePrivilege(kbItemUuid)) {
-                KnowledgeBaseItem item = getEnable(kbItemUuid);
+                KbDocument item = getEnable(kbItemUuid);
                 if (item != null) {
                     if (!hasTask) {
                         stringRedisTemplate.opsForValue().set(userIndexKey, "0", 10, TimeUnit.MINUTES);
@@ -152,25 +157,16 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
      * @param indexTypes    索引类型，如embedding,graphical
      */
     @Async
-    public void asyncIndex(User user, KnowledgeBase knowledgeBase, KnowledgeBaseItem kbItem, List<String> indexTypes) {
+    public void asyncIndex(User user, KnowledgeBase knowledgeBase, KbDocument kbItem, List<String> indexTypes) {
         String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
         stringRedisTemplate.opsForValue().increment(userIndexKey);
         stringRedisTemplate.expire(userIndexKey, 10, TimeUnit.MINUTES);
         try {
             if (indexTypes.contains(DOC_INDEX_TYPE_EMBEDDING) && kbItem.getEmbeddingStatus() != EmbeddingStatusEnum.DOING) {
-                Metadata metadata = new Metadata();
-                metadata.put(AdiConstant.MetadataKey.KB_UUID, kbItem.getKbUuid());
-                metadata.put(AdiConstant.MetadataKey.KB_ITEM_UUID, kbItem.getUuid());
-                Document document = new DefaultDocument(kbItem.getRemark(), metadata);
-                iKnowledgeEmbeddingService.deleteByItemUuid(kbItem.getUuid());
-                indexingEmbedding(knowledgeBase, kbItem, document);
+                indexingEmbedding(knowledgeBase, kbItem);
             }
             if (indexTypes.contains(DOC_INDEX_TYPE_GRAPHICAL) && kbItem.getGraphicalStatus() != GraphicalStatusEnum.DOING) {
-                Metadata metadata = new Metadata();
-                metadata.put(AdiConstant.MetadataKey.KB_UUID, kbItem.getKbUuid());
-                metadata.put(AdiConstant.MetadataKey.KB_ITEM_UUID, kbItem.getUuid());
-                Document document = new DefaultDocument(kbItem.getRemark(), metadata);
-                indexingGraph(user, knowledgeBase, kbItem, document);
+                indexingGraph(user, knowledgeBase, kbItem);
             }
         } finally {
             stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, kbItem.getKbUuid());
@@ -182,41 +178,35 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
 
     }
 
-    private void indexingEmbedding(KnowledgeBase knowledgeBase, KnowledgeBaseItem kbItem, Document document) {
+    private void indexingEmbedding(KnowledgeBase knowledgeBase, KbDocument kbItem) {
         try {
             ChainWrappers.lambdaUpdateChain(baseMapper)
-                    .eq(KnowledgeBaseItem::getId, kbItem.getId())
-                    .set(KnowledgeBaseItem::getEmbeddingStatusChangeTime, LocalDateTime.now())
-                    .set(KnowledgeBaseItem::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
+                    .eq(KbDocument::getId, kbItem.getId())
+                    .set(KbDocument::getEmbeddingStatusChangeTime, LocalDateTime.now())
+                    .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
                     .update();
-            EmbeddingRagContext.get(KNOWLEDGE_BASE).ingest(document,
-                    EmbeddingIngestParam.builder()
-                            .overlap(knowledgeBase.getIngestMaxOverlap())
-                            .strategy(knowledgeBase.getIngestSplitStrategy())
-                            .maxSegmentSize(knowledgeBase.getIngestMaxSegmentSize())
-                            .customSeparator(knowledgeBase.getIngestCustomSeparator())
-                            .tokenEstimator(knowledgeBase.getIngestTokenEstimator())
-                            .build());
+            // 切段显式化 + 按模式向量化（text 主表行 / qa 问题行 / parent_child 子块行）
+            segmentIndexService.reindexEmbedding(knowledgeBase, kbItem);
             ChainWrappers.lambdaUpdateChain(baseMapper)
-                    .eq(KnowledgeBaseItem::getId, kbItem.getId())
-                    .set(KnowledgeBaseItem::getEmbeddingStatus, EmbeddingStatusEnum.DONE)
+                    .eq(KbDocument::getId, kbItem.getId())
+                    .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DONE)
                     .update();
         } catch (Exception e) {
             log.error("ingestForEmbedding error", e);
             ChainWrappers.lambdaUpdateChain(baseMapper)
-                    .eq(KnowledgeBaseItem::getId, kbItem.getId())
-                    .set(KnowledgeBaseItem::getEmbeddingStatusChangeTime, LocalDateTime.now())
-                    .set(KnowledgeBaseItem::getEmbeddingStatus, EmbeddingStatusEnum.FAIL)
+                    .eq(KbDocument::getId, kbItem.getId())
+                    .set(KbDocument::getEmbeddingStatusChangeTime, LocalDateTime.now())
+                    .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.FAIL)
                     .update();
         }
     }
 
-    private void indexingGraph(User user, KnowledgeBase knowledgeBase, KnowledgeBaseItem kbItem, Document document) {
+    private void indexingGraph(User user, KnowledgeBase knowledgeBase, KbDocument kbItem) {
         try {
             ChainWrappers.lambdaUpdateChain(baseMapper)
-                    .eq(KnowledgeBaseItem::getId, kbItem.getId())
-                    .set(KnowledgeBaseItem::getGraphicalStatusChangeTime, LocalDateTime.now())
-                    .set(KnowledgeBaseItem::getGraphicalStatus, GraphicalStatusEnum.DOING)
+                    .eq(KbDocument::getId, kbItem.getId())
+                    .set(KbDocument::getGraphicalStatusChangeTime, LocalDateTime.now())
+                    .set(KbDocument::getGraphicalStatus, GraphicalStatusEnum.DOING)
                     .update();
             AbstractLLMService llmService = LLMContext.getServiceById(knowledgeBase.getIngestModelId(), true);
             ChatModel ChatModel = llmService.buildChatLLM(
@@ -225,16 +215,12 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                             .build()
             );
 
-            //Ingest document
+            // 图谱复用 document_segment：embedding 重跑重建段行，仅图谱重跑时复用现有段
+            List<DocumentSegment> segments = segmentIndexService.ensureSegments(knowledgeBase, kbItem);
             GraphRagContext.get(KNOWLEDGE_BASE).ingest(
                     GraphIngestParam.builder()
                             .user(user)
-                            .document(document)
-                            .overlap(knowledgeBase.getIngestMaxOverlap())
-                            .strategy(knowledgeBase.getIngestSplitStrategy())
-                            .maxSegmentSize(knowledgeBase.getIngestMaxSegmentSize())
-                            .customSeparator(knowledgeBase.getIngestCustomSeparator())
-                            .tokenEstimator(knowledgeBase.getIngestTokenEstimator())
+                            .segments(segments)
                             .ChatModel(ChatModel)
                             .identifyColumns(List.of(AdiConstant.MetadataKey.KB_UUID))
                             .appendColumns(List.of(AdiConstant.MetadataKey.KB_ITEM_UUID))
@@ -242,15 +228,15 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
                             .build()
             );
             ChainWrappers.lambdaUpdateChain(baseMapper)
-                    .eq(KnowledgeBaseItem::getId, kbItem.getId())
-                    .set(KnowledgeBaseItem::getGraphicalStatus, GraphicalStatusEnum.DONE)
+                    .eq(KbDocument::getId, kbItem.getId())
+                    .set(KbDocument::getGraphicalStatus, GraphicalStatusEnum.DONE)
                     .update();
         } catch (Exception e) {
             log.error("ingestForGraph error", e);
             ChainWrappers.lambdaUpdateChain(baseMapper)
-                    .eq(KnowledgeBaseItem::getId, kbItem.getId())
-                    .set(KnowledgeBaseItem::getGraphicalStatusChangeTime, LocalDateTime.now())
-                    .set(KnowledgeBaseItem::getGraphicalStatus, GraphicalStatusEnum.FAIL)
+                    .eq(KbDocument::getId, kbItem.getId())
+                    .set(KbDocument::getGraphicalStatusChangeTime, LocalDateTime.now())
+                    .set(KbDocument::getGraphicalStatus, GraphicalStatusEnum.FAIL)
                     .update();
         }
     }
@@ -259,15 +245,16 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
     public boolean softDelete(String uuid) {
         checkWritePrivilege(uuid);
         boolean success = ChainWrappers.lambdaUpdateChain(baseMapper)
-                .eq(KnowledgeBaseItem::getUuid, uuid)
-                .set(KnowledgeBaseItem::getIsDeleted, true)
+                .eq(KbDocument::getUuid, uuid)
+                .set(KbDocument::getIsDeleted, true)
                 .update();
         if (!success) {
             return false;
         }
         iKnowledgeEmbeddingService.deleteByItemUuid(uuid);
+        documentSegmentService.deleteByDocUuid(uuid);
 
-        KnowledgeBaseItem item = baseMapper.getByUuid(uuid);
+        KbDocument item = baseMapper.getByUuid(uuid);
         if (null != item) {
             stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, item.getKbUuid());
         }
@@ -276,8 +263,8 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
 
     public int countByKbUuid(String kbUuid) {
         return ChainWrappers.lambdaQueryChain(baseMapper)
-                .eq(KnowledgeBaseItem::getKbUuid, kbUuid)
-                .eq(KnowledgeBaseItem::getIsDeleted, false)
+                .eq(KbDocument::getKbUuid, kbUuid)
+                .eq(KbDocument::getIsDeleted, false)
                 .count()
                 .intValue();
     }
@@ -300,9 +287,9 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
     public boolean toggleStatus(String uuid, Boolean isEnabled) {
         checkWritePrivilege(uuid);
         return ChainWrappers.lambdaUpdateChain(baseMapper)
-                .eq(KnowledgeBaseItem::getUuid, uuid)
-                .set(KnowledgeBaseItem::getIsEnabled, isEnabled)
-                .set(KnowledgeBaseItem::getEnabledChangeTime, LocalDateTime.now())
+                .eq(KbDocument::getUuid, uuid)
+                .set(KbDocument::getIsEnabled, isEnabled)
+                .set(KbDocument::getEnabledChangeTime, LocalDateTime.now())
                 .update();
     }
 
@@ -331,7 +318,7 @@ public class KnowledgeBaseItemService extends ServiceImpl<KnowledgeBaseItemMappe
      * check and the query operate on the item itself, so they are kept together
      * here rather than split across the controller.
      */
-    public KnowledgeBaseItem info(String uuid) {
+    public KbDocument info(String uuid) {
         checkReadPrivilege(uuid);
         return getEnable(uuid);
     }

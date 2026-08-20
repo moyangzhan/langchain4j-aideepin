@@ -1,0 +1,43 @@
+package com.moyz.adi.common.dto;
+
+import lombok.Data;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * 分段列表 DTO（模式感知）：
+ * text→content 为段文本；qa→content 为答案、questions 为其问题；
+ * parent_child→content 为父段、children 为其子块。
+ */
+@Data
+public class DocumentSegmentDto {
+
+    private Long id;
+
+    private String uuid;
+
+    private String docUuid;
+
+    private Integer position;
+
+    private String content;
+
+    private Integer wordCount;
+
+    private Integer hitCount;
+
+    private LocalDateTime createTime;
+
+    private LocalDateTime updateTime;
+
+    /**
+     * qa 模式：该答案下的所有问题
+     */
+    private List<DocumentSegmentQuestionDto> questions;
+
+    /**
+     * parent_child 模式：该父段下的所有子块
+     */
+    private List<DocumentSegmentChildChunkDto> children;
+}

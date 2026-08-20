@@ -1,0 +1,254 @@
+-- ============================================================
+-- Segment refactor:
+--   Section 1: rename adi_knowledge_base_item -> adi_document; add document-level segment_mode
+--   Section 2: adi_knowledge_base: add KB-level ingest_child_max_segment_size (parent-child child chunk size)
+--   Section 3: new relational segment tables (adi_document_segment / _question / _child_chunk)
+--   Section 4: backfill segments from existing pgvector KB embedding tables, then clear their text column
+--
+-- Notes:
+--   * segment_mode is document-level ONLY; no KB-level segment_mode column exists (intentional).
+--   * Section 1 RENAME is not idempotent (PostgreSQL has no IF EXISTS for RENAME); run once.
+--   * Section 4 loops over all known suffixed KB embedding tables (to_regclass-guarded). It is
+--     naturally idempotent: once "text" is cleared, subsequent runs insert nothing and update nothing.
+--   * After this migration the KB vector table's "text" column is empty for migrated rows: the
+--     relational segment tables are the single source of truth for segment content. For very large
+--     vector tables the clear UPDATE can be run in batches manually; skipping it does not affect
+--     correctness, it only leaves stale duplicate content in place.
+--   * Vector-side segment columns (hit_count / word_count on adi_knowledge_base_embedding[_suffix])
+--     are no longer maintained for the KB store; the app no longer calls ensureColumns() for it
+--     (character memory tables keep theirs). Existing columns are left in place, harmless.
+--   * neo4j vector backends: relational backfill for them is done by the app at startup
+--     (SegmentNeo4jBackfillRunner), not by this script.
+-- ============================================================
+
+
+-- ============================================================
+-- Section 1: adi_knowledge_base_item -> adi_document
+-- Applicable database: PostgreSQL (the relational DB is always PostgreSQL)
+-- ============================================================
+
+ALTER TABLE adi_knowledge_base_item RENAME TO adi_document;
+
+ALTER TRIGGER trigger_kb_item_update_time ON adi_document RENAME TO trigger_document_update_time;
+
+ALTER TABLE adi_document
+    ADD COLUMN IF NOT EXISTS segment_mode varchar(20) DEFAULT 'text' NOT NULL;
+
+COMMENT ON TABLE  adi_document IS 'Knowledge Base Document';
+COMMENT ON COLUMN adi_document.segment_mode IS 'Segment mode of this document: text | qa | parent_child. text: segments are chunks (vectorized). qa: document_segment rows are answers (not vectorized), questions live in adi_document_segment_question (vectorized). parent_child: document_segment rows are parent chunks (not vectorized), child chunks live in adi_document_segment_child_chunk (vectorized)';
+
+
+-- ============================================================
+-- Section 2: adi_knowledge_base - KB-level parent-child child chunk size
+-- All ingest_* chunking knobs stay KB-level; segment_mode is the only document-level setting.
+-- ============================================================
+
+ALTER TABLE adi_knowledge_base
+    ADD COLUMN IF NOT EXISTS ingest_child_max_segment_size int DEFAULT 200 NOT NULL;
+
+COMMENT ON COLUMN adi_knowledge_base.ingest_child_max_segment_size IS 'Parent-child segment mode: max child chunk size in tokens. KB-level tuning knob, same level as the other ingest_* columns';
+
+
+-- ============================================================
+-- Section 3: relational segment tables (single source of truth for segment content)
+--   * text mode    -> one row per chunk; content = chunk text; embedding_id NOT NULL (vectorized)
+--   * qa mode      -> one row per answer; content = answer text; embedding_id NULL
+--                     (questions are vectorized, stored in adi_document_segment_question)
+--   * parent_child -> one row per parent chunk; content = parent text; embedding_id NULL
+--                     (child chunks are vectorized, stored in adi_document_segment_child_chunk)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS adi_document_segment
+(
+    id           bigserial primary key,
+    uuid         varchar(32) default ''                 not null,
+    kb_uuid      varchar(32) default ''                 not null,
+    doc_uuid     varchar(32) default ''                 not null,
+    position     int         default 0                  not null,
+    content      text                                    not null,
+    word_count   int         GENERATED ALWAYS AS (char_length(content)) STORED not null,
+    hit_count    int         default 0                  not null,
+    embedding_id varchar(64),
+    source       varchar(20) default 'doc'              not null,
+    create_time  timestamp   default CURRENT_TIMESTAMP  not null,
+    update_time  timestamp   default CURRENT_TIMESTAMP  not null,
+    is_deleted   boolean     default false              not null
+);
+
+COMMENT ON TABLE  adi_document_segment IS 'Document Segment (text chunk / QA answer / parent-child parent chunk) - single source of truth for segment content and metadata';
+COMMENT ON COLUMN adi_document_segment.uuid IS 'Segment UUID (also used as graph textSegmentId when the segment is graph-indexed)';
+COMMENT ON COLUMN adi_document_segment.kb_uuid IS 'Knowledge Base UUID';
+COMMENT ON COLUMN adi_document_segment.doc_uuid IS 'Document UUID (adi_document.uuid)';
+COMMENT ON COLUMN adi_document_segment.position IS 'Zero-based order of the segment inside the document';
+COMMENT ON COLUMN adi_document_segment.content IS 'text: chunk text / qa: answer text / parent_child: parent chunk text (the content returned to the LLM after retrieval expansion)';
+COMMENT ON COLUMN adi_document_segment.word_count IS 'Character count of the content (auto-computed by PostgreSQL: char_length(content))';
+COMMENT ON COLUMN adi_document_segment.hit_count IS 'text: direct hits; qa/parent_child: propagated +1 when a linked question/child chunk is hit';
+COMMENT ON COLUMN adi_document_segment.embedding_id IS 'Vector store entry id; NOT NULL only in text mode (answers and parent chunks are not vectorized)';
+COMMENT ON COLUMN adi_document_segment.source IS 'Origin of the segment: doc (from document ingestion) | manual (created manually) | annotation (reserved for the future annotation feature)';
+COMMENT ON COLUMN adi_document_segment.create_time IS 'Creation time';
+COMMENT ON COLUMN adi_document_segment.update_time IS 'Last update time';
+COMMENT ON COLUMN adi_document_segment.is_deleted IS 'Whether the record is soft-deleted';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_document_segment_uuid ON adi_document_segment (uuid);
+CREATE INDEX IF NOT EXISTS idx_document_segment_doc ON adi_document_segment (doc_uuid, position);
+CREATE INDEX IF NOT EXISTS idx_document_segment_embedding ON adi_document_segment (embedding_id);
+CREATE INDEX IF NOT EXISTS idx_document_segment_kb ON adi_document_segment (kb_uuid);
+
+DROP TRIGGER IF EXISTS trigger_document_segment_update_time ON adi_document_segment;
+CREATE TRIGGER trigger_document_segment_update_time
+    before update
+    on adi_document_segment
+    for each row
+execute procedure update_modified_column();
+
+
+CREATE TABLE IF NOT EXISTS adi_document_segment_question
+(
+    id                bigserial primary key,
+    uuid              varchar(32) default ''                 not null,
+    kb_uuid           varchar(32) default ''                 not null,
+    doc_uuid          varchar(32) default ''                 not null,
+    answer_segment_id bigint      default 0                  not null,
+    position          int         default 0                  not null,
+    content           text                                    not null,
+    word_count        int         GENERATED ALWAYS AS (char_length(content)) STORED not null,
+    hit_count         int         default 0                  not null,
+    embedding_id      varchar(64),
+    create_time       timestamp   default CURRENT_TIMESTAMP  not null,
+    update_time       timestamp   default CURRENT_TIMESTAMP  not null,
+    is_deleted        boolean     default false              not null
+);
+
+COMMENT ON TABLE  adi_document_segment_question IS 'QA-mode question of a document segment; the question text is vectorized, the answer lives in adi_document_segment';
+COMMENT ON COLUMN adi_document_segment_question.uuid IS 'Question UUID';
+COMMENT ON COLUMN adi_document_segment_question.kb_uuid IS 'Knowledge Base UUID';
+COMMENT ON COLUMN adi_document_segment_question.doc_uuid IS 'Document UUID (adi_document.uuid)';
+COMMENT ON COLUMN adi_document_segment_question.answer_segment_id IS 'Answer segment id (adi_document_segment.id); multiple questions may point to the same answer';
+COMMENT ON COLUMN adi_document_segment_question.position IS 'Zero-based order of the question within its answer segment';
+COMMENT ON COLUMN adi_document_segment_question.content IS 'Question original text (this is the content that gets vectorized)';
+COMMENT ON COLUMN adi_document_segment_question.word_count IS 'Character count of the question (auto-computed by PostgreSQL: char_length(content))';
+COMMENT ON COLUMN adi_document_segment_question.hit_count IS 'How many times this question was hit by vector retrieval';
+COMMENT ON COLUMN adi_document_segment_question.embedding_id IS 'Vector store entry id';
+COMMENT ON COLUMN adi_document_segment_question.create_time IS 'Creation time';
+COMMENT ON COLUMN adi_document_segment_question.update_time IS 'Last update time';
+COMMENT ON COLUMN adi_document_segment_question.is_deleted IS 'Whether the record is soft-deleted';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_document_segment_question_uuid ON adi_document_segment_question (uuid);
+CREATE INDEX IF NOT EXISTS idx_document_segment_question_answer ON adi_document_segment_question (answer_segment_id, position);
+CREATE INDEX IF NOT EXISTS idx_document_segment_question_doc ON adi_document_segment_question (doc_uuid);
+CREATE INDEX IF NOT EXISTS idx_document_segment_question_embedding ON adi_document_segment_question (embedding_id);
+
+DROP TRIGGER IF EXISTS trigger_document_segment_question_update_time ON adi_document_segment_question;
+CREATE TRIGGER trigger_document_segment_question_update_time
+    before update
+    on adi_document_segment_question
+    for each row
+execute procedure update_modified_column();
+
+
+CREATE TABLE IF NOT EXISTS adi_document_segment_child_chunk
+(
+    id                bigserial primary key,
+    uuid              varchar(32) default ''                 not null,
+    kb_uuid           varchar(32) default ''                 not null,
+    doc_uuid          varchar(32) default ''                 not null,
+    parent_segment_id bigint      default 0                  not null,
+    position          int         default 0                  not null,
+    content           text                                    not null,
+    word_count        int         GENERATED ALWAYS AS (char_length(content)) STORED not null,
+    hit_count         int         default 0                  not null,
+    embedding_id      varchar(64),
+    create_time       timestamp   default CURRENT_TIMESTAMP  not null,
+    update_time       timestamp   default CURRENT_TIMESTAMP  not null,
+    is_deleted        boolean     default false              not null
+);
+
+COMMENT ON TABLE  adi_document_segment_child_chunk IS 'Parent-child mode child chunk of a document segment; the child text is vectorized, the parent lives in adi_document_segment';
+COMMENT ON COLUMN adi_document_segment_child_chunk.uuid IS 'Child chunk UUID';
+COMMENT ON COLUMN adi_document_segment_child_chunk.kb_uuid IS 'Knowledge Base UUID';
+COMMENT ON COLUMN adi_document_segment_child_chunk.doc_uuid IS 'Document UUID (adi_document.uuid)';
+COMMENT ON COLUMN adi_document_segment_child_chunk.parent_segment_id IS 'Parent segment id (adi_document_segment.id); multiple children belong to one parent';
+COMMENT ON COLUMN adi_document_segment_child_chunk.position IS 'Zero-based order of the child chunk within its parent segment';
+COMMENT ON COLUMN adi_document_segment_child_chunk.content IS 'Child chunk original text (this is the content that gets vectorized)';
+COMMENT ON COLUMN adi_document_segment_child_chunk.word_count IS 'Character count of the child chunk (auto-computed by PostgreSQL: char_length(content))';
+COMMENT ON COLUMN adi_document_segment_child_chunk.hit_count IS 'How many times this child chunk was hit by vector retrieval';
+COMMENT ON COLUMN adi_document_segment_child_chunk.embedding_id IS 'Vector store entry id';
+COMMENT ON COLUMN adi_document_segment_child_chunk.create_time IS 'Creation time';
+COMMENT ON COLUMN adi_document_segment_child_chunk.update_time IS 'Last update time';
+COMMENT ON COLUMN adi_document_segment_child_chunk.is_deleted IS 'Whether the record is soft-deleted';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_document_segment_child_chunk_uuid ON adi_document_segment_child_chunk (uuid);
+CREATE INDEX IF NOT EXISTS idx_document_segment_child_chunk_parent ON adi_document_segment_child_chunk (parent_segment_id, position);
+CREATE INDEX IF NOT EXISTS idx_document_segment_child_chunk_doc ON adi_document_segment_child_chunk (doc_uuid);
+CREATE INDEX IF NOT EXISTS idx_document_segment_child_chunk_embedding ON adi_document_segment_child_chunk (embedding_id);
+
+DROP TRIGGER IF EXISTS trigger_document_segment_child_chunk_update_time ON adi_document_segment_child_chunk;
+CREATE TRIGGER trigger_document_segment_child_chunk_update_time
+    before update
+    on adi_document_segment_child_chunk
+    for each row
+execute procedure update_modified_column();
+
+
+-- ============================================================
+-- Section 4: backfill segments from existing pgvector KB embedding tables, then clear their text
+-- All existing data is text-mode. The loop covers the base table and every known suffixed variant;
+-- to_regclass guards deployments that never created some of them. hit_count may be missing on the
+-- vector table (added at app startup by ensureColumns); the expression degrades to 0 in that case.
+-- ============================================================
+
+DO $$
+DECLARE
+    vec_table text;
+    vec_tables text[] := ARRAY[
+        'adi_knowledge_base_embedding',
+        'adi_knowledge_base_embedding_bge_384',
+        'adi_knowledge_base_embedding_qwen_1024',
+        'adi_knowledge_base_embedding_openai_1536'
+        ];
+    hit_count_expr text;
+BEGIN
+    FOREACH vec_table IN ARRAY vec_tables LOOP
+        CONTINUE WHEN to_regclass(vec_table) IS NULL;
+
+        IF EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_schema = 'public' AND table_name = vec_table AND column_name = 'hit_count') THEN
+            hit_count_expr := 'COALESCE(vec.hit_count, 0)';
+        ELSE
+            hit_count_expr := '0';
+        END IF;
+
+        -- 4a. Materialize every live vector row into a text-mode segment row.
+        --     Idempotency: NOT EXISTS on embedding_id, plus rows with cleared text are filtered out.
+        EXECUTE format(
+            'INSERT INTO adi_document_segment (uuid, kb_uuid, doc_uuid, position, content, hit_count, embedding_id, source) ' ||
+            'SELECT md5(random()::text || clock_timestamp()::text), ' ||
+            '       COALESCE(vec.metadata ->> ''kb_uuid'', ''''), ' ||
+            '       vec.metadata ->> ''kb_item_uuid'', ' ||
+            '       (ROW_NUMBER() OVER (PARTITION BY vec.metadata ->> ''kb_item_uuid'' ORDER BY vec.embedding_id))::int, ' ||
+            '       vec."text", ' ||
+            '       ' || hit_count_expr || ', ' ||
+            '       vec.embedding_id::text, ' ||
+            '       ''doc'' ' ||
+            'FROM %I AS vec ' ||
+            'WHERE vec.metadata ->> ''kb_item_uuid'' IS NOT NULL ' ||
+            '  AND vec.metadata ->> ''kb_item_uuid'' <> '''' ' ||
+            '  AND vec."text" IS NOT NULL ' ||
+            '  AND vec."text" <> '''' ' ||
+            '  AND NOT EXISTS (SELECT 1 FROM adi_document_segment ds WHERE ds.embedding_id = vec.embedding_id::text)',
+            vec_table
+        );
+
+        -- 4b. Clear the duplicated content: the relational layer is the single source of truth now.
+        --     Only rows that were backfilled (i.e. carry kb_item_uuid metadata) are touched.
+        --     For very large tables this UPDATE can be batched manually; skipping it is safe.
+        EXECUTE format(
+            'UPDATE %I AS vec SET "text" = '''' ' ||
+            'WHERE vec.metadata ->> ''kb_item_uuid'' IS NOT NULL ' ||
+            '  AND vec.metadata ->> ''kb_item_uuid'' <> '''' ' ||
+            '  AND vec."text" IS NOT NULL ' ||
+            '  AND vec."text" <> ''''',
+            vec_table
+        );
+    END LOOP;
+END $$;

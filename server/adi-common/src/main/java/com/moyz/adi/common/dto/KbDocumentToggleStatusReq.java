@@ -7,7 +7,7 @@ import org.springframework.validation.annotation.Validated;
 
 @Data
 @Validated
-public class KbItemToggleStatusReq {
+public class KbDocumentToggleStatusReq {
 
     @NotBlank
     private String uuid;

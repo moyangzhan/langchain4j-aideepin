@@ -73,7 +73,8 @@ public class PgVectorEmbeddingStoreConfig {
             tableName = tableName + "_" + pair.getLeft();
         }
         EmbeddingStore<TextSegment> store = createEmbeddingStore(tableName, pair.getRight());
-        ensureColumns(tableName);
+        // 知识库向量表不再维护段级 hit_count/word_count（职责已迁到 adi_document_segment 关系表，
+        // 且 text 列置空后 word_count 生成列失去意义），因此不再对 KB 表调用 ensureColumns。
         return store;
     }
 
@@ -151,10 +152,12 @@ public class PgVectorEmbeddingStoreConfig {
     }
 
     /**
-     * Ensure custom columns exist on the embedding table. All tables (KB / semantic
-     * memory / episodic memory) are created by PgVectorEmbeddingStore with only
-     * framework columns (embedding_id, embedding, text, metadata). We add two custom
-     * columns in a single ALTER TABLE:
+     * Ensure custom columns exist on the embedding table. Only the character memory tables
+     * (semantic / episodic) still need this: their {@code hit_count} is incremented on retrieval
+     * and their {@code text} column remains the source of truth for memory content.
+     * The KB embedding table no longer calls this - segment-level hit_count/word_count moved to
+     * the relational {@code adi_document_segment*} tables and the vector-side {@code text} column
+     * is kept empty (see migration 013).
      * <ul>
      *   <li>{@code hit_count} — plain int, DEFAULT 0, incremented on retrieval.</li>
      *   <li>{@code word_count} — STORED generated column, auto-computed from

@@ -2,12 +2,13 @@ package com.moyz.adi.common.dto;
 
 import com.moyz.adi.common.enums.EmbeddingStatusEnum;
 import com.moyz.adi.common.enums.GraphicalStatusEnum;
+import com.moyz.adi.common.enums.SegmentModeEnum;
 import lombok.Data;
 
 import java.time.LocalDateTime;
 
 @Data
-public class KbItemDto {
+public class KbDocumentDto {
 
     private Long kbId;
 
@@ -24,6 +25,8 @@ public class KbItemDto {
     private String brief;
 
     private String remark;
+
+    private SegmentModeEnum segmentMode;
 
     private EmbeddingStatusEnum embeddingStatus;
 

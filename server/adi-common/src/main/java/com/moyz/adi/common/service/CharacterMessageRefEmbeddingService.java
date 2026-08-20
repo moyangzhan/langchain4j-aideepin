@@ -1,7 +1,7 @@
 package com.moyz.adi.common.service;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.moyz.adi.common.dto.KbItemEmbeddingDto;
+import com.moyz.adi.common.dto.KbDocumentEmbeddingDto;
 import com.moyz.adi.common.dto.RefEmbeddingDto;
 import com.moyz.adi.common.entity.CharacterMessageRefEmbedding;
 import com.moyz.adi.common.mapper.CharacterMessageRefEmbeddingMapper;
@@ -31,7 +31,7 @@ public class CharacterMessageRefEmbeddingService extends ServiceImpl<CharacterMe
         if (CollectionUtils.isEmpty(embeddingIds)) {
             return Collections.emptyList();
         }
-        List<KbItemEmbeddingDto> embeddings = characterMemoryEmbeddingService.listByEmbeddingIds(embeddingIds);
+        List<KbDocumentEmbeddingDto> embeddings = characterMemoryEmbeddingService.listByEmbeddingIds(embeddingIds);
         return EmbeddingUtil.itemToRefEmbeddingDto(embeddings);
     }
 

@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
-public class KbItemEmbeddingDto {
+public class KbDocumentEmbeddingDto {
     private String embeddingId;
 
     private float[] embedding;

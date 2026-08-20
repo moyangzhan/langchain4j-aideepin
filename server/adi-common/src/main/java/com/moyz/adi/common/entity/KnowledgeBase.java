@@ -72,6 +72,10 @@ public class KnowledgeBase extends BaseEntity {
     @TableField("ingest_custom_separator")
     private String ingestCustomSeparator;
 
+    @Schema(title = "父子模式下子块最大token数 | Parent-child mode: max child chunk size in tokens")
+    @TableField("ingest_child_max_segment_size")
+    private Integer ingestChildMaxSegmentSize;
+
     @Schema(title = "索引(图谱化)文档时使用的LLM,如不指定的话则使用第1个可用的LLM | LLM Used for Indexing (Graph) - Defaults to First Available")
     @TableField("ingest_model_name")
     private String ingestModelName;

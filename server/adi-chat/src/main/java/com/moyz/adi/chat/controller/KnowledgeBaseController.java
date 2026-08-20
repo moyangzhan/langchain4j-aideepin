@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.KbEditReq;
 import com.moyz.adi.common.dto.KbInfoResp;
-import com.moyz.adi.common.dto.KbItemIndexBatchReq;
+import com.moyz.adi.common.dto.KbDocumentIndexBatchReq;
 import com.moyz.adi.common.dto.KbSearchReq;
 import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.entity.KnowledgeBase;
@@ -144,7 +144,7 @@ public class KnowledgeBaseController {
      * @return 成功或失败
      */
     @PostMapping("/item/indexing-list")
-    public boolean indexItems(@RequestBody KbItemIndexBatchReq req) {
+    public boolean indexItems(@RequestBody KbDocumentIndexBatchReq req) {
         return knowledgeBaseService.indexItems(List.of(req.getUuids()), List.of(req.getIndexTypes()));
     }
 

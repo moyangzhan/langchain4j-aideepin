@@ -152,6 +152,7 @@ public class AdiConstant {
 
         public static final String KB_UUID = "kb_uuid";
         public static final String KB_ITEM_UUID = "kb_item_uuid";
+        public static final String SEGMENT_ID = "segment_id";
         public static final String ENGINE_NAME = "engine_name";
         public static final String SEARCH_UUID = "search_uuid";
         /**
@@ -376,6 +377,17 @@ public class AdiConstant {
         public static final String LINE = "line";
         public static final String SENTENCE = "sentence";
         public static final String CUSTOM = "custom";
+    }
+
+    /**
+     * 分段来源（adi_document_segment.source）。
+     * doc: 文档入库切分产生；manual: 页面手动创建；annotation: 预留给后续的聊天标注功能
+     * （标注 = source=annotation 的 QA 段，复用问答模式结构与检索展开逻辑）。
+     */
+    public static final class SegmentSource {
+        public static final String DOC = "doc";
+        public static final String MANUAL = "manual";
+        public static final String ANNOTATION = "annotation";
     }
 
     /**

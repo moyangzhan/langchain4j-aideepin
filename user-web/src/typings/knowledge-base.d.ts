@@ -18,6 +18,7 @@ declare namespace KnowledgeBase {
     ingestCustomSeparator: string
     ingestModelId: string
     ingestTokenEstimator: string
+    ingestChildMaxSegmentSize: number
     retrieveMaxResults: number
     retrieveMinScore: number
     queryLlmTemperature: number
@@ -46,6 +47,7 @@ declare namespace KnowledgeBase {
     wordCount: number
     isEnabled: boolean
     enabledChangeTime: string
+    segmentMode?: string
     sourceFileName: string
     sourceFileUuid: string
     sourceFileUrl: string
@@ -55,6 +57,7 @@ declare namespace KnowledgeBase {
     kbId: string
     title: string
     remark?: string
+    segmentMode?: string
   }
   interface KbEmbedding {
     embeddingId: string
@@ -62,6 +65,41 @@ declare namespace KnowledgeBase {
     text: string
     hitCount: number
     wordCount: number
+  }
+  interface SegmentQuestion {
+    id: string
+    uuid: string
+    answerSegmentId: string
+    position: number
+    content: string
+    wordCount: number
+    hitCount: number
+    createTime: string
+    updateTime: string
+  }
+  interface SegmentChildChunk {
+    id: string
+    uuid: string
+    parentSegmentId: string
+    position: number
+    content: string
+    wordCount: number
+    hitCount: number
+    createTime: string
+    updateTime: string
+  }
+  interface Segment {
+    id: string
+    uuid: string
+    docUuid: string
+    position: number
+    content: string
+    wordCount: number
+    hitCount: number
+    createTime: string
+    updateTime: string
+    questions?: SegmentQuestion[]
+    children?: SegmentChildChunk[]
   }
   interface KbEdge {
     id: number

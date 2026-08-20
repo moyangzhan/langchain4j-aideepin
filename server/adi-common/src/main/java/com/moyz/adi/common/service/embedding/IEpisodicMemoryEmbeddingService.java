@@ -1,6 +1,6 @@
 package com.moyz.adi.common.service.embedding;
 
-import com.moyz.adi.common.dto.KbItemEmbeddingDto;
+import com.moyz.adi.common.dto.KbDocumentEmbeddingDto;
 
 import java.util.List;
 
@@ -12,7 +12,7 @@ import java.util.List;
  */
 public interface IEpisodicMemoryEmbeddingService {
 
-    List<KbItemEmbeddingDto> listByEmbeddingIds(List<String> embeddingIds);
+    List<KbDocumentEmbeddingDto> listByEmbeddingIds(List<String> embeddingIds);
 
     void incrementHitCount(List<String> embeddingIds);
 
@@ -29,6 +29,6 @@ public interface IEpisodicMemoryEmbeddingService {
      * @param limit       返回的最大条数
      * @return 按时间倒序的 episodic 行
      */
-    List<KbItemEmbeddingDto> listRecentByCharacter(Long characterId, int limit);
+    List<KbDocumentEmbeddingDto> listRecentByCharacter(Long characterId, int limit);
 }
 
