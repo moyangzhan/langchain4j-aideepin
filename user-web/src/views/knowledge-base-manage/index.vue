@@ -39,8 +39,12 @@ const itemBoxClass = 'space-y-1'
 const showApiKeyModal = ref(false)
 const activeKb = ref<KnowledgeBase.Info>(knowledgeBaseEmptyInfo())
 
+// 编辑打开时的切段参数快照：保存前检测变更，触发“将自动重建全库索引”确认
+let kbEditOrigin: Partial<KnowledgeBase.Info> | null = null
+
 const changeShowModal = (selected: KnowledgeBase.Info = knowledgeBaseEmptyInfo()) => {
   Object.assign(tmpKb, selected)
+  kbEditOrigin = (tmpKb.id && tmpKb.id !== '0') ? { ...selected } : null
   showModal.value = !showModal.value
   if (!tmpKb.ingestModelName) {
     const firstEnableModel = appStore.llms.find((item: { enable: any }) => item.enable)
@@ -205,11 +209,33 @@ async function search(currentPage: number) {
   }
 }
 
+const SPLIT_PARAM_KEYS = ['ingestMaxSegmentSize', 'ingestMaxOverlap', 'ingestSplitStrategy', 'ingestCustomSeparator', 'ingestTokenEstimator', 'ingestChildMaxSegmentSize'] as const
+
+function splitParamsChanged() {
+  if (!kbEditOrigin)
+    return false
+  return SPLIT_PARAM_KEYS.some(key => (tmpKb as any)[key] !== (kbEditOrigin as any)[key])
+}
+
 async function saveOrUpdateKb() {
   if (tmpKb.ingestSplitStrategy === 'custom' && !tmpKb.ingestCustomSeparator?.trim()) {
     ms.warning(t('knowledgeBase.customSeparatorRequired'))
     return
   }
+  if (splitParamsChanged()) {
+    dialog.warning({
+      title: t('common.tip'),
+      content: t('knowledgeBase.splitParamsReindexConfirm'),
+      positiveText: t('common.confirm'),
+      negativeText: t('common.cancel'),
+      onPositiveClick: () => doSaveKb(),
+    })
+    return
+  }
+  await doSaveKb()
+}
+
+async function doSaveKb() {
   try {
     submitting.value = true
     const res = await api.knowledgeBaseSaveOrUpdate<KnowledgeBase.Info>(tmpKb)

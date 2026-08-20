@@ -221,7 +221,7 @@ async function saveEdit() {
         content: editState.content,
       })
     }
-    ms.success(t('common.saveSuccess'))
+    ms.success(t('knowledgeBase.segmentSavedAndReindexing'))
     editState.show = false
     loadList(paginationReactive.page)
   }

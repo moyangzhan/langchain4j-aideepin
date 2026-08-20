@@ -37,7 +37,7 @@ async function saveOrUpdate() {
   try {
     submitting.value = true
     await api.knowledgeBaseItemSaveOrUpdate<KnowledgeBase.Item>(tmpItem)
-    ms.success(t('common.saveSuccess'))
+    ms.success(t('knowledgeBase.savedAndReindexing'))
     router.back()
   }
   catch (error: any) {
