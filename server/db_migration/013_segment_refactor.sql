@@ -383,7 +383,7 @@ COMMENT ON COLUMN adi_index_task.user_id      IS 'Triggering user; async executo
 COMMENT ON COLUMN adi_index_task.segment_uuid IS 'Target segment uuid for segment-level tasks; empty string for document-level tasks (PG unique constraints do not dedupe NULL)';
 COMMENT ON COLUMN adi_index_task.target_type  IS 'document | segment';
 COMMENT ON COLUMN adi_index_task.task_type    IS 'embedding | graphical';
-COMMENT ON COLUMN adi_index_task.index_version IS 'Snapshot of the target''s index_version at enqueue time (same generation semantics as adi_document.index_version; avoids bare "version" which reads as optimistic-lock convention); updated on merge-upsert while pending';
+COMMENT ON COLUMN adi_index_task.index_version IS 'Snapshot of the target business table''s index_version at enqueue time: adi_document.index_version for document tasks, adi_document_segment.index_version for segment tasks. Mismatch at check/finalize means the source changed and the task re-enqueues at the latest version (merge-debounce); updated on merge-upsert while pending';
 COMMENT ON COLUMN adi_index_task.status       IS 'pending | running | done | failed (failed is manually retried by re-enqueue)';
 COMMENT ON COLUMN adi_index_task.fail_reason  IS 'Truncated failure reason when status = failed';
 COMMENT ON COLUMN adi_index_task.update_time  IS 'Also serves as claim heartbeat; running rows stale beyond 30 minutes are reset by the poller';

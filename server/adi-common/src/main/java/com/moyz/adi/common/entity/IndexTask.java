@@ -43,6 +43,10 @@ public class IndexTask implements Serializable {
     @TableField("task_type")
     private String taskType;
 
+    /**
+     * 入队时目标业务表 index_version 的快照：文档任务取 adi_document.index_version，
+     * 段任务取 adi_document_segment.index_version。检查点/结束置位不匹配即重入队最新版本。
+     */
     @TableField("index_version")
     private Integer indexVersion;
 

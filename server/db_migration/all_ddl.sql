@@ -1306,3 +1306,13 @@ create table adi_index_task
 create index idx_index_task_status on adi_index_task (status, id);
 create index idx_index_task_doc on adi_index_task (doc_uuid);
 comment on table adi_index_task is 'Index task queue: scheduling source of truth for all index writes (segmentation, embedding, graph extraction). One row per (doc_uuid, segment_uuid, target_type, task_type); document-level tasks use empty segment_uuid';
+comment on column adi_index_task.kb_uuid is 'Owning knowledge base uuid (denormalized for fan-out enqueue and audit; not part of the merge key)';
+comment on column adi_index_task.doc_uuid is 'Target document uuid (never empty)';
+comment on column adi_index_task.user_id is 'Triggering user; async executors have no ThreadContext, billing context is persisted here';
+comment on column adi_index_task.segment_uuid is 'Target segment uuid for segment-level tasks; empty string for document-level tasks (PG unique constraints do not dedupe NULL)';
+comment on column adi_index_task.target_type is 'document | segment';
+comment on column adi_index_task.task_type is 'embedding | graphical';
+comment on column adi_index_task.index_version is 'Snapshot of the target business table''s index_version at enqueue time: adi_document.index_version for document tasks, adi_document_segment.index_version for segment tasks. Mismatch at check/finalize means the source changed and the task re-enqueues at the latest version (merge-debounce); updated on merge-upsert while pending';
+comment on column adi_index_task.status is 'pending | running | done | failed (failed is manually retried by re-enqueue)';
+comment on column adi_index_task.fail_reason is 'Truncated failure reason when status = failed';
+comment on column adi_index_task.update_time is 'Also serves as claim heartbeat; running rows stale beyond 30 minutes are reset by the poller';
