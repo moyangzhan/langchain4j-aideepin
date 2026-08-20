@@ -331,3 +331,59 @@ COMMENT ON COLUMN adi_document_graph_edge.source_name  IS 'Endpoint entity name 
 COMMENT ON COLUMN adi_document_graph_edge.target_name  IS 'Endpoint entity name B; canonically ordered with source_name by lexicographic order (larger second)';
 COMMENT ON COLUMN adi_document_graph_edge.description  IS 'Relationship description fragment extracted from THIS segment; element-level description = concatenation of fragments';
 COMMENT ON COLUMN adi_document_graph_edge.weight       IS 'Relationship strength given by THIS extraction; element-level weight = SUM over fragments';
+
+-- ============================================================
+-- Section 6: index version columns + index task queue
+--   * index_version: generation of indexed artifacts; incremented whenever
+--     existing index output is invalidated (remark / segment_mode / KB split
+--     params / segment content edit; title and other metadata excluded).
+--     Index tasks carry the version snapshot at enqueue time; the runner
+--     conditionally finalizes (WHERE index_version = snapshot) and re-enqueues
+--     the latest version on mismatch (merge-debounce).
+--   * adi_index_task: scheduling source of truth for all index writes.
+--     One row per (doc, segment, target, type); repeated enqueues only bump
+--     the version of the pending row; same-doc tasks are serialized at claim
+--     time (advisory lock), cross-doc tasks run in parallel.
+-- ============================================================
+
+ALTER TABLE adi_document_segment
+    ADD COLUMN IF NOT EXISTS index_version int DEFAULT 0 NOT NULL;
+
+COMMENT ON COLUMN adi_document_segment.index_version IS 'Generation of indexed artifacts built from this segment; +1 on segment content edit. Segment-level index tasks snapshot it for staleness detection';
+
+ALTER TABLE adi_document
+    ADD COLUMN IF NOT EXISTS index_version int DEFAULT 0 NOT NULL;
+
+COMMENT ON COLUMN adi_document.index_version IS 'Generation of indexed artifacts built from this document; +1 on remark / segment_mode / KB split-param change (title and other metadata excluded). Index tasks snapshot it for staleness detection and merge-debounce';
+
+CREATE TABLE IF NOT EXISTS adi_index_task
+(
+    id            bigserial primary key,
+    kb_uuid       varchar(32)  not null,
+    doc_uuid      varchar(32)  not null,
+    user_id       bigint       not null,
+    segment_uuid  varchar(32)  not null default '',
+    target_type   varchar(20)  not null,
+    task_type     varchar(20)  not null,
+    version       int          not null,
+    status        varchar(20)  not null,
+    fail_reason   varchar(500),
+    create_time   timestamp    default CURRENT_TIMESTAMP not null,
+    update_time   timestamp    default CURRENT_TIMESTAMP not null,
+    CONSTRAINT uk_index_task UNIQUE (doc_uuid, segment_uuid, target_type, task_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_index_task_status ON adi_index_task (status, id);
+CREATE INDEX IF NOT EXISTS idx_index_task_doc ON adi_index_task (doc_uuid);
+
+COMMENT ON TABLE  adi_index_task IS 'Index task queue: scheduling source of truth for all index writes (segmentation, embedding, graph extraction). One row per (doc_uuid, segment_uuid, target_type, task_type); document-level tasks use empty segment_uuid';
+COMMENT ON COLUMN adi_index_task.kb_uuid      IS 'Owning knowledge base uuid (denormalized for fan-out enqueue and audit; not part of the merge key)';
+COMMENT ON COLUMN adi_index_task.doc_uuid     IS 'Target document uuid (never empty)';
+COMMENT ON COLUMN adi_index_task.user_id      IS 'Triggering user; async executors have no ThreadContext, billing context is persisted here';
+COMMENT ON COLUMN adi_index_task.segment_uuid IS 'Target segment uuid for segment-level tasks; empty string for document-level tasks (PG unique constraints do not dedupe NULL)';
+COMMENT ON COLUMN adi_index_task.target_type  IS 'document | segment';
+COMMENT ON COLUMN adi_index_task.task_type    IS 'embedding | graphical';
+COMMENT ON COLUMN adi_index_task.version      IS 'index_version snapshot of the target at enqueue time; updated on merge-upsert while pending';
+COMMENT ON COLUMN adi_index_task.status       IS 'pending | running | done | failed (failed is manually retried by re-enqueue)';
+COMMENT ON COLUMN adi_index_task.fail_reason  IS 'Truncated failure reason when status = failed';
+COMMENT ON COLUMN adi_index_task.update_time  IS 'Also serves as claim heartbeat; running rows stale beyond 30 minutes are reset by the poller';

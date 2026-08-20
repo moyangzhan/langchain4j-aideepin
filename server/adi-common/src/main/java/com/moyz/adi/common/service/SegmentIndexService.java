@@ -7,6 +7,7 @@ import com.moyz.adi.common.entity.DocumentSegmentQuestion;
 import com.moyz.adi.common.entity.KbDocument;
 import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.enums.SegmentModeEnum;
+import com.moyz.adi.common.exception.IndexTaskCancelledException;
 import com.moyz.adi.common.rag.DocumentSplitterFactory;
 import com.moyz.adi.common.rag.TokenEstimatorFactory;
 import com.moyz.adi.common.service.embedding.IKnowledgeEmbeddingService;
@@ -29,6 +30,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -74,12 +76,17 @@ public class SegmentIndexService {
         return doc.getSegmentMode() == null ? SegmentModeEnum.TEXT : doc.getSegmentMode();
     }
 
+    public void reindexEmbedding(KnowledgeBase kb, KbDocument doc) {
+        reindexEmbedding(kb, doc, null);
+    }
+
     /**
      * 重建向量化索引。段行不存在时切段（全量、新段一律默认启用）；段行已存在时为
      * 增量重索引：不重建段行，按状态逐段处理--启用段重新向量化，停用段跳过（不复活）。
-     * 段行的失效（内容/模式变更后的重切需求）由文档保存侧负责（KbDocumentService.saveOrUpdate）。
+     * cancelSignal 非空时在每个 embed 批次前检查，true 即抛 IndexTaskCancelledException
+     * （任务队列的协作式作废检查点）。
      */
-    public void reindexEmbedding(KnowledgeBase kb, KbDocument doc) {
+    public void reindexEmbedding(KnowledgeBase kb, KbDocument doc, Supplier<Boolean> cancelSignal) {
         SegmentModeEnum mode = effectiveMode(doc);
         log.info("reindexEmbedding, docUuid:{}, mode:{}", doc.getUuid(), mode.getValue());
         // 清旧向量（按 metadata kb_item_uuid 过滤删除；停用段无向量，删除天然空转）
@@ -103,7 +110,7 @@ public class SegmentIndexService {
                 childChunkService.clearEmbeddingIdsByParentIds(enabledParentIds);
             }
         }
-        vectorizePending(kb, doc, mode);
+        vectorizePending(kb, doc, mode, cancelSignal);
     }
 
     /**
@@ -173,7 +180,7 @@ public class SegmentIndexService {
      * 对模式规定的向量化内容（text 主表行 / 问题行 / 子块行）中尚未向量化的部分做嵌入入库。
      * 存入向量库的 TextSegment 文本置空；embedding 基于真实内容计算。
      */
-    private void vectorizePending(KnowledgeBase kb, KbDocument doc, SegmentModeEnum mode) {
+    private void vectorizePending(KnowledgeBase kb, KbDocument doc, SegmentModeEnum mode, Supplier<Boolean> cancelSignal) {
         // 攒批后一次 embedAndStore，内部再按 EMBED_BATCH_SIZE 分批，避免逐条调用 embedding 接口。
         // 停用段过滤：增量重索引（段行保留）场景下停用段不参与重嵌，避免停用数据"复活"
         List<PendingVector> pending = new ArrayList<>();
@@ -201,7 +208,7 @@ public class SegmentIndexService {
                                 id -> childChunkService.updateEmbeddingId(c.getId(), id))));
             }
         }
-        embedAndStore(kb, doc, pending);
+        embedAndStore(kb, doc, pending, cancelSignal);
     }
 
     /**
@@ -256,7 +263,17 @@ public class SegmentIndexService {
     }
 
     private void embedAndStore(KnowledgeBase kb, KbDocument doc, List<PendingVector> items) {
+        embedAndStore(kb, doc, items, null);
+    }
+
+    /**
+     * cancelSignal 非空时每个批次前检查，true 即协作式取消（版本已推进，任务作废）
+     */
+    private void embedAndStore(KnowledgeBase kb, KbDocument doc, List<PendingVector> items, Supplier<Boolean> cancelSignal) {
         for (int from = 0; from < items.size(); from += EMBED_BATCH_SIZE) {
+            if (cancelSignal != null && Boolean.TRUE.equals(cancelSignal.get())) {
+                throw new IndexTaskCancelledException("Index version advanced during embedding, docUuid:" + doc.getUuid());
+            }
             List<PendingVector> batch = items.subList(from, Math.min(items.size(), from + EMBED_BATCH_SIZE));
             List<String> embeddingIds = batch.stream().map(item -> UUID.randomUUID().toString()).toList();
             List<String> realTexts = batch.stream().map(PendingVector::content).toList();

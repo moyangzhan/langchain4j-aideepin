@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moyz.adi.common.mapper.IndexTaskMapper">
+
+    <insert id="enqueue">
+        INSERT INTO adi_index_task (kb_uuid, doc_uuid, user_id, segment_uuid, target_type, task_type, version, status)
+        VALUES (#{task.kbUuid}, #{task.docUuid}, #{task.userId}, #{task.segmentUuid}, #{task.targetType},
+                #{task.taskType}, #{task.version}, 'pending')
+        ON CONFLICT (doc_uuid, segment_uuid, target_type, task_type)
+        DO UPDATE SET version = excluded.version,
+                      user_id = excluded.user_id,
+                      update_time = now()
+        WHERE adi_index_task.status = 'pending'
+    </insert>
+
+    <!-- PG 的 UPDATE..RETURNING 需走 executeQuery，因此用 select 标签 -->
+    <select id="claimOne" resultType="com.moyz.adi.common.entity.IndexTask">
+        UPDATE adi_index_task t SET status = 'running', update_time = now()
+        WHERE t.id = (
+            SELECT p.id
+            FROM adi_index_task p
+            WHERE p.status = 'pending'
+              AND NOT EXISTS (SELECT 1 FROM adi_index_task r
+                              WHERE r.doc_uuid = p.doc_uuid AND r.status = 'running')
+              AND pg_try_advisory_xact_lock(hashtext('idx:' || p.doc_uuid))
+            ORDER BY p.id
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED
+        )
+        RETURNING t.id, t.kb_uuid, t.doc_uuid, t.user_id, t.segment_uuid,
+                  t.target_type, t.task_type, t.version, t.status, t.fail_reason,
+                  t.create_time, t.update_time
+    </select>
+
+    <update id="finishOne">
+        UPDATE adi_index_task
+        SET status = #{status},
+            fail_reason = #{failReason},
+            update_time = now()
+        WHERE id = #{id}
+    </update>
+
+    <select id="hasRunningByDoc" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM adi_index_task WHERE doc_uuid = #{docUuid} AND status = 'running')
+    </select>
+
+    <update id="resetStaleRunning">
+        UPDATE adi_index_task
+        SET status = 'pending', update_time = now()
+        WHERE status = 'running' AND update_time &lt; now() - (#{minutes} || ' minutes')::interval
+    </update>
+</mapper>

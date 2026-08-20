@@ -752,6 +752,7 @@ comment on column adi_document.graph_hit_count is 'How many times this document 
 comment on column adi_document.word_count is 'Character count of the document content (auto-computed by PostgreSQL: char_length(remark))';
 comment on column adi_document.is_enabled is 'Whether the document is enabled for retrieval (false = its segments are excluded from vector/graph search)';
 comment on column adi_document.enabled_change_time is 'Last enabled/disabled status change time';
+comment on column adi_document.index_version is 'Generation of indexed artifacts built from this document; +1 on remark / segment_mode / KB split-param change (title and other metadata excluded). Index tasks snapshot it for staleness detection and merge-debounce';
 comment on column adi_document.create_time is 'Creation time';
 comment on column adi_document.update_time is 'Last update time';
 comment on column adi_document.is_deleted is 'Whether the record is soft-deleted';
@@ -784,6 +785,7 @@ create table adi_document_segment
     enabled_change_time timestamp default CURRENT_TIMESTAMP  not null,
     embedding_status    int       default 3                   not null,
     graphical_status    int       default 3                   not null,
+    index_version       int       default 0                   not null,
     create_time  timestamp   default CURRENT_TIMESTAMP  not null,
     update_time  timestamp   default CURRENT_TIMESTAMP  not null,
     is_deleted   boolean     default false              not null
@@ -806,6 +808,7 @@ comment on column adi_document_segment.is_enabled is 'Whether this segment is en
 comment on column adi_document_segment.enabled_change_time is 'Last enabled/disabled status change time';
 comment on column adi_document_segment.embedding_status is 'Rebuild status of this segment's vector data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
 comment on column adi_document_segment.graphical_status is 'Rebuild status of this segment's graph data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
+comment on column adi_document_segment.index_version is 'Generation of indexed artifacts built from this segment; +1 on segment content edit. Segment-level index tasks snapshot it for staleness detection';
 
 create unique index uk_document_segment_uuid on adi_document_segment (uuid);
 create index idx_document_segment_doc on adi_document_segment (doc_uuid, position);
@@ -1283,3 +1286,23 @@ comment on column adi_document_graph_edge.source_name is 'Endpoint entity name A
 comment on column adi_document_graph_edge.target_name is 'Endpoint entity name B; canonically ordered with source_name by lexicographic order (larger second)';
 comment on column adi_document_graph_edge.description is 'Relationship description fragment extracted from THIS segment; element-level description = concatenation of fragments';
 comment on column adi_document_graph_edge.weight is 'Relationship strength given by THIS extraction; element-level weight = SUM over fragments';
+
+create table adi_index_task
+(
+    id            bigserial primary key,
+    kb_uuid       varchar(32)               not null,
+    doc_uuid      varchar(32)               not null,
+    user_id       bigint                    not null,
+    segment_uuid  varchar(32) default ''    not null,
+    target_type   varchar(20)               not null,
+    task_type     varchar(20)               not null,
+    version       int                       not null,
+    status        varchar(20)               not null,
+    fail_reason   varchar(500),
+    create_time   timestamp   default CURRENT_TIMESTAMP not null,
+    update_time   timestamp   default CURRENT_TIMESTAMP not null,
+    constraint uk_index_task unique (doc_uuid, segment_uuid, target_type, task_type)
+);
+create index idx_index_task_status on adi_index_task (status, id);
+create index idx_index_task_doc on adi_index_task (doc_uuid);
+comment on table adi_index_task is 'Index task queue: scheduling source of truth for all index writes (segmentation, embedding, graph extraction). One row per (doc_uuid, segment_uuid, target_type, task_type); document-level tasks use empty segment_uuid';

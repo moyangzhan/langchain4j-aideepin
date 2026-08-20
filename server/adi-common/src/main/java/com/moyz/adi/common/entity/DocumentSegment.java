@@ -73,4 +73,8 @@ public class DocumentSegment extends BaseEntity {
     @Schema(title = "图谱重建状态(段级,启用分段异步重建用) | Graphical Rebuild Status")
     @TableField("graphical_status")
     private GraphicalStatusEnum graphicalStatus;
+
+    @Schema(title = "索引版本(段级,索引任务快照比对用) | Index Version")
+    @TableField("index_version")
+    private Integer indexVersion;
 }

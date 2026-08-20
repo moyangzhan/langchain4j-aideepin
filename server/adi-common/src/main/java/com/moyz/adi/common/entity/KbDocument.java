@@ -83,4 +83,8 @@ public class KbDocument extends BaseEntity {
     @Schema(title = "启用/停用变更时间 | Enabled Status Change Time")
     @TableField("enabled_change_time")
     private LocalDateTime enabledChangeTime;
+
+    @Schema(title = "索引版本(索引任务快照比对用) | Index Version")
+    @TableField("index_version")
+    private Integer indexVersion;
 }
