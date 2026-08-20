@@ -1,5 +1,7 @@
 package com.moyz.adi.common.dto;
 
+import com.moyz.adi.common.enums.EmbeddingStatusEnum;
+import com.moyz.adi.common.enums.GraphicalStatusEnum;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -30,6 +32,10 @@ public class DocumentSegmentDto {
     private Boolean isEnabled;
 
     private LocalDateTime enabledChangeTime;
+
+    private EmbeddingStatusEnum embeddingStatus;
+
+    private GraphicalStatusEnum graphicalStatus;
 
     private LocalDateTime createTime;
 

@@ -3,6 +3,8 @@ package com.moyz.adi.common.entity;
 import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.moyz.adi.common.enums.EmbeddingStatusEnum;
+import com.moyz.adi.common.enums.GraphicalStatusEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -63,4 +65,12 @@ public class DocumentSegment extends BaseEntity {
     @Schema(title = "启用/停用变更时间 | Enabled Status Change Time")
     @TableField("enabled_change_time")
     private LocalDateTime enabledChangeTime;
+
+    @Schema(title = "向量化重建状态(段级,启用分段异步重建用) | Embedding Rebuild Status")
+    @TableField("embedding_status")
+    private EmbeddingStatusEnum embeddingStatus;
+
+    @Schema(title = "图谱重建状态(段级,启用分段异步重建用) | Graphical Rebuild Status")
+    @TableField("graphical_status")
+    private GraphicalStatusEnum graphicalStatus;
 }

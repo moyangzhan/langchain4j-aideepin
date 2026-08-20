@@ -100,6 +100,8 @@ declare namespace KnowledgeBase {
     hitCount: number
     isEnabled: boolean
     enabledChangeTime: string
+    embeddingStatus: string
+    graphicalStatus: string
     createTime: string
     updateTime: string
     questions?: SegmentQuestion[]

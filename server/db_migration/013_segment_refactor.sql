@@ -273,6 +273,13 @@ ALTER TABLE adi_document_segment
 COMMENT ON COLUMN adi_document_segment.is_enabled          IS 'Whether this segment is enabled for retrieval (false = its vector & graph data has been deleted; enabling re-generates them)';
 COMMENT ON COLUMN adi_document_segment.enabled_change_time IS 'Last enabled/disabled status change time';
 
+ALTER TABLE adi_document_segment
+    ADD COLUMN IF NOT EXISTS embedding_status int DEFAULT 3 NOT NULL,
+    ADD COLUMN IF NOT EXISTS graphical_status int DEFAULT 3 NOT NULL;
+
+COMMENT ON COLUMN adi_document_segment.embedding_status IS 'Rebuild status of this segment's vector data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
+COMMENT ON COLUMN adi_document_segment.graphical_status IS 'Rebuild status of this segment's graph data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
+
 CREATE TABLE IF NOT EXISTS adi_document_graph_vertex
 (
     id           bigserial primary key,

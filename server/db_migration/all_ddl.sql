@@ -782,6 +782,8 @@ create table adi_document_segment
     source       varchar(20) default 'doc'              not null,
     is_enabled          boolean   default true                not null,
     enabled_change_time timestamp default CURRENT_TIMESTAMP  not null,
+    embedding_status    int       default 3                   not null,
+    graphical_status    int       default 3                   not null,
     create_time  timestamp   default CURRENT_TIMESTAMP  not null,
     update_time  timestamp   default CURRENT_TIMESTAMP  not null,
     is_deleted   boolean     default false              not null
@@ -802,6 +804,8 @@ comment on column adi_document_segment.update_time is 'Last update time';
 comment on column adi_document_segment.is_deleted is 'Whether the record is soft-deleted';
 comment on column adi_document_segment.is_enabled is 'Whether this segment is enabled for retrieval (false = its vector & graph data has been deleted; enabling re-generates them)';
 comment on column adi_document_segment.enabled_change_time is 'Last enabled/disabled status change time';
+comment on column adi_document_segment.embedding_status is 'Rebuild status of this segment's vector data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
+comment on column adi_document_segment.graphical_status is 'Rebuild status of this segment's graph data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
 
 create unique index uk_document_segment_uuid on adi_document_segment (uuid);
 create index idx_document_segment_doc on adi_document_segment (doc_uuid, position);

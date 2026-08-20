@@ -319,8 +319,9 @@ public class DocumentSegmentManageService {
 
     /**
      * 分段启停（文档级 DOING 中拒绝，避免与索引重跑互相覆盖）。
-     * 停用：先删该段名下全部向量 + 账本驱动的图谱足迹清理，最后置位——中途失败即报错、状态不变，
-     * 清理操作幂等可直接重试；启用：同步重嵌向量（失败抛异常、状态保持停用），成功后置位并异步重抽图谱。
+     * 停用：先删该段名下全部向量 + 账本驱动的图谱足迹清理，最后置位--中途失败即报错、状态不变，
+     * 清理操作幂等可直接重试；启用：立即置位并把两路索引重建交给异步任务（段级状态字段标记进度，
+     * 重建中/失败可在列表上观测，对已启用但状态 FAIL 的段重复调用即幂等重试）。
      */
     public boolean toggleStatus(String uuid, boolean isEnabled) {
         DocumentSegment segment = getDocumentByUuid(uuid);
@@ -363,25 +364,28 @@ public class DocumentSegmentManageService {
         documentSegmentService.clearEmbeddingIdsBySegmentId(segment.getId());
         // 图谱足迹清理（账本驱动：独占元素删除、共享元素保留；幂等）
         knowledgeBaseGraphService.removeSegmentGraphFootprint(kb.getUuid(), segment.getUuid());
-        updateStatus(segment.getId(), false);
+        // 置位 + 索引数据已清，重建状态归 NONE
+        documentSegmentService.lambdaUpdate()
+                .eq(DocumentSegment::getId, segment.getId())
+                .set(DocumentSegment::getIsEnabled, false)
+                .set(DocumentSegment::getEnabledChangeTime, LocalDateTime.now())
+                .set(DocumentSegment::getEmbeddingStatus, EmbeddingStatusEnum.NONE)
+                .set(DocumentSegment::getGraphicalStatus, GraphicalStatusEnum.NONE)
+                .update();
     }
 
     private void enable(User user, KnowledgeBase kb, KbDocument doc, DocumentSegment segment) {
-        // 同步重嵌（失败抛异常 → 状态保持停用）
-        segmentIndexService.vectorizeSegment(kb, doc, segment);
-        updateStatus(segment.getId(), true);
-        // 图谱异步重建：仅该文档图谱化过（graphicalStatus=DONE）；从未图谱化的文档启用段不触发抽取
-        if (doc.getGraphicalStatus() == GraphicalStatusEnum.DONE) {
-            kbDocumentService.asyncReGraphSegment(user, kb, doc, segment);
-        }
-    }
-
-    private void updateStatus(Long segmentId, boolean enabled) {
+        // 从未图谱化的文档无需图谱重建，直接标记就绪
+        boolean graphRebuildNeeded = doc.getGraphicalStatus() == GraphicalStatusEnum.DONE;
         documentSegmentService.lambdaUpdate()
-                .eq(DocumentSegment::getId, segmentId)
-                .set(DocumentSegment::getIsEnabled, enabled)
+                .eq(DocumentSegment::getId, segment.getId())
+                .set(DocumentSegment::getIsEnabled, true)
                 .set(DocumentSegment::getEnabledChangeTime, LocalDateTime.now())
+                .set(DocumentSegment::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
+                .set(DocumentSegment::getGraphicalStatus, graphRebuildNeeded ? GraphicalStatusEnum.DOING : GraphicalStatusEnum.DONE)
                 .update();
+        // 向量+图谱重建全异步（QA 答案下问题多时批量 embed 耗时可达数秒-数十秒，避免阻塞 HTTP）
+        kbDocumentService.asyncRebuildSegment(user, kb, doc, segment);
     }
 
     private boolean isSegmentEnabled(Long segmentId) {

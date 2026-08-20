@@ -1,7 +1,7 @@
 <script setup lang='ts'>
 import type { DataTableColumns } from 'naive-ui'
 import { NBreadcrumb, NBreadcrumbItem, NButton, NCard, NDataTable, NInput, NModal, NSpace, NSpin, NSwitch, useDialog, useMessage } from 'naive-ui'
-import { computed, h, onMounted, reactive, ref, watch } from 'vue'
+import { computed, h, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { knowledgeBaseEmptyInfo, knowledgeBaseEmptyItem } from '@/utils/functions'
 import { t } from '@/locales'
@@ -92,6 +92,19 @@ async function loadDocInfo(docUuid: string) {
   }
 }
 
+// 启用分段的重建是异步的：重建中禁用开关防竞态；失败可点击标签重试（幂等）
+function isRebuilding(row: KnowledgeBase.Segment) {
+  return row.embeddingStatus === 'DOING' || row.graphicalStatus === 'DOING'
+}
+
+function isRebuildFailed(row: KnowledgeBase.Segment) {
+  return row.isEnabled !== false && (row.embeddingStatus === 'FAIL' || row.graphicalStatus === 'FAIL')
+}
+
+function retryRebuild(row: KnowledgeBase.Segment) {
+  confirmToggleStatus(row, true)
+}
+
 async function loadList(currentPage: number) {
   loading.value = true
   try {
@@ -118,7 +131,17 @@ async function loadList(currentPage: number) {
   }
   finally {
     loading.value = false
+    scheduleAutoRefresh()
   }
+}
+
+// 存在重建中的段时定时刷新列表，直至全部完成
+let refreshTimer: ReturnType<typeof setTimeout> | null = null
+function scheduleAutoRefresh() {
+  if (refreshTimer)
+    clearTimeout(refreshTimer)
+  if (segments.value.some(s => isRebuilding(s)))
+    refreshTimer = setTimeout(() => loadList(paginationReactive.page), 3000)
 }
 
 function openEdit(type: 'segment' | 'question' | 'child', row: any) {
@@ -328,12 +351,20 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Segment> => {
     {
       title: t('knowledgeBase.status'),
       key: 'isEnabled',
-      width: 90,
-      render: row => h(NSwitch, {
-        size: 'small',
-        value: row.isEnabled !== false,
-        onUpdateValue: (value: boolean) => confirmToggleStatus(row, value),
-      }),
+      width: 130,
+      render: (row) => {
+        const elements: any[] = [h(NSwitch, {
+          size: 'small',
+          value: row.isEnabled !== false,
+          disabled: isRebuilding(row),
+          onUpdateValue: (value: boolean) => confirmToggleStatus(row, value),
+        })]
+        if (isRebuilding(row))
+          elements.push(h('span', { style: 'font-size:12px;color:#f0a020;margin-left:6px;' }, { default: () => t('knowledgeBase.statusProcessing') }))
+        else if (isRebuildFailed(row))
+          elements.push(h('span', { style: 'font-size:12px;color:#d03050;margin-left:6px;cursor:pointer;', onClick: () => retryRebuild(row) }, { default: () => t('knowledgeBase.statusFailed') }))
+        return h('div', { class: 'flex items-center' }, { default: () => elements })
+      },
     },
     {
       title: t('common.action'),
@@ -366,6 +397,11 @@ watch(
 
 onMounted(() => {
   tableMaxHeight.value = window.innerHeight - 420
+})
+
+onUnmounted(() => {
+  if (refreshTimer)
+    clearTimeout(refreshTimer)
 })
 </script>
 

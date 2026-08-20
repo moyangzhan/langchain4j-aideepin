@@ -3,6 +3,7 @@ package com.moyz.adi.common.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
+import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.KbDocumentDto;
@@ -279,44 +280,66 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
     }
 
     /**
-     * 单段图谱重建（启用分段时异步调用）：先按账本幂等清理该段残留（防重复追加），
-     * 再对单段重抽取，账本行随 ingest 双写重建。失败仅记录日志、不回滚段状态——
-     * 向量已恢复、图谱缺失，用户可再次停用→启用重试。
+     * 单段索引重建（启用分段时异步调用）：向量重嵌与图谱重抽两路独立执行、各自更新段级状态
+     * （embedding_status / graphical_status，失败标 FAIL，前端可对已启用段重复调用启停幂等重试）。
+     * 图谱路径先按账本幂等清理该段残留（防重复追加）再抽取，账本行随 ingest 双写重建。
      */
     @Async
-    public void asyncReGraphSegment(User user, KnowledgeBase knowledgeBase, KbDocument kbItem, DocumentSegment segment) {
+    public void asyncRebuildSegment(User user, KnowledgeBase knowledgeBase, KbDocument kbItem, DocumentSegment segment) {
         String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
         stringRedisTemplate.opsForValue().increment(userIndexKey);
         stringRedisTemplate.expire(userIndexKey, 10, TimeUnit.MINUTES);
         try {
-            knowledgeBaseGraphService.removeSegmentGraphFootprint(knowledgeBase.getUuid(), segment.getUuid());
-            AbstractLLMService llmService = LLMContext.getServiceById(knowledgeBase.getIngestModelId(), true);
-            ChatModel chatModel = llmService.buildChatLLM(
-                    ChatModelBuilderProperties.builder()
-                            .temperature(knowledgeBase.getQueryLlmTemperature())
-                            .build()
-            );
-            GraphRagContext.get(KNOWLEDGE_BASE).ingest(
-                    GraphIngestParam.builder()
-                            .user(user)
-                            .segments(List.of(segment))
-                            .ChatModel(chatModel)
-                            .identifyColumns(List.of(AdiConstant.MetadataKey.KB_UUID))
-                            .appendColumns(List.of(AdiConstant.MetadataKey.KB_ITEM_UUID))
-                            .isFreeToken(llmService.getAiModel().getIsFree())
-                            .sourceId(kbItem.getId())
-                            .modelPlatform(llmService.getAiModel().getPlatform())
-                            .modelName(llmService.getAiModel().getName())
-                            .build()
-            );
-        } catch (Exception e) {
-            log.error("reGraphSegment error, segmentUuid:{}", segment.getUuid(), e);
+            try {
+                segmentIndexService.vectorizeSegment(knowledgeBase, kbItem, segment);
+                updateSegmentIndexStatus(segment.getId(), DocumentSegment::getEmbeddingStatus, EmbeddingStatusEnum.DONE);
+            } catch (Exception e) {
+                log.error("Rebuild segment embedding error, segmentUuid:{}", segment.getUuid(), e);
+                updateSegmentIndexStatus(segment.getId(), DocumentSegment::getEmbeddingStatus, EmbeddingStatusEnum.FAIL);
+            }
+            if (kbItem.getGraphicalStatus() == GraphicalStatusEnum.DONE) {
+                try {
+                    knowledgeBaseGraphService.removeSegmentGraphFootprint(knowledgeBase.getUuid(), segment.getUuid());
+                    AbstractLLMService llmService = LLMContext.getServiceById(knowledgeBase.getIngestModelId(), true);
+                    ChatModel chatModel = llmService.buildChatLLM(
+                            ChatModelBuilderProperties.builder()
+                                    .temperature(knowledgeBase.getQueryLlmTemperature())
+                                    .build()
+                    );
+                    GraphRagContext.get(KNOWLEDGE_BASE).ingest(
+                            GraphIngestParam.builder()
+                                    .user(user)
+                                    .segments(List.of(segment))
+                                    .ChatModel(chatModel)
+                                    .identifyColumns(List.of(AdiConstant.MetadataKey.KB_UUID))
+                                    .appendColumns(List.of(AdiConstant.MetadataKey.KB_ITEM_UUID))
+                                    .isFreeToken(llmService.getAiModel().getIsFree())
+                                    .sourceId(kbItem.getId())
+                                    .modelPlatform(llmService.getAiModel().getPlatform())
+                                    .modelName(llmService.getAiModel().getName())
+                                    .build()
+                    );
+                    updateSegmentIndexStatus(segment.getId(), DocumentSegment::getGraphicalStatus, GraphicalStatusEnum.DONE);
+                } catch (Exception e) {
+                    log.error("Rebuild segment graph error, segmentUuid:{}", segment.getUuid(), e);
+                    updateSegmentIndexStatus(segment.getId(), DocumentSegment::getGraphicalStatus, GraphicalStatusEnum.FAIL);
+                }
+            }
         } finally {
             Long remaining = stringRedisTemplate.opsForValue().decrement(userIndexKey);
             if (remaining != null && remaining <= 0) {
                 stringRedisTemplate.delete(userIndexKey);
             }
         }
+    }
+
+    private void updateSegmentIndexStatus(Long segmentId,
+                                          SFunction<DocumentSegment, ?> column,
+                                          Object status) {
+        documentSegmentService.lambdaUpdate()
+                .eq(DocumentSegment::getId, segmentId)
+                .set(column, status)
+                .update();
     }
 
     public int countByKbUuid(String kbUuid) {
