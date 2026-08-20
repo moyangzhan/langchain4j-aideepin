@@ -43,8 +43,8 @@ public class IndexTask implements Serializable {
     @TableField("task_type")
     private String taskType;
 
-    @TableField("version")
-    private Integer version;
+    @TableField("index_version")
+    private Integer indexVersion;
 
     @TableField("status")
     private String status;

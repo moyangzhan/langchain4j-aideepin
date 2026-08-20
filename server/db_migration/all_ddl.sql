@@ -1296,7 +1296,7 @@ create table adi_index_task
     segment_uuid  varchar(32) default ''    not null,
     target_type   varchar(20)               not null,
     task_type     varchar(20)               not null,
-    version       int                       not null,
+    index_version  int                      not null,
     status        varchar(20)               not null,
     fail_reason   varchar(500),
     create_time   timestamp   default CURRENT_TIMESTAMP not null,

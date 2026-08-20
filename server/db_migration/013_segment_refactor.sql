@@ -365,7 +365,7 @@ CREATE TABLE IF NOT EXISTS adi_index_task
     segment_uuid  varchar(32)  not null default '',
     target_type   varchar(20)  not null,
     task_type     varchar(20)  not null,
-    version       int          not null,
+    index_version  int         not null,
     status        varchar(20)  not null,
     fail_reason   varchar(500),
     create_time   timestamp    default CURRENT_TIMESTAMP not null,
@@ -383,7 +383,7 @@ COMMENT ON COLUMN adi_index_task.user_id      IS 'Triggering user; async executo
 COMMENT ON COLUMN adi_index_task.segment_uuid IS 'Target segment uuid for segment-level tasks; empty string for document-level tasks (PG unique constraints do not dedupe NULL)';
 COMMENT ON COLUMN adi_index_task.target_type  IS 'document | segment';
 COMMENT ON COLUMN adi_index_task.task_type    IS 'embedding | graphical';
-COMMENT ON COLUMN adi_index_task.version      IS 'index_version snapshot of the target at enqueue time; updated on merge-upsert while pending';
+COMMENT ON COLUMN adi_index_task.index_version IS 'Snapshot of the target''s index_version at enqueue time (same generation semantics as adi_document.index_version; avoids bare "version" which reads as optimistic-lock convention); updated on merge-upsert while pending';
 COMMENT ON COLUMN adi_index_task.status       IS 'pending | running | done | failed (failed is manually retried by re-enqueue)';
 COMMENT ON COLUMN adi_index_task.fail_reason  IS 'Truncated failure reason when status = failed';
 COMMENT ON COLUMN adi_index_task.update_time  IS 'Also serves as claim heartbeat; running rows stale beyond 30 minutes are reset by the poller';

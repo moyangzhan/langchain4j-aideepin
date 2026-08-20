@@ -109,7 +109,7 @@ public class IndexTaskService {
         task.setSegmentUuid("");
         task.setTargetType(TARGET_DOCUMENT);
         task.setTaskType(taskType);
-        task.setVersion(doc.getIndexVersion() == null ? 0 : doc.getIndexVersion());
+        task.setIndexVersion(doc.getIndexVersion() == null ? 0 : doc.getIndexVersion());
         indexTaskMapper.enqueue(task);
         self.dispatch();
     }
@@ -125,7 +125,7 @@ public class IndexTaskService {
         task.setSegmentUuid(segment.getUuid());
         task.setTargetType(TARGET_SEGMENT);
         task.setTaskType(taskType);
-        task.setVersion(segment.getIndexVersion() == null ? 0 : segment.getIndexVersion());
+        task.setIndexVersion(segment.getIndexVersion() == null ? 0 : segment.getIndexVersion());
         indexTaskMapper.enqueue(task);
         self.dispatch();
     }
@@ -223,7 +223,7 @@ public class IndexTaskService {
             return false;
         }
         // 开始前版本检查：过期则直接重入队最新版本
-        if (versionAdvanced(doc.getIndexVersion(), task.getVersion())) {
+        if (versionAdvanced(doc.getIndexVersion(), task.getIndexVersion())) {
             reEnqueueDocument(task, doc);
             return true;
         }
@@ -236,7 +236,7 @@ public class IndexTaskService {
         // 条件置位：版本一致才生效，否则说明执行期间内容变更 -> 重入队最新版本
         boolean finalized = ChainWrappers.lambdaUpdateChain(kbDocumentMapper)
                 .eq(KbDocument::getId, doc.getId())
-                .eq(KbDocument::getIndexVersion, task.getVersion())
+                .eq(KbDocument::getIndexVersion, task.getIndexVersion())
                 .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DONE)
                 .update();
         if (!finalized) {
@@ -256,7 +256,7 @@ public class IndexTaskService {
         if (kb == null) {
             return false;
         }
-        if (versionAdvanced(doc.getIndexVersion(), task.getVersion())) {
+        if (versionAdvanced(doc.getIndexVersion(), task.getIndexVersion())) {
             markDocGraphicalPending(doc.getId());
             return true;
         }
@@ -288,7 +288,7 @@ public class IndexTaskService {
                         .build());
         boolean finalized = ChainWrappers.lambdaUpdateChain(kbDocumentMapper)
                 .eq(KbDocument::getId, doc.getId())
-                .eq(KbDocument::getIndexVersion, task.getVersion())
+                .eq(KbDocument::getIndexVersion, task.getIndexVersion())
                 .set(KbDocument::getGraphicalStatus, GraphicalStatusEnum.DONE)
                 .update();
         if (!finalized) {
@@ -311,7 +311,7 @@ public class IndexTaskService {
         if (Boolean.FALSE.equals(segment.getIsEnabled())) {
             return false;
         }
-        if (versionAdvanced(segment.getIndexVersion(), task.getVersion())) {
+        if (versionAdvanced(segment.getIndexVersion(), task.getIndexVersion())) {
             reEnqueueSegment(task, segment);
             return true;
         }
@@ -322,7 +322,7 @@ public class IndexTaskService {
             return false;
         }
         segmentIndexService.vectorizeSegment(kb, doc, segment);
-        boolean finalized = updateSegmentStatusConditionally(segment.getId(), task.getVersion(),
+        boolean finalized = updateSegmentStatusConditionally(segment.getId(), task.getIndexVersion(),
                 DocumentSegment::getEmbeddingStatus, EmbeddingStatusEnum.DONE);
         if (!finalized) {
             reEnqueueSegment(task, documentSegmentService.getById(segment.getId()));
@@ -343,7 +343,7 @@ public class IndexTaskService {
         if (Boolean.FALSE.equals(segment.getIsEnabled())) {
             return false;
         }
-        if (versionAdvanced(segment.getIndexVersion(), task.getVersion())) {
+        if (versionAdvanced(segment.getIndexVersion(), task.getIndexVersion())) {
             updateSegmentStatus(segment.getId(), DocumentSegment::getGraphicalStatus, GraphicalStatusEnum.NONE);
             return true;
         }
@@ -371,7 +371,7 @@ public class IndexTaskService {
                         .modelPlatform(llmService.getAiModel().getPlatform())
                         .modelName(llmService.getAiModel().getName())
                         .build());
-        boolean finalized = updateSegmentStatusConditionally(segment.getId(), task.getVersion(),
+        boolean finalized = updateSegmentStatusConditionally(segment.getId(), task.getIndexVersion(),
                 DocumentSegment::getGraphicalStatus, GraphicalStatusEnum.DONE);
         if (!finalized) {
             updateSegmentStatus(segment.getId(), DocumentSegment::getGraphicalStatus, GraphicalStatusEnum.NONE);
@@ -417,7 +417,7 @@ public class IndexTaskService {
     private Supplier<Boolean> versionGuard(IndexTask task) {
         return () -> {
             KbDocument doc = kbDocumentMapper.getByUuid(task.getDocUuid());
-            return doc == null || versionAdvanced(doc.getIndexVersion(), task.getVersion());
+            return doc == null || versionAdvanced(doc.getIndexVersion(), task.getIndexVersion());
         };
     }
 
@@ -432,7 +432,7 @@ public class IndexTaskService {
         next.setSegmentUuid("");
         next.setTargetType(TARGET_DOCUMENT);
         next.setTaskType(task.getTaskType());
-        next.setVersion(doc.getIndexVersion() == null ? 0 : doc.getIndexVersion());
+        next.setIndexVersion(doc.getIndexVersion() == null ? 0 : doc.getIndexVersion());
         indexTaskMapper.enqueue(next);
     }
 
@@ -447,7 +447,7 @@ public class IndexTaskService {
         next.setSegmentUuid(task.getSegmentUuid());
         next.setTargetType(TARGET_SEGMENT);
         next.setTaskType(task.getTaskType());
-        next.setVersion(segment.getIndexVersion() == null ? 0 : segment.getIndexVersion());
+        next.setIndexVersion(segment.getIndexVersion() == null ? 0 : segment.getIndexVersion());
         indexTaskMapper.enqueue(next);
     }
 

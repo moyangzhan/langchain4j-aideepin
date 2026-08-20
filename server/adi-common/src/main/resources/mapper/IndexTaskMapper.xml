@@ -3,11 +3,11 @@
 <mapper namespace="com.moyz.adi.common.mapper.IndexTaskMapper">
 
     <insert id="enqueue">
-        INSERT INTO adi_index_task (kb_uuid, doc_uuid, user_id, segment_uuid, target_type, task_type, version, status)
+        INSERT INTO adi_index_task (kb_uuid, doc_uuid, user_id, segment_uuid, target_type, task_type, index_version, status)
         VALUES (#{task.kbUuid}, #{task.docUuid}, #{task.userId}, #{task.segmentUuid}, #{task.targetType},
-                #{task.taskType}, #{task.version}, 'pending')
+                #{task.taskType}, #{task.indexVersion}, 'pending')
         ON CONFLICT (doc_uuid, segment_uuid, target_type, task_type)
-        DO UPDATE SET version = excluded.version,
+        DO UPDATE SET index_version = excluded.index_version,
                       user_id = excluded.user_id,
                       update_time = now()
         WHERE adi_index_task.status = 'pending'
@@ -28,7 +28,7 @@
             FOR UPDATE SKIP LOCKED
         )
         RETURNING t.id, t.kb_uuid, t.doc_uuid, t.user_id, t.segment_uuid,
-                  t.target_type, t.task_type, t.version, t.status, t.fail_reason,
+                  t.target_type, t.task_type, t.index_version, t.status, t.fail_reason,
                   t.create_time, t.update_time
     </select>
 
