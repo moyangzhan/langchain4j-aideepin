@@ -59,6 +59,19 @@ public class DocumentSegmentChildChunkService extends ServiceImpl<DocumentSegmen
     }
 
     /**
+     * 清空指定父段下全部子块的向量条目id（父段停用删向量后调用）
+     */
+    public void clearEmbeddingIdsByParentIds(List<Long> parentSegmentIds) {
+        if (CollectionUtils.isEmpty(parentSegmentIds)) {
+            return;
+        }
+        lambdaUpdate()
+                .in(DocumentSegmentChildChunk::getParentSegmentId, parentSegmentIds)
+                .set(DocumentSegmentChildChunk::getEmbeddingId, null)
+                .update();
+    }
+
+    /**
      * 回填单条子块行的向量条目id
      */
     public void updateEmbeddingId(Long id, String embeddingId) {

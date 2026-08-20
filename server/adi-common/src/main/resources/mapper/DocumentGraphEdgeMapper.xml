@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moyz.adi.common.mapper.DocumentGraphEdgeMapper">
+
+    <insert id="insertIgnoreBatch">
+        INSERT INTO adi_document_graph_edge (kb_uuid, doc_uuid, segment_uuid, source_name, target_name, description, weight)
+        VALUES
+        <foreach collection="rows" item="r" separator=",">
+            (#{r.kbUuid}, #{r.docUuid}, #{r.segmentUuid}, #{r.sourceName}, #{r.targetName}, #{r.description}, #{r.weight})
+        </foreach>
+        ON CONFLICT (kb_uuid, source_name, target_name, segment_uuid) DO NOTHING
+    </insert>
+
+    <!-- 段级独占判定：端点对按字典序规范化，(source_name, target_name) 即元素键 -->
+    <select id="listWithExclusivity" resultType="com.moyz.adi.common.dto.GraphContributionDto">
+        SELECT e1.source_name AS name, e1.target_name AS targetName,
+               (SELECT COUNT(DISTINCT e2.segment_uuid) FROM adi_document_graph_edge e2
+                WHERE e2.kb_uuid = e1.kb_uuid AND e2.source_name = e1.source_name AND e2.target_name = e1.target_name
+                  AND e2.segment_uuid != e1.segment_uuid) AS otherContributors
+        FROM adi_document_graph_edge e1
+        WHERE e1.segment_uuid = #{segmentUuid}
+    </select>
+
+    <!-- 文档级独占判定 -->
+    <select id="listWithOutsideContributors" resultType="com.moyz.adi.common.dto.GraphContributionDto">
+        SELECT e1.source_name AS name, e1.target_name AS targetName,
+               (SELECT COUNT(DISTINCT e2.segment_uuid) FROM adi_document_graph_edge e2
+                WHERE e2.kb_uuid = e1.kb_uuid AND e2.source_name = e1.source_name AND e2.target_name = e1.target_name
+                  AND e2.doc_uuid != e1.doc_uuid) AS otherContributors
+        FROM adi_document_graph_edge e1
+        WHERE e1.doc_uuid = #{docUuid}
+    </select>
+
+    <delete id="deleteBySegmentUuid">
+        DELETE FROM adi_document_graph_edge WHERE segment_uuid = #{segmentUuid}
+    </delete>
+
+    <delete id="deleteByDocUuid">
+        DELETE FROM adi_document_graph_edge WHERE doc_uuid = #{docUuid}
+    </delete>
+
+    <!-- 文档图谱页聚合：描述 = 片段拼接，权重 = 片段强度求和 -->
+    <select id="aggregateByDoc" resultType="com.moyz.adi.common.dto.KbEdgeDto">
+        SELECT source_name AS sourceName, target_name AS targetName,
+               string_agg(COALESCE(description, ''), chr(10) ORDER BY id) AS description,
+               SUM(COALESCE(weight, 1.0)) AS weight
+        FROM adi_document_graph_edge
+        WHERE doc_uuid = #{docUuid}
+        GROUP BY source_name, target_name
+        ORDER BY source_name, target_name
+        LIMIT #{limit}
+    </select>
+
+    <select id="countByDocUuid" resultType="long">
+        SELECT COUNT(*) FROM adi_document_graph_edge WHERE doc_uuid = #{docUuid}
+    </select>
+</mapper>

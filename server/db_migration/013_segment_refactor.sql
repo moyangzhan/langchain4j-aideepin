@@ -252,3 +252,75 @@ BEGIN
         );
     END LOOP;
 END $$;
+
+
+-- ============================================================
+-- Section 5: segment enable/disable + graph provenance ledger
+--   * adi_document_segment: add is_enabled / enabled_change_time
+--   * new adi_document_graph_vertex / adi_document_graph_edge:
+--     one row per (graph element, segment) contribution - the authoritative
+--     source for segment/doc-level graph cleanup and exclusivity judgement.
+--     Element-level description/weight are aggregated on read from
+--     per-segment fragments; the merged copy on graph vertices/edges is only
+--     a retrieval cache. Legacy graph data is NOT backfilled: a document
+--     joins the managed world by re-running graph extraction (lazy migration).
+-- ============================================================
+
+ALTER TABLE adi_document_segment
+    ADD COLUMN IF NOT EXISTS is_enabled          boolean   DEFAULT true NOT NULL,
+    ADD COLUMN IF NOT EXISTS enabled_change_time timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL;
+
+COMMENT ON COLUMN adi_document_segment.is_enabled          IS 'Whether this segment is enabled for retrieval (false = its vector & graph data has been deleted; enabling re-generates them)';
+COMMENT ON COLUMN adi_document_segment.enabled_change_time IS 'Last enabled/disabled status change time';
+
+CREATE TABLE IF NOT EXISTS adi_document_graph_vertex
+(
+    id           bigserial primary key,
+    kb_uuid      varchar(32)  not null,
+    doc_uuid     varchar(32)  not null,
+    segment_uuid varchar(32)  not null,
+    name         varchar(256) not null,
+    entity_type  varchar(64),
+    description  text,
+    create_time  timestamp    default CURRENT_TIMESTAMP not null,
+    CONSTRAINT uk_document_graph_vertex UNIQUE (kb_uuid, name, segment_uuid)
+);
+
+CREATE INDEX IF NOT EXISTS idx_dgv_segment ON adi_document_graph_vertex (segment_uuid);
+CREATE INDEX IF NOT EXISTS idx_dgv_doc    ON adi_document_graph_vertex (doc_uuid);
+CREATE INDEX IF NOT EXISTS idx_dgv_element ON adi_document_graph_vertex (kb_uuid, name);
+
+COMMENT ON TABLE  adi_document_graph_vertex IS 'Graph vertex <-> document segment provenance: one row per (vertex, segment) contribution. Authoritative for segment/doc-level graph cleanup and exclusivity judgement';
+COMMENT ON COLUMN adi_document_graph_vertex.kb_uuid      IS 'Knowledge Base UUID (element addressing scope: vertices are identified by name within a KB)';
+COMMENT ON COLUMN adi_document_graph_vertex.doc_uuid     IS 'Document UUID of the contributing segment (denormalized from adi_document_segment for doc-level queries)';
+COMMENT ON COLUMN adi_document_graph_vertex.segment_uuid IS 'Contributing segment uuid (adi_document_segment.uuid)';
+COMMENT ON COLUMN adi_document_graph_vertex.name         IS 'Vertex entity name (same key GraphStoreIngestor uses to address vertices)';
+COMMENT ON COLUMN adi_document_graph_vertex.entity_type  IS 'Entity type label from extraction (first-write wins, implicit endpoints null). Reserved for the future community-summary feature';
+COMMENT ON COLUMN adi_document_graph_vertex.description  IS 'Entity description fragment extracted from THIS segment. Element-level description = concatenation of all contribution fragments (aggregated on read; never stored merged)';
+
+CREATE TABLE IF NOT EXISTS adi_document_graph_edge
+(
+    id           bigserial primary key,
+    kb_uuid      varchar(32)  not null,
+    doc_uuid     varchar(32)  not null,
+    segment_uuid varchar(32)  not null,
+    source_name  varchar(256) not null,
+    target_name  varchar(256) not null,
+    description  text,
+    weight       double precision default 1.0,
+    create_time  timestamp    default CURRENT_TIMESTAMP not null,
+    CONSTRAINT uk_document_graph_edge UNIQUE (kb_uuid, source_name, target_name, segment_uuid)
+);
+
+CREATE INDEX IF NOT EXISTS idx_dge_segment ON adi_document_graph_edge (segment_uuid);
+CREATE INDEX IF NOT EXISTS idx_dge_doc    ON adi_document_graph_edge (doc_uuid);
+CREATE INDEX IF NOT EXISTS idx_dge_element ON adi_document_graph_edge (kb_uuid, source_name, target_name);
+
+COMMENT ON TABLE  adi_document_graph_edge IS 'Graph edge <-> document segment provenance: one row per (edge, segment) contribution';
+COMMENT ON COLUMN adi_document_graph_edge.kb_uuid      IS 'Knowledge Base UUID';
+COMMENT ON COLUMN adi_document_graph_edge.doc_uuid     IS 'Document UUID of the contributing segment';
+COMMENT ON COLUMN adi_document_graph_edge.segment_uuid IS 'Contributing segment uuid (adi_document_segment.uuid)';
+COMMENT ON COLUMN adi_document_graph_edge.source_name  IS 'Endpoint entity name A; canonically ordered with target_name by lexicographic order (smaller first) - NOT the extraction direction';
+COMMENT ON COLUMN adi_document_graph_edge.target_name  IS 'Endpoint entity name B; canonically ordered with source_name by lexicographic order (larger second)';
+COMMENT ON COLUMN adi_document_graph_edge.description  IS 'Relationship description fragment extracted from THIS segment; element-level description = concatenation of fragments';
+COMMENT ON COLUMN adi_document_graph_edge.weight       IS 'Relationship strength given by THIS extraction; element-level weight = SUM over fragments';

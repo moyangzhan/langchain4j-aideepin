@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moyz.adi.common.mapper.DocumentGraphVertexMapper">
+
+    <!-- 唯一约束兜底去重：重复抽取/隐式端点补记天然幂等 -->
+    <insert id="insertIgnoreBatch">
+        INSERT INTO adi_document_graph_vertex (kb_uuid, doc_uuid, segment_uuid, name, entity_type, description)
+        VALUES
+        <foreach collection="rows" item="r" separator=",">
+            (#{r.kbUuid}, #{r.docUuid}, #{r.segmentUuid}, #{r.name}, #{r.entityType}, #{r.description})
+        </foreach>
+        ON CONFLICT (kb_uuid, name, segment_uuid) DO NOTHING
+    </insert>
+
+    <!-- 段级独占判定：该段贡献的顶点 + 每个顶点的其他贡献者数（0=独占） -->
+    <select id="listWithExclusivity" resultType="com.moyz.adi.common.dto.GraphContributionDto">
+        SELECT v1.name AS name,
+               (SELECT COUNT(DISTINCT v2.segment_uuid) FROM adi_document_graph_vertex v2
+                WHERE v2.kb_uuid = v1.kb_uuid AND v2.name = v1.name
+                  AND v2.segment_uuid != v1.segment_uuid) AS otherContributors
+        FROM adi_document_graph_vertex v1
+        WHERE v1.segment_uuid = #{segmentUuid}
+    </select>
+
+    <!-- 文档级独占判定：该文档贡献的顶点 + 文档外贡献者数（0=该文档独占） -->
+    <select id="listWithOutsideContributors" resultType="com.moyz.adi.common.dto.GraphContributionDto">
+        SELECT v1.name AS name,
+               (SELECT COUNT(DISTINCT v2.segment_uuid) FROM adi_document_graph_vertex v2
+                WHERE v2.kb_uuid = v1.kb_uuid AND v2.name = v1.name
+                  AND v2.doc_uuid != v1.doc_uuid) AS otherContributors
+        FROM adi_document_graph_vertex v1
+        WHERE v1.doc_uuid = #{docUuid}
+    </select>
+
+    <delete id="deleteBySegmentUuid">
+        DELETE FROM adi_document_graph_vertex WHERE segment_uuid = #{segmentUuid}
+    </delete>
+
+    <delete id="deleteByDocUuid">
+        DELETE FROM adi_document_graph_vertex WHERE doc_uuid = #{docUuid}
+    </delete>
+
+    <!-- 文档图谱页聚合：元素级描述 = 片段按行序换行拼接（与图库 desc + "\n" + desc 的合并行为等价） -->
+    <select id="aggregateByDoc" resultType="com.moyz.adi.common.dto.KbVertexDto">
+        SELECT name AS name,
+               string_agg(COALESCE(description, ''), chr(10) ORDER BY id) AS description
+        FROM adi_document_graph_vertex
+        WHERE doc_uuid = #{docUuid}
+        GROUP BY name
+        ORDER BY name
+        LIMIT #{limit}
+    </select>
+
+    <select id="countByDocUuid" resultType="long">
+        SELECT COUNT(*) FROM adi_document_graph_vertex WHERE doc_uuid = #{docUuid}
+    </select>
+</mapper>

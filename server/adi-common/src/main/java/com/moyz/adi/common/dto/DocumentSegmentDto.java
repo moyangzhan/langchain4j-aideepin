@@ -27,6 +27,10 @@ public class DocumentSegmentDto {
 
     private Integer hitCount;
 
+    private Boolean isEnabled;
+
+    private LocalDateTime enabledChangeTime;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;

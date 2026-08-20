@@ -59,6 +59,19 @@ public class DocumentSegmentQuestionService extends ServiceImpl<DocumentSegmentQ
     }
 
     /**
+     * 清空指定答案段下全部问题的向量条目id（答案段停用删向量后调用）
+     */
+    public void clearEmbeddingIdsByAnswerIds(List<Long> answerSegmentIds) {
+        if (CollectionUtils.isEmpty(answerSegmentIds)) {
+            return;
+        }
+        lambdaUpdate()
+                .in(DocumentSegmentQuestion::getAnswerSegmentId, answerSegmentIds)
+                .set(DocumentSegmentQuestion::getEmbeddingId, null)
+                .update();
+    }
+
+    /**
      * 回填单条问题行的向量条目id
      */
     public void updateEmbeddingId(Long id, String embeddingId) {

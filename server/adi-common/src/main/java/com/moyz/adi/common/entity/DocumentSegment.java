@@ -7,6 +7,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.time.LocalDateTime;
+
 /**
  * 文档分段（text 分段 / qa 答案 / parent_child 父段）——分段内容与元数据的唯一事实源。
  * text 模式下行自身被向量化（embedding_id 非空）；qa 与 parent_child 模式下行不被向量化，
@@ -53,4 +55,12 @@ public class DocumentSegment extends BaseEntity {
     @Schema(title = "来源: doc/manual/annotation(预留) | Source")
     @TableField("source")
     private String source;
+
+    @Schema(title = "是否启用 | Is Enabled")
+    @TableField("is_enabled")
+    private Boolean isEnabled;
+
+    @Schema(title = "启用/停用变更时间 | Enabled Status Change Time")
+    @TableField("enabled_change_time")
+    private LocalDateTime enabledChangeTime;
 }

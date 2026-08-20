@@ -84,6 +84,38 @@ public class DocumentSegmentService extends ServiceImpl<DocumentSegmentMapper, D
     }
 
     /**
+     * 清空该段名下全部向量条目id（主表行 + 问题 + 子块；段停用删向量后调用，
+     * 使统计口径与"embeddingId == null 即待嵌"的既有判断自然正确）
+     */
+    public void clearEmbeddingIdsBySegmentId(Long segmentId) {
+        lambdaUpdate()
+                .eq(DocumentSegment::getId, segmentId)
+                .set(DocumentSegment::getEmbeddingId, null)
+                .update();
+        questionService.clearEmbeddingIdsByAnswerIds(List.of(segmentId));
+        childChunkService.clearEmbeddingIdsByParentIds(List.of(segmentId));
+    }
+
+    /**
+     * 按文档uuid取启用中的段（重嵌/图谱抽取时过滤停用段用；历史行 is_enabled 为 null 视为启用）
+     */
+    public List<DocumentSegment> listEnabledByDocUuid(String docUuid) {
+        return lambdaQuery()
+                .eq(DocumentSegment::getDocUuid, docUuid)
+                .eq(DocumentSegment::getIsDeleted, false)
+                .and(q -> q.eq(DocumentSegment::getIsEnabled, true).or().isNull(DocumentSegment::getIsEnabled))
+                .orderByAsc(DocumentSegment::getPosition)
+                .list();
+    }
+
+    /**
+     * 取启用段id集合（问题/子块重嵌时过滤停用答案/父段用）
+     */
+    public Set<Long> listEnabledIdsByDocUuid(String docUuid) {
+        return listEnabledByDocUuid(docUuid).stream().map(DocumentSegment::getId).collect(Collectors.toSet());
+    }
+
+    /**
      * 段级命中统计：按向量条目id分发到三张表累加，并把 qa/parent_child 模式的命中传导 +1 到答案/父段行
      */
     public void incrementHitCounts(List<String> embeddingIds) {
