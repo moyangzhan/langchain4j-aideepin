@@ -24,4 +24,13 @@ public class GraphIngestParam {
     private List<String> identifyColumns;
     private List<String> appendColumns;
     private boolean isFreeToken;
+    /**
+     * LLM 调用记录用：来源对象 id（所属文档 id，写 adi_llm_call_record.source_id）
+     */
+    private Long sourceId;
+    /**
+     * LLM 调用记录用：模型平台/名称（调用方从 AiModel 取，GraphRag 内不持有 LLM 服务）
+     */
+    private String modelPlatform;
+    private String modelName;
 }

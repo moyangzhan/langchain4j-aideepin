@@ -2,11 +2,15 @@ package com.moyz.adi.common.rag;
 
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.DocumentSegment;
+import com.moyz.adi.common.entity.LLMCallRecord;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ErrorEnum;
+import com.moyz.adi.common.enums.LLMCallRecordSourceType;
 import com.moyz.adi.common.helper.QuotaHelper;
+import com.moyz.adi.common.service.LLMCallRecordService;
 import com.moyz.adi.common.service.UserDayCostService;
 import com.moyz.adi.common.util.SpringUtil;
+import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.GraphIngestParam;
 import com.moyz.adi.common.vo.RetrieverCreateParam;
 import dev.langchain4j.data.message.UserMessage;
@@ -47,6 +51,9 @@ public class GraphRag {
     public void ingest(GraphIngestParam graphIngestParam) {
         log.info("GraphRag ingest, segments:{}", graphIngestParam.getSegments() == null ? 0 : graphIngestParam.getSegments().size());
         User user = graphIngestParam.getUser();
+        long startTime = System.currentTimeMillis();
+        int totalInputTokens = 0;
+        int totalOutputTokens = 0;
         List<Triple<TextSegment, String, String>> extracted = new ArrayList<>();
         for (DocumentSegment segment : graphIngestParam.getSegments()) {
             if (StringUtils.isBlank(segment.getContent())) {
@@ -72,6 +79,10 @@ public class GraphRag {
             response = aiMessageResponse.aiMessage().text();
 
             SpringUtil.getBean(UserDayCostService.class).appendCostToUser(user, aiMessageResponse.tokenUsage().totalTokenCount(), graphIngestParam.isFreeToken());
+            if (aiMessageResponse.tokenUsage() != null) {
+                totalInputTokens += aiMessageResponse.tokenUsage().inputTokenCount() == null ? 0 : aiMessageResponse.tokenUsage().inputTokenCount();
+                totalOutputTokens += aiMessageResponse.tokenUsage().outputTokenCount() == null ? 0 : aiMessageResponse.tokenUsage().outputTokenCount();
+            }
             extracted.add(Triple.of(textSegment, segmentId, response));
         }
         GraphStoreIngestor ingestor = GraphStoreIngestor.builder()
@@ -80,6 +91,28 @@ public class GraphRag {
                 .graphStore(graphStore)
                 .build();
         ingestor.ingestExtracted(extracted);
+        saveCallRecord(graphIngestParam, user, totalInputTokens, totalOutputTokens, System.currentTimeMillis() - startTime);
+    }
+
+    /**
+     * 图谱抽取的 LLM 调用记录（可观测性，Token Monitor 展示）：与 QA 生成（DocumentQaService）
+     * 同款模式，sourceType 为 KNOWLEDGE_BASE_INGEST。此前仅扣减日额度、不落调用记录，属存量缺口。
+     */
+    private void saveCallRecord(GraphIngestParam graphIngestParam, User user, int inputTokens, int outputTokens, long durationMs) {
+        if (user == null || (inputTokens + outputTokens) <= 0) {
+            return;
+        }
+        LLMCallRecord callRecord = new LLMCallRecord();
+        callRecord.setUuid(UuidUtil.createShort());
+        callRecord.setSourceType(LLMCallRecordSourceType.KNOWLEDGE_BASE_INGEST.getValue());
+        callRecord.setSourceId(graphIngestParam.getSourceId());
+        callRecord.setUserId(user.getId());
+        callRecord.setModelPlatform(graphIngestParam.getModelPlatform());
+        callRecord.setModelName(graphIngestParam.getModelName());
+        callRecord.setInputTokens(inputTokens);
+        callRecord.setOutputTokens(outputTokens);
+        callRecord.setDuration((int) durationMs);
+        SpringUtil.getBean(LLMCallRecordService.class).saveAsync(callRecord);
     }
 
     public GraphStoreContentRetriever createRetriever(RetrieverCreateParam param) {

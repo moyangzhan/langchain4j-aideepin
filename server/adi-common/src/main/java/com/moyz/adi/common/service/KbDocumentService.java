@@ -232,6 +232,9 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
                             .identifyColumns(List.of(AdiConstant.MetadataKey.KB_UUID))
                             .appendColumns(List.of(AdiConstant.MetadataKey.KB_ITEM_UUID))
                             .isFreeToken(llmService.getAiModel().getIsFree())
+                            .sourceId(kbItem.getId())
+                            .modelPlatform(llmService.getAiModel().getPlatform())
+                            .modelName(llmService.getAiModel().getName())
                             .build()
             );
             ChainWrappers.lambdaUpdateChain(baseMapper)
@@ -301,6 +304,9 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
                             .identifyColumns(List.of(AdiConstant.MetadataKey.KB_UUID))
                             .appendColumns(List.of(AdiConstant.MetadataKey.KB_ITEM_UUID))
                             .isFreeToken(llmService.getAiModel().getIsFree())
+                            .sourceId(kbItem.getId())
+                            .modelPlatform(llmService.getAiModel().getPlatform())
+                            .modelName(llmService.getAiModel().getName())
                             .build()
             );
         } catch (Exception e) {
