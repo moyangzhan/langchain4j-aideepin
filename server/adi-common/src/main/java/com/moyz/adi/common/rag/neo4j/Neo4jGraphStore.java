@@ -475,6 +475,27 @@ public class Neo4jGraphStore implements GraphStore {
         }
     }
 
+    /**
+     * 定点删除指定源/目标实体名的边。无向匹配：与 searchEdges/getEdge 的查找语义一致，
+     * 方向不参与边身份（账本按字典序规范化记账，与图库建边方向可能相反）
+     */
+    @Override
+    public void deleteEdge(String kbUuid, String sourceName, String targetName) {
+        try (Session session = driver.session()) {
+            String cypherQuery = """
+                    MATCH (a:%s)-[r]-(b:%s)
+                    WHERE a.name = $a_name AND b.name = $b_name AND r.metadata.kb_uuid = $kb_uuid
+                    DELETE r
+                    """.formatted(this.graphName, this.graphName);
+            log.info("deleteEdge prepareSql:{}", cypherQuery);
+            Map<String, Object> params = new HashMap<>();
+            params.put("a_name", sourceName);
+            params.put("b_name", targetName);
+            params.put("kb_uuid", kbUuid);
+            session.executeWrite(tx -> tx.run(cypherQuery, params));
+        }
+    }
+
     private List<Triple<GraphVertex, GraphEdge, GraphVertex>> getEdgesFromResultSet(List<Record> records) {
         List<Triple<GraphVertex, GraphEdge, GraphVertex>> result = new ArrayList<>();
         for (Record record : records) {

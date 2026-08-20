@@ -1,9 +1,13 @@
 package com.moyz.adi.common.rag;
 
 import com.moyz.adi.common.cosntant.AdiConstant;
+import com.moyz.adi.common.entity.DocumentGraphEdge;
+import com.moyz.adi.common.entity.DocumentGraphVertex;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.service.DocumentGraphProvenanceService;
 import com.moyz.adi.common.util.AdiStringUtil;
+import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.vo.*;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.filter.Filter;
@@ -16,18 +20,22 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.tuple.Triple;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.MAX_METADATA_VALUE_LENGTH;
 
 /**
- * 图谱存储入库器：把「段抽取结果」写入图数据库。
+ * 图谱存储入库器：把「段抽取结果」写入图数据库，并同步维护段溯源账本（双写）。
  * <p>
  * 切段职责已上移到 SegmentIndexService（document_segment 为唯一事实源），
- * 本类只负责：LLM 已抽取出的实体/关系 → 顶点/边的合并写入。
+ * 本类负责：LLM 已抽取出的实体/关系 → 顶点/边的合并写入 + 账本贡献行落库。
  * 每个元素为 Triple(段TextSegment, 段uuid即textSegmentId, LLM抽取响应)。
+ * 图库上的合并 description/weight 与 text_segment_id 串退化为检索缓存；
+ * 操作与展示语义（独占判定、描述聚合、停用清理）全部以账本为准。
  */
 @Builder
 @AllArgsConstructor
@@ -52,11 +60,16 @@ public class GraphStoreIngestor {
      */
     public void ingestExtracted(List<Triple<TextSegment, String, String>> extracted) {
         log.info("Starting to store {} extracted segments into the graph store", extracted.size());
+        // 账本行攒批（键内去重、富信息行优先），循环结束后一次落库
+        Map<String, DocumentGraphVertex> vertexRows = new LinkedHashMap<>();
+        Map<String, DocumentGraphEdge> edgeRows = new LinkedHashMap<>();
         for (Triple<TextSegment, String, String> triple : extracted) {
             TextSegment segment = triple.getLeft();
             String textSegmentId = triple.getMiddle();
             String response = triple.getRight();
             Map<String, Object> metadata = segment.metadata().toMap();
+            String kbUuid = String.valueOf(metadata.get(AdiConstant.MetadataKey.KB_UUID));
+            String docUuid = String.valueOf(metadata.get(AdiConstant.MetadataKey.KB_ITEM_UUID));
             log.info("Graph response:{}", response);
             if (StringUtils.isBlank(response)) {
                 log.warn("Response is empty, segmentId:{}", textSegmentId);
@@ -88,6 +101,7 @@ public class GraphStoreIngestor {
                     String entityType = AdiStringUtil.clearStr(recordAttributes[2].toUpperCase()).replaceAll("[^a-zA-Z0-9\\s\\u4E00-\\u9FA5]+", "").replace(" ", "");
                     String entityDescription = AdiStringUtil.clearStr(recordAttributes[3]);
                     log.info("entityName:{},entityType:{},entityDescription:{}", entityName, entityType, entityDescription);
+                    addVertexRow(vertexRows, vertexRow(kbUuid, docUuid, textSegmentId, entityName, entityType, entityDescription));
                     //实体如果不存在图数据库中，插入一个新的实体，否则追加textSegmentId、description以及metadata中指定的内容
                     List<GraphVertex> existVertices = graphStore.searchVertices(
                             GraphVertexSearch.builder()
@@ -134,6 +148,15 @@ public class GraphStoreIngestor {
                         String tailRecord = recordAttributes[recordAttributes.length - 1];
                         weight = NumberUtils.toDouble(tailRecord, 1.0);
                     }
+
+                    // 账本：边行。端点按字典序规范化——图库对边的查找/合并是无向的，
+                    // 正反两次抽取必须收敛到同一元素键，否则独占判定会误删他段贡献
+                    String from = sourceName.compareTo(targetName) <= 0 ? sourceName : targetName;
+                    String to = sourceName.compareTo(targetName) <= 0 ? targetName : sourceName;
+                    addEdgeRow(edgeRows, edgeRow(kbUuid, docUuid, textSegmentId, from, to, edgeDescription, weight));
+                    // 账本：端点不变式——边的每个贡献者必然也是两端顶点的贡献者（独占顶点删除无损的前提）
+                    addVertexRow(vertexRows, vertexRow(kbUuid, docUuid, textSegmentId, sourceName, null, null));
+                    addVertexRow(vertexRows, vertexRow(kbUuid, docUuid, textSegmentId, targetName, null, null));
 
                     //Source vertex
                     GraphVertex source = graphStore.getVertex(
@@ -226,7 +249,65 @@ public class GraphStoreIngestor {
             }
         }
 
+        saveProvenanceRows(vertexRows, edgeRows);
         log.info("Finished storing {} extracted segments into the graph store", extracted.size());
+    }
+
+    /**
+     * 账本落库（双写的账本侧，攒批 + ON CONFLICT 幂等）。失败仅记录日志、不阻断抽取：
+     * 漏记的贡献按"账本为准"原则不参与段级操作判定，可由文档重跑图谱收敛。
+     */
+    private void saveProvenanceRows(Map<String, DocumentGraphVertex> vertexRows, Map<String, DocumentGraphEdge> edgeRows) {
+        if (vertexRows.isEmpty() && edgeRows.isEmpty()) {
+            return;
+        }
+        try {
+            SpringUtil.getBean(DocumentGraphProvenanceService.class)
+                    .saveContributions(new ArrayList<>(vertexRows.values()), new ArrayList<>(edgeRows.values()));
+        } catch (Exception e) {
+            log.error("Save graph provenance rows failed, vertices:{}, edges:{}", vertexRows.size(), edgeRows.size(), e);
+        }
+    }
+
+    /**
+     * 键内去重收藏账本顶点行：实体记录与关系端点重复时，保留带类型与描述片段的富信息行
+     */
+    private void addVertexRow(Map<String, DocumentGraphVertex> rows, DocumentGraphVertex row) {
+        String key = row.getKbUuid() + "|" + row.getName() + "|" + row.getSegmentUuid();
+        DocumentGraphVertex exist = rows.get(key);
+        if (exist == null) {
+            rows.put(key, row);
+        } else if (exist.getDescription() == null && row.getDescription() != null) {
+            exist.setEntityType(row.getEntityType());
+            exist.setDescription(row.getDescription());
+        }
+    }
+
+    private void addEdgeRow(Map<String, DocumentGraphEdge> rows, DocumentGraphEdge row) {
+        rows.putIfAbsent(row.getKbUuid() + "|" + row.getSourceName() + "|" + row.getTargetName() + "|" + row.getSegmentUuid(), row);
+    }
+
+    private DocumentGraphVertex vertexRow(String kbUuid, String docUuid, String segmentUuid, String name, String entityType, String description) {
+        DocumentGraphVertex row = new DocumentGraphVertex();
+        row.setKbUuid(kbUuid);
+        row.setDocUuid(docUuid);
+        row.setSegmentUuid(segmentUuid);
+        row.setName(name);
+        row.setEntityType(entityType);
+        row.setDescription(description);
+        return row;
+    }
+
+    private DocumentGraphEdge edgeRow(String kbUuid, String docUuid, String segmentUuid, String sourceName, String targetName, String description, double weight) {
+        DocumentGraphEdge row = new DocumentGraphEdge();
+        row.setKbUuid(kbUuid);
+        row.setDocUuid(docUuid);
+        row.setSegmentUuid(segmentUuid);
+        row.setSourceName(sourceName);
+        row.setTargetName(targetName);
+        row.setDescription(description);
+        row.setWeight(weight);
+        return row;
     }
 
     /**

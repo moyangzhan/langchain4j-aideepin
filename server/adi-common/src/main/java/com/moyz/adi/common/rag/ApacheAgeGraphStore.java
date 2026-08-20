@@ -441,6 +441,38 @@ public class ApacheAgeGraphStore implements GraphStore {
         }
     }
 
+    /**
+     * 定点删除指定源/目标实体名的边。无向匹配（match (a)-[r]-(b)）：
+     * 与 searchEdges/getEdge 的查找语义一致，方向不参与边身份
+     */
+    @Override
+    public void deleteEdge(String kbUuid, String sourceName, String targetName) {
+        try (Connection connection = setupConnection()) {
+            String prepareSql = """
+                    select * from cypher('%s', $$
+                        match (a)-[r]-(b)
+                        where a.name = $a_name and b.name = $b_name and r.metadata.kb_uuid = $kb_uuid
+                        delete r
+                    $$,?) as (r agtype);
+                    """.formatted(graph);
+            log.info("deleteEdge prepareSql:{}", prepareSql);
+            try (PreparedStatement deleteStmt = connection.prepareStatement(prepareSql)) {
+                Map<String, Object> args = Map.of(
+                        "a_name", sourceName,
+                        "b_name", targetName,
+                        "kb_uuid", kbUuid
+                );
+                Agtype agtype = new Agtype();
+                agtype.setValue(JsonUtil.toJson(args));
+                deleteStmt.setObject(1, agtype);
+                deleteStmt.execute();
+            }
+        } catch (SQLException e) {
+            log.error("deleteEdge sql exception", e);
+            throw new BaseException(B_DB_ERROR);
+        }
+    }
+
     private List<Triple<GraphVertex, GraphEdge, GraphVertex>> getEdgesFromResultSet(ResultSet resultSet) {
         List<Triple<GraphVertex, GraphEdge, GraphVertex>> result = new ArrayList<>();
         try {

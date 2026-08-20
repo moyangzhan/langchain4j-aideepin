@@ -31,4 +31,12 @@ public interface GraphStore {
     void deleteVertices(GraphSearchCondition filter, boolean includeEdges);
 
     void deleteEdges(GraphSearchCondition filter);
+
+    /**
+     * 定点删除源/目标实体名与 kb 匹配的边（段停用时按账本清理独占边）。
+     * <p>
+     * 无向匹配：与 searchEdges/getEdge 的查找语义保持一致——方向不参与边的身份，
+     * 账本中按字典序规范化记账的边与其在图库中的建边方向可能相反。
+     */
+    void deleteEdge(String kbUuid, String sourceName, String targetName);
 }
