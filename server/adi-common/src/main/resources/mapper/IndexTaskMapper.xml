@@ -2,20 +2,53 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.moyz.adi.common.mapper.IndexTaskMapper">
 
+    <!--
+      合并入队（冲突目标带谓词，匹配部分唯一索引 uk_index_task_active，键含 index_version）：
+      * 无同版本未完成行 -> 插入新行（新版本必然是新键，running 行永远吞不掉它）
+      * 同键同版本 pending -> 合并刷新触发者（同版本重复触发去抖）
+      * 同键同版本 failed  -> 原地复活为 pending，清失败原因与停止标志（手动重试）
+      * 同键同版本 running -> 不动（该版本已在执行中）
+      旧版本行的清理由 supersede 负责，本语句不做版本比较（键含版本，无需 GREATEST）。
+    -->
     <insert id="enqueue">
         INSERT INTO adi_index_task (kb_uuid, doc_uuid, user_id, segment_uuid, target_type, task_type, index_version, status)
         VALUES (#{task.kbUuid}, #{task.docUuid}, #{task.userId}, #{task.segmentUuid}, #{task.targetType},
                 #{task.taskType}, #{task.indexVersion}, 'pending')
-        ON CONFLICT (doc_uuid, segment_uuid, target_type, task_type)
-        DO UPDATE SET index_version = excluded.index_version,
+        ON CONFLICT (doc_uuid, segment_uuid, target_type, task_type, index_version) WHERE status &lt;&gt; 'done'
+        DO UPDATE SET status = 'pending',
                       user_id = excluded.user_id,
+                      fail_reason = null,
+                      stop_flag = false,
                       update_time = now()
-        WHERE adi_index_task.status = 'pending'
+        WHERE adi_index_task.status &lt;&gt; 'running'
     </insert>
+
+    <!--
+      新版本入队时的清队与停旧（同键、index_version 更小的未完成行）：
+      * pending -> 直接置 failed（无归属执行器，安全；记录死因，不再占用 claim 顺序）
+      * running -> 仅打 stop_flag，不动 status：同 doc 串行闸门必须等执行器自行走到
+        检查点中止后才打开，否则新旧执行器并发写同一文档
+      与 claimOne 的竞态由 status 守卫原子化解（要么 claim 先提交变 running 只被打标，
+      要么 supersede 先提交变 failed 不再被 claim）。
+    -->
+    <update id="supersede">
+        UPDATE adi_index_task
+        SET status      = CASE WHEN status = 'pending' THEN 'failed' ELSE status END,
+            fail_reason = CASE WHEN status = 'pending' THEN 'superseded by newer version' ELSE fail_reason END,
+            stop_flag   = true,
+            update_time = now()
+        WHERE doc_uuid = #{task.docUuid}
+          AND segment_uuid = #{task.segmentUuid}
+          AND target_type = #{task.targetType}
+          AND task_type = #{task.taskType}
+          AND index_version &lt; #{task.indexVersion}
+          AND status IN ('pending', 'running')
+    </update>
 
     <!-- PG 的 UPDATE..RETURNING 需走 executeQuery，因此用 select 标签 -->
     <select id="claimOne" resultType="com.moyz.adi.common.entity.IndexTask">
-        UPDATE adi_index_task t SET status = 'running', update_time = now()
+        UPDATE adi_index_task t
+        SET status = 'running', update_time = now(), start_time = now(), heartbeat_time = now(), stop_flag = false
         WHERE t.id = (
             SELECT p.id
             FROM adi_index_task p
@@ -28,25 +61,51 @@
             FOR UPDATE SKIP LOCKED
         )
         RETURNING t.id, t.kb_uuid, t.doc_uuid, t.user_id, t.segment_uuid,
-                  t.target_type, t.task_type, t.index_version, t.status, t.fail_reason,
-                  t.create_time, t.update_time
+                  t.target_type, t.task_type, t.index_version, t.status, t.fail_reason, t.stop_flag,
+                  t.start_time, t.heartbeat_time, t.create_time, t.update_time
     </select>
 
+    <!--
+      终态落定（done/failed）。status='running' 守卫：被 stale 重置（回 pending）或
+      超时强杀（failed）的行已不在 running，僵尸执行器迟到的 finish 不得覆盖其状态。
+    -->
     <update id="finishOne">
         UPDATE adi_index_task
         SET status = #{status},
             fail_reason = #{failReason},
             update_time = now()
-        WHERE id = #{id}
+        WHERE id = #{id} AND status = 'running'
     </update>
+
+    <!-- 执行期心跳：刷新存活证明。返回 0 = 行已不处于 running（被回收/强杀，当前执行器已成僵尸） -->
+    <update id="heartbeat">
+        UPDATE adi_index_task
+        SET heartbeat_time = now()
+        WHERE id = #{id} AND status = 'running'
+    </update>
+
+    <!-- 协作式停止检查点：本行仍处 running 且被 newer-version enqueue 打了停止标志 -->
+    <select id="isStopFlagSet" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM adi_index_task WHERE id = #{id} AND status = 'running' AND stop_flag)
+    </select>
 
     <select id="hasRunningByDoc" resultType="boolean">
         SELECT EXISTS(SELECT 1 FROM adi_index_task WHERE doc_uuid = #{docUuid} AND status = 'running')
     </select>
 
+    <!-- 进程崩溃回收：心跳超时的 running 行重置 pending 等待重跑 -->
     <update id="resetStaleRunning">
         UPDATE adi_index_task
         SET status = 'pending', update_time = now()
-        WHERE status = 'running' AND update_time &lt; now() - (#{minutes} || ' minutes')::interval
+        WHERE status = 'running'
+          AND COALESCE(heartbeat_time, start_time, update_time) &lt; now() - (#{minutes} || ' minutes')::interval
+    </update>
+
+    <!-- 挂起熔断：start_time 超过最大执行时长且心跳仍存活（非崩溃）的任务强制 failed -->
+    <update id="failOverdue">
+        UPDATE adi_index_task
+        SET status = 'failed', fail_reason = 'max execution time exceeded', update_time = now()
+        WHERE status = 'running'
+          AND start_time &lt; now() - (#{minutes} || ' minutes')::interval
     </update>
 </mapper>

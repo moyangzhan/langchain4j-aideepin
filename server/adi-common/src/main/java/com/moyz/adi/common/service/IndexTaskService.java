@@ -21,6 +21,7 @@ import com.moyz.adi.common.service.embedding.IKnowledgeEmbeddingService;
 import com.moyz.adi.common.vo.ChatModelBuilderProperties;
 import com.moyz.adi.common.vo.GraphIngestParam;
 import dev.langchain4j.model.chat.ChatModel;
+import jakarta.annotation.PreDestroy;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -34,7 +35,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.DOC_INDEX_TYPE_EMBEDDING;
@@ -45,11 +50,18 @@ import static com.moyz.adi.common.cosntant.RedisKeyConstant.USER_INDEXING;
 /**
  * 索引任务队列：一切索引写入（切段/向量化/图谱抽取）的唯一通道。
  * <p>
- * 总原则：同 doc 任务串行（claimOne 领取互斥，advisory lock），跨 doc 并行；
- * 版本（index_version）承担竞态检测——任务携带入队时快照，结束条件置位，
- * 不匹配自动向最新版本重入队（合并去抖）；清理只发生在队列内安全点
- * （任务开头清 / 作废自清理），保存侧仅在"同 doc 无 running"时即时清理。
+ * 总原则：同 doc 任务串行（claimOne 领取互斥，advisory lock），跨 doc 并行。
+ * 版本入键——(doc, segment, target, type, index_version) 唯一（部分索引，done 行除外）：
+ * 新版本 enqueue 永远插新行（running 行吞不掉它），并 supersede 同键旧版本行
+ * （pending 直接置 failed；running 仅打 stop_flag，由检查点协作中止，串行闸门不提前
+ * 打开）；同版本重复触发合并去抖、failed 原地复活（手动重试）。
+ * 执行器三道过期防线（开始检查 / 批间协作检查点 / 结束条件置位）：发现版本前进即
+ * 作废自身并接管"变更即失效"的清理（被取代方删旧段行与向量，最新版本任务必走全量
+ * 重切），同时幂等补入队最新版本作安全网（兜触发方 bump 与 enqueue 之间崩溃的缺口）。
  * 图谱不自动触发（仅保存与段启用自动入队 embedding），失败仅手动重试。
+ * 崩溃自愈：执行器周期刷新 heartbeat_time，轮询按其回收超时 running（进程死→重置
+ * pending 重跑）；start_time 超过最大执行时长的心跳存活任务视为挂起，强制 failed
+ * （兜底断路器，拦"进程活着但永久卡死"）。
  */
 @Slf4j
 @Service
@@ -60,7 +72,20 @@ public class IndexTaskService {
     public static final String STATUS_DONE = "done";
     public static final String STATUS_FAILED = "failed";
 
-    private static final int STALE_RUNNING_MINUTES = 30;
+    /** 心跳间隔：执行器刷新 heartbeat_time 的周期 */
+    private static final int HEARTBEAT_INTERVAL_SECONDS = 30;
+
+    /** 心跳超时阈值（约 4 个漏拍即判定进程死亡），running 行重置 pending 重跑 */
+    private static final int STALE_RUNNING_MINUTES = 2;
+
+    /** 最大执行时长兜底断路器：进程活着但挂起的任务强制 failed，须远大于任何正常任务 */
+    private static final int MAX_RUNNING_MINUTES = 120;
+
+    private final ScheduledExecutorService heartbeatExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "index-task-heartbeat");
+        t.setDaemon(true);
+        return t;
+    });
 
     @Resource
     @Lazy
@@ -94,7 +119,7 @@ public class IndexTaskService {
     private StringRedisTemplate stringRedisTemplate;
 
     /**
-     * 文档级任务入队（合并去抖：同键 pending 只更新版本与触发者）
+     * 文档级任务入队（版本入键：新版本插新行并 supersede 旧版本；同版本合并/复活）
      */
     public void enqueueDocument(String kbUuid, String docUuid, String taskType, User user) {
         KbDocument doc = kbDocumentMapper.getByUuid(docUuid);
@@ -110,12 +135,13 @@ public class IndexTaskService {
         task.setTargetType(TARGET_DOCUMENT);
         task.setTaskType(taskType);
         task.setIndexVersion(doc.getIndexVersion() == null ? 0 : doc.getIndexVersion());
+        indexTaskMapper.supersede(task);
         indexTaskMapper.enqueue(task);
         self.dispatch();
     }
 
     /**
-     * 段级任务入队（目标段必须存在）
+     * 段级任务入队（目标段必须存在；supersede+upsert 语义同文档级）
      */
     public void enqueueSegment(KnowledgeBase kb, KbDocument doc, DocumentSegment segment, String taskType, User user) {
         IndexTask task = new IndexTask();
@@ -126,6 +152,7 @@ public class IndexTaskService {
         task.setTargetType(TARGET_SEGMENT);
         task.setTaskType(taskType);
         task.setIndexVersion(segment.getIndexVersion() == null ? 0 : segment.getIndexVersion());
+        indexTaskMapper.supersede(task);
         indexTaskMapper.enqueue(task);
         self.dispatch();
     }
@@ -151,20 +178,29 @@ public class IndexTaskService {
         }
     }
 
+    @PreDestroy
+    public void shutdownHeartbeatExecutor() {
+        heartbeatExecutor.shutdownNow();
+    }
+
     @Transactional
     public IndexTask claimOne() {
         return indexTaskMapper.claimOne();
     }
 
     /**
-     * 轮询兜底：回收超时 running（进程崩溃遗留），重触发消费
+     * 轮询兜底：按 heartbeat_time 回收超时 running（进程崩溃遗留，重置 pending 重跑），
+     * 按 start_time 熔断挂起任务（进程活着但卡死，强制 failed）。先回收后熔断——
+     * 两者同时命中时按崩溃处理（自动重跑优于人工重试）。有动作则重触发消费。
      */
     @Scheduled(fixedDelay = 60_000)
     public void pollStale() {
         try {
             int reset = indexTaskMapper.resetStaleRunning(STALE_RUNNING_MINUTES);
-            if (reset > 0) {
-                log.warn("Reset {} stale running index tasks (> {} minutes)", reset, STALE_RUNNING_MINUTES);
+            int failed = indexTaskMapper.failOverdue(MAX_RUNNING_MINUTES);
+            if (reset + failed > 0) {
+                log.warn("Poller recovered index tasks: {} stale-running reset to pending (> {} min), {} hung force-failed (> {} min)",
+                        reset, STALE_RUNNING_MINUTES, failed, MAX_RUNNING_MINUTES);
                 self.dispatch();
             }
         } catch (Exception e) {
@@ -176,18 +212,20 @@ public class IndexTaskService {
         String userIndexKey = MessageFormat.format(USER_INDEXING, task.getUserId());
         stringRedisTemplate.opsForValue().increment(userIndexKey);
         stringRedisTemplate.expire(userIndexKey, 10, TimeUnit.MINUTES);
+        ScheduledFuture<?> heartbeat = startHeartbeat(task);
         try {
             boolean skipped = route(task);
-            indexTaskMapper.finishOne(task.getId(), STATUS_DONE, skipped ? "skipped: version advanced" : null);
+            indexTaskMapper.finishOne(task.getId(), STATUS_DONE, skipped ? "skipped: superseded by newer version" : null);
         } catch (IndexTaskCancelledException e) {
             log.info("Index task cancelled, docUuid:{}, reason:{}", task.getDocUuid(), e.getMessage());
             onCancelled(task);
-            indexTaskMapper.finishOne(task.getId(), STATUS_DONE, "skipped: version advanced");
+            indexTaskMapper.finishOne(task.getId(), STATUS_DONE, "skipped: superseded by newer version");
         } catch (Exception e) {
             log.error("Index task failed, docUuid:{}, targetType:{}, taskType:{}",
                     task.getDocUuid(), task.getTargetType(), task.getTaskType(), e);
             indexTaskMapper.finishOne(task.getId(), STATUS_FAILED, StringUtils.abbreviate(e.getMessage(), 500));
         } finally {
+            heartbeat.cancel(false);
             if (DOC_INDEX_TYPE_EMBEDDING.equals(task.getTaskType())) {
                 stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, task.getKbUuid());
             }
@@ -199,7 +237,27 @@ public class IndexTaskService {
     }
 
     /**
-     * 路由到执行器。返回 true = 因版本过期被跳过（已重入队或标记 NONE）
+     * 执行期心跳：向本任务行周期刷新 heartbeat_time。刷新失效（rowcount=0，行已被
+     * stale 重置或超时强杀）说明当前执行器已沦为僵尸，告警一次留痕。
+     */
+    private ScheduledFuture<?> startHeartbeat(IndexTask task) {
+        AtomicBoolean zombieReported = new AtomicBoolean(false);
+        return heartbeatExecutor.scheduleAtFixedRate(() -> {
+            try {
+                if (indexTaskMapper.heartbeat(task.getId()) == 0
+                        && zombieReported.compareAndSet(false, true)) {
+                    log.warn("Index task heartbeat lost: row no longer running (reset or force-failed), id:{}, docUuid:{}",
+                            task.getId(), task.getDocUuid());
+                }
+            } catch (Exception e) {
+                log.warn("Index task heartbeat error, id:{}", task.getId(), e);
+            }
+        }, HEARTBEAT_INTERVAL_SECONDS, HEARTBEAT_INTERVAL_SECONDS, TimeUnit.SECONDS);
+    }
+
+    /**
+     * 路由到执行器。返回 true = 因版本过期被跳过（embedding 已接管清理并幂等补入队
+     * 最新版本；graphical 仅标记待重建，手动重跑，不自动重入队）
      */
     private boolean route(IndexTask task) {
         if (TARGET_DOCUMENT.equals(task.getTargetType())) {
@@ -222,9 +280,10 @@ public class IndexTaskService {
         if (kb == null) {
             return false;
         }
-        // 开始前版本检查：过期则直接重入队最新版本
+        // 开始前版本检查：过期则接管保存侧移交的清理（删段行向量，最新版本任务走全量重切）
         if (versionAdvanced(doc.getIndexVersion(), task.getIndexVersion())) {
-            reEnqueueDocument(task, doc);
+            invalidateDocIndexArtifacts(doc);
+            enqueueLatestDocument(task, doc);
             return true;
         }
         ChainWrappers.lambdaUpdateChain(kbDocumentMapper)
@@ -233,14 +292,16 @@ public class IndexTaskService {
                 .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
                 .update();
         segmentIndexService.reindexEmbedding(kb, doc, versionGuard(task));
-        // 条件置位：版本一致才生效，否则说明执行期间内容变更 -> 重入队最新版本
+        // 条件置位：版本一致才生效，否则说明执行期间版本前进 ->
+        // 本次产出全部过期，同样接管清理（漏检取消时段行仍在，不删会让最新版本任务走增量分支嵌旧内容）
         boolean finalized = ChainWrappers.lambdaUpdateChain(kbDocumentMapper)
                 .eq(KbDocument::getId, doc.getId())
                 .eq(KbDocument::getIndexVersion, task.getIndexVersion())
                 .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DONE)
                 .update();
         if (!finalized) {
-            reEnqueueDocument(task, kbDocumentMapper.getByUuid(task.getDocUuid()));
+            invalidateDocIndexArtifacts(doc);
+            enqueueLatestDocument(task, kbDocumentMapper.getByUuid(task.getDocUuid()));
             return true;
         }
         return false;
@@ -311,8 +372,11 @@ public class IndexTaskService {
         if (Boolean.FALSE.equals(segment.getIsEnabled())) {
             return false;
         }
+        // 过期即作废自身：清 embedding_id 保证最新版本任务重嵌（否则本任务迟到写入的
+        // 旧向量 id 会让新任务误判"已嵌"而跳过），并幂等补入队最新版本
         if (versionAdvanced(segment.getIndexVersion(), task.getIndexVersion())) {
-            reEnqueueSegment(task, segment);
+            invalidateSegmentEmbedding(segment);
+            enqueueLatestSegment(task, segment);
             return true;
         }
         KbDocument doc = kbDocumentMapper.getByUuid(segment.getDocUuid());
@@ -325,7 +389,10 @@ public class IndexTaskService {
         boolean finalized = updateSegmentStatusConditionally(segment.getId(), task.getIndexVersion(),
                 DocumentSegment::getEmbeddingStatus, EmbeddingStatusEnum.DONE);
         if (!finalized) {
-            reEnqueueSegment(task, documentSegmentService.getById(segment.getId()));
+            // 执行期间段内容变更：本次向量已过期，同样清引用并补最新版本任务
+            DocumentSegment fresh = documentSegmentService.getById(segment.getId());
+            invalidateSegmentEmbedding(segment);
+            enqueueLatestSegment(task, fresh);
             return true;
         }
         return false;
@@ -382,7 +449,9 @@ public class IndexTaskService {
 
     /**
      * 协作式取消的善后：本任务已写入的部分与历史残留由自己清理
-     * （保存侧在检测到 running 时已把清理责任移交到这里），随后重入队最新版本
+     * （保存侧在检测到 running 时已把清理责任移交到这里），随后幂等补入队最新版本。
+     * 版本入键后 enqueue 不会被自身 running 行吞掉（取消仅因版本前进触发，
+     * 最新版本的键必然与当前行不同）。
      */
     private void onCancelled(IndexTask task) {
         try {
@@ -396,35 +465,82 @@ public class IndexTaskService {
                         .eq(DocumentSegment::getIsDeleted, false)
                         .one();
                 if (segment != null) {
-                    updateSegmentStatus(segment.getId(), DocumentSegment::getEmbeddingStatus, EmbeddingStatusEnum.NONE);
+                    invalidateSegmentEmbedding(segment);
                 }
                 return;
             }
             if (DOC_INDEX_TYPE_EMBEDDING.equals(task.getTaskType())) {
-                iKnowledgeEmbeddingService.deleteByItemUuid(task.getDocUuid());
-                documentSegmentService.deleteByDocUuid(task.getDocUuid());
-                ChainWrappers.lambdaUpdateChain(kbDocumentMapper)
-                        .eq(KbDocument::getId, doc.getId())
-                        .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.NONE)
-                        .update();
-                reEnqueueDocument(task, doc);
+                invalidateDocIndexArtifacts(doc);
+                enqueueLatestDocument(task, doc);
             }
         } catch (Exception e) {
             log.error("onCancelled cleanup error, docUuid:{}", task.getDocUuid(), e);
         }
     }
 
+    /**
+     * 协作式取消信号：stop_flag（新版本入队对本行打的停止标志，任务行本地信号）或
+     * 版本前进任一成立即作废
+     */
     private Supplier<Boolean> versionGuard(IndexTask task) {
         return () -> {
+            if (indexTaskMapper.isStopFlagSet(task.getId())) {
+                return true;
+            }
             KbDocument doc = kbDocumentMapper.getByUuid(task.getDocUuid());
             return doc == null || versionAdvanced(doc.getIndexVersion(), task.getIndexVersion());
         };
     }
 
-    private void reEnqueueDocument(IndexTask task, KbDocument doc) {
+    /**
+     * 幂等安全网入队最新版本：正常情况下新版本行已由触发方入队（版本入键，enqueue
+     * 不会被 running 行吞掉），此处兜"版本已推进但触发方在 bump 与 enqueue 之间崩溃"
+     * 的缺口——同键同版本 upsert，已有 pending 则合并空转。
+     */
+    private void enqueueLatestDocument(IndexTask task, KbDocument doc) {
         if (doc == null) {
             return;
         }
+        indexTaskMapper.enqueue(buildLatestDocumentTask(task, doc));
+    }
+
+    private void enqueueLatestSegment(IndexTask task, DocumentSegment segment) {
+        if (segment == null) {
+            return;
+        }
+        indexTaskMapper.enqueue(buildLatestSegmentTask(task, segment));
+    }
+
+    /**
+     * 文档级 embedding 作废时的善后清理（保存侧在 running 期间移交的责任）：
+     * 版本前进即段行/向量全部过期（变更即失效），删除后最新版本任务走全量重切分支重建。
+     * 供开始检查/结束置位失败/协作取消三个检测点复用。
+     */
+    private void invalidateDocIndexArtifacts(KbDocument doc) {
+        iKnowledgeEmbeddingService.deleteByItemUuid(doc.getUuid());
+        documentSegmentService.deleteByDocUuid(doc.getUuid());
+        ChainWrappers.lambdaUpdateChain(kbDocumentMapper)
+                .eq(KbDocument::getId, doc.getId())
+                .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.NONE)
+                .update();
+    }
+
+    /**
+     * 段级 embedding 过期善后：清 embedding_id 与状态，保证最新版本段任务重嵌
+     * （否则本任务迟到写入的旧向量 id 会让新任务误判"已嵌"而跳过）
+     */
+    private void invalidateSegmentEmbedding(DocumentSegment segment) {
+        ChainWrappers.lambdaUpdateChain(documentSegmentService.getBaseMapper())
+                .eq(DocumentSegment::getId, segment.getId())
+                .set(DocumentSegment::getEmbeddingId, null)
+                .set(DocumentSegment::getEmbeddingStatus, EmbeddingStatusEnum.NONE)
+                .update();
+    }
+
+    /**
+     * 构造最新版本的文档级任务（安全网/取消善后用，直接 enqueue）
+     */
+    private IndexTask buildLatestDocumentTask(IndexTask task, KbDocument doc) {
         IndexTask next = new IndexTask();
         next.setKbUuid(task.getKbUuid());
         next.setDocUuid(task.getDocUuid());
@@ -433,13 +549,13 @@ public class IndexTaskService {
         next.setTargetType(TARGET_DOCUMENT);
         next.setTaskType(task.getTaskType());
         next.setIndexVersion(doc.getIndexVersion() == null ? 0 : doc.getIndexVersion());
-        indexTaskMapper.enqueue(next);
+        return next;
     }
 
-    private void reEnqueueSegment(IndexTask task, DocumentSegment segment) {
-        if (segment == null) {
-            return;
-        }
+    /**
+     * 构造最新版本的段级任务（安全网/取消善后用，直接 enqueue）
+     */
+    private IndexTask buildLatestSegmentTask(IndexTask task, DocumentSegment segment) {
         IndexTask next = new IndexTask();
         next.setKbUuid(task.getKbUuid());
         next.setDocUuid(task.getDocUuid());
@@ -448,7 +564,7 @@ public class IndexTaskService {
         next.setTargetType(TARGET_SEGMENT);
         next.setTaskType(task.getTaskType());
         next.setIndexVersion(segment.getIndexVersion() == null ? 0 : segment.getIndexVersion());
-        indexTaskMapper.enqueue(next);
+        return next;
     }
 
     private boolean updateSegmentStatusConditionally(Long segmentId, int expectedVersion,

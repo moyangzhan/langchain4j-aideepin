@@ -806,8 +806,8 @@ comment on column adi_document_segment.update_time is 'Last update time';
 comment on column adi_document_segment.is_deleted is 'Whether the record is soft-deleted';
 comment on column adi_document_segment.is_enabled is 'Whether this segment is enabled for retrieval (false = its vector & graph data has been deleted; enabling re-generates them)';
 comment on column adi_document_segment.enabled_change_time is 'Last enabled/disabled status change time';
-comment on column adi_document_segment.embedding_status is 'Rebuild status of this segment's vector data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
-comment on column adi_document_segment.graphical_status is 'Rebuild status of this segment's graph data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
+comment on column adi_document_segment.embedding_status is 'Rebuild status of this segment''s vector data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
+comment on column adi_document_segment.graphical_status is 'Rebuild status of this segment''s graph data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
 comment on column adi_document_segment.index_version is 'Generation of indexed artifacts built from this segment; +1 on segment content edit. Segment-level index tasks snapshot it for staleness detection';
 
 create unique index uk_document_segment_uuid on adi_document_segment (uuid);
@@ -1289,30 +1289,39 @@ comment on column adi_document_graph_edge.weight is 'Relationship strength given
 
 create table adi_index_task
 (
-    id            bigserial primary key,
-    kb_uuid       varchar(32)               not null,
-    doc_uuid      varchar(32)               not null,
-    user_id       bigint                    not null,
-    segment_uuid  varchar(32) default ''    not null,
-    target_type   varchar(20)               not null,
-    task_type     varchar(20)               not null,
-    index_version  int                      not null,
-    status        varchar(20)               not null,
-    fail_reason   varchar(500),
-    create_time   timestamp   default CURRENT_TIMESTAMP not null,
-    update_time   timestamp   default CURRENT_TIMESTAMP not null,
-    constraint uk_index_task unique (doc_uuid, segment_uuid, target_type, task_type)
+    id             bigserial primary key,
+    kb_uuid        varchar(32)               not null,
+    doc_uuid       varchar(32)               not null,
+    user_id        bigint                    not null,
+    segment_uuid   varchar(32) default ''    not null,
+    target_type    varchar(20)               not null,
+    task_type      varchar(20)               not null,
+    index_version  int                       not null,
+    status         varchar(20)               not null,
+    fail_reason    varchar(500),
+    stop_flag      boolean     default false not null,
+    start_time     timestamp,
+    heartbeat_time timestamp,
+    create_time    timestamp   default CURRENT_TIMESTAMP not null,
+    update_time    timestamp   default CURRENT_TIMESTAMP not null
 );
+-- Merge key includes index_version: one unfinished row per (target, type, version);
+-- done rows leave the index and accumulate as history. A newer version therefore
+-- always inserts fresh and can never be swallowed by a running row.
+create unique index uk_index_task_active on adi_index_task (doc_uuid, segment_uuid, target_type, task_type, index_version) where status <> 'done';
 create index idx_index_task_status on adi_index_task (status, id);
 create index idx_index_task_doc on adi_index_task (doc_uuid);
-comment on table adi_index_task is 'Index task queue: scheduling source of truth for all index writes (segmentation, embedding, graph extraction). One row per (doc_uuid, segment_uuid, target_type, task_type); document-level tasks use empty segment_uuid';
+comment on table adi_index_task is 'Index task queue: scheduling source of truth for all index writes (segmentation, embedding, graph extraction). At most one unfinished row per (doc_uuid, segment_uuid, target_type, task_type, index_version); done rows accumulate as run history; document-level tasks use empty segment_uuid';
 comment on column adi_index_task.kb_uuid is 'Owning knowledge base uuid (denormalized for fan-out enqueue and audit; not part of the merge key)';
 comment on column adi_index_task.doc_uuid is 'Target document uuid (never empty)';
 comment on column adi_index_task.user_id is 'Triggering user; async executors have no ThreadContext, billing context is persisted here';
-comment on column adi_index_task.segment_uuid is 'Target segment uuid for segment-level tasks; empty string for document-level tasks (PG unique constraints do not dedupe NULL)';
+comment on column adi_index_task.segment_uuid is 'Target segment uuid for segment-level tasks; empty string for document-level tasks (PG unique indexes do not dedupe NULL)';
 comment on column adi_index_task.target_type is 'document | segment';
 comment on column adi_index_task.task_type is 'embedding | graphical';
-comment on column adi_index_task.index_version is 'Snapshot of the target business table''s index_version at enqueue time: adi_document.index_version for document tasks, adi_document_segment.index_version for segment tasks. Mismatch at check/finalize means the source changed and the task re-enqueues at the latest version (merge-debounce); updated on merge-upsert while pending';
-comment on column adi_index_task.status is 'pending | running | done | failed (failed is manually retried by re-enqueue)';
-comment on column adi_index_task.fail_reason is 'Truncated failure reason when status = failed';
-comment on column adi_index_task.update_time is 'Also serves as claim heartbeat; running rows stale beyond 30 minutes are reset by the poller';
+comment on column adi_index_task.index_version is 'Snapshot of the target business table''s index_version at enqueue time: adi_document.index_version for document tasks, adi_document_segment.index_version for segment tasks. Part of the merge key: a newer version is always a fresh row; a running row can never swallow it';
+comment on column adi_index_task.status is 'pending | running | done | failed. A newer-version enqueue supersedes same-key older pending rows to failed; failed is revived in place by a same-version re-enqueue (manual retry); done rows stay as run history';
+comment on column adi_index_task.fail_reason is 'Truncated failure reason when status = failed (exception message, supersede notice, or the max-duration breaker notice)';
+comment on column adi_index_task.stop_flag is 'Cooperative stop signal: set by a newer-version enqueue on this key''s older RUNNING row (status is NOT changed - the same-doc serialization gate stays closed until the executor aborts at its next checkpoint); reset to false on claim and on failed-row revive';
+comment on column adi_index_task.start_time is 'Claim time of the latest attempt (NULL while never run); update_time at done/failed is the finish time - the pair gives execution duration for history analysis';
+comment on column adi_index_task.heartbeat_time is 'Executor liveness proof: initialized at claim and periodically refreshed while running (NULL when never run). A running row whose heartbeat is stale beyond the poller threshold is reset to pending (process-crash recovery)';
+comment on column adi_index_task.update_time is 'Last row change (enqueue / supersede / claim / finish / recovery); plain audit column - liveness is judged by heartbeat_time, not this column';

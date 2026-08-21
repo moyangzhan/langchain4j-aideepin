@@ -60,19 +60,24 @@ COMMENT ON COLUMN adi_knowledge_base.ingest_child_max_segment_size IS 'Parent-ch
 
 CREATE TABLE IF NOT EXISTS adi_document_segment
 (
-    id           bigserial primary key,
-    uuid         varchar(32) default ''                 not null,
-    kb_uuid      varchar(32) default ''                 not null,
-    doc_uuid     varchar(32) default ''                 not null,
-    position     int         default 0                  not null,
-    content      text                                    not null,
-    word_count   int         GENERATED ALWAYS AS (char_length(content)) STORED not null,
-    hit_count    int         default 0                  not null,
-    embedding_id varchar(64),
-    source       varchar(20) default 'doc'              not null,
-    create_time  timestamp   default CURRENT_TIMESTAMP  not null,
-    update_time  timestamp   default CURRENT_TIMESTAMP  not null,
-    is_deleted   boolean     default false              not null
+    id                  bigserial primary key,
+    uuid                varchar(32) default ''                 not null,
+    kb_uuid             varchar(32) default ''                 not null,
+    doc_uuid            varchar(32) default ''                 not null,
+    position            int         default 0                  not null,
+    content             text                                    not null,
+    word_count          int         GENERATED ALWAYS AS (char_length(content)) STORED not null,
+    hit_count           int         default 0                  not null,
+    embedding_id        varchar(64),
+    source              varchar(20) default 'doc'              not null,
+    is_enabled          boolean     default true               not null,
+    enabled_change_time timestamp   default CURRENT_TIMESTAMP  not null,
+    embedding_status    int         default 3                  not null,
+    graphical_status    int         default 3                  not null,
+    index_version       int         default 0                  not null,
+    create_time         timestamp   default CURRENT_TIMESTAMP  not null,
+    update_time         timestamp   default CURRENT_TIMESTAMP  not null,
+    is_deleted          boolean     default false              not null
 );
 
 COMMENT ON TABLE  adi_document_segment IS 'Document Segment (text chunk / QA answer / parent-child parent chunk) - single source of truth for segment content and metadata';
@@ -88,6 +93,11 @@ COMMENT ON COLUMN adi_document_segment.source IS 'Origin of the segment: doc (fr
 COMMENT ON COLUMN adi_document_segment.create_time IS 'Creation time';
 COMMENT ON COLUMN adi_document_segment.update_time IS 'Last update time';
 COMMENT ON COLUMN adi_document_segment.is_deleted IS 'Whether the record is soft-deleted';
+COMMENT ON COLUMN adi_document_segment.is_enabled IS 'Whether this segment is enabled for retrieval (false = its vector & graph data has been deleted; enabling re-generates them)';
+COMMENT ON COLUMN adi_document_segment.enabled_change_time IS 'Last enabled/disabled status change time';
+COMMENT ON COLUMN adi_document_segment.embedding_status IS 'Rebuild status of this segment''s vector data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
+COMMENT ON COLUMN adi_document_segment.graphical_status IS 'Rebuild status of this segment''s graph data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
+COMMENT ON COLUMN adi_document_segment.index_version IS 'Generation of indexed artifacts built from this segment; +1 on segment content edit. Segment-level index tasks snapshot it for staleness detection';
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_document_segment_uuid ON adi_document_segment (uuid);
 CREATE INDEX IF NOT EXISTS idx_document_segment_doc ON adi_document_segment (doc_uuid, position);
@@ -255,8 +265,7 @@ END $$;
 
 
 -- ============================================================
--- Section 5: segment enable/disable + graph provenance ledger
---   * adi_document_segment: add is_enabled / enabled_change_time
+-- Section 5: graph provenance ledger
 --   * new adi_document_graph_vertex / adi_document_graph_edge:
 --     one row per (graph element, segment) contribution - the authoritative
 --     source for segment/doc-level graph cleanup and exclusivity judgement.
@@ -265,20 +274,6 @@ END $$;
 --     a retrieval cache. Legacy graph data is NOT backfilled: a document
 --     joins the managed world by re-running graph extraction (lazy migration).
 -- ============================================================
-
-ALTER TABLE adi_document_segment
-    ADD COLUMN IF NOT EXISTS is_enabled          boolean   DEFAULT true NOT NULL,
-    ADD COLUMN IF NOT EXISTS enabled_change_time timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL;
-
-COMMENT ON COLUMN adi_document_segment.is_enabled          IS 'Whether this segment is enabled for retrieval (false = its vector & graph data has been deleted; enabling re-generates them)';
-COMMENT ON COLUMN adi_document_segment.enabled_change_time IS 'Last enabled/disabled status change time';
-
-ALTER TABLE adi_document_segment
-    ADD COLUMN IF NOT EXISTS embedding_status int DEFAULT 3 NOT NULL,
-    ADD COLUMN IF NOT EXISTS graphical_status int DEFAULT 3 NOT NULL;
-
-COMMENT ON COLUMN adi_document_segment.embedding_status IS 'Rebuild status of this segment's vector data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
-COMMENT ON COLUMN adi_document_segment.graphical_status IS 'Rebuild status of this segment's graph data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
 
 CREATE TABLE IF NOT EXISTS adi_document_graph_vertex
 (
@@ -340,16 +335,22 @@ COMMENT ON COLUMN adi_document_graph_edge.weight       IS 'Relationship strength
 --     Index tasks carry the version snapshot at enqueue time; the runner
 --     conditionally finalizes (WHERE index_version = snapshot) and re-enqueues
 --     the latest version on mismatch (merge-debounce).
+--     adi_document_segment.index_version is created in Section 3 (new table);
+--     adi_document is a renamed existing table, so its column is added here.
 --   * adi_index_task: scheduling source of truth for all index writes.
---     One row per (doc, segment, target, type); repeated enqueues only bump
---     the version of the pending row; same-doc tasks are serialized at claim
---     time (advisory lock), cross-doc tasks run in parallel.
+--     Version is part of the merge key: (doc, segment, target, type, version)
+--     unique among non-done rows (partial index; done rows accumulate as run
+--     history, purged manually). A newer-version enqueue always inserts a new
+--     row (never swallowed by a running row) and supersedes same-key older
+--     rows: pending -> failed (no executor attached, safe), running ->
+--     stop_flag only (cooperative stop; the same-doc serialization gate stays
+--     closed until the executor aborts at its next checkpoint). Same-version
+--     enqueues merge (pending) or revive (failed, manual retry). Same-doc
+--     tasks are serialized at claim time (advisory lock), cross-doc tasks run
+--     in parallel. Crash recovery: heartbeat_time (executor liveness,
+--     refreshed while running) drives the stale reset to pending; start_time
+--     drives the max-duration circuit breaker that force-fails hung executors.
 -- ============================================================
-
-ALTER TABLE adi_document_segment
-    ADD COLUMN IF NOT EXISTS index_version int DEFAULT 0 NOT NULL;
-
-COMMENT ON COLUMN adi_document_segment.index_version IS 'Generation of indexed artifacts built from this segment; +1 on segment content edit. Segment-level index tasks snapshot it for staleness detection';
 
 ALTER TABLE adi_document
     ADD COLUMN IF NOT EXISTS index_version int DEFAULT 0 NOT NULL;
@@ -358,32 +359,44 @@ COMMENT ON COLUMN adi_document.index_version IS 'Generation of indexed artifacts
 
 CREATE TABLE IF NOT EXISTS adi_index_task
 (
-    id            bigserial primary key,
-    kb_uuid       varchar(32)  not null,
-    doc_uuid      varchar(32)  not null,
-    user_id       bigint       not null,
-    segment_uuid  varchar(32)  not null default '',
-    target_type   varchar(20)  not null,
-    task_type     varchar(20)  not null,
-    index_version  int         not null,
-    status        varchar(20)  not null,
-    fail_reason   varchar(500),
-    create_time   timestamp    default CURRENT_TIMESTAMP not null,
-    update_time   timestamp    default CURRENT_TIMESTAMP not null,
-    CONSTRAINT uk_index_task UNIQUE (doc_uuid, segment_uuid, target_type, task_type)
+    id             bigserial primary key,
+    kb_uuid        varchar(32)  not null,
+    doc_uuid       varchar(32)  not null,
+    user_id        bigint       not null,
+    segment_uuid   varchar(32)  not null default '',
+    target_type    varchar(20)  not null,
+    task_type      varchar(20)  not null,
+    index_version  int          not null,
+    status         varchar(20)  not null,
+    fail_reason    varchar(500),
+    stop_flag      boolean      default false not null,
+    start_time     timestamp,
+    heartbeat_time timestamp,
+    create_time    timestamp    default CURRENT_TIMESTAMP not null,
+    update_time    timestamp    default CURRENT_TIMESTAMP not null
 );
+
+-- Merge key includes index_version: one unfinished row per (target, type, version);
+-- done rows leave the index and accumulate as history. A newer version therefore
+-- always inserts fresh and can never be swallowed by a running row.
+CREATE UNIQUE INDEX IF NOT EXISTS uk_index_task_active
+    ON adi_index_task (doc_uuid, segment_uuid, target_type, task_type, index_version)
+    WHERE status <> 'done';
 
 CREATE INDEX IF NOT EXISTS idx_index_task_status ON adi_index_task (status, id);
 CREATE INDEX IF NOT EXISTS idx_index_task_doc ON adi_index_task (doc_uuid);
 
-COMMENT ON TABLE  adi_index_task IS 'Index task queue: scheduling source of truth for all index writes (segmentation, embedding, graph extraction). One row per (doc_uuid, segment_uuid, target_type, task_type); document-level tasks use empty segment_uuid';
+COMMENT ON TABLE  adi_index_task IS 'Index task queue: scheduling source of truth for all index writes (segmentation, embedding, graph extraction). At most one unfinished row per (doc_uuid, segment_uuid, target_type, task_type, index_version); done rows accumulate as run history; document-level tasks use empty segment_uuid';
 COMMENT ON COLUMN adi_index_task.kb_uuid      IS 'Owning knowledge base uuid (denormalized for fan-out enqueue and audit; not part of the merge key)';
 COMMENT ON COLUMN adi_index_task.doc_uuid     IS 'Target document uuid (never empty)';
 COMMENT ON COLUMN adi_index_task.user_id      IS 'Triggering user; async executors have no ThreadContext, billing context is persisted here';
-COMMENT ON COLUMN adi_index_task.segment_uuid IS 'Target segment uuid for segment-level tasks; empty string for document-level tasks (PG unique constraints do not dedupe NULL)';
+COMMENT ON COLUMN adi_index_task.segment_uuid IS 'Target segment uuid for segment-level tasks; empty string for document-level tasks (PG unique indexes do not dedupe NULL)';
 COMMENT ON COLUMN adi_index_task.target_type  IS 'document | segment';
 COMMENT ON COLUMN adi_index_task.task_type    IS 'embedding | graphical';
-COMMENT ON COLUMN adi_index_task.index_version IS 'Snapshot of the target business table''s index_version at enqueue time: adi_document.index_version for document tasks, adi_document_segment.index_version for segment tasks. Mismatch at check/finalize means the source changed and the task re-enqueues at the latest version (merge-debounce); updated on merge-upsert while pending';
-COMMENT ON COLUMN adi_index_task.status       IS 'pending | running | done | failed (failed is manually retried by re-enqueue)';
-COMMENT ON COLUMN adi_index_task.fail_reason  IS 'Truncated failure reason when status = failed';
-COMMENT ON COLUMN adi_index_task.update_time  IS 'Also serves as claim heartbeat; running rows stale beyond 30 minutes are reset by the poller';
+COMMENT ON COLUMN adi_index_task.index_version IS 'Snapshot of the target business table''s index_version at enqueue time: adi_document.index_version for document tasks, adi_document_segment.index_version for segment tasks. Part of the merge key: a newer version is always a fresh row; a running row can never swallow it';
+COMMENT ON COLUMN adi_index_task.status       IS 'pending | running | done | failed. A newer-version enqueue supersedes same-key older pending rows to failed; failed is revived in place by a same-version re-enqueue (manual retry); done rows stay as run history';
+COMMENT ON COLUMN adi_index_task.fail_reason  IS 'Truncated failure reason when status = failed (exception message, supersede notice, or the max-duration breaker notice)';
+COMMENT ON COLUMN adi_index_task.stop_flag    IS 'Cooperative stop signal: set by a newer-version enqueue on this key''s older RUNNING row (status is NOT changed - the same-doc serialization gate stays closed until the executor aborts at its next checkpoint); reset to false on claim and on failed-row revive';
+COMMENT ON COLUMN adi_index_task.start_time     IS 'Claim time of the latest attempt (NULL while never run); update_time at done/failed is the finish time - the pair gives execution duration for history analysis';
+COMMENT ON COLUMN adi_index_task.heartbeat_time IS 'Executor liveness proof: initialized at claim and periodically refreshed while running (NULL when never run). A running row whose heartbeat is stale beyond the poller threshold is reset to pending (process-crash recovery)';
+COMMENT ON COLUMN adi_index_task.update_time  IS 'Last row change (enqueue / supersede / claim / finish / recovery); plain audit column - liveness is judged by heartbeat_time, not this column';
