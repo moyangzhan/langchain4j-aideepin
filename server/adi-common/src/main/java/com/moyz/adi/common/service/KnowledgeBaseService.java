@@ -149,8 +149,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 || !Objects.equals(old.getIngestMaxOverlap(), req.getIngestMaxOverlap())
                 || !Objects.equals(old.getIngestSplitStrategy(), req.getIngestSplitStrategy())
                 || !Objects.equals(old.getIngestCustomSeparator(), req.getIngestCustomSeparator())
-                || !Objects.equals(old.getIngestTokenEstimator(), req.getIngestTokenEstimator())
-                || !Objects.equals(old.getIngestChildMaxSegmentSize(), req.getIngestChildMaxSegmentSize());
+                || !Objects.equals(old.getIngestTokenEstimator(), req.getIngestTokenEstimator());
     }
 
     /**

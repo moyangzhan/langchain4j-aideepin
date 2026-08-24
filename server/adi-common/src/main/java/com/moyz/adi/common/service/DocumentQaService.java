@@ -1,5 +1,6 @@
 package com.moyz.adi.common.service;
 
+import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyz.adi.common.cosntant.AdiConstant;
@@ -8,10 +9,12 @@ import com.moyz.adi.common.entity.DocumentSegmentQuestion;
 import com.moyz.adi.common.entity.KbDocument;
 import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.entity.User;
+import com.moyz.adi.common.enums.EmbeddingStatusEnum;
 import com.moyz.adi.common.enums.LLMCallRecordSourceType;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.languagemodel.AbstractLLMService;
+import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.rag.DocumentSplitterFactory;
 import com.moyz.adi.common.rag.TokenEstimatorFactory;
 import com.moyz.adi.common.util.UuidUtil;
@@ -92,6 +95,12 @@ public class DocumentQaService {
     @Resource
     private LLMCallRecordService llmCallRecordService;
 
+    @Resource
+    private ModelHealthService modelHealthService;
+
+    @Resource
+    private KnowledgeBaseMapper knowledgeBaseMapper;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -164,12 +173,41 @@ public class DocumentQaService {
     }
 
     /**
-     * LLM 自动生成 QA 对（异步）：分块请求 ingest 模型，解析 JSON 对后落库并向量化问题
+     * 编辑保存触发的 QA 自动生成入口（同步）：仅对无段行的 qa 模式文档生效（幂等守卫，
+     * 不覆盖已有问答数据）；标记生成中（列表立即可见）后派发异步任务
+     */
+    public void generateQaFromEdit(User user, KbDocument doc) {
+        if (doc.getSegmentMode() != com.moyz.adi.common.enums.SegmentModeEnum.QA) {
+            return;
+        }
+        if (!documentSegmentService.listByDocUuid(doc.getUuid()).isEmpty()) {
+            return;
+        }
+        KnowledgeBase kb = knowledgeBaseMapper.selectOne(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<KnowledgeBase>()
+                .eq(KnowledgeBase::getUuid, doc.getKbUuid())
+                .eq(KnowledgeBase::getIsDeleted, false));
+        if (kb == null) {
+            return;
+        }
+        ChainWrappers.lambdaUpdateChain(kbDocumentService.getBaseMapper())
+                .eq(KbDocument::getUuid, doc.getUuid())
+                .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
+                .set(KbDocument::getEmbeddingStatusChangeTime, java.time.LocalDateTime.now())
+                .set(KbDocument::getFailReason, null)
+                .update();
+        generateQaAsync(user, kb, doc);
+    }
+
+    /**
+     * LLM 自动生成 QA 对（异步）：对已转为 qa 模式的文档分块请求 ingest 模型，
+     * 解析 JSON 对后落库、向量化问题并条件落定状态（版本前进则交给新版本流程）
      */
     @Async
     public void generateQaAsync(User user, KnowledgeBase kb, KbDocument doc) {
+        AbstractLLMService llmService = null;
+        int versionSnapshot = doc.getIndexVersion() == null ? 0 : doc.getIndexVersion();
         try {
-            AbstractLLMService llmService = LLMContext.getServiceById(kb.getIngestModelId(), true);
+            llmService = LLMContext.getServiceById(kb.getIngestModelId(), true);
             ChatModel chatModel = llmService.buildChatLLM(ChatModelBuilderProperties.builder()
                     .temperature(kb.getQueryLlmTemperature())
                     .build());
@@ -199,23 +237,21 @@ public class DocumentQaService {
                 }
                 pairs.addAll(parseQaJson(response.aiMessage().text()));
             }
-            if (!pairs.isEmpty()) {
-                // 生成的 QA 对落到新的 qa 模式文档（不与源文档的 text 分段混排）
-                KbDocument qaDoc = new KbDocument();
-                qaDoc.setUuid(UuidUtil.createShort());
-                qaDoc.setKbId(kb.getId());
-                qaDoc.setKbUuid(kb.getUuid());
-                qaDoc.setTitle(doc.getTitle() + " [QA]");
-                qaDoc.setBrief(StringUtils.substring(pairs.get(0).question(), 0, 200));
-                qaDoc.setRemark(doc.getRemark());
-                qaDoc.setSegmentMode(com.moyz.adi.common.enums.SegmentModeEnum.QA);
-                kbDocumentService.save(qaDoc);
-                saveQaPairs(kb, qaDoc, pairs, AdiConstant.SegmentSource.DOC);
-                segmentIndexService.vectorizePendingQuestions(kb, qaDoc);
-                log.info("generateQa done, sourceDocUuid:{}, qaDocUuid:{}, pairs:{}", doc.getUuid(), qaDoc.getUuid(), pairs.size());
-            } else {
-                log.info("generateQa done with no pairs, docUuid:{}", doc.getUuid());
+            if (pairs.isEmpty()) {
+                log.info("generateQa produced no pairs, docUuid:{}", doc.getUuid());
+                markQaFailed(doc, versionSnapshot, "no valid QA pairs generated");
+                return;
             }
+            saveQaPairs(kb, doc, pairs, AdiConstant.SegmentSource.DOC);
+            segmentIndexService.vectorizePendingQuestions(kb, doc);
+            ChainWrappers.lambdaUpdateChain(kbDocumentService.getBaseMapper())
+                    .eq(KbDocument::getId, doc.getId())
+                    .eq(KbDocument::getIndexVersion, versionSnapshot)
+                    .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DONE)
+                    .set(KbDocument::getEmbeddingStatusChangeTime, java.time.LocalDateTime.now())
+                    .set(KbDocument::getFailReason, null)
+                    .update();
+            log.info("generateQa done, docUuid:{}, pairs:{}", doc.getUuid(), pairs.size());
 
             if (totalTokens > 0 && user != null) {
                 com.moyz.adi.common.entity.LLMCallRecord callRecord = new com.moyz.adi.common.entity.LLMCallRecord();
@@ -231,8 +267,25 @@ public class DocumentQaService {
                 llmCallRecordService.saveAsync(callRecord);
             }
         } catch (Exception e) {
+            if (null != llmService) {
+                modelHealthService.recordFailure(llmService.getAiModel().getName(), e);
+            }
             log.error("generateQa error, docUuid:{}", doc.getUuid(), e);
+            markQaFailed(doc, versionSnapshot, e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
         }
+    }
+
+    /**
+     * 生成失败落定：仅当版本仍一致时生效（期间内容/模式再变更，状态归新版本流程管）
+     */
+    private void markQaFailed(KbDocument doc, int versionSnapshot, String reason) {
+        ChainWrappers.lambdaUpdateChain(kbDocumentService.getBaseMapper())
+                .eq(KbDocument::getId, doc.getId())
+                .eq(KbDocument::getIndexVersion, versionSnapshot)
+                .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.FAIL)
+                .set(KbDocument::getEmbeddingStatusChangeTime, java.time.LocalDateTime.now())
+                .set(KbDocument::getFailReason, StringUtils.abbreviate(reason, 500))
+                .update();
     }
 
     /**

@@ -34,6 +34,7 @@ public class TokenFilter extends OncePerRequestFilter {
             "/draw/detail/",
             "/draw/comment/list",
             "/knowledge-base/public/",
+            "/document/qaImportTemplate",
             "/workflow/public",
             "/mcp/public",
             "/sys/config/public/",

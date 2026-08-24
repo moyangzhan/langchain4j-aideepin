@@ -2,7 +2,6 @@
 import { computed, nextTick, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { NAlert, NBreadcrumb, NBreadcrumbItem, NButton, NCard, NCheckbox, NCheckboxGroup, NDataTable, NFlex, NIcon, NInput, NModal, NP, NSpace, NTag, NText, NUpload, NUploadDragger, useDialog, useMessage } from 'naive-ui'
 import { ArchiveOutline } from '@vicons/ionicons5'
-import { Cloud32Regular, LockClosed32Regular } from '@vicons/fluent'
 import { useRoute, useRouter } from 'vue-router'
 import type { UploadFileInfo, UploadInst } from 'naive-ui'
 import DocumentGraph from './DocumentGraph.vue'
@@ -126,34 +125,12 @@ function onQaUploadFinish({ event }: { event?: ProgressEvent }) {
       ms.success(t('common.uploadSuccess'))
       indexingCheck()
       search(1)
-    }
-    else {
+    } else {
       ms.error(resp.message || t('common.uploadFailed'))
     }
-  }
-  catch (e) {
+  } catch (e) {
     ms.error(t('common.uploadFailed'))
   }
-}
-
-function generateQa(row: KnowledgeBase.Item) {
-  dialog.warning({
-    title: t('knowledgeBase.generateQa'),
-    content: t('knowledgeBase.generateQaConfirm'),
-    positiveText: t('common.confirm'),
-    negativeText: t('common.cancel'),
-    onPositiveClick: async () => {
-      try {
-        await api.documentGenerateQa(row.uuid)
-        ms.success(t('knowledgeBase.generateQa'))
-        indexingCheck()
-        search(1)
-      }
-      catch (error: any) {
-        ms.error(error.message ?? 'error')
-      }
-    },
-  })
 }
 
 const viewSegments = (row: KnowledgeBase.Item) => {
@@ -180,7 +157,7 @@ const serialColWidth = computed(() => {
   return Math.max(40, digits * 8 + 24)
 })
 const columns = computed(() => {
-  const cols = createColumns({ viewSegments, showGraph, showFileContent, editItem, deleteKbItem, toggleStatus, generateQa })
+  const cols = createColumns({ viewSegments, showGraph, showFileContent, editItem, deleteKbItem, toggleStatus })
   cols.splice(1, 0, {
     title: '#',
     key: 'serialNumber',
@@ -379,10 +356,25 @@ onMounted(async () => {
     await initData()
   inited.value = true
 })
-// 从编辑页返回时刷新当前页，确保新增/修改的文档可见
-// Refresh current page when returning from the edit page so new/modified docs are visible
+// 仅从编辑页返回时刷新当前页，确保新增/修改的文档可见；从分段列表返回直接复用缓存；
+// 从 KB 编辑页返回时知识库信息（标题/描述/公开状态）可能已变，一并重取
+// Refresh only when returning from the edit pages so new/modified docs are visible;
+// returning from the segment list reuses the cached list as-is; returning from the
+// KB edit page also reloads the KB info (title/description/visibility may have changed)
+const cameFromRoute = ref('')
+router.afterEach((to, from) => {
+  if (to.name === 'KnowledgeBaseManageDetail')
+    cameFromRoute.value = (from.name as string) || ''
+})
 onActivated(() => {
-  if (inited.value)
+  if (!inited.value)
+    return
+  if (cameFromRoute.value === 'KnowledgeBaseEdit') {
+    initData()
+    search(paginationReactive.page)
+    return
+  }
+  if (['DocumentAdd', 'DocumentEdit'].includes(cameFromRoute.value))
     search(paginationReactive.page)
 })
 watch(
@@ -415,8 +407,11 @@ watch(
       :title="`${t('knowledgeBase.knowledgeBase')}: ${curKnowledgeBase.title}(${curKnowledgeBase.isPublic ? t('common.public') : t('common.private')})`" hoverable
     >
       <template #header-extra>
-        <NIcon v-if="curKnowledgeBase.isPublic" :component="Cloud32Regular" />
-        <NIcon v-if="!curKnowledgeBase.isPublic" :component="LockClosed32Regular" />
+        <NFlex align="center" :size="8">
+          <NButton tertiary size="small" type="info" @click="router.push({ name: 'KnowledgeBaseEdit', params: { kbUuid: curKbUuid } })">
+            {{ t('common.edit') }}
+          </NButton>
+        </NFlex>
       </template>
       {{ curKnowledgeBase.remark }}
     </NCard>

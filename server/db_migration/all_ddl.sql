@@ -655,7 +655,6 @@ create table adi_knowledge_base
     ingest_split_strategy  varchar(20)   default 'recursive'       not null,
     ingest_max_segment_size int          default 1000              not null,
     ingest_custom_separator varchar(100) default ''                not null,
-    ingest_child_max_segment_size int     default 200               not null,
     ingest_model_name      varchar(45)   default ''                not null,
     ingest_model_id        bigint        default 0                 not null,
     ingest_token_estimator varchar(45)   default ''                not null,
@@ -685,7 +684,6 @@ comment on column adi_knowledge_base.ingest_max_overlap is 'Max overlap (in toke
 comment on column adi_knowledge_base.ingest_split_strategy is 'Split strategy: recursive/paragraph/line/sentence/custom';
 comment on column adi_knowledge_base.ingest_max_segment_size is 'Max segment size in tokens when chunking documents';
 comment on column adi_knowledge_base.ingest_custom_separator is 'Custom separator for splitting, only used when strategy is custom';
-comment on column adi_knowledge_base.ingest_child_max_segment_size is 'Parent-child segment mode: max child chunk size in tokens. KB-level tuning knob, same level as the other ingest_* columns';
 comment on column adi_knowledge_base.ingest_model_name is 'LLM used for indexing/graphing documents, defaults to first available LLM';
 comment on column adi_knowledge_base.ingest_model_id is 'LLM ID for indexing/graphing, defaults to first available LLM';
 comment on column adi_knowledge_base.ingest_token_estimator is 'Token count estimator, default is OpenAiTokenizer';
@@ -731,6 +729,9 @@ create table adi_document
     word_count                   int          GENERATED ALWAYS AS (char_length(remark)) STORED not null,
     is_enabled                   boolean      default true              not null,
     enabled_change_time          timestamp    default CURRENT_TIMESTAMP not null,
+    index_version                int          default 0                 not null,
+    child_max_chunk_size         int          default 200               not null,
+    fail_reason                  varchar(500),
     create_time                  timestamp    default CURRENT_TIMESTAMP not null,
     update_time                  timestamp    default CURRENT_TIMESTAMP not null,
     is_deleted                   boolean      default false             not null
@@ -753,6 +754,8 @@ comment on column adi_document.word_count is 'Character count of the document co
 comment on column adi_document.is_enabled is 'Whether the document is enabled for retrieval (false = its segments are excluded from vector/graph search)';
 comment on column adi_document.enabled_change_time is 'Last enabled/disabled status change time';
 comment on column adi_document.index_version is 'Generation of indexed artifacts built from this document; +1 on remark / segment_mode / KB split-param change (title and other metadata excluded). Index tasks snapshot it for staleness detection and merge-debounce';
+comment on column adi_document.child_max_chunk_size is 'Parent-child mode: max child chunk size in tokens; document-level, applies to this document only';
+comment on column adi_document.fail_reason is 'Failure reason of the latest failed async pipeline on this document (embedding or QA generation); cleared on success/retry';
 comment on column adi_document.create_time is 'Creation time';
 comment on column adi_document.update_time is 'Last update time';
 comment on column adi_document.is_deleted is 'Whether the record is soft-deleted';

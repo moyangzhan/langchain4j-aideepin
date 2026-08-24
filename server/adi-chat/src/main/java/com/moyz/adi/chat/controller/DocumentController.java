@@ -1,12 +1,10 @@
 package com.moyz.adi.chat.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.KbDocumentDto;
 import com.moyz.adi.common.dto.KbDocumentEditReq;
 import com.moyz.adi.common.dto.KbDocumentToggleStatusReq;
 import com.moyz.adi.common.entity.KbDocument;
-import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.service.DocumentQaService;
 import com.moyz.adi.common.service.KbDocumentService;
 import com.moyz.adi.common.service.KnowledgeBaseService;
@@ -81,17 +79,5 @@ public class DocumentController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=qa_import_template.csv")
                 .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
                 .body(body);
-    }
-
-    /**
-     * 用知识库的入库模型从文档内容自动生成 QA 对（异步执行）
-     */
-    @PostMapping("/generateQa/{uuid}")
-    public boolean generateQa(@PathVariable String uuid) {
-        kbDocumentService.checkWritePrivilege(uuid);
-        KbDocument doc = kbDocumentService.getEnable(uuid);
-        KnowledgeBase kb = knowledgeBaseService.getOrThrow(doc.getKbUuid());
-        documentQaService.generateQaAsync(ThreadContext.getCurrentUser(), kb, doc);
-        return true;
     }
 }

@@ -1,25 +1,20 @@
 <script setup lang='ts'>
 import type { DataTableColumns } from 'naive-ui'
-import { computed, h, onMounted, reactive, ref, watch } from 'vue'
-import { NBreadcrumb, NBreadcrumbItem, NButton, NCollapse, NCollapseItem, NDataTable, NIcon, NInput, NInputNumber, NModal, NRadio, NRadioGroup, NSelect, NTooltip, useDialog, useMessage } from 'naive-ui'
+import { computed, h, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { NBreadcrumb, NBreadcrumbItem, NButton, NDataTable, NInput, useDialog, useMessage } from 'naive-ui'
 import { RouterLink, useRouter } from 'vue-router'
-import { QuestionCircle16Regular } from '@vicons/fluent'
 import { ApiKeyModal } from '@/components/common'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
-import { useAppStore, useAuthStore, useKbStore } from '@/store'
+import { useAuthStore, useKbStore } from '@/store'
 import { knowledgeBaseEmptyInfo } from '@/utils/functions'
-import { SPLIT_STRATEGY, TOKEN_ESTIMATOR } from '@/utils/constant'
 import { t } from '@/locales'
 import api from '@/api'
 
 const router = useRouter()
 const dialog = useDialog()
 const ms = useMessage()
-const appStore = useAppStore()
 const loading = ref(false)
 const tableMaxHeight = ref<number>(500)
-const submitting = ref(false)
-const showModal = ref(false)
 const infoList = ref<KnowledgeBase.Info[]>([])
 const paginationReactive = reactive({
   page: 1,
@@ -28,36 +23,31 @@ const paginationReactive = reactive({
   prefix: () => t('common.total', { n: paginationReactive.itemCount }),
 })
 const searchValue = ref<string>('')
-const tmpKb = reactive<KnowledgeBase.Info>(knowledgeBaseEmptyInfo())
-// 控制 input 按钮
-const inputStatus = computed(() => tmpKb.title.trim().length < 1 && !submitting.value)
 const { isMobile } = useBasicLayout()
 const authStore = useAuthStore()
 const kbStore = useKbStore()
 const token = ref<string>(authStore.token)
-const itemBoxClass = 'space-y-1'
 const showApiKeyModal = ref(false)
 const activeKb = ref<KnowledgeBase.Info>(knowledgeBaseEmptyInfo())
 
-// 编辑打开时的切段参数快照：保存前检测变更，触发“将自动重建全库索引”确认
-let kbEditOrigin: Partial<KnowledgeBase.Info> | null = null
+// 仅从 KB 编辑/新建页返回时刷新列表，其余返回复用 KeepAlive 缓存
+// Refresh the list only when returning from the KB edit/add pages; other returns reuse the KeepAlive cache
+const cameFromRoute = ref('')
+router.afterEach((to, from) => {
+  if (to.name === 'KnowledgeBaseManage')
+    cameFromRoute.value = (from.name as string) || ''
+})
+onActivated(() => {
+  if (['KnowledgeBaseAdd', 'KnowledgeBaseEdit'].includes(cameFromRoute.value))
+    search(paginationReactive.page)
+})
+// 序号列宽度按总条数位数自适应，恰好容纳最大序号
+// Serial-number column width auto-fits to the digit count of total rows
+const serialColWidth = computed(() => {
+  const digits = String(Math.max(paginationReactive.itemCount, 1)).length
+  return Math.max(40, digits * 8 + 24)
+})
 
-const changeShowModal = (selected: KnowledgeBase.Info = knowledgeBaseEmptyInfo()) => {
-  Object.assign(tmpKb, selected)
-  kbEditOrigin = (tmpKb.id && tmpKb.id !== '0') ? { ...selected } : null
-  showModal.value = !showModal.value
-  if (!tmpKb.ingestModelName) {
-    const firstEnableModel = appStore.llms.find((item: { enable: any }) => item.enable)
-    if (firstEnableModel) {
-      tmpKb.ingestModelName = firstEnableModel.modelName
-      tmpKb.ingestModelId = firstEnableModel.modelId
-    }
-  } else {
-    tmpKb.ingestModelName = appStore.llms.find(item => item.modelName === tmpKb.ingestModelName)?.modelName || ''
-  }
-  if (!tmpKb.ingestTokenEstimator)
-    tmpKb.ingestTokenEstimator = TOKEN_ESTIMATOR[0].value
-}
 // table相关
 const createColumns = (): DataTableColumns<KnowledgeBase.Info> => {
   return [
@@ -150,7 +140,7 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Info> => {
                   tertiary: true,
                   size: 'tiny',
                   type: 'info',
-                  onClick: () => changeShowModal(row),
+                  onClick: () => router.push({ name: 'KnowledgeBaseEdit', params: { kbUuid: row.uuid } }),
                 },
                 { default: () => t('common.edit') },
               ),
@@ -172,12 +162,6 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Info> => {
   ]
 }
 
-// 序号列宽度按总条数位数自适应，恰好容纳最大序号
-// Serial-number column width auto-fits to the digit count of total rows
-const serialColWidth = computed(() => {
-  const digits = String(Math.max(paginationReactive.itemCount, 1)).length
-  return Math.max(40, digits * 8 + 24)
-})
 const columns = computed(() => createColumns())
 
 async function onHandlePageChange(currentPage: number) {
@@ -209,54 +193,6 @@ async function search(currentPage: number) {
   }
 }
 
-const SPLIT_PARAM_KEYS = ['ingestMaxSegmentSize', 'ingestMaxOverlap', 'ingestSplitStrategy', 'ingestCustomSeparator', 'ingestTokenEstimator', 'ingestChildMaxSegmentSize'] as const
-
-function splitParamsChanged() {
-  if (!kbEditOrigin)
-    return false
-  return SPLIT_PARAM_KEYS.some(key => (tmpKb as any)[key] !== (kbEditOrigin as any)[key])
-}
-
-async function saveOrUpdateKb() {
-  if (tmpKb.ingestSplitStrategy === 'custom' && !tmpKb.ingestCustomSeparator?.trim()) {
-    ms.warning(t('knowledgeBase.customSeparatorRequired'))
-    return
-  }
-  if (splitParamsChanged()) {
-    dialog.warning({
-      title: t('common.tip'),
-      content: t('knowledgeBase.splitParamsReindexConfirm'),
-      positiveText: t('common.confirm'),
-      negativeText: t('common.cancel'),
-      onPositiveClick: () => doSaveKb(),
-    })
-    return
-  }
-  await doSaveKb()
-}
-
-async function doSaveKb() {
-  try {
-    submitting.value = true
-    const res = await api.knowledgeBaseSaveOrUpdate<KnowledgeBase.Info>(tmpKb)
-    if (tmpKb.id && tmpKb.id !== '0') {
-      const hit = infoList.value.find(item => item.id === tmpKb.id)
-      if (hit)
-        Object.assign(hit, res.data)
-    } else {
-      infoList.value.push(res.data)
-      kbStore.appendMyNewKbInfo(res.data)
-    }
-    Object.assign(tmpKb, res.data)
-
-    kbStore.setReloadKbInfosSignal(true)
-    search(1)
-  } finally {
-    submitting.value = false
-    showModal.value = false
-  }
-}
-
 function deleteKb(row: KnowledgeBase.Info) {
   dialog.warning({
     title: t('common.tip'),
@@ -271,15 +207,6 @@ function deleteKb(row: KnowledgeBase.Info) {
       ms.success(t('common.deleteSuccess'))
     },
   })
-}
-
-function onModelChange(modelName: string) {
-  tmpKb.ingestModelName = modelName
-  tmpKb.ingestModelId = appStore.llms.find(item => item.modelName === modelName)?.modelId || ''
-}
-
-function onTokenEstimatorChange(tokenEstimator: string) {
-  tmpKb.ingestTokenEstimator = tokenEstimator
 }
 
 async function initData() {
@@ -315,7 +242,7 @@ onMounted(() => {
     </NBreadcrumb>
     <div class="flex gap-3 mb-2 mt-1" :class="[isMobile ? 'flex-col' : 'flex-row justify-between']">
       <div class="flex items-center space-x-4">
-        <NButton type="primary" size="small" @click="changeShowModal()">
+        <NButton type="primary" size="small" @click="router.push({ name: 'KnowledgeBaseAdd' })">
           {{ t('common.add') }}
         </NButton>
       </div>
@@ -331,150 +258,6 @@ onMounted(() => {
       :single-line="false" :bordered="true" @update:page="onHandlePageChange"
     />
   </div>
-
-  <NModal
-    v-model:show="showModal" :title="tmpKb.id === '0' ? t('common.newCreate') : t('common.edit')" style="width: 90%; max-width: 700px; "
-    preset="card"
-  >
-    <div class="max-h-[600px] overflow-y-auto pr-2">
-      <div class="flex flex-col space-y-2">
-        <div :class="itemBoxClass">
-          <div>{{ t('common.title') }}<span class="text-red-400"> *</span></div>
-          <NInput v-model:value="tmpKb.title" maxlength="100" :placeholder="t('store.title')" show-count />
-        </div>
-        <div :class="itemBoxClass">
-          <div>{{ t('common.description') }}</div>
-          <NInput
-            v-model:value="tmpKb.remark" type="textarea" :placeholder="t('store.description')" maxlength="500"
-            show-count :autosize="{ minRows: 3, maxRows: 10 }"
-          />
-        </div>
-        <div :class="itemBoxClass">
-          <div>{{ t('knowledgeBase.isPublic') }}</div>
-          <NRadioGroup v-model:value="tmpKb.isPublic" name="radiogroup">
-            <NRadio key="public_yes" :value="true">
-              {{ t('common.public') }}
-            </NRadio>
-            <NRadio key="public_no" :value="false">
-              {{ t('common.private') }}
-            </NRadio>
-          </NRadioGroup>
-        </div>
-        <div :class="itemBoxClass">
-          <div>
-            {{ t('knowledgeBase.strictMode') }}
-            <NTooltip trigger="hover">
-              <template #trigger>
-                <NIcon style="padding-top: 0.1rem">
-                  <QuestionCircle16Regular />
-                </NIcon>
-              </template>
-              <div>{{ t('knowledgeBase.strictModeDescShort') }}</div>
-              <div>{{ t('knowledgeBase.looseModeDescShort') }}</div>
-            </NTooltip>
-          </div>
-          <NRadioGroup v-model:value="tmpKb.isStrict" name="radiogroup">
-            <NRadio key="strict_yes" :value="true">
-              {{ t('common.yes') }}
-            </NRadio>
-            <NRadio key="strict_no" :value="false">
-              {{ t('common.no') }}
-            </NRadio>
-          </NRadioGroup>
-        </div>
-        <NCollapse>
-          <NCollapseItem :title="t('knowledgeBase.docIndexSettingVector')">
-            <div class="flex flex-col space-y-2" :class="itemBoxClass">
-              <div>
-                <div>{{ t('knowledgeBase.docOverlapCount') }}</div>
-                <NInputNumber v-model:value="tmpKb.ingestMaxOverlap" />
-              </div>
-              <div>
-                <div>{{ t('knowledgeBase.splitStrategy') }}</div>
-                <NSelect v-model:value="tmpKb.ingestSplitStrategy" :options="SPLIT_STRATEGY" />
-              </div>
-              <div v-if="tmpKb.ingestSplitStrategy === 'custom'">
-                <div>{{ t('knowledgeBase.customSeparator') }}</div>
-                <NInput v-model:value="tmpKb.ingestCustomSeparator" :placeholder="t('knowledgeBase.customSeparatorPlaceholder')" />
-              </div>
-              <div>
-                <div>{{ t('knowledgeBase.maxSegmentSize') }}</div>
-                <NInputNumber v-model:value="tmpKb.ingestMaxSegmentSize" :min="100" />
-              </div>
-              <div>
-                <div>{{ t('knowledgeBase.childMaxSegmentSize') }}</div>
-                <NInputNumber v-model:value="tmpKb.ingestChildMaxSegmentSize" :min="50" />
-              </div>
-              <div>
-                <div>
-                  {{ t('knowledgeBase.tokenCounter') }}
-                </div>
-                <NSelect
-                  :value="tmpKb.ingestTokenEstimator" :options="TOKEN_ESTIMATOR"
-                  :on-update:value="onTokenEstimatorChange"
-                />
-              </div>
-            </div>
-          </NCollapseItem>
-          <NCollapseItem :title="t('knowledgeBase.docIndexSettingGraph')">
-            <div class="flex flex-col space-y-2">
-              <div :class="itemBoxClass">
-                <div>
-                  {{ t('knowledgeBase.modelName') }}
-                  <NTooltip trigger="hover">
-                    <template #trigger>
-                      <NIcon style="padding-top: 0.1rem">
-                        <QuestionCircle16Regular />
-                      </NIcon>
-                    </template>
-                    <div>{{ t('knowledgeBase.modelExtractTip') }}</div>
-                  </NTooltip>
-                </div>
-                <NSelect :value="tmpKb.ingestModelName" :options="appStore.llms" :on-update:value="onModelChange" />
-              </div>
-            </div>
-          </NCollapseItem>
-          <NCollapseItem :title="t('knowledgeBase.docRecallSetting')">
-            <div class="flex flex-col space-y-2">
-              <div :class="itemBoxClass">
-                <div>{{ t('knowledgeBase.docRecallMaxCount') }}</div>
-                <NInputNumber v-model:value="tmpKb.retrieveMaxResults" />
-              </div>
-              <div :class="itemBoxClass">
-                <div>{{ t('knowledgeBase.docRecallMinScore') }}</div>
-                <NInputNumber v-model:value="tmpKb.retrieveMinScore" :precision="1" :min="0" :max="1" />
-              </div>
-            </div>
-          </NCollapseItem>
-          <NCollapseItem :title="t('knowledgeBase.llmParamSetting')">
-            <div class="flex flex-col space-y-2">
-              <div :class="itemBoxClass">
-                <div>{{ t('knowledgeBase.systemPromptRole') }}</div>
-                <NInput
-                  v-model:value="tmpKb.querySystemMessage" type="textarea"
-                  :autosize="{ minRows: 2, maxRows: 5 }"
-                />
-              </div>
-              <div :class="itemBoxClass">
-                <div>{{ t('knowledgeBase.responseCreativity') }}</div>
-                <NInputNumber v-model:value="tmpKb.queryLlmTemperature" :precision="1" :min="0" :max="1" />
-              </div>
-            </div>
-          </NCollapseItem>
-        </NCollapse>
-      </div>
-    </div>
-    <template #footer>
-      <div class="flex space-x-2 justify-end">
-        <NButton type="primary" size="small" :disabled="inputStatus" @click="() => { saveOrUpdateKb() }">
-          {{ t('common.confirm') }}
-        </NButton>
-        <NButton size="small" :disabled="inputStatus" @click="() => { showModal = false }">
-          {{ t('common.cancel') }}
-        </NButton>
-      </div>
-    </template>
-  </NModal>
 
   <ApiKeyModal v-model:show="showApiKeyModal" type="knowledge" :uuid="activeKb.uuid" :title="activeKb.title" />
 </template>

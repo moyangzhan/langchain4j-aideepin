@@ -18,7 +18,6 @@ declare namespace KnowledgeBase {
     ingestCustomSeparator: string
     ingestModelId: string
     ingestTokenEstimator: string
-    ingestChildMaxSegmentSize: number
     retrieveMaxResults: number
     retrieveMinScore: number
     queryLlmTemperature: number
@@ -48,6 +47,9 @@ declare namespace KnowledgeBase {
     isEnabled: boolean
     enabledChangeTime: string
     segmentMode?: string
+    childMaxChunkSize?: number
+    autoGenerateQa?: boolean
+    failReason?: string
     sourceFileName: string
     sourceFileUuid: string
     sourceFileUrl: string
@@ -60,6 +62,7 @@ declare namespace KnowledgeBase {
     title: string
     remark?: string
     segmentMode?: string
+    autoGenerateQa?: boolean
   }
   interface KbEmbedding {
     embeddingId: string

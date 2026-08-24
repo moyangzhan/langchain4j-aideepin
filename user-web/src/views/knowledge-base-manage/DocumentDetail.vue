@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import type { DataTableColumns } from 'naive-ui'
-import { NBreadcrumb, NBreadcrumbItem, NButton, NCard, NDataTable, NInput, NModal, NSpace, NSpin, NSwitch, useDialog, useMessage } from 'naive-ui'
+import { NAlert, NBreadcrumb, NBreadcrumbItem, NButton, NCard, NDataTable, NInput, NModal, NSpace, NSpin, NSwitch, useDialog, useMessage } from 'naive-ui'
 import { computed, h, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { knowledgeBaseEmptyInfo, knowledgeBaseEmptyItem } from '@/utils/functions'
@@ -83,11 +83,9 @@ async function loadDocInfo(docUuid: string) {
     // 列表为空时（如新建的 QA 文档）用文档自身的分段模式初始化，保证空态下也能新增
     if (segments.value.length === 0 && curDoc.segmentMode)
       segmentMode.value = curDoc.segmentMode as 'text' | 'qa' | 'parent_child'
-  }
-  catch (error: any) {
+  } catch (error: any) {
     ms.error(error.message ?? 'error')
-  }
-  finally {
+  } finally {
     docLoading.value = false
   }
 }
@@ -125,11 +123,9 @@ async function loadList(currentPage: number) {
       await loadList(1)
       return
     }
-  }
-  catch (error: any) {
+  } catch (error: any) {
     ms.error(error.message ?? 'error')
-  }
-  finally {
+  } finally {
     loading.value = false
     scheduleAutoRefresh()
   }
@@ -203,8 +199,7 @@ async function saveEdit() {
     submitting.value = true
     if (editState.type === 'segment') {
       await api.documentSegmentSaveOrUpdate({ id: editState.id!, docUuid: editState.docUuid, content: editState.content } as KnowledgeBase.Segment)
-    }
-    else if (editState.type === 'question') {
+    } else if (editState.type === 'question') {
       await api.documentSegmentQuestionSaveOrUpdate({
         id: editState.id,
         docUuid: editState.docUuid,
@@ -212,8 +207,7 @@ async function saveEdit() {
         answerContent: editState.answerContent,
         content: editState.content,
       })
-    }
-    else {
+    } else {
       await api.documentSegmentChildSaveOrUpdate({
         id: editState.id,
         docUuid: editState.docUuid,
@@ -224,11 +218,9 @@ async function saveEdit() {
     ms.success(t('knowledgeBase.segmentSavedAndReindexing'))
     editState.show = false
     loadList(paginationReactive.page)
-  }
-  catch (error: any) {
+  } catch (error: any) {
     ms.error(error.message ?? 'error')
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -249,8 +241,7 @@ function confirmDelete(type: 'segment' | 'question' | 'child', uuid: string) {
           await api.documentSegmentChildDel(uuid)
         ms.success(t('common.deleteSuccess'))
         loadList(paginationReactive.page)
-      }
-      catch (error: any) {
+      } catch (error: any) {
         ms.error(error.message ?? 'error')
       }
     },
@@ -273,8 +264,7 @@ function confirmToggleStatus(row: KnowledgeBase.Segment, isEnabled: boolean) {
         await api.documentSegmentToggleStatus({ uuid: row.uuid, isEnabled })
         ms.success(t('common.saveSuccess'))
         loadList(paginationReactive.page)
-      }
-      catch (error: any) {
+      } catch (error: any) {
         ms.error(error.message ?? 'error')
       }
     },
@@ -421,6 +411,14 @@ onUnmounted(() => {
         {{ curDoc.title }}
       </NBreadcrumbItem>
     </NBreadcrumb>
+    <NAlert
+      v-if="curDoc.embeddingStatus === 'FAIL' && curDoc.failReason"
+      type="error"
+      :show-icon="true"
+      style="margin-top: 12px"
+    >
+      {{ curDoc.failReason }}
+    </NAlert>
     <NCard style="margin-top: 12px" :title="curDoc.title" hoverable>
       <NSpin :show="docLoading">
         {{ curDoc.brief }}

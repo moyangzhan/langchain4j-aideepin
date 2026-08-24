@@ -4,10 +4,12 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.moyz.adi.common.dto.GraphContributionDto;
 import com.moyz.adi.common.dto.KbVertexDto;
 import com.moyz.adi.common.entity.DocumentGraphVertex;
+import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
+@Mapper
 public interface DocumentGraphVertexMapper extends BaseMapper<DocumentGraphVertex> {
 
     void insertIgnoreBatch(@Param("rows") List<DocumentGraphVertex> rows);

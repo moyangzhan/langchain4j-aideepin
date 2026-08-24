@@ -33,11 +33,6 @@ public class KbEditReq {
 
     private String ingestCustomSeparator;
 
-    /**
-     * 父子模式子块最大token数（KB级）
-     */
-    private Integer ingestChildMaxSegmentSize;
-
     private Long ingestModelId;
 
     private String ingestTokenEstimator;

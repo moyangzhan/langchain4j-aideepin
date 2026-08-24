@@ -49,7 +49,7 @@ public class SegmentIndexService {
      */
     private static final int EMBED_BATCH_SIZE = 32;
 
-    private static final int DEFAULT_CHILD_MAX_SEGMENT_SIZE = 200;
+    private static final int DEFAULT_CHILD_MAX_CHUNK_SIZE = 200;
 
     @Resource
     private DocumentSegmentService documentSegmentService;
@@ -155,7 +155,7 @@ public class SegmentIndexService {
     private void splitParentChild(KnowledgeBase kb, KbDocument doc) {
         Document document = new DefaultDocument(doc.getRemark(), baseMetadata(kb, doc));
         DocumentSplitter parentSplitter = createSplitter(kb, kb.getIngestMaxSegmentSize());
-        DocumentSplitter childSplitter = createSplitter(kb, childMaxSegmentSize(kb));
+        DocumentSplitter childSplitter = createSplitter(kb, childMaxChunkSize(doc));
         List<DocumentSegmentChildChunk> children = new ArrayList<>();
         int parentPosition = 0;
         for (TextSegment parentText : parentSplitter.split(document)) {
@@ -288,9 +288,9 @@ public class SegmentIndexService {
                 TokenEstimatorFactory.create(kb.getIngestTokenEstimator()));
     }
 
-    private int childMaxSegmentSize(KnowledgeBase kb) {
-        Integer size = kb.getIngestChildMaxSegmentSize();
-        return size == null || size < 1 ? DEFAULT_CHILD_MAX_SEGMENT_SIZE : size;
+    private int childMaxChunkSize(KbDocument doc) {
+        Integer size = doc.getChildMaxChunkSize();
+        return size == null || size < 1 ? DEFAULT_CHILD_MAX_CHUNK_SIZE : size;
     }
 
     private DocumentSegment newSegmentRow(KnowledgeBase kb, KbDocument doc, int position, String content) {

@@ -7,6 +7,8 @@ import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.enums.ModelHealthStatus;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.languagemodel.AbstractLLMService;
+import dev.langchain4j.exception.AuthenticationException;
+import dev.langchain4j.exception.ModelNotFoundException;
 import org.apache.commons.lang3.StringUtils;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,12 +31,15 @@ import java.util.concurrent.TimeUnit;
  * <p>
  * 探测已启用模型的真实可用性。网络不通、欠费、API Key 失效等导致的不可用
  * 不会被静态标志 {@code AiModel.isEnable} 反映，本服务通过实际调用探测，
- * 连续失败 3 次后标记为 UNHEALTHY，对用户端不可见。
+ * 连续失败 3 次后标记为 UNHEALTHY，对用户端不可见；认证/权限类错误（Key 失效、
+ * 模型在提供方侧被停用）重试无意义，直接标记 UNHEALTHY。
  * </p>
  * <p>
  * Model health monitoring service — probes enabled models for real availability.
  * Models unavailable due to network issues, quota exhaustion, or API key failures
- * are marked UNHEALTHY after 3 consecutive failed probes and hidden from users.
+ * are marked UNHEALTHY after 3 consecutive failed probes and hidden from users;
+ * auth-level errors (invalid key, model disabled at the provider) are marked
+ * UNHEALTHY immediately.
  * </p>
  */
 @Slf4j
@@ -48,13 +53,18 @@ public class ModelHealthService {
     private AsyncTaskExecutor mainExecutor;
 
     /**
-     * 模型健康缓存：key = modelName, 10 分钟过期
+     * 模型健康缓存：key = modelName。
+     * TTL 必须显著大于探测周期（10 分钟一轮）：连续失败计数与 UNHEALTHY 状态都依赖
+     * 下一次探测能读到未过期的上次记录；TTL 仅作探测停摆时的兜底。
      * <p>
-     * Model health cache: key = modelName, expires after 10 minutes.
+     * Model health cache: key = modelName. The TTL must be far larger than the probe
+     * interval (10-minute rounds): both the consecutive-failure counter and the
+     * UNHEALTHY state depend on the next probe reading a still-live previous entry;
+     * the TTL only guards against the poller stalling.
      * </p>
      */
     private final Cache<String, HealthCheckResult> healthCache = CacheBuilder.newBuilder()
-            .expireAfterWrite(10, TimeUnit.MINUTES)
+            .expireAfterWrite(1, TimeUnit.HOURS)
             .build();
 
     /**
@@ -199,6 +209,54 @@ public class ModelHealthService {
                 .lastCheckTime(System.currentTimeMillis())
                 .failReason(failReason)
                 .build());
+    }
+
+    /**
+     * 记录一次真实调用失败（传入异常以分类）：认证/权限类错误（Key 失效、模型在提供方
+     * 侧被停用）重试必然失败，直接标记 UNHEALTHY，不进连续失败计数；其余异常走
+     * {@link #recordFailure(String, String)} 的计数逻辑。
+     * <p>
+     * Record a failed invocation with the exception for classification: auth-level
+     * errors (invalid key, model disabled at the provider) can never succeed on retry
+     * and mark UNHEALTHY immediately, bypassing the consecutive-failure counter;
+     * other errors go through {@link #recordFailure(String, String)}.
+     * </p>
+     *
+     * @param modelName 模型名称 / Model name
+     * @param error     调用抛出的异常 / Exception thrown by the invocation
+     */
+    public void recordFailure(String modelName, Throwable error) {
+        String reason = error.getCause() != null ? error.getCause().getMessage() : error.getMessage();
+        if (isPermanentModelError(error)) {
+            healthCache.put(modelName, HealthCheckResult.builder()
+                    .status(ModelHealthStatus.UNHEALTHY)
+                    .consecutiveFailures(FAILURE_THRESHOLD)
+                    .lastCheckTime(System.currentTimeMillis())
+                    .failReason(reason)
+                    .build());
+            log.warn("Model {} marked UNHEALTHY immediately, permanent auth error:{}", modelName, reason);
+            return;
+        }
+        recordFailure(modelName, reason);
+    }
+
+    /**
+     * 沿因果链判断是否模型级永久错误（认证失败 / 模型在提供方侧不存在或被停用），
+     * 带自引用环保护；请求级错误（如参数错误）不算，模型本身可能正常
+     */
+    private static boolean isPermanentModelError(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            if (current instanceof AuthenticationException || current instanceof ModelNotFoundException) {
+                return true;
+            }
+            Throwable cause = current.getCause();
+            if (cause == current) {
+                break;
+            }
+            current = cause;
+        }
+        return false;
     }
 
     /**

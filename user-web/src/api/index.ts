@@ -156,8 +156,7 @@ function commonSseProcess(
       } else if (eventMessage.event === '[TOOL_CALL]') {
         try {
           params.toolCallReceived && params.toolCallReceived(JSON.parse(eventMessage.data))
-        }
-        catch (e) {
+        } catch (e) {
           console.warn('[TOOL_CALL] parse error', e)
         }
         return
@@ -594,12 +593,6 @@ function documentSegmentToggleStatus<T = any>(data: {
   })
 }
 
-function documentGenerateQa<T = any>(uuid: string) {
-  return post<T>({
-    url: `/document/generateQa/${uuid}`,
-  })
-}
-
 function knowledgeBaseGraph<T = any>(kbItemUuid: string, maxVertextId: number, maxEdgeId: number, limit: number) {
   return get<T>({
     url: `/knowledge-base-graph/list/${kbItemUuid}?limit=${limit}&maxEdgeId=${maxEdgeId}&maxVertexId=${maxVertextId}`,
@@ -672,7 +665,6 @@ function loadImageModels<T = any>() {
     url: '/model/imageModels',
   })
 }
-
 
 function loadFileContent(fileUrl: string) {
   return getRawAxios().get(fileUrl, {
@@ -907,7 +899,6 @@ export default {
   documentSegmentQuestionDel,
   documentSegmentChildDel,
   documentSegmentToggleStatus,
-  documentGenerateQa,
   knowledgeBaseGraph,
   knowledgeBaseQaSseAsk,
   knowledgeBaseQaRecordSearch,

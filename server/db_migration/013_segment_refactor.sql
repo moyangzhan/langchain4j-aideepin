@@ -1,12 +1,14 @@
 -- ============================================================
 -- Segment refactor:
 --   Section 1: rename adi_knowledge_base_item -> adi_document; add document-level segment_mode
---   Section 2: adi_knowledge_base: add KB-level ingest_child_max_segment_size (parent-child child chunk size)
---   Section 3: new relational segment tables (adi_document_segment / _question / _child_chunk)
---   Section 4: backfill segments from existing pgvector KB embedding tables, then clear their text column
+--              and parent-child child chunk size
+--   Section 2: new relational segment tables (adi_document_segment / _question / _child_chunk)
+--   Section 3: backfill segments from existing pgvector KB embedding tables, then clear their text
 --
 -- Notes:
---   * segment_mode is document-level ONLY; no KB-level segment_mode column exists (intentional).
+--   * segment_mode and child_max_chunk_size are document-level ONLY; no KB-level
+--     column exists for them (intentional: the child chunk size only takes effect for
+--     parent_child documents).
 --   * Section 1 RENAME is not idempotent (PostgreSQL has no IF EXISTS for RENAME); run once.
 --   * Section 4 loops over all known suffixed KB embedding tables (to_regclass-guarded). It is
 --     naturally idempotent: once "text" is cleared, subsequent runs insert nothing and update nothing.
@@ -37,20 +39,19 @@ ALTER TABLE adi_document
 COMMENT ON TABLE  adi_document IS 'Knowledge Base Document';
 COMMENT ON COLUMN adi_document.segment_mode IS 'Segment mode of this document: text | qa | parent_child. text: segments are chunks (vectorized). qa: document_segment rows are answers (not vectorized), questions live in adi_document_segment_question (vectorized). parent_child: document_segment rows are parent chunks (not vectorized), child chunks live in adi_document_segment_child_chunk (vectorized)';
 
+ALTER TABLE adi_document
+    ADD COLUMN IF NOT EXISTS child_max_chunk_size int DEFAULT 200 NOT NULL;
+
+COMMENT ON COLUMN adi_document.child_max_chunk_size IS 'Parent-child mode: max child chunk size in tokens; document-level, applies to this document only';
+
+ALTER TABLE adi_document
+    ADD COLUMN IF NOT EXISTS fail_reason varchar(500);
+
+COMMENT ON COLUMN adi_document.fail_reason IS 'Failure reason of the latest failed async pipeline on this document (embedding or QA generation); cleared on success/retry';
+
 
 -- ============================================================
--- Section 2: adi_knowledge_base - KB-level parent-child child chunk size
--- All ingest_* chunking knobs stay KB-level; segment_mode is the only document-level setting.
--- ============================================================
-
-ALTER TABLE adi_knowledge_base
-    ADD COLUMN IF NOT EXISTS ingest_child_max_segment_size int DEFAULT 200 NOT NULL;
-
-COMMENT ON COLUMN adi_knowledge_base.ingest_child_max_segment_size IS 'Parent-child segment mode: max child chunk size in tokens. KB-level tuning knob, same level as the other ingest_* columns';
-
-
--- ============================================================
--- Section 3: relational segment tables (single source of truth for segment content)
+-- Section 2: relational segment tables (single source of truth for segment content)
 --   * text mode    -> one row per chunk; content = chunk text; embedding_id NOT NULL (vectorized)
 --   * qa mode      -> one row per answer; content = answer text; embedding_id NULL
 --                     (questions are vectorized, stored in adi_document_segment_question)
@@ -201,7 +202,7 @@ execute procedure update_modified_column();
 
 
 -- ============================================================
--- Section 4: backfill segments from existing pgvector KB embedding tables, then clear their text
+-- Section 3: backfill segments from existing pgvector KB embedding tables, then clear their text
 -- All existing data is text-mode. The loop covers the base table and every known suffixed variant;
 -- to_regclass guards deployments that never created some of them. hit_count may be missing on the
 -- vector table (added at app startup by ensureColumns); the expression degrades to 0 in that case.
@@ -265,7 +266,7 @@ END $$;
 
 
 -- ============================================================
--- Section 5: graph provenance ledger
+-- Section 4: graph provenance ledger
 --   * new adi_document_graph_vertex / adi_document_graph_edge:
 --     one row per (graph element, segment) contribution - the authoritative
 --     source for segment/doc-level graph cleanup and exclusivity judgement.
@@ -328,14 +329,14 @@ COMMENT ON COLUMN adi_document_graph_edge.description  IS 'Relationship descript
 COMMENT ON COLUMN adi_document_graph_edge.weight       IS 'Relationship strength given by THIS extraction; element-level weight = SUM over fragments';
 
 -- ============================================================
--- Section 6: index version columns + index task queue
+-- Section 5: index version columns + index task queue
 --   * index_version: generation of indexed artifacts; incremented whenever
 --     existing index output is invalidated (remark / segment_mode / KB split
 --     params / segment content edit; title and other metadata excluded).
 --     Index tasks carry the version snapshot at enqueue time; the runner
 --     conditionally finalizes (WHERE index_version = snapshot) and re-enqueues
 --     the latest version on mismatch (merge-debounce).
---     adi_document_segment.index_version is created in Section 3 (new table);
+--     adi_document_segment.index_version is created in Section 2 (new table);
 --     adi_document is a renamed existing table, so its column is added here.
 --   * adi_index_task: scheduling source of truth for all index writes.
 --     Version is part of the merge key: (doc, segment, target, type, version)

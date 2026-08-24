@@ -159,8 +159,7 @@ public abstract class AbstractLLMService extends CommonModelService {
     private void recordInvocationFailure(Throwable error) {
         try {
             ModelHealthService healthService = SpringUtil.getBean(ModelHealthService.class);
-            String reason = error.getCause() != null ? error.getCause().getMessage() : error.getMessage();
-            healthService.recordFailure(aiModel.getName(), reason);
+            healthService.recordFailure(aiModel.getName(), error);
         } catch (Exception ignored) {
             // ModelHealthService may not be available (e.g. during startup)
         }

@@ -10,6 +10,7 @@ import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.EmbeddingStatusEnum;
 import com.moyz.adi.common.enums.GraphicalStatusEnum;
+import com.moyz.adi.common.enums.SegmentModeEnum;
 import com.moyz.adi.common.exception.IndexTaskCancelledException;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.languagemodel.AbstractLLMService;
@@ -48,20 +49,20 @@ import static com.moyz.adi.common.cosntant.RedisKeyConstant.KB_STATISTIC_RECALCU
 import static com.moyz.adi.common.cosntant.RedisKeyConstant.USER_INDEXING;
 
 /**
- * 索引任务队列：一切索引写入（切段/向量化/图谱抽取）的唯一通道。
+ * Index task queue: the single channel for all index writes (segmentation / embedding / graph extraction).
  * <p>
- * 总原则：同 doc 任务串行（claimOne 领取互斥，advisory lock），跨 doc 并行。
- * 版本入键——(doc, segment, target, type, index_version) 唯一（部分索引，done 行除外）：
- * 新版本 enqueue 永远插新行（running 行吞不掉它），并 supersede 同键旧版本行
- * （pending 直接置 failed；running 仅打 stop_flag，由检查点协作中止，串行闸门不提前
- * 打开）；同版本重复触发合并去抖、failed 原地复活（手动重试）。
- * 执行器三道过期防线（开始检查 / 批间协作检查点 / 结束条件置位）：发现版本前进即
- * 作废自身并接管"变更即失效"的清理（被取代方删旧段行与向量，最新版本任务必走全量
- * 重切），同时幂等补入队最新版本作安全网（兜触发方 bump 与 enqueue 之间崩溃的缺口）。
- * 图谱不自动触发（仅保存与段启用自动入队 embedding），失败仅手动重试。
- * 崩溃自愈：执行器周期刷新 heartbeat_time，轮询按其回收超时 running（进程死→重置
- * pending 重跑）；start_time 超过最大执行时长的心跳存活任务视为挂起，强制 failed
- * （兜底断路器，拦"进程活着但永久卡死"）。
+ * Tasks on the same doc run serially (claimOne mutual exclusion via advisory lock), across docs
+ * in parallel. The uniqueness key is (doc, segment, target, type, index_version): a newer version
+ * enqueues a new row and supersedes same-key rows of older versions (pending → failed; running →
+ * stop_flag, aborted cooperatively at the next checkpoint); the same version merges into the
+ * existing pending row; failed rows revive in place on manual retry.
+ * Executors check staleness at three checkpoints (start check / per-batch checkpoint / conditional
+ * finalize): on version advance they discard their own output, clean up stale segment rows and
+ * vectors, and idempotently re-enqueue the latest version.
+ * Embedding tasks are enqueued automatically (on save and on segment enable); graph tasks and
+ * retries of failed tasks are enqueued manually.
+ * Executors refresh heartbeat_time periodically; the poller resets timed-out running rows to
+ * pending and force-fails tasks exceeding the max runtime.
  */
 @Slf4j
 @Service
@@ -72,13 +73,13 @@ public class IndexTaskService {
     public static final String STATUS_DONE = "done";
     public static final String STATUS_FAILED = "failed";
 
-    /** 心跳间隔：执行器刷新 heartbeat_time 的周期 */
+    /** Heartbeat interval: how often an executor refreshes heartbeat_time */
     private static final int HEARTBEAT_INTERVAL_SECONDS = 30;
 
-    /** 心跳超时阈值（约 4 个漏拍即判定进程死亡），running 行重置 pending 重跑 */
+    /** Heartbeat timeout (about 4 missed beats means a dead process); running rows are reset to pending for rerun */
     private static final int STALE_RUNNING_MINUTES = 2;
 
-    /** 最大执行时长兜底断路器：进程活着但挂起的任务强制 failed，须远大于任何正常任务 */
+    /** Max-runtime circuit breaker: force-fails hung tasks in a live process; must far exceed any normal task */
     private static final int MAX_RUNNING_MINUTES = 120;
 
     private final ScheduledExecutorService heartbeatExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -113,13 +114,19 @@ public class IndexTaskService {
     private IKnowledgeEmbeddingService iKnowledgeEmbeddingService;
 
     @Resource
+    private ModelHealthService modelHealthService;
+
+    // @Lazy breaks the bean cycle; userService is only accessed when a task executes
+    @Lazy
+    @Resource
     private UserService userService;
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
     /**
-     * 文档级任务入队（版本入键：新版本插新行并 supersede 旧版本；同版本合并/复活）
+     * Enqueue a document-level task (version in key: a newer version inserts a new row and
+     * supersedes older ones; the same version merges or revives)
      */
     public void enqueueDocument(String kbUuid, String docUuid, String taskType, User user) {
         KbDocument doc = kbDocumentMapper.getByUuid(docUuid);
@@ -141,7 +148,8 @@ public class IndexTaskService {
     }
 
     /**
-     * 段级任务入队（目标段必须存在；supersede+upsert 语义同文档级）
+     * Enqueue a segment-level task (the target segment must exist; supersede + upsert
+     * semantics identical to the document level)
      */
     public void enqueueSegment(KnowledgeBase kb, KbDocument doc, DocumentSegment segment, String taskType, User user) {
         IndexTask task = new IndexTask();
@@ -158,14 +166,16 @@ public class IndexTaskService {
     }
 
     /**
-     * 该文档当前是否有 running 任务（保存侧决定即时清理还是移交清理）
+     * Whether the doc currently has a running task (the save side decides: clean up now
+     * or hand the cleanup over)
      */
     public boolean hasRunningByDoc(String docUuid) {
         return indexTaskMapper.hasRunningByDoc(docUuid);
     }
 
     /**
-     * 消费循环：领取-执行直到无任务可领。入队即触发；轮询兜底重触发。
+     * Consume loop: claim and execute until nothing is claimable. Triggered on enqueue;
+     * re-triggered by the poller as a fallback.
      */
     @Async
     public void dispatch() {
@@ -189,9 +199,10 @@ public class IndexTaskService {
     }
 
     /**
-     * 轮询兜底：按 heartbeat_time 回收超时 running（进程崩溃遗留，重置 pending 重跑），
-     * 按 start_time 熔断挂起任务（进程活着但卡死，强制 failed）。先回收后熔断——
-     * 两者同时命中时按崩溃处理（自动重跑优于人工重试）。有动作则重触发消费。
+     * Polling fallback: recover timed-out running rows by heartbeat_time (left over by a
+     * crashed process; reset to pending for rerun) and force-fail hung tasks by start_time
+     * (process alive but stuck). Recover first, force-fail second — when both hit, treat as
+     * crash (auto rerun over manual retry). Re-trigger consumption if anything was done.
      */
     @Scheduled(fixedDelay = 60_000)
     public void pollStale() {
@@ -237,8 +248,9 @@ public class IndexTaskService {
     }
 
     /**
-     * 执行期心跳：向本任务行周期刷新 heartbeat_time。刷新失效（rowcount=0，行已被
-     * stale 重置或超时强杀）说明当前执行器已沦为僵尸，告警一次留痕。
+     * Runtime heartbeat: periodically refresh heartbeat_time on this task row. A failed
+     * refresh (rowcount=0, row already stale-reset or force-failed) means this executor
+     * has become a zombie; warn once for the record.
      */
     private ScheduledFuture<?> startHeartbeat(IndexTask task) {
         AtomicBoolean zombieReported = new AtomicBoolean(false);
@@ -256,8 +268,9 @@ public class IndexTaskService {
     }
 
     /**
-     * 路由到执行器。返回 true = 因版本过期被跳过（embedding 已接管清理并幂等补入队
-     * 最新版本；graphical 仅标记待重建，手动重跑，不自动重入队）
+     * Route to an executor. Returns true = skipped as stale (embedding already took over
+     * cleanup and idempotently re-enqueued the latest version; graphical only marks pending
+     * rebuild for a manual rerun, no auto re-enqueue)
      */
     private boolean route(IndexTask task) {
         if (TARGET_DOCUMENT.equals(task.getTargetType())) {
@@ -280,7 +293,8 @@ public class IndexTaskService {
         if (kb == null) {
             return false;
         }
-        // 开始前版本检查：过期则接管保存侧移交的清理（删段行向量，最新版本任务走全量重切）
+        // Pre-start version check: if stale, take over the cleanup handed over by the save
+        // side (delete segment rows and vectors; the latest-version task does a full re-segmentation)
         if (versionAdvanced(doc.getIndexVersion(), task.getIndexVersion())) {
             invalidateDocIndexArtifacts(doc);
             enqueueLatestDocument(task, doc);
@@ -292,8 +306,16 @@ public class IndexTaskService {
                 .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
                 .update();
         segmentIndexService.reindexEmbedding(kb, doc, versionGuard(task));
-        // 条件置位：版本一致才生效，否则说明执行期间版本前进 ->
-        // 本次产出全部过期，同样接管清理（漏检取消时段行仍在，不删会让最新版本任务走增量分支嵌旧内容）
+        // A QA-mode doc with no segment rows has no QA data yet (generation/import pending):
+        // finalization belongs to whichever flow fills the data, so this run leaves the status alone
+        if (SegmentModeEnum.QA == doc.getSegmentMode()
+                && documentSegmentService.listByDocUuid(doc.getUuid()).isEmpty()) {
+            return false;
+        }
+        // Conditional finalize: only takes effect when the version still matches; otherwise the
+        // version advanced during execution -> this run's output is entirely stale, so take over
+        // the cleanup too (segments written before a missed cancellation are still there, and
+        // leaving them would send the latest-version task down the incremental branch with stale content)
         boolean finalized = ChainWrappers.lambdaUpdateChain(kbDocumentMapper)
                 .eq(KbDocument::getId, doc.getId())
                 .eq(KbDocument::getIndexVersion, task.getIndexVersion())
@@ -330,30 +352,21 @@ public class IndexTaskService {
         AbstractLLMService llmService = LLMContext.getServiceById(kb.getIngestModelId(), true);
         ChatModel chatModel = llmService.buildChatLLM(
                 ChatModelBuilderProperties.builder().temperature(kb.getQueryLlmTemperature()).build());
-        // 先清后抽：按账本清理该文档图谱足迹（幂等）；停用段不参与重抽
+        // Clear before extracting: remove the doc's graph footprint via the ledger (idempotent);
+        // disabled segments are excluded from re-extraction
         knowledgeBaseGraphService.removeDocumentGraphFootprint(kb.getUuid(), doc.getUuid());
         List<DocumentSegment> segments = segmentIndexService.ensureSegments(kb, doc).stream()
                 .filter(segment -> !Boolean.FALSE.equals(segment.getIsEnabled()))
                 .toList();
-        GraphRagContext.get(AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE).ingest(
-                GraphIngestParam.builder()
-                        .user(user)
-                        .segments(segments)
-                        .ChatModel(chatModel)
-                        .identifyColumns(List.of(AdiConstant.MetadataKey.KB_UUID))
-                        .appendColumns(List.of(AdiConstant.MetadataKey.KB_ITEM_UUID))
-                        .isFreeToken(llmService.getAiModel().getIsFree())
-                        .sourceId(doc.getId())
-                        .modelPlatform(llmService.getAiModel().getPlatform())
-                        .modelName(llmService.getAiModel().getName())
-                        .build());
+        ingestGraph(doc, user, segments, llmService, chatModel);
         boolean finalized = ChainWrappers.lambdaUpdateChain(kbDocumentMapper)
                 .eq(KbDocument::getId, doc.getId())
                 .eq(KbDocument::getIndexVersion, task.getIndexVersion())
                 .set(KbDocument::getGraphicalStatus, GraphicalStatusEnum.DONE)
                 .update();
         if (!finalized) {
-            // 执行期间内容变更：图谱数据已过期，标记待重建（图谱手动重跑，不自动重入队）
+            // Content changed during execution: graph data is stale, mark pending rebuild
+            // (graph reruns manually, no auto re-enqueue)
             markDocGraphicalPending(doc.getId());
             return true;
         }
@@ -368,12 +381,14 @@ public class IndexTaskService {
         if (segment == null) {
             return false;
         }
-        // 停用段跳过（编辑/新增问题/子块对停用段照常入队，统一由这里跳过，不复活停用数据）
+        // Skip disabled segments (edits/added questions/child chunks still enqueue them; they are
+        // skipped here uniformly, never reviving disabled data)
         if (Boolean.FALSE.equals(segment.getIsEnabled())) {
             return false;
         }
-        // 过期即作废自身：清 embedding_id 保证最新版本任务重嵌（否则本任务迟到写入的
-        // 旧向量 id 会让新任务误判"已嵌"而跳过），并幂等补入队最新版本
+        // Stale means self-invalidate: clear embedding_id so the latest-version task re-embeds
+        // (otherwise the stale vector id this task writes late makes the new task mistake it as
+        // already embedded and skip), and idempotently re-enqueue the latest version
         if (versionAdvanced(segment.getIndexVersion(), task.getIndexVersion())) {
             invalidateSegmentEmbedding(segment);
             enqueueLatestSegment(task, segment);
@@ -389,7 +404,8 @@ public class IndexTaskService {
         boolean finalized = updateSegmentStatusConditionally(segment.getId(), task.getIndexVersion(),
                 DocumentSegment::getEmbeddingStatus, EmbeddingStatusEnum.DONE);
         if (!finalized) {
-            // 执行期间段内容变更：本次向量已过期，同样清引用并补最新版本任务
+            // Segment content changed during execution: this run's vector is stale; likewise
+            // clear the reference and re-enqueue the latest-version task
             DocumentSegment fresh = documentSegmentService.getById(segment.getId());
             invalidateSegmentEmbedding(segment);
             enqueueLatestSegment(task, fresh);
@@ -406,7 +422,8 @@ public class IndexTaskService {
         if (segment == null) {
             return false;
         }
-        // 停用段跳过（编辑/新增问题/子块对停用段照常入队，统一由这里跳过，不复活停用数据）
+        // Skip disabled segments (edits/added questions/child chunks still enqueue them; they are
+        // skipped here uniformly, never reviving disabled data)
         if (Boolean.FALSE.equals(segment.getIsEnabled())) {
             return false;
         }
@@ -421,23 +438,13 @@ public class IndexTaskService {
             return false;
         }
         User user = userService.getById(task.getUserId());
-        // 先幂等清理该段残留（防重复追加）再单段重抽，账本随 ingest 双写重建
+        // Idempotently clear this segment's leftovers first (prevents duplicate appends) then
+        // re-extract it alone; the ledger is rebuilt by the ingest double-write
         knowledgeBaseGraphService.removeSegmentGraphFootprint(kb.getUuid(), segment.getUuid());
         AbstractLLMService llmService = LLMContext.getServiceById(kb.getIngestModelId(), true);
         ChatModel chatModel = llmService.buildChatLLM(
                 ChatModelBuilderProperties.builder().temperature(kb.getQueryLlmTemperature()).build());
-        GraphRagContext.get(AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE).ingest(
-                GraphIngestParam.builder()
-                        .user(user)
-                        .segments(List.of(segment))
-                        .ChatModel(chatModel)
-                        .identifyColumns(List.of(AdiConstant.MetadataKey.KB_UUID))
-                        .appendColumns(List.of(AdiConstant.MetadataKey.KB_ITEM_UUID))
-                        .isFreeToken(llmService.getAiModel().getIsFree())
-                        .sourceId(doc.getId())
-                        .modelPlatform(llmService.getAiModel().getPlatform())
-                        .modelName(llmService.getAiModel().getName())
-                        .build());
+        ingestGraph(doc, user, List.of(segment), llmService, chatModel);
         boolean finalized = updateSegmentStatusConditionally(segment.getId(), task.getIndexVersion(),
                 DocumentSegment::getGraphicalStatus, GraphicalStatusEnum.DONE);
         if (!finalized) {
@@ -448,10 +455,11 @@ public class IndexTaskService {
     }
 
     /**
-     * 协作式取消的善后：本任务已写入的部分与历史残留由自己清理
-     * （保存侧在检测到 running 时已把清理责任移交到这里），随后幂等补入队最新版本。
-     * 版本入键后 enqueue 不会被自身 running 行吞掉（取消仅因版本前进触发，
-     * 最新版本的键必然与当前行不同）。
+     * Cleanup after cooperative cancellation: whatever this task already wrote plus historical
+     * leftovers is cleaned up by itself (the save side handed the cleanup duty here when it saw
+     * the task running), then the latest version is idempotently re-enqueued. With version in
+     * key, enqueue is never swallowed by this task's own running row (cancellation only fires on
+     * version advance, so the latest version's key always differs from the current row).
      */
     private void onCancelled(IndexTask task) {
         try {
@@ -479,8 +487,8 @@ public class IndexTaskService {
     }
 
     /**
-     * 协作式取消信号：stop_flag（新版本入队对本行打的停止标志，任务行本地信号）或
-     * 版本前进任一成立即作废
+     * Cooperative cancellation signal: invalidate as soon as either stop_flag (stop marker set
+     * on this row by a newer-version enqueue; row-local signal) or version advance holds
      */
     private Supplier<Boolean> versionGuard(IndexTask task) {
         return () -> {
@@ -493,9 +501,35 @@ public class IndexTaskService {
     }
 
     /**
-     * 幂等安全网入队最新版本：正常情况下新版本行已由触发方入队（版本入键，enqueue
-     * 不会被 running 行吞掉），此处兜"版本已推进但触发方在 bump 与 enqueue 之间崩溃"
-     * 的缺口——同键同版本 upsert，已有 pending 则合并空转。
+     * Ingest segments into the graph store; failures are recorded against the ingest model's health
+     */
+    private void ingestGraph(KbDocument doc, User user, List<DocumentSegment> segments,
+                             AbstractLLMService llmService, ChatModel chatModel) {
+        try {
+            GraphRagContext.get(AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE).ingest(
+                    GraphIngestParam.builder()
+                            .user(user)
+                            .segments(segments)
+                            .ChatModel(chatModel)
+                            .identifyColumns(List.of(AdiConstant.MetadataKey.KB_UUID))
+                            .appendColumns(List.of(AdiConstant.MetadataKey.KB_ITEM_UUID))
+                            .isFreeToken(llmService.getAiModel().getIsFree())
+                            .sourceId(doc.getId())
+                            .modelPlatform(llmService.getAiModel().getPlatform())
+                            .modelName(llmService.getAiModel().getName())
+                            .build());
+        } catch (Exception e) {
+            modelHealthService.recordFailure(llmService.getAiModel().getName(), e);
+            throw e;
+        }
+    }
+
+    /**
+     * Idempotent safety-net enqueue of the latest version: normally the trigger side has already
+     * enqueued the new-version row (version in key; enqueue is not swallowed by a running row);
+     * this covers the gap where the version already advanced but the trigger crashed between
+     * bump and enqueue — same key same version upsert, an existing pending row just merges into
+     * a no-op.
      */
     private void enqueueLatestDocument(IndexTask task, KbDocument doc) {
         if (doc == null) {
@@ -512,9 +546,11 @@ public class IndexTaskService {
     }
 
     /**
-     * 文档级 embedding 作废时的善后清理（保存侧在 running 期间移交的责任）：
-     * 版本前进即段行/向量全部过期（变更即失效），删除后最新版本任务走全量重切分支重建。
-     * 供开始检查/结束置位失败/协作取消三个检测点复用。
+     * Post-invalidation cleanup for document-level embedding (duty handed over by the save side
+     * while running): on version advance all segment rows/vectors are stale (invalidate on
+     * change); after deletion the latest-version task rebuilds via the full re-segmentation
+     * branch. Reused by the three checkpoints: start check, finalize failure, cooperative
+     * cancellation.
      */
     private void invalidateDocIndexArtifacts(KbDocument doc) {
         iKnowledgeEmbeddingService.deleteByItemUuid(doc.getUuid());
@@ -526,8 +562,9 @@ public class IndexTaskService {
     }
 
     /**
-     * 段级 embedding 过期善后：清 embedding_id 与状态，保证最新版本段任务重嵌
-     * （否则本任务迟到写入的旧向量 id 会让新任务误判"已嵌"而跳过）
+     * Post-invalidation cleanup for stale segment embedding: clears embedding_id and status so
+     * the latest-version segment task re-embeds (otherwise the stale vector id this task writes
+     * late makes the new task mistake it as already embedded and skip)
      */
     private void invalidateSegmentEmbedding(DocumentSegment segment) {
         ChainWrappers.lambdaUpdateChain(documentSegmentService.getBaseMapper())
@@ -538,7 +575,8 @@ public class IndexTaskService {
     }
 
     /**
-     * 构造最新版本的文档级任务（安全网/取消善后用，直接 enqueue）
+     * Build the latest-version document-level task (for the safety net / cancellation cleanup;
+     * enqueued directly)
      */
     private IndexTask buildLatestDocumentTask(IndexTask task, KbDocument doc) {
         IndexTask next = new IndexTask();
@@ -553,7 +591,8 @@ public class IndexTaskService {
     }
 
     /**
-     * 构造最新版本的段级任务（安全网/取消善后用，直接 enqueue）
+     * Build the latest-version segment-level task (for the safety net / cancellation cleanup;
+     * enqueued directly)
      */
     private IndexTask buildLatestSegmentTask(IndexTask task, DocumentSegment segment) {
         IndexTask next = new IndexTask();

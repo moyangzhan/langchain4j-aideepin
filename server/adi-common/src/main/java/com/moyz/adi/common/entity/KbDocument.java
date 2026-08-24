@@ -48,6 +48,14 @@ public class KbDocument extends BaseEntity {
     @TableField("segment_mode")
     private SegmentModeEnum segmentMode;
 
+    @Schema(title = "父子模式下子块最大token数(文档级) | Parent-child mode: max child chunk size in tokens")
+    @TableField("child_max_chunk_size")
+    private Integer childMaxChunkSize;
+
+    @Schema(title = "最近一次失败的异步任务原因(向量化/QA生成) | Fail reason of the latest failed async pipeline")
+    @TableField("fail_reason")
+    private String failReason;
+
     @Schema(title = "向量化状态 | Embedding Status")
     @TableField("embedding_status")
     private EmbeddingStatusEnum embeddingStatus;

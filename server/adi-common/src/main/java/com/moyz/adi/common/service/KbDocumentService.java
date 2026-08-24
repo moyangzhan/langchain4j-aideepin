@@ -58,6 +58,11 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
+    // @Lazy: documentQaService -> kbDocumentService -> 本服务,成环;生成入口仅在保存后调用
+    @Lazy
+    @Resource
+    private DocumentQaService documentQaService;
+
     @Resource
     private IKnowledgeEmbeddingService iKnowledgeEmbeddingService;
 
@@ -94,8 +99,12 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
             item.setBrief(StringUtils.substring(itemEditReq.getRemark(), 0, 200));
         }
         item.setRemark(itemEditReq.getRemark());
-        // 分段模式（文档级）：未指定时按 text 处理；改动模式后需重新索引才生效
+        // 分段模式（文档级）：未指定时按 text 处理；模式变更走"变更即失效"并自动重索引（仅 embedding，图谱始终手动）
         item.setSegmentMode(itemEditReq.getSegmentMode() == null ? SegmentModeEnum.TEXT : itemEditReq.getSegmentMode());
+        // 子块最大token数（文档级，父子模式专用）；未传时不覆盖已有值，新增时落库默认值
+        if (itemEditReq.getChildMaxChunkSize() != null) {
+            item.setChildMaxChunkSize(itemEditReq.getChildMaxChunkSize());
+        }
         if (null == itemEditReq.getId() || itemEditReq.getId() < 1) {
             uuid = UuidUtil.createShort();
             item.setUuid(uuid);
@@ -111,9 +120,15 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
 
         stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, itemEditReq.getKbUuid());
 
-        return ChainWrappers.lambdaQueryChain(baseMapper)
+        KbDocument saved = ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(KbDocument::getUuid, uuid)
                 .one();
+        // 保存为 qa 模式且勾选自动生成：对空 qa 文档派发 LLM 生成（服务内有幂等守卫）
+        if (null != saved && saved.getSegmentMode() == SegmentModeEnum.QA
+                && Boolean.TRUE.equals(itemEditReq.getAutoGenerateQa())) {
+            documentQaService.generateQaFromEdit(ThreadContext.getCurrentUser(), saved);
+        }
+        return saved;
     }
 
     /**
@@ -131,7 +146,11 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
         SegmentModeEnum newMode = req.getSegmentMode() == null ? SegmentModeEnum.TEXT : req.getSegmentMode();
         boolean modeChanged = newMode != oldMode;
         boolean remarkChanged = !Objects.equals(old.getRemark(), req.getRemark());
-        if (!modeChanged && !(remarkChanged && newMode != SegmentModeEnum.QA)) {
+        // 子块大小是父子模式的切段参数，变更即失效该文档段行（文档级，不影响库内其他文档）
+        boolean childSizeChanged = req.getChildMaxChunkSize() != null
+                && newMode == SegmentModeEnum.PARENT_CHILD
+                && !Objects.equals(old.getChildMaxChunkSize(), req.getChildMaxChunkSize());
+        if (!modeChanged && !childSizeChanged && !(remarkChanged && newMode != SegmentModeEnum.QA)) {
             return;
         }
         // “变更即失效”+自动重索引：版本推进使既有索引过期（在途任务经检查点作废并自清理）。

@@ -12,7 +12,6 @@ interface DocumentColumnCallbacks {
   editItem: (row: KnowledgeBase.Item) => void
   deleteKbItem: (row: KnowledgeBase.Item) => void
   toggleStatus: (row: KnowledgeBase.Item, isEnabled: boolean) => void
-  generateQa?: (row: KnowledgeBase.Item) => void
 }
 
 export const createColumns = (callbacks: DocumentColumnCallbacks): DataTableColumns<KnowledgeBase.Item> => {
@@ -199,18 +198,6 @@ export const createColumns = (callbacks: DocumentColumnCallbacks): DataTableColu
               },
               { default: () => t('common.delete') },
             ),
-            row.segmentMode !== 'qa' && row.segmentMode !== 'parent_child'
-              ? h(
-                  NButton,
-                  {
-                    tertiary: true,
-                    size: 'small',
-                    type: 'warning',
-                    onClick: () => callbacks.generateQa?.(row),
-                  },
-                  { default: () => t('knowledgeBase.generateQa') },
-                )
-              : null,
           ],
         })
       },
