@@ -22,7 +22,7 @@
         ON CONFLICT (doc_uuid, segment_uuid, target_type, task_type, index_version) WHERE status &lt;&gt; 'done'
         DO UPDATE SET status = 'pending',
                       user_id = excluded.user_id,
-                      fail_reason = null,
+                      fail_reason = '',
                       stop_flag = false,
                       update_time = now()
         WHERE adi_index_task.status &lt;&gt; 'running'
@@ -111,11 +111,14 @@
           AND COALESCE(heartbeat_time, start_time, update_time) &lt; now() - (#{minutes} || ' minutes')::interval
     </update>
 
-    <!-- Hung circuit breaker: tasks whose start_time exceeds the max runtime while still heartbeating (not a crash) are force-failed -->
-    <update id="failOverdue">
-        UPDATE adi_index_task
+    <!-- Hung circuit breaker: tasks whose start_time exceeds the max runtime while still heartbeating (not a crash) are force-failed. Returns the broken rows for host finalization (PG UPDATE..RETURNING must run via executeQuery, hence the select tag) -->
+    <select id="failOverdue" resultType="com.moyz.adi.common.entity.IndexTask">
+        UPDATE adi_index_task t
         SET status = 'failed', fail_reason = 'max execution time exceeded', update_time = now()
-        WHERE status = 'running'
-          AND start_time &lt; now() - (#{minutes} || ' minutes')::interval
-    </update>
+        WHERE t.status = 'running'
+          AND t.start_time &lt; now() - (#{minutes} || ' minutes')::interval
+        RETURNING t.id, t.kb_uuid, t.doc_uuid, t.user_id, t.segment_uuid,
+                  t.target_type, t.task_type, t.index_version, t.status, t.fail_reason, t.stop_flag,
+                  t.start_time, t.heartbeat_time, t.create_time, t.update_time
+    </select>
 </mapper>

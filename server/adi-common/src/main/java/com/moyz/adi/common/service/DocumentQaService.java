@@ -10,6 +10,7 @@ import com.moyz.adi.common.entity.KbDocument;
 import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.EmbeddingStatusEnum;
+import com.moyz.adi.common.enums.GraphicalStatusEnum;
 import com.moyz.adi.common.enums.LLMCallRecordSourceType;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.LLMContext;
@@ -35,6 +36,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.context.annotation.Lazy;
 import jakarta.annotation.Resource;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -45,8 +47,11 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
+import static com.moyz.adi.common.enums.ErrorEnum.A_DATA_NOT_FOUND;
+import static com.moyz.adi.common.enums.ErrorEnum.A_DOC_INDEX_DOING;
 import static com.moyz.adi.common.enums.ErrorEnum.A_PARAMS_ERROR;
 import static com.moyz.adi.common.enums.ErrorEnum.A_UPLOAD_FAIL;
 
@@ -101,6 +106,11 @@ public class DocumentQaService {
     @Resource
     private KnowledgeBaseMapper knowledgeBaseMapper;
 
+    // @Lazy: indexTaskService 所在依赖图可能回指本服务的调用方（KbDocumentService），成环时以懒注入打破
+    @Lazy
+    @Resource
+    private IndexTaskService indexTaskService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -133,7 +143,8 @@ public class DocumentQaService {
     }
 
     /**
-     * 把问答对物化为段行：相同答案文本合并为一个答案段挂多个问题
+     * 把问答对物化为段行：相同答案文本合并为一个答案段挂多个问题；答案与库内既有段
+     * 内容一致时并入既有段（问题文本去重），仅新答案新建段行——创建期导入与追加导入共用
      */
     public void saveQaPairs(KnowledgeBase kb, KbDocument doc, List<QaPair> pairs, String source) {
         Map<String, List<String>> answerToQuestions = new LinkedHashMap<>();
@@ -143,21 +154,32 @@ public class DocumentQaService {
             }
             answerToQuestions.computeIfAbsent(pair.answer().trim(), k -> new ArrayList<>()).add(pair.question().trim());
         }
-        int answerPosition = documentSegmentService.listByDocUuid(doc.getUuid()).size();
+        Map<String, DocumentSegment> existingAnswers = documentSegmentService.listByDocUuid(doc.getUuid()).stream()
+                .collect(Collectors.toMap(DocumentSegment::getContent, s -> s, (a, b) -> a));
+        int answerPosition = existingAnswers.size();
         for (Map.Entry<String, List<String>> entry : answerToQuestions.entrySet()) {
-            DocumentSegment answer = new DocumentSegment();
-            answer.setUuid(UuidUtil.createShort());
-            answer.setKbUuid(kb.getUuid());
-            answer.setDocUuid(doc.getUuid());
-            answer.setPosition(answerPosition++);
-            answer.setContent(entry.getKey());
-            answer.setHitCount(0);
-            answer.setSource(source);
-            documentSegmentService.save(answer);
-
+            DocumentSegment answer = existingAnswers.get(entry.getKey());
+            if (answer == null) {
+                answer = new DocumentSegment();
+                answer.setUuid(UuidUtil.createShort());
+                answer.setKbUuid(kb.getUuid());
+                answer.setDocUuid(doc.getUuid());
+                answer.setPosition(answerPosition++);
+                answer.setContent(entry.getKey());
+                answer.setHitCount(0);
+                answer.setSource(source);
+                documentSegmentService.save(answer);
+            }
+            // 并入既有答案/批内重复：问题文本已存在则跳过，避免重复向量化
+            Set<String> existingQuestionTexts = questionService.listByAnswerIds(List.of(answer.getId())).stream()
+                    .map(DocumentSegmentQuestion::getContent)
+                    .collect(Collectors.toSet());
             List<DocumentSegmentQuestion> questions = new ArrayList<>();
-            int questionPosition = 0;
+            int questionPosition = existingQuestionTexts.size();
             for (String questionText : entry.getValue()) {
+                if (existingQuestionTexts.contains(questionText)) {
+                    continue;
+                }
                 DocumentSegmentQuestion question = new DocumentSegmentQuestion();
                 question.setUuid(UuidUtil.createShort());
                 question.setKbUuid(kb.getUuid());
@@ -168,19 +190,67 @@ public class DocumentQaService {
                 question.setHitCount(0);
                 questions.add(question);
             }
-            questionService.saveBatch(questions);
+            if (!questions.isEmpty()) {
+                questionService.saveBatch(questions);
+            }
         }
     }
 
     /**
-     * 编辑保存触发的 QA 自动生成入口（同步）：仅对无段行的 qa 模式文档生效（幂等守卫，
-     * 不覆盖已有问答数据）；标记生成中（列表立即可见）后派发异步任务
+     * 导入问答对到已有 qa 文档（追加语义）：与生成/同文档在跑任务互斥；相同答案并入
+     * 既有段、问题文本去重，随后向量化待嵌问题并按版本条件落定状态（清空失败原因）
      */
-    public void generateQaFromEdit(User user, KbDocument doc) {
-        if (doc.getSegmentMode() != com.moyz.adi.common.enums.SegmentModeEnum.QA) {
-            return;
+    public void importQaToDocument(KbDocument doc, MultipartFile file) {
+        if (EmbeddingStatusEnum.DOING == doc.getEmbeddingStatus()
+                || GraphicalStatusEnum.DOING == doc.getGraphicalStatus()
+                || indexTaskService.hasRunningByDoc(doc.getUuid())) {
+            throw new BaseException(A_DOC_INDEX_DOING);
         }
-        if (!documentSegmentService.listByDocUuid(doc.getUuid()).isEmpty()) {
+        KnowledgeBase kb = knowledgeBaseMapper.selectOne(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<KnowledgeBase>()
+                .eq(KnowledgeBase::getUuid, doc.getKbUuid())
+                .eq(KnowledgeBase::getIsDeleted, false));
+        if (kb == null) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
+        int versionSnapshot = doc.getIndexVersion() == null ? 0 : doc.getIndexVersion();
+        String fileName = file.getOriginalFilename();
+        List<QaPair> pairs = parseQaFile(fileName == null || fileName.isBlank() ? "qa_import" : fileName, file);
+        if (pairs.isEmpty()) {
+            throw new BaseException(A_PARAMS_ERROR);
+        }
+        try {
+            saveQaPairs(kb, doc, pairs, AdiConstant.SegmentSource.DOC);
+            segmentIndexService.vectorizePendingQuestions(kb, doc);
+        } catch (Exception e) {
+            // 向量化失败也要落定：问题行已入库，状态停在旧值（如 DONE）会让"新问题没向量"
+            // 不可见。版本条件落 FAIL + import: 前缀，与 qa_generate/vectorize/graph 约定一致
+            ChainWrappers.lambdaUpdateChain(kbDocumentService.getBaseMapper())
+                    .eq(KbDocument::getId, doc.getId())
+                    .eq(KbDocument::getIndexVersion, versionSnapshot)
+                    .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.FAIL)
+                    .set(KbDocument::getEmbeddingStatusChangeTime, java.time.LocalDateTime.now())
+                    .set(KbDocument::getFailReason, StringUtils.abbreviate(
+                            "import: " + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()), 500))
+                    .update();
+            throw e;
+        }
+        ChainWrappers.lambdaUpdateChain(kbDocumentService.getBaseMapper())
+                .eq(KbDocument::getId, doc.getId())
+                .eq(KbDocument::getIndexVersion, versionSnapshot)
+                .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DONE)
+                .set(KbDocument::getEmbeddingStatusChangeTime, java.time.LocalDateTime.now())
+                .set(KbDocument::getFailReason, "")
+                .update();
+    }
+
+    /**
+     * （重新）生成统一入口：无段行=直接生成；已有问答对=替换式重新生成。替换前拒绝
+     * 生成中/同文档在跑任务（清理需立即执行，不能移交在途任务的取消善后），随后版本
+     * 推进+清段行/问题/子块/向量并重取文档（异步生成的版本快照以清理后的新值为准），
+     * 标记生成中（列表立即可见）后派发异步任务。保存侧勾选与详情页按钮都走这里。
+     */
+    public void autoGenerateQa(User user, KbDocument doc) {
+        if (doc.getSegmentMode() != com.moyz.adi.common.enums.SegmentModeEnum.QA) {
             return;
         }
         KnowledgeBase kb = knowledgeBaseMapper.selectOne(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<KnowledgeBase>()
@@ -189,11 +259,23 @@ public class DocumentQaService {
         if (kb == null) {
             return;
         }
+        if (!documentSegmentService.listByDocUuid(doc.getUuid()).isEmpty()) {
+            if (EmbeddingStatusEnum.DOING == doc.getEmbeddingStatus()
+                    || GraphicalStatusEnum.DOING == doc.getGraphicalStatus()
+                    || indexTaskService.hasRunningByDoc(doc.getUuid())) {
+                throw new BaseException(A_DOC_INDEX_DOING);
+            }
+            kbDocumentService.clearSegmentsForQaRegenerate(doc.getUuid());
+            doc = kbDocumentService.getEnable(doc.getUuid());
+            if (doc == null) {
+                return;
+            }
+        }
         ChainWrappers.lambdaUpdateChain(kbDocumentService.getBaseMapper())
                 .eq(KbDocument::getUuid, doc.getUuid())
                 .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
                 .set(KbDocument::getEmbeddingStatusChangeTime, java.time.LocalDateTime.now())
-                .set(KbDocument::getFailReason, null)
+                .set(KbDocument::getFailReason, "")
                 .update();
         generateQaAsync(user, kb, doc);
     }
@@ -249,7 +331,7 @@ public class DocumentQaService {
                     .eq(KbDocument::getIndexVersion, versionSnapshot)
                     .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DONE)
                     .set(KbDocument::getEmbeddingStatusChangeTime, java.time.LocalDateTime.now())
-                    .set(KbDocument::getFailReason, null)
+                    .set(KbDocument::getFailReason, "")
                     .update();
             log.info("generateQa done, docUuid:{}, pairs:{}", doc.getUuid(), pairs.size());
 
@@ -276,7 +358,8 @@ public class DocumentQaService {
     }
 
     /**
-     * 生成失败落定：仅当版本仍一致时生效（期间内容/模式再变更，状态归新版本流程管）
+     * 生成失败落定：仅当版本仍一致时生效（期间内容/模式再变更，状态归新版本流程管）。
+     * 前缀 qa_generate: 标失败阶段（与 vectorize: / graph: 统一的写入侧约定）
      */
     private void markQaFailed(KbDocument doc, int versionSnapshot, String reason) {
         ChainWrappers.lambdaUpdateChain(kbDocumentService.getBaseMapper())
@@ -284,7 +367,7 @@ public class DocumentQaService {
                 .eq(KbDocument::getIndexVersion, versionSnapshot)
                 .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.FAIL)
                 .set(KbDocument::getEmbeddingStatusChangeTime, java.time.LocalDateTime.now())
-                .set(KbDocument::getFailReason, StringUtils.abbreviate(reason, 500))
+                .set(KbDocument::getFailReason, StringUtils.abbreviate("qa_generate: " + reason, 500))
                 .update();
     }
 

@@ -123,10 +123,10 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
         KbDocument saved = ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(KbDocument::getUuid, uuid)
                 .one();
-        // 保存为 qa 模式且勾选自动生成：对空 qa 文档派发 LLM 生成（服务内有幂等守卫）
+        // 保存为 qa 模式且勾选自动生成：无段行直接生成，已有问答对替换式重新生成（清空后重建）
         if (null != saved && saved.getSegmentMode() == SegmentModeEnum.QA
                 && Boolean.TRUE.equals(itemEditReq.getAutoGenerateQa())) {
-            documentQaService.generateQaFromEdit(ThreadContext.getCurrentUser(), saved);
+            documentQaService.autoGenerateQa(ThreadContext.getCurrentUser(), saved);
         }
         return saved;
     }
@@ -161,8 +161,25 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
             documentSegmentService.deleteByDocUuid(docUuid);
         }
         markEmbeddingPending(docUuid);
-        // 自动触发仅向量化；图谱始终手动（LLM 昂贵，频繁保存不应反复抽取）
+        // 自动触发仅向量化；图谱始终手动（LLM 昂贵，频繁保存不应反复抽取）。
+        // 切到 qa 且勾选自动生成时跳过：紧随其后的 autoGenerateQa 自己置 DOING、
+        // 生成并向量化，再入队 embedding 任务会与生成流程并发写同一文档
+        if (newMode == SegmentModeEnum.QA && Boolean.TRUE.equals(req.getAutoGenerateQa())) {
+            return;
+        }
         indexTaskService.enqueueDocument(old.getKbUuid(), docUuid, DOC_INDEX_TYPE_EMBEDDING, ThreadContext.getCurrentUser());
+    }
+
+    /**
+     * 替换式 QA 重新生成的清理前置：版本推进（在途任务经检查点自作废）+ 段行/问题/子块
+     * 软删 + 向量清理。仅在调用方确认无在跑任务后调用——清理需立即生效，不能像模式切换
+     * 那样移交在途任务的取消善后（否则段行非空的窗口会让生成入口误判跳过）。
+     */
+    public void clearSegmentsForQaRegenerate(String docUuid) {
+        bumpIndexVersion(docUuid);
+        iKnowledgeEmbeddingService.deleteByItemUuid(docUuid);
+        documentSegmentService.deleteByDocUuid(docUuid);
+        markEmbeddingPending(docUuid);
     }
 
     /**
@@ -311,6 +328,40 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
                 .set(KbDocument::getIsEnabled, isEnabled)
                 .set(KbDocument::getEnabledChangeTime, LocalDateTime.now())
                 .update();
+    }
+
+    /**
+     * 失败重试：按文档当前失败维度与分段模式路由——qa 模式且尚无段行（生成失败）走 QA
+     * 重新生成；其余按 embedding/graphical 失败维度重新入队文档级索引任务。前端展示入口
+     * 挂状态列（FAIL），不依赖 fail_reason 是否有值
+     */
+    public boolean retryIndex(String uuid) {
+        checkWritePrivilege(uuid);
+        KbDocument doc = getEnable(uuid);
+        if (null == doc) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
+        if (EmbeddingStatusEnum.DOING == doc.getEmbeddingStatus()
+                || GraphicalStatusEnum.DOING == doc.getGraphicalStatus()
+                || indexTaskService.hasRunningByDoc(uuid)) {
+            throw new BaseException(A_DOC_INDEX_DOING);
+        }
+        User user = ThreadContext.getCurrentUser();
+        if (SegmentModeEnum.QA == doc.getSegmentMode()
+                && documentSegmentService.listByDocUuid(uuid).isEmpty()) {
+            documentQaService.autoGenerateQa(user, doc);
+            return true;
+        }
+        boolean enqueued = false;
+        if (EmbeddingStatusEnum.FAIL == doc.getEmbeddingStatus()) {
+            indexTaskService.enqueueDocument(doc.getKbUuid(), uuid, DOC_INDEX_TYPE_EMBEDDING, user);
+            enqueued = true;
+        }
+        if (GraphicalStatusEnum.FAIL == doc.getGraphicalStatus()) {
+            indexTaskService.enqueueDocument(doc.getKbUuid(), uuid, DOC_INDEX_TYPE_GRAPHICAL, user);
+            enqueued = true;
+        }
+        return enqueued;
     }
 
     /**

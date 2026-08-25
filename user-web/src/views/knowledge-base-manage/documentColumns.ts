@@ -106,17 +106,17 @@ export const createColumns = (callbacks: DocumentColumnCallbacks): DataTableColu
             class: 'flex flex-col',
             onClick: () => callbacks.showFileContent(row),
           },
-          {
-            default: () => [h(
-              NEllipsis,
-              {
-                lineClamp: 3,
-                style: 'color:#2080f0;cursor:pointer',
-              },
-              { default: () => row.sourceFileName || row.title },
-            ),
-            ],
-          })
+            {
+              default: () => [h(
+                NEllipsis,
+                {
+                  lineClamp: 3,
+                  style: 'color:#2080f0;cursor:pointer',
+                },
+                { default: () => row.sourceFileName || row.title },
+              ),
+              ],
+            })
         } else {
           return t('common.none')
         }
@@ -178,26 +178,28 @@ export const createColumns = (callbacks: DocumentColumnCallbacks): DataTableColu
               },
               { default: () => t('knowledgeBase.viewSegments') },
             ),
-            h(
-              NButton,
-              {
-                tertiary: true,
-                size: 'small',
-                type: 'info',
-                onClick: () => callbacks.editItem(row),
-              },
-              { default: () => t('common.edit') },
-            ),
-            h(
-              NButton,
-              {
-                tertiary: true,
-                size: 'small',
-                type: 'error',
-                onClick: () => callbacks.deleteKbItem(row),
-              },
-              { default: () => t('common.delete') },
-            ),
+            h('div', { class: 'flex gap-1' }, [
+              h(
+                NButton,
+                {
+                  tertiary: true,
+                  size: 'small',
+                  type: 'info',
+                  onClick: () => callbacks.editItem(row),
+                },
+                { default: () => t('common.edit') },
+              ),
+              h(
+                NButton,
+                {
+                  tertiary: true,
+                  size: 'small',
+                  type: 'error',
+                  onClick: () => callbacks.deleteKbItem(row),
+                },
+                { default: () => t('common.delete') },
+              ),
+            ]),
           ],
         })
       },

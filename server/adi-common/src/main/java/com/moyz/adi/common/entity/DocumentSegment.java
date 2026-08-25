@@ -74,6 +74,10 @@ public class DocumentSegment extends BaseEntity {
     @TableField("graphical_status")
     private GraphicalStatusEnum graphicalStatus;
 
+    @Schema(title = "最近一次失败原因(前缀标失败阶段,成功/重试清空) | Fail Reason")
+    @TableField("fail_reason")
+    private String failReason;
+
     @Schema(title = "索引版本(段级,索引任务快照比对用) | Index Version")
     @TableField("index_version")
     private Integer indexVersion;

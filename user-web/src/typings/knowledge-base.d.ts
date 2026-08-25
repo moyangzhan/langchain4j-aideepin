@@ -105,6 +105,7 @@ declare namespace KnowledgeBase {
     enabledChangeTime: string
     embeddingStatus: string
     graphicalStatus: string
+    failReason?: string
     createTime: string
     updateTime: string
     questions?: SegmentQuestion[]
@@ -151,6 +152,10 @@ declare namespace KnowledgeBase {
   interface QaRecordEmbeddingRef {
     embeddingId: string
     text: string
+    /** 命中的向量化单元：qa=命中问题，parent_child=命中子块；text 模式不填 */
+    matchedText?: string
+    /** 引用来源文档的分段模式：text | qa | parent_child */
+    segmentMode?: string
   }
 
   interface QaRecordGraphRef {

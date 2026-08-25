@@ -208,10 +208,13 @@ public class IndexTaskService {
     public void pollStale() {
         try {
             int reset = indexTaskMapper.resetStaleRunning(STALE_RUNNING_MINUTES);
-            int failed = indexTaskMapper.failOverdue(MAX_RUNNING_MINUTES);
-            if (reset + failed > 0) {
+            List<IndexTask> broken = indexTaskMapper.failOverdue(MAX_RUNNING_MINUTES);
+            for (IndexTask task : broken) {
+                markHostFailed(task, "max execution time exceeded");
+            }
+            if (reset + broken.size() > 0) {
                 log.warn("Poller recovered index tasks: {} stale-running reset to pending (> {} min), {} hung force-failed (> {} min)",
-                        reset, STALE_RUNNING_MINUTES, failed, MAX_RUNNING_MINUTES);
+                        reset, STALE_RUNNING_MINUTES, broken.size(), MAX_RUNNING_MINUTES);
                 self.dispatch();
             }
         } catch (Exception e) {
@@ -226,7 +229,7 @@ public class IndexTaskService {
         ScheduledFuture<?> heartbeat = startHeartbeat(task);
         try {
             boolean skipped = route(task);
-            indexTaskMapper.finishOne(task.getId(), STATUS_DONE, skipped ? "skipped: superseded by newer version" : null);
+            indexTaskMapper.finishOne(task.getId(), STATUS_DONE, skipped ? "skipped: superseded by newer version" : "");
         } catch (IndexTaskCancelledException e) {
             log.info("Index task cancelled, docUuid:{}, reason:{}", task.getDocUuid(), e.getMessage());
             onCancelled(task);
@@ -234,7 +237,12 @@ public class IndexTaskService {
         } catch (Exception e) {
             log.error("Index task failed, docUuid:{}, targetType:{}, taskType:{}",
                     task.getDocUuid(), task.getTargetType(), task.getTaskType(), e);
-            indexTaskMapper.finishOne(task.getId(), STATUS_FAILED, StringUtils.abbreviate(e.getMessage(), 500));
+            String reason = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            // finishOne returns 0 when the row was already taken over (stale-reset or force-failed):
+            // a zombie must not finalize the host row either — that belongs to the rerun/breaker
+            if (indexTaskMapper.finishOne(task.getId(), STATUS_FAILED, StringUtils.abbreviate(reason, 500)) > 0) {
+                markHostFailed(task, reason);
+            }
         } finally {
             heartbeat.cancel(false);
             if (DOC_INDEX_TYPE_EMBEDDING.equals(task.getTaskType())) {
@@ -300,18 +308,20 @@ public class IndexTaskService {
             enqueueLatestDocument(task, doc);
             return true;
         }
-        ChainWrappers.lambdaUpdateChain(kbDocumentMapper)
-                .eq(KbDocument::getId, doc.getId())
-                .set(KbDocument::getEmbeddingStatusChangeTime, java.time.LocalDateTime.now())
-                .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
-                .update();
-        segmentIndexService.reindexEmbedding(kb, doc, versionGuard(task));
         // A QA-mode doc with no segment rows has no QA data yet (generation/import pending):
-        // finalization belongs to whichever flow fills the data, so this run leaves the status alone
+        // finalization belongs to whichever flow fills the data — bail out BEFORE marking DOING,
+        // otherwise the doc stays DOING forever with nothing to finalize it
         if (SegmentModeEnum.QA == doc.getSegmentMode()
                 && documentSegmentService.listByDocUuid(doc.getUuid()).isEmpty()) {
             return false;
         }
+        ChainWrappers.lambdaUpdateChain(kbDocumentMapper)
+                .eq(KbDocument::getId, doc.getId())
+                .set(KbDocument::getEmbeddingStatusChangeTime, java.time.LocalDateTime.now())
+                .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
+                .set(KbDocument::getFailReason, "")
+                .update();
+        segmentIndexService.reindexEmbedding(kb, doc, versionGuard(task));
         // Conditional finalize: only takes effect when the version still matches; otherwise the
         // version advanced during execution -> this run's output is entirely stale, so take over
         // the cleanup too (segments written before a missed cancellation are still there, and
@@ -320,6 +330,7 @@ public class IndexTaskService {
                 .eq(KbDocument::getId, doc.getId())
                 .eq(KbDocument::getIndexVersion, task.getIndexVersion())
                 .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DONE)
+                .set(KbDocument::getFailReason, "")
                 .update();
         if (!finalized) {
             invalidateDocIndexArtifacts(doc);
@@ -348,6 +359,7 @@ public class IndexTaskService {
                 .eq(KbDocument::getId, doc.getId())
                 .set(KbDocument::getGraphicalStatusChangeTime, java.time.LocalDateTime.now())
                 .set(KbDocument::getGraphicalStatus, GraphicalStatusEnum.DOING)
+                .set(KbDocument::getFailReason, "")
                 .update();
         AbstractLLMService llmService = LLMContext.getServiceById(kb.getIngestModelId(), true);
         ChatModel chatModel = llmService.buildChatLLM(
@@ -363,6 +375,7 @@ public class IndexTaskService {
                 .eq(KbDocument::getId, doc.getId())
                 .eq(KbDocument::getIndexVersion, task.getIndexVersion())
                 .set(KbDocument::getGraphicalStatus, GraphicalStatusEnum.DONE)
+                .set(KbDocument::getFailReason, "")
                 .update();
         if (!finalized) {
             // Content changed during execution: graph data is stale, mark pending rebuild
@@ -558,6 +571,7 @@ public class IndexTaskService {
         ChainWrappers.lambdaUpdateChain(kbDocumentMapper)
                 .eq(KbDocument::getId, doc.getId())
                 .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.NONE)
+                .set(KbDocument::getFailReason, "")
                 .update();
     }
 
@@ -571,6 +585,7 @@ public class IndexTaskService {
                 .eq(DocumentSegment::getId, segment.getId())
                 .set(DocumentSegment::getEmbeddingId, null)
                 .set(DocumentSegment::getEmbeddingStatus, EmbeddingStatusEnum.NONE)
+                .set(DocumentSegment::getFailReason, "")
                 .update();
     }
 
@@ -606,12 +621,17 @@ public class IndexTaskService {
         return next;
     }
 
+    /**
+     * Conditional finalize to ready (DONE): only used on success paths, so fail_reason is
+     * cleared in the same atomic update
+     */
     private boolean updateSegmentStatusConditionally(Long segmentId, int expectedVersion,
                                                      SFunction<DocumentSegment, ?> column, Object status) {
         return ChainWrappers.lambdaUpdateChain(documentSegmentService.getBaseMapper())
                 .eq(DocumentSegment::getId, segmentId)
                 .eq(DocumentSegment::getIndexVersion, expectedVersion)
                 .set(column, status)
+                .set(DocumentSegment::getFailReason, "")
                 .update();
     }
 
@@ -626,6 +646,47 @@ public class IndexTaskService {
         ChainWrappers.lambdaUpdateChain(kbDocumentMapper)
                 .eq(KbDocument::getId, docId)
                 .set(KbDocument::getGraphicalStatus, GraphicalStatusEnum.NONE)
+                .set(KbDocument::getFailReason, "")
+                .update();
+    }
+
+    /**
+     * 失败落定到宿主行：任务失败时把宿主对应维度状态列置 FAIL 并记录带阶段前缀的原因
+     * （vectorize: / graph:）。版本条件更新——版本已前进则本趟输出已作废，状态归新版本
+     * 流程管，不落 FAIL 以免误报。段级宿主在 adi_document_segment，文档级在 adi_document。
+     */
+    private void markHostFailed(IndexTask task, String reason) {
+        boolean graphical = DOC_INDEX_TYPE_GRAPHICAL.equals(task.getTaskType());
+        String prefixed = StringUtils.abbreviate((graphical ? "graph: " : "vectorize: ") + reason, 500);
+        if (TARGET_DOCUMENT.equals(task.getTargetType())) {
+            KbDocument doc = kbDocumentMapper.getByUuid(task.getDocUuid());
+            if (doc == null) {
+                return;
+            }
+            ChainWrappers.lambdaUpdateChain(kbDocumentMapper)
+                    .eq(KbDocument::getId, doc.getId())
+                    .eq(KbDocument::getIndexVersion, task.getIndexVersion())
+                    .set(graphical ? KbDocument::getGraphicalStatus : KbDocument::getEmbeddingStatus,
+                            graphical ? GraphicalStatusEnum.FAIL : EmbeddingStatusEnum.FAIL)
+                    .set(graphical ? KbDocument::getGraphicalStatusChangeTime : KbDocument::getEmbeddingStatusChangeTime,
+                            java.time.LocalDateTime.now())
+                    .set(KbDocument::getFailReason, prefixed)
+                    .update();
+            return;
+        }
+        DocumentSegment segment = documentSegmentService.lambdaQuery()
+                .eq(DocumentSegment::getUuid, task.getSegmentUuid())
+                .eq(DocumentSegment::getIsDeleted, false)
+                .one();
+        if (segment == null) {
+            return;
+        }
+        ChainWrappers.lambdaUpdateChain(documentSegmentService.getBaseMapper())
+                .eq(DocumentSegment::getId, segment.getId())
+                .eq(DocumentSegment::getIndexVersion, task.getIndexVersion())
+                .set(graphical ? DocumentSegment::getGraphicalStatus : DocumentSegment::getEmbeddingStatus,
+                        graphical ? GraphicalStatusEnum.FAIL : EmbeddingStatusEnum.FAIL)
+                .set(DocumentSegment::getFailReason, prefixed)
                 .update();
     }
 

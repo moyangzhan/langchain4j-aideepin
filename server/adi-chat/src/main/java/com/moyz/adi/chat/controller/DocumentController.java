@@ -1,10 +1,13 @@
 package com.moyz.adi.chat.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.KbDocumentDto;
 import com.moyz.adi.common.dto.KbDocumentEditReq;
 import com.moyz.adi.common.dto.KbDocumentToggleStatusReq;
 import com.moyz.adi.common.entity.KbDocument;
+import com.moyz.adi.common.enums.SegmentModeEnum;
+import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.service.DocumentQaService;
 import com.moyz.adi.common.service.KbDocumentService;
 import com.moyz.adi.common.service.KnowledgeBaseService;
@@ -19,6 +22,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
+
+import static com.moyz.adi.common.enums.ErrorEnum.A_DATA_NOT_FOUND;
+import static com.moyz.adi.common.enums.ErrorEnum.A_PARAMS_ERROR;
 
 @RestController
 @RequestMapping("/document")
@@ -58,6 +64,48 @@ public class DocumentController {
     @PostMapping("/toggle-status")
     public boolean toggleStatus(@RequestBody KbDocumentToggleStatusReq req) {
         return kbDocumentService.toggleStatus(req.getUuid(), req.getIsEnabled());
+    }
+
+    /**
+     * 失败重试：qa 生成失败走重新生成，索引失败按维度重新入队（服务端路由，前端不感知内部规则）
+     */
+    @PostMapping("/retryIndex/{uuid}")
+    public boolean retryIndex(@PathVariable String uuid) {
+        return kbDocumentService.retryIndex(uuid);
+    }
+
+    /**
+     * （重新）生成问答对：无段行直接生成；已有问答对替换式重新生成（服务端守卫在跑/生成中并清理重建）
+     */
+    @PostMapping("/autoGenerateQa/{uuid}")
+    public boolean autoGenerateQa(@PathVariable String uuid) {
+        kbDocumentService.checkWritePrivilege(uuid);
+        KbDocument doc = kbDocumentService.getEnable(uuid);
+        if (null == doc) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
+        if (SegmentModeEnum.QA != doc.getSegmentMode()) {
+            throw new BaseException(A_PARAMS_ERROR);
+        }
+        documentQaService.autoGenerateQa(ThreadContext.getCurrentUser(), doc);
+        return true;
+    }
+
+    /**
+     * 导入问答对到已有文档（追加：相同答案并入既有段、问题去重；服务端守卫生成中/在跑任务）
+     */
+    @PostMapping("/importQa/{uuid}")
+    public boolean importQa(@PathVariable String uuid, @RequestParam("file") MultipartFile file) {
+        kbDocumentService.checkWritePrivilege(uuid);
+        KbDocument doc = kbDocumentService.getEnable(uuid);
+        if (null == doc) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
+        if (SegmentModeEnum.QA != doc.getSegmentMode()) {
+            throw new BaseException(A_PARAMS_ERROR);
+        }
+        documentQaService.importQaToDocument(doc, file);
+        return true;
     }
 
     /**

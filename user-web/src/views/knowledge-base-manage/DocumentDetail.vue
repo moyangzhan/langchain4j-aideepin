@@ -1,15 +1,19 @@
 <script setup lang='ts'>
 import type { DataTableColumns } from 'naive-ui'
-import { NAlert, NBreadcrumb, NBreadcrumbItem, NButton, NCard, NDataTable, NInput, NModal, NSpace, NSpin, NSwitch, useDialog, useMessage } from 'naive-ui'
+import { NAlert, NBreadcrumb, NBreadcrumbItem, NButton, NCard, NDataTable, NIcon, NInput, NModal, NP, NSpace, NSpin, NSwitch, NText, NTooltip, NUpload, NUploadDragger, useDialog, useMessage } from 'naive-ui'
+import { QuestionCircle16Regular } from '@vicons/fluent'
 import { computed, h, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/store'
 import { knowledgeBaseEmptyInfo, knowledgeBaseEmptyItem } from '@/utils/functions'
 import { t } from '@/locales'
 import api from '@/api'
 
 const route = useRoute()
+const router = useRouter()
 const ms = useMessage()
 const dialog = useDialog()
+const authStore = useAuthStore()
 
 const { kbUuid } = route.params as { kbUuid: string; docUuid: string }
 const curDocUuid = ref<string>('')
@@ -101,6 +105,82 @@ function isRebuildFailed(row: KnowledgeBase.Segment) {
 
 function retryRebuild(row: KnowledgeBase.Segment) {
   confirmToggleStatus(row, true)
+}
+
+// （重新）生成问答对：空=直接生成；已有数据=确认后替换式重新生成（服务端守卫在跑/生成中）
+function confirmGenerateQa() {
+  if (paginationReactive.itemCount > 0) {
+    dialog.warning({
+      title: t('knowledgeBase.regenerateQaTitle'),
+      content: t('knowledgeBase.regenerateQaConfirm'),
+      positiveText: t('common.confirm'),
+      negativeText: t('common.cancel'),
+      onPositiveClick: () => doGenerateQa(),
+    })
+    return
+  }
+  doGenerateQa()
+}
+
+async function doGenerateQa() {
+  try {
+    await api.knowledgeBaseItemAutoGenerateQa(curDocUuid.value)
+    await loadDocInfo(curDocUuid.value)
+    await loadList(1)
+  } catch (error: any) {
+    ms.error(error.message ?? 'error')
+  }
+}
+
+// 导入问答对到当前文档（追加语义，相同答案并入既有段）：直传后端解析，成功后刷新
+const showQaImportModal = ref(false)
+const qaImportHeaders = { Authorization: '' }
+
+watch(() => authStore.token, (val) => {
+  if (val)
+    qaImportHeaders.Authorization = val
+}, { immediate: true })
+
+function downloadQaTemplate() {
+  window.open('/api/document/qaImportTemplate')
+}
+
+function onQaImportFinish({ event }: { event?: ProgressEvent }) {
+  showQaImportModal.value = false
+  try {
+    const resp = JSON.parse((event?.target as XMLHttpRequest)?.responseText || '{}')
+    if (resp.success) {
+      ms.success(t('common.uploadSuccess'))
+      loadDocInfo(curDocUuid.value)
+      loadList(1)
+    }
+    else {
+      ms.error(resp.message || 'error')
+    }
+  }
+  catch (error: any) {
+    ms.error(error.message ?? 'error')
+  }
+}
+
+// 文档级失败重试：入口只看状态列（FAIL），是否展示原因文本与之解耦
+async function retryDocIndex() {
+  try {
+    await api.knowledgeBaseItemRetryIndex(curDocUuid.value)
+    await loadDocInfo(curDocUuid.value)
+    await loadList(paginationReactive.page)
+  } catch (error: any) {
+    ms.error(error.message ?? 'error')
+  }
+}
+
+// 正文弹窗：只读查看；编辑跳转文档编辑页——正文编辑联动标题/摘要/模式切换/自动生成
+// 等一系列文档级语义，统一在编辑页完成，不在详情页复刻 saveOrUpdate 的子集
+const showRawContent = ref(false)
+
+function goEditDocument() {
+  showRawContent.value = false
+  router.push(`/kb-manage/${kbUuid}/document/${curDocUuid.value}`)
 }
 
 async function loadList(currentPage: number) {
@@ -279,22 +359,21 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Segment> => {
       width: 60,
       render: row => row.position + 1,
     },
-    {
-      title: segmentMode.value === 'qa'
-        ? t('knowledgeBase.qaAnswer')
-        : segmentMode.value === 'parent_child'
-          ? t('knowledgeBase.segmentModeParentChild')
-          : t('knowledgeBase.docFragment'),
-      key: 'content',
-      render: row => h('div', {
-        style: 'cursor: pointer; white-space: pre-wrap;',
-        onClick: () => openEdit('segment', row),
-      }, { default: () => truncated(row.content) }),
-    },
   ]
+  // 问答模式下问题列在前：先问后答与"问答对"阅读顺序一致（导入/生成格式同为 question 在前），
+  // 也把 1:N 关系摆成 FAQ 心智模型——几种问法，一个答案
   if (segmentMode.value === 'qa') {
     cols.push({
-      title: t('knowledgeBase.qaQuestion'),
+      // 列头问号图标挂提示：一个答案可关联多个问题（单元格即该答案名下的问题集合）
+      title: () => h('span', { class: 'flex items-center gap-1' }, {
+        default: () => [
+          h('span', t('knowledgeBase.relatedQuestions')),
+          h(NTooltip, { trigger: 'hover' }, {
+            trigger: () => h(NIcon, { size: 14, style: 'cursor: help; opacity: 0.65;' }, { default: () => h(QuestionCircle16Regular) }),
+            default: () => t('knowledgeBase.qaQuestionMultiTip'),
+          }),
+        ],
+      }),
       key: 'questions',
       render: row => h('div', { class: 'flex flex-col gap-1' }, {
         default: () => [
@@ -310,6 +389,18 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Segment> => {
       }),
     })
   }
+  cols.push({
+    title: segmentMode.value === 'qa'
+      ? t('knowledgeBase.qaAnswer')
+      : segmentMode.value === 'parent_child'
+        ? t('knowledgeBase.segmentModeParentChild')
+        : t('knowledgeBase.docFragment'),
+    key: 'content',
+    render: row => h('div', {
+      style: 'cursor: pointer; white-space: pre-wrap;',
+      onClick: () => openEdit('segment', row),
+    }, { default: () => truncated(row.content) }),
+  })
   if (segmentMode.value === 'parent_child') {
     cols.push({
       title: t('knowledgeBase.childChunks'),
@@ -352,7 +443,7 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Segment> => {
         if (isRebuilding(row))
           elements.push(h('span', { style: 'font-size:12px;color:#f0a020;margin-left:6px;' }, { default: () => t('knowledgeBase.statusProcessing') }))
         else if (isRebuildFailed(row))
-          elements.push(h('span', { style: 'font-size:12px;color:#d03050;margin-left:6px;cursor:pointer;', onClick: () => retryRebuild(row) }, { default: () => t('knowledgeBase.statusFailed') }))
+          elements.push(h('span', { style: 'font-size:12px;color:#d03050;margin-left:6px;cursor:pointer;', title: row.failReason || '', onClick: () => retryRebuild(row) }, { default: () => t('knowledgeBase.statusFailed') }))
         return h('div', { class: 'flex items-center' }, { default: () => elements })
       },
     },
@@ -412,16 +503,27 @@ onUnmounted(() => {
       </NBreadcrumbItem>
     </NBreadcrumb>
     <NAlert
-      v-if="curDoc.embeddingStatus === 'FAIL' && curDoc.failReason"
+      v-if="curDoc.embeddingStatus === 'FAIL' || curDoc.graphicalStatus === 'FAIL'"
       type="error"
       :show-icon="true"
       style="margin-top: 12px"
     >
-      {{ curDoc.failReason }}
+      <div class="flex items-center justify-between gap-3">
+        <span>{{ curDoc.failReason || t('knowledgeBase.statusFailed') }}</span>
+        <NButton size="small" type="error" @click="retryDocIndex">
+          {{ t('knowledgeBase.retry') }}
+        </NButton>
+      </div>
     </NAlert>
     <NCard style="margin-top: 12px" :title="curDoc.title" hoverable>
       <NSpin :show="docLoading">
-        {{ curDoc.brief }}
+        <div class="flex items-center gap-2">
+          <span style="white-space: pre-wrap;">{{ curDoc.brief }}</span>
+          <!-- 正文查看与分段模式无关：remark 是文档本身的内容，模式只决定索引方式 -->
+          <NButton text type="primary" size="tiny" @click="showRawContent = true">
+            {{ t('knowledgeBase.viewRawContent') }}
+          </NButton>
+        </div>
         <div class="flex flex-wrap gap-x-6 gap-y-1 mt-2" style="font-size: 12px; opacity: 0.7;">
           <span>{{ t('knowledgeBase.vectorize') }}: {{ embeddingStatusLabel }}</span>
           <span>{{ t('knowledgeBase.wordCount') }}: {{ curDoc.wordCount }}</span>
@@ -431,23 +533,40 @@ onUnmounted(() => {
         </div>
       </NSpin>
     </NCard>
-    <NCard style="margin-top: 12px" :title="t('knowledgeBase.segmentList')" hoverable>
+    <NCard style="margin-top: 12px" :title="segmentMode === 'qa' ? t('knowledgeBase.qaPairList') : t('knowledgeBase.segmentList')" hoverable>
+      <template #header-extra>
+        <NSpace v-if="segmentMode === 'qa' && curDoc.embeddingStatus !== 'DOING'" :wrap="false" :size="8">
+          <NButton size="small" type="primary" @click="openAddQaPair">
+            {{ t('knowledgeBase.addQaPair') }}
+          </NButton>
+          <NButton size="small" ghost @click="showQaImportModal = true">
+            {{ t('knowledgeBase.importQa') }}
+          </NButton>
+          <NButton size="small" ghost @click="confirmGenerateQa">
+            {{ paginationReactive.itemCount > 0 ? t('knowledgeBase.regenerateQa') : t('knowledgeBase.aiGenerateQa') }}
+          </NButton>
+        </NSpace>
+      </template>
       <NDataTable
         remote :loading="loading" :max-height="tableMaxHeight" :columns="columns" :data="segments"
         :pagination="paginationReactive" :single-line="false" :bordered="true" @update:page="onHandlePageChange"
       >
-        <template #empty>
-          <NSpace vertical align="center">
-            <NButton v-if="segmentMode === 'qa'" type="primary" size="small" @click="openAddQaPair">
-              + {{ t('knowledgeBase.qaQuestion') }}
-            </NButton>
-          </NSpace>
-        </template>
       </NDataTable>
     </NCard>
 
     <NModal v-model:show="editState.show" style="width: 60%;" preset="card" :title="editTitle()">
       <NSpace vertical>
+        {{ editState.type === 'question' ? t('knowledgeBase.qaQuestion') : '' }}
+        <NInput
+          v-model:value="editState.content"
+          type="textarea"
+          :autosize="{ minRows: 6, maxRows: 16 }"
+          :placeholder="editState.type === 'question' && editState.isNew ? t('knowledgeBase.qaQuestionLinesPlaceholder') : ''"
+        />
+        <span v-if="editState.type === 'question'" style="font-size: 12px; opacity: 0.65;">
+          {{ t('knowledgeBase.qaQuestionMultiTip') }}
+        </span>
+        <!-- 新增问答对时的答案输入：问题在上（先问后答，与列序一致） -->
         <template v-if="editState.type === 'question' && editState.isNew && !editState.answerSegmentId">
           {{ t('knowledgeBase.qaAnswer') }}
           <NInput
@@ -456,12 +575,6 @@ onUnmounted(() => {
             :autosize="{ minRows: 3, maxRows: 8 }"
           />
         </template>
-        {{ editState.type === 'question' ? t('knowledgeBase.qaQuestion') : '' }}
-        <NInput
-          v-model:value="editState.content"
-          type="textarea"
-          :autosize="{ minRows: 6, maxRows: 16 }"
-        />
         <div class="flex justify-end gap-2">
           <NButton @click="editState.show = false">
             {{ t('common.cancel') }}
@@ -470,6 +583,47 @@ onUnmounted(() => {
             {{ t('common.confirm') }}
           </NButton>
         </div>
+      </NSpace>
+    </NModal>
+
+    <NModal v-model:show="showRawContent" style="width: 70%" preset="card" :title="curDoc.title">
+      <div style="white-space: pre-wrap; max-height: 65vh; overflow: auto; font-size: 13px;">
+        {{ curDoc.remark }}
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <NButton size="small" @click="showRawContent = false">
+            {{ t('common.cancel') }}
+          </NButton>
+          <NButton size="small" type="primary" @click="goEditDocument">
+            {{ t('common.edit') }}
+          </NButton>
+        </div>
+      </template>
+    </NModal>
+
+    <NModal v-model:show="showQaImportModal" style="width: 60%;" preset="card" :title="t('knowledgeBase.importQa')">
+      <NSpace vertical>
+        <NP>{{ t('knowledgeBase.importQaTip') }}</NP>
+        <NUpload
+          :max="1" accept=".xlsx,.xls,.csv" directory-dnd
+          :action="`/api/document/importQa/${curDocUuid}`"
+          :headers="qaImportHeaders" @finish="onQaImportFinish"
+        >
+          <NUploadDragger>
+            <NText style="font-size: 16px">
+              {{ t('knowledgeBase.clickOrDragToUpload') }}
+            </NText>
+            <NP depth="3" style="margin: 8px 0 0 0">
+              XLSX / CSV
+            </NP>
+          </NUploadDragger>
+        </NUpload>
+        <NSpace>
+          <NButton type="primary" ghost @click="downloadQaTemplate">
+            {{ t('knowledgeBase.downloadTemplate') }}
+          </NButton>
+        </NSpace>
       </NSpace>
     </NModal>
   </div>

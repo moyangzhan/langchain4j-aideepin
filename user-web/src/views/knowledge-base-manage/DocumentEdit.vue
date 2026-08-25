@@ -1,12 +1,13 @@
 <script setup lang='ts'>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { NAlert, NBreadcrumb, NBreadcrumbItem, NButton, NCard, NCheckbox, NInput, NInputNumber, NSelect, NSpace, NSpin, useMessage } from 'naive-ui'
+import { NAlert, NBreadcrumb, NBreadcrumbItem, NButton, NCard, NCheckbox, NInput, NInputNumber, NSelect, NSpace, NSpin, useDialog, useMessage } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 import { knowledgeBaseEmptyInfo, knowledgeBaseEmptyItem } from '@/utils/functions'
 import { t } from '@/locales'
 import api from '@/api'
 
 const ms = useMessage()
+const dialog = useDialog()
 const route = useRoute()
 const router = useRouter()
 
@@ -17,6 +18,9 @@ const curKb = reactive<KnowledgeBase.Info>(knowledgeBaseEmptyInfo())
 const tmpItem = reactive<KnowledgeBase.Item>(knowledgeBaseEmptyItem())
 const submitting = ref<boolean>(false)
 const loading = ref<boolean>(false)
+
+// 当前已是 qa 模式且已有问答对：勾选项语义从"生成"变为"清空并重新生成"，保存时二次确认
+const hasQaPairs = ref(false)
 
 const segmentModeOptions = [
   { label: t('knowledgeBase.segmentModeText'), value: 'text' },
@@ -46,10 +50,29 @@ const pageTitle = computed(() => {
 const inputStatus = computed(() => tmpItem.title.trim().length < 1 && !submitting.value)
 
 async function saveOrUpdate() {
+  // 破坏性生成在保存前需二次确认：已有问答对=清空重建；从其他模式切到 qa=丢弃现有分段
+  // 并由 AI 生成（切模式时复选框是自动勾上的，用户未必意识到已开启生成）
+  if (tmpItem.segmentMode === 'qa' && tmpItem.autoGenerateQa && (hasQaPairs.value || segmentModeChanged.value)) {
+    dialog.warning({
+      title: t('knowledgeBase.regenerateQaTitle'),
+      content: hasQaPairs.value
+        ? t('knowledgeBase.regenerateQaConfirm')
+        : t('knowledgeBase.switchGenerateQaConfirm'),
+      positiveText: t('common.confirm'),
+      negativeText: t('common.cancel'),
+      onPositiveClick: () => doSave(),
+    })
+    return
+  }
+  await doSave()
+}
+
+async function doSave() {
   try {
     submitting.value = true
     await api.knowledgeBaseItemSaveOrUpdate<KnowledgeBase.Item>(tmpItem)
-    ms.success(t('knowledgeBase.savedAndReindexing'))
+    // qa 模式编辑正文不触发重索引（问答对与 remark 无关），成功提示按模式区分
+    ms.success(tmpItem.segmentMode === 'qa' ? t('common.saveSuccess') : t('knowledgeBase.savedAndReindexing'))
     router.back()
   } catch (error: any) {
     ms.error(error.message ?? 'error')
@@ -69,6 +92,11 @@ onMounted(async () => {
       if (!tmpItem.segmentMode)
         tmpItem.segmentMode = 'text'
       originalSegmentMode.value = tmpItem.segmentMode
+      // 仅当前即为 qa 模式时探测问答对存在性；text→qa 切换清的是文本分段，由模式切换警告覆盖
+      if (tmpItem.segmentMode === 'qa') {
+        const segResp = await api.documentSegmentList<{ total: number; records: unknown[] }>(docUuid, 1, 1)
+        hasQaPairs.value = (segResp.data?.total ?? 0) > 0
+      }
     } else {
       tmpItem.kbId = curKb.id
       tmpItem.kbUuid = kbUuid
@@ -125,7 +153,7 @@ onMounted(async () => {
               v-model:checked="tmpItem.autoGenerateQa"
               style="margin-top: 4px"
             >
-              {{ t('knowledgeBase.autoGenerateQaLabel') }}
+              {{ hasQaPairs ? t('knowledgeBase.regenerateQaLabel') : t('knowledgeBase.autoGenerateQaLabel') }}
             </NCheckbox>
           </NAlert>
           <template v-if="tmpItem.segmentMode === 'parent_child'">
@@ -134,15 +162,17 @@ onMounted(async () => {
           </template>
           {{ t('knowledgeBase.brief') }}
           <NInput v-model:value="tmpItem.brief" type="textarea" show-count :autosize="{ minRows: 2, maxRows: 3 }" />
-          <template v-if="tmpItem.segmentMode !== 'qa'">
-            {{ t('common.content') }}
-            <NInput
-              v-model:value="tmpItem.remark"
-              class="content-textarea"
-              type="textarea"
-              show-count
-            />
-          </template>
+          <!-- 正文与分段模式无关：remark 是文档本身的内容，qa 模式仅作为生成来源，编辑不影响已有问答对 -->
+          {{ t('knowledgeBase.rawContent') }}
+          <NInput
+            v-model:value="tmpItem.remark"
+            class="content-textarea"
+            type="textarea"
+            show-count
+          />
+          <span v-if="tmpItem.segmentMode === 'qa'" style="font-size: 12px; opacity: 0.65;">
+            {{ t('knowledgeBase.rawEditQaTip') }}
+          </span>
         </NSpace>
       </NSpin>
       <template #footer>

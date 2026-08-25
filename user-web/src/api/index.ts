@@ -532,6 +532,18 @@ function knowledgeBaseItemToggleStatus<T = any>(uuid: string, isEnabled: boolean
   })
 }
 
+function knowledgeBaseItemRetryIndex<T = any>(uuid: string) {
+  return post<T>({
+    url: `/document/retryIndex/${uuid}`,
+  })
+}
+
+function knowledgeBaseItemAutoGenerateQa<T = any>(uuid: string) {
+  return post<T>({
+    url: `/document/autoGenerateQa/${uuid}`,
+  })
+}
+
 function knowledgeBaseItemInfo<T = any>(uuid: string) {
   return get<T>({
     url: `/document/info/${uuid}`,
@@ -888,6 +900,8 @@ export default {
   knowledgeBaseItemSearch,
   knowledgeBaseItemDelete,
   knowledgeBaseItemToggleStatus,
+  knowledgeBaseItemRetryIndex,
+  knowledgeBaseItemAutoGenerateQa,
   knowledgeBaseItemInfo,
   knowledgeBaseItemsIndexing,
   knowledgeBaseIndexingCheck,

@@ -45,9 +45,9 @@ ALTER TABLE adi_document
 COMMENT ON COLUMN adi_document.child_max_chunk_size IS 'Parent-child mode: max child chunk size in tokens; document-level, applies to this document only';
 
 ALTER TABLE adi_document
-    ADD COLUMN IF NOT EXISTS fail_reason varchar(500);
+    ADD COLUMN IF NOT EXISTS fail_reason varchar(500) DEFAULT '' NOT NULL;
 
-COMMENT ON COLUMN adi_document.fail_reason IS 'Failure reason of the latest failed async pipeline on this document (embedding or QA generation); cleared on success/retry';
+COMMENT ON COLUMN adi_document.fail_reason IS 'Failure reason of the latest failed async pipeline on this document (embedding task, graph task or QA generation), prefixed with the failing stage (vectorize: / graph: / qa_generate:); empty when not failed, cleared on success/retry';
 
 
 -- ============================================================
@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS adi_document_segment
     enabled_change_time timestamp   default CURRENT_TIMESTAMP  not null,
     embedding_status    int         default 3                  not null,
     graphical_status    int         default 3                  not null,
+    fail_reason         varchar(500) default ''                 not null,
     index_version       int         default 0                  not null,
     create_time         timestamp   default CURRENT_TIMESTAMP  not null,
     update_time         timestamp   default CURRENT_TIMESTAMP  not null,
@@ -98,6 +99,7 @@ COMMENT ON COLUMN adi_document_segment.is_enabled IS 'Whether this segment is en
 COMMENT ON COLUMN adi_document_segment.enabled_change_time IS 'Last enabled/disabled status change time';
 COMMENT ON COLUMN adi_document_segment.embedding_status IS 'Rebuild status of this segment''s vector data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
 COMMENT ON COLUMN adi_document_segment.graphical_status IS 'Rebuild status of this segment''s graph data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
+COMMENT ON COLUMN adi_document_segment.fail_reason IS 'Failure reason of the latest failed async pipeline on this segment (embedding or graph rebuild), prefixed with the failing stage (vectorize: / graph:); empty when not failed, cleared on success/retry';
 COMMENT ON COLUMN adi_document_segment.index_version IS 'Generation of indexed artifacts built from this segment; +1 on segment content edit. Segment-level index tasks snapshot it for staleness detection';
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_document_segment_uuid ON adi_document_segment (uuid);
@@ -369,7 +371,7 @@ CREATE TABLE IF NOT EXISTS adi_index_task
     task_type      varchar(20)  not null,
     index_version  int          not null,
     status         varchar(20)  not null,
-    fail_reason    varchar(500),
+    fail_reason    varchar(500) default '' not null,
     stop_flag      boolean      default false not null,
     start_time     timestamp,
     heartbeat_time timestamp,
@@ -396,7 +398,7 @@ COMMENT ON COLUMN adi_index_task.target_type  IS 'document | segment';
 COMMENT ON COLUMN adi_index_task.task_type    IS 'embedding | graphical';
 COMMENT ON COLUMN adi_index_task.index_version IS 'Snapshot of the target business table''s index_version at enqueue time: adi_document.index_version for document tasks, adi_document_segment.index_version for segment tasks. Part of the merge key: a newer version is always a fresh row; a running row can never swallow it';
 COMMENT ON COLUMN adi_index_task.status       IS 'pending | running | done | failed. A newer-version enqueue supersedes same-key older pending rows to failed; failed is revived in place by a same-version re-enqueue (manual retry); done rows stay as run history';
-COMMENT ON COLUMN adi_index_task.fail_reason  IS 'Truncated failure reason when status = failed (exception message, supersede notice, or the max-duration breaker notice)';
+COMMENT ON COLUMN adi_index_task.fail_reason  IS 'Truncated failure reason when status = failed (exception message, supersede notice, or the max-duration breaker notice); empty otherwise';
 COMMENT ON COLUMN adi_index_task.stop_flag    IS 'Cooperative stop signal: set by a newer-version enqueue on this key''s older RUNNING row (status is NOT changed - the same-doc serialization gate stays closed until the executor aborts at its next checkpoint); reset to false on claim and on failed-row revive';
 COMMENT ON COLUMN adi_index_task.start_time     IS 'Claim time of the latest attempt (NULL while never run); update_time at done/failed is the finish time - the pair gives execution duration for history analysis';
 COMMENT ON COLUMN adi_index_task.heartbeat_time IS 'Executor liveness proof: initialized at claim and periodically refreshed while running (NULL when never run). A running row whose heartbeat is stale beyond the poller threshold is reset to pending (process-crash recovery)';

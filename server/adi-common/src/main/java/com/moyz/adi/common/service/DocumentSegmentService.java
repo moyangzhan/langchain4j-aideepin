@@ -5,6 +5,7 @@ import com.moyz.adi.common.dto.RefEmbeddingDto;
 import com.moyz.adi.common.entity.DocumentSegment;
 import com.moyz.adi.common.entity.DocumentSegmentChildChunk;
 import com.moyz.adi.common.entity.DocumentSegmentQuestion;
+import com.moyz.adi.common.enums.SegmentModeEnum;
 import com.moyz.adi.common.mapper.DocumentSegmentMapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -173,7 +174,9 @@ public class DocumentSegmentService extends ServiceImpl<DocumentSegmentMapper, D
     }
 
     /**
-     * 溯源展示：按向量条目id取命中内容（text→段内容；问题→答案内容；子块→父段内容）
+     * 溯源展示：按向量条目id取命中内容（text→段内容；问题→答案内容；子块→父段内容）。
+     * matchedText 记录命中的向量化单元（问题/子块文本），text 是返回给 LLM 的展开内容，
+     * segmentMode 告知前端按哪种结构展示
      */
     public List<RefEmbeddingDto> listRefTextsByEmbeddingIds(List<String> embeddingIds) {
         if (CollectionUtils.isEmpty(embeddingIds)) {
@@ -199,35 +202,46 @@ public class DocumentSegmentService extends ServiceImpl<DocumentSegmentMapper, D
 
         List<RefEmbeddingDto> result = new ArrayList<>();
         for (String embeddingId : embeddingIds) {
-            String text = resolveRefText(embeddingId, mainByEmb, questionByEmb, childByEmb, mainById);
-            if (text != null) {
-                result.add(RefEmbeddingDto.builder()
-                        .embeddingId(embeddingId)
-                        .text(text)
-                        .build());
+            RefEmbeddingDto dto = resolveRefDto(embeddingId, mainByEmb, questionByEmb, childByEmb, mainById);
+            if (dto != null) {
+                result.add(dto);
             }
         }
         return result;
     }
 
-    private String resolveRefText(String embeddingId,
-                                  Map<String, DocumentSegment> mainByEmb,
-                                  Map<String, DocumentSegmentQuestion> questionByEmb,
-                                  Map<String, DocumentSegmentChildChunk> childByEmb,
-                                  Map<Long, DocumentSegment> mainById) {
+    private RefEmbeddingDto resolveRefDto(String embeddingId,
+                                          Map<String, DocumentSegment> mainByEmb,
+                                          Map<String, DocumentSegmentQuestion> questionByEmb,
+                                          Map<String, DocumentSegmentChildChunk> childByEmb,
+                                          Map<Long, DocumentSegment> mainById) {
         DocumentSegment main = mainByEmb.get(embeddingId);
         if (main != null) {
-            return main.getContent();
+            return RefEmbeddingDto.builder()
+                    .embeddingId(embeddingId)
+                    .text(main.getContent())
+                    .segmentMode(SegmentModeEnum.TEXT.getValue())
+                    .build();
         }
         DocumentSegmentQuestion question = questionByEmb.get(embeddingId);
         if (question != null) {
             DocumentSegment answer = mainById.get(question.getAnswerSegmentId());
-            return answer != null ? answer.getContent() : question.getContent();
+            return RefEmbeddingDto.builder()
+                    .embeddingId(embeddingId)
+                    .matchedText(question.getContent())
+                    .text(answer != null ? answer.getContent() : question.getContent())
+                    .segmentMode(SegmentModeEnum.QA.getValue())
+                    .build();
         }
         DocumentSegmentChildChunk child = childByEmb.get(embeddingId);
         if (child != null) {
             DocumentSegment parent = mainById.get(child.getParentSegmentId());
-            return parent != null ? parent.getContent() : child.getContent();
+            return RefEmbeddingDto.builder()
+                    .embeddingId(embeddingId)
+                    .matchedText(child.getContent())
+                    .text(parent != null ? parent.getContent() : child.getContent())
+                    .segmentMode(SegmentModeEnum.PARENT_CHILD.getValue())
+                    .build();
         }
         return null;
     }

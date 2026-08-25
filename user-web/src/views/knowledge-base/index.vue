@@ -422,7 +422,18 @@ onActivated(async () => {
           v-for="(reference, idx) of references" :key="reference.embeddingId" :title="`${t('chat.reference')}${idx + 1}`"
           :name="`refer_${idx}`"
         >
-          {{ reference.text }}
+          <!-- 按分段模式展示：qa=命中问题+答案，parent_child=命中子块+父段，text=段文本 -->
+          <div v-if="reference.segmentMode === 'qa'" class="flex flex-col gap-1">
+            <div><span style="font-size: 12px; opacity: 0.65;">{{ t('knowledgeBase.refHitQuestion') }}:</span> {{ reference.matchedText }}</div>
+            <div><span style="font-size: 12px; opacity: 0.65;">{{ t('knowledgeBase.qaAnswer') }}:</span> {{ reference.text }}</div>
+          </div>
+          <div v-else-if="reference.segmentMode === 'parent_child'" class="flex flex-col gap-1">
+            <div><span style="font-size: 12px; opacity: 0.65;">{{ t('knowledgeBase.refHitChunk') }}:</span> {{ reference.matchedText }}</div>
+            <div><span style="font-size: 12px; opacity: 0.65;">{{ t('knowledgeBase.refParent') }}:</span> {{ reference.text }}</div>
+          </div>
+          <template v-else>
+            {{ reference.text }}
+          </template>
         </NCollapseItem>
       </NCollapse>
     </NModal>

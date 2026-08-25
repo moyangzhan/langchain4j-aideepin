@@ -5,6 +5,8 @@ import com.moyz.adi.common.entity.IndexTask;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
+
 @Mapper
 public interface IndexTaskMapper extends BaseMapper<IndexTask> {
 
@@ -42,9 +44,10 @@ public interface IndexTaskMapper extends BaseMapper<IndexTask> {
     /**
      * Finalize (done/failed). The status='running' guard: a row already stale-reset or
      * force-failed is no longer running; a late finish from a zombie executor must not
-     * overwrite its status.
+     * overwrite its status. Returns 0 for exactly that case — the caller must not finalize
+     * the host row either when its own task row was already taken over.
      */
-    void finishOne(@Param("id") Long id, @Param("status") String status, @Param("failReason") String failReason);
+    int finishOne(@Param("id") Long id, @Param("status") String status, @Param("failReason") String failReason);
 
     /**
      * Runtime heartbeat. Returns 0 = the row is no longer running (recovered or force-failed);
@@ -67,7 +70,8 @@ public interface IndexTaskMapper extends BaseMapper<IndexTask> {
 
     /**
      * Hung circuit breaker: tasks whose start_time exceeds the max runtime while still
-     * heartbeating are force-failed
+     * heartbeating are force-failed. Returns the broken rows so the caller can finalize
+     * their host status columns in the same sweep (UPDATE..RETURNING via select tag).
      */
-    int failOverdue(@Param("minutes") int minutes);
+    List<IndexTask> failOverdue(@Param("minutes") int minutes);
 }

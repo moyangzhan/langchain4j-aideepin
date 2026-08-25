@@ -24,14 +24,17 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_DATA_NOT_FOUND;
@@ -136,7 +139,9 @@ public class DocumentSegmentManageService {
 
     /**
      * 新增/编辑 QA 问题：
-     * id 非空→编辑问题（重嵌）；answerSegmentId 非空→挂到已有答案；否则用 answerContent 新建答案行。
+     * id 非空→编辑问题（重嵌，内容原样保存不拆行）；answerSegmentId 非空→挂到已有答案；
+     * 否则用 answerContent 新建答案行。创建路径 content 按行拆分批量录入（去空白、批内
+     * 与存量问题文本去重），一次入队重建。
      */
     public DocumentSegmentQuestion saveOrUpdateQuestion(KbDocument doc, KnowledgeBase kb, DocumentSegmentQuestionEditReq req) {
         if (req.getId() != null) {
@@ -175,18 +180,39 @@ public class DocumentSegmentManageService {
                 throw new BaseException(A_DATA_NOT_FOUND);
             }
         }
-        DocumentSegmentQuestion question = new DocumentSegmentQuestion();
-        question.setUuid(UuidUtil.createShort());
-        question.setKbUuid(doc.getKbUuid());
-        question.setDocUuid(doc.getUuid());
-        question.setAnswerSegmentId(answerSegmentId);
-        question.setPosition(nextQuestionPosition(answerSegmentId));
-        question.setContent(req.getContent());
-        question.setHitCount(0);
-        questionService.save(question);
+        // 创建路径支持一行一个问题批量录入：拆行去空白、批内去重、与既有问题文本去重；
+        // 编辑单问（id 非空分支）不拆行，内容原样保存
+        Set<String> existingQuestionTexts = questionService.listByAnswerIds(List.of(answerSegmentId)).stream()
+                .map(DocumentSegmentQuestion::getContent)
+                .collect(Collectors.toSet());
+        List<String> questionTexts = Arrays.stream(req.getContent().split("\\n"))
+                .map(String::trim)
+                .filter(StringUtils::isNotBlank)
+                .distinct()
+                .filter(text -> !existingQuestionTexts.contains(text))
+                .toList();
+        if (questionTexts.isEmpty()) {
+            throw new BaseException(A_PARAMS_ERROR);
+        }
+        int position = nextQuestionPosition(answerSegmentId);
+        DocumentSegmentQuestion first = null;
+        for (String text : questionTexts) {
+            DocumentSegmentQuestion question = new DocumentSegmentQuestion();
+            question.setUuid(UuidUtil.createShort());
+            question.setKbUuid(doc.getKbUuid());
+            question.setDocUuid(doc.getUuid());
+            question.setAnswerSegmentId(answerSegmentId);
+            question.setPosition(position++);
+            question.setContent(text);
+            question.setHitCount(0);
+            questionService.save(question);
+            if (first == null) {
+                first = question;
+            }
+        }
         // 入队重建（执行器跳过停用段；停用段的问题 embeddingId 留空，启用时统一重建）
         enqueueSegmentEmbedding(kb, doc, answerSegmentId);
-        return question;
+        return first;
     }
 
     /**
@@ -376,6 +402,7 @@ public class DocumentSegmentManageService {
                 .set(DocumentSegment::getEnabledChangeTime, LocalDateTime.now())
                 .set(DocumentSegment::getEmbeddingStatus, EmbeddingStatusEnum.NONE)
                 .set(DocumentSegment::getGraphicalStatus, GraphicalStatusEnum.NONE)
+                .set(DocumentSegment::getFailReason, "")
                 .update();
     }
 
@@ -388,6 +415,7 @@ public class DocumentSegmentManageService {
                 .set(DocumentSegment::getEnabledChangeTime, LocalDateTime.now())
                 .set(DocumentSegment::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
                 .set(DocumentSegment::getGraphicalStatus, graphRebuildNeeded ? GraphicalStatusEnum.DOING : GraphicalStatusEnum.DONE)
+                .set(DocumentSegment::getFailReason, "")
                 .update();
         // 重建走任务队列（同 doc 串行，状态字段标记进度，失败可重试）
         indexTaskService.enqueueSegment(kb, doc, segment, AdiConstant.DOC_INDEX_TYPE_EMBEDDING, user);

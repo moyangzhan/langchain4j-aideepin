@@ -731,7 +731,7 @@ create table adi_document
     enabled_change_time          timestamp    default CURRENT_TIMESTAMP not null,
     index_version                int          default 0                 not null,
     child_max_chunk_size         int          default 200               not null,
-    fail_reason                  varchar(500),
+    fail_reason                  varchar(500) default ''                not null,
     create_time                  timestamp    default CURRENT_TIMESTAMP not null,
     update_time                  timestamp    default CURRENT_TIMESTAMP not null,
     is_deleted                   boolean      default false             not null
@@ -755,7 +755,7 @@ comment on column adi_document.is_enabled is 'Whether the document is enabled fo
 comment on column adi_document.enabled_change_time is 'Last enabled/disabled status change time';
 comment on column adi_document.index_version is 'Generation of indexed artifacts built from this document; +1 on remark / segment_mode / KB split-param change (title and other metadata excluded). Index tasks snapshot it for staleness detection and merge-debounce';
 comment on column adi_document.child_max_chunk_size is 'Parent-child mode: max child chunk size in tokens; document-level, applies to this document only';
-comment on column adi_document.fail_reason is 'Failure reason of the latest failed async pipeline on this document (embedding or QA generation); cleared on success/retry';
+comment on column adi_document.fail_reason is 'Failure reason of the latest failed async pipeline on this document (embedding task, graph task or QA generation), prefixed with the failing stage (vectorize: / graph: / qa_generate:); empty when not failed, cleared on success/retry';
 comment on column adi_document.create_time is 'Creation time';
 comment on column adi_document.update_time is 'Last update time';
 comment on column adi_document.is_deleted is 'Whether the record is soft-deleted';
@@ -788,6 +788,7 @@ create table adi_document_segment
     enabled_change_time timestamp default CURRENT_TIMESTAMP  not null,
     embedding_status    int       default 3                   not null,
     graphical_status    int       default 3                   not null,
+    fail_reason         varchar(500) default ''               not null,
     index_version       int       default 0                   not null,
     create_time  timestamp   default CURRENT_TIMESTAMP  not null,
     update_time  timestamp   default CURRENT_TIMESTAMP  not null,
@@ -811,6 +812,7 @@ comment on column adi_document_segment.is_enabled is 'Whether this segment is en
 comment on column adi_document_segment.enabled_change_time is 'Last enabled/disabled status change time';
 comment on column adi_document_segment.embedding_status is 'Rebuild status of this segment''s vector data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
 comment on column adi_document_segment.graphical_status is 'Rebuild status of this segment''s graph data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
+comment on column adi_document_segment.fail_reason is 'Failure reason of the latest failed async pipeline on this segment (embedding or graph rebuild), prefixed with the failing stage (vectorize: / graph:); empty when not failed, cleared on success/retry';
 comment on column adi_document_segment.index_version is 'Generation of indexed artifacts built from this segment; +1 on segment content edit. Segment-level index tasks snapshot it for staleness detection';
 
 create unique index uk_document_segment_uuid on adi_document_segment (uuid);
@@ -1301,7 +1303,7 @@ create table adi_index_task
     task_type      varchar(20)               not null,
     index_version  int                       not null,
     status         varchar(20)               not null,
-    fail_reason    varchar(500),
+    fail_reason    varchar(500) default '' not null,
     stop_flag      boolean     default false not null,
     start_time     timestamp,
     heartbeat_time timestamp,
@@ -1323,7 +1325,7 @@ comment on column adi_index_task.target_type is 'document | segment';
 comment on column adi_index_task.task_type is 'embedding | graphical';
 comment on column adi_index_task.index_version is 'Snapshot of the target business table''s index_version at enqueue time: adi_document.index_version for document tasks, adi_document_segment.index_version for segment tasks. Part of the merge key: a newer version is always a fresh row; a running row can never swallow it';
 comment on column adi_index_task.status is 'pending | running | done | failed. A newer-version enqueue supersedes same-key older pending rows to failed; failed is revived in place by a same-version re-enqueue (manual retry); done rows stay as run history';
-comment on column adi_index_task.fail_reason is 'Truncated failure reason when status = failed (exception message, supersede notice, or the max-duration breaker notice)';
+comment on column adi_index_task.fail_reason is 'Truncated failure reason when status = failed (exception message, supersede notice, or the max-duration breaker notice); empty otherwise';
 comment on column adi_index_task.stop_flag is 'Cooperative stop signal: set by a newer-version enqueue on this key''s older RUNNING row (status is NOT changed - the same-doc serialization gate stays closed until the executor aborts at its next checkpoint); reset to false on claim and on failed-row revive';
 comment on column adi_index_task.start_time is 'Claim time of the latest attempt (NULL while never run); update_time at done/failed is the finish time - the pair gives execution duration for history analysis';
 comment on column adi_index_task.heartbeat_time is 'Executor liveness proof: initialized at claim and periodically refreshed while running (NULL when never run). A running row whose heartbeat is stale beyond the poller threshold is reset to pending (process-crash recovery)';
