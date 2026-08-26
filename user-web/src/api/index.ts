@@ -512,7 +512,7 @@ function knowledgeBaseItemSearch<T>(currentPage: number, pageSize: number, kbUui
   })
 }
 
-function knowledgeBaseItemSaveOrUpdate<T = any>(obj: KnowledgeBase.Item) {
+function knowledgeBaseItemSaveOrUpdate<T = any>(obj: KnowledgeBase.Document) {
   return post<T>({
     url: '/document/saveOrUpdate',
     data: obj,
@@ -535,6 +535,28 @@ function knowledgeBaseItemToggleStatus<T = any>(uuid: string, isEnabled: boolean
 function knowledgeBaseItemRetryIndex<T = any>(uuid: string) {
   return post<T>({
     url: `/document/retryIndex/${uuid}`,
+  })
+}
+
+function documentIndexFailures<T = any>(uuid: string) {
+  return get<T>({
+    url: `/document/indexFailures/${uuid}`,
+  })
+}
+
+// Whether the doc has a queued/running index task; tells queued/executing apart from a final
+// failure while the doc status stays FAIL after retry enqueueing
+function documentIndexProgress<T = any>(uuid: string) {
+  return get<T>({
+    url: `/document/indexProgress/${uuid}`,
+  })
+}
+
+// Edit a QA pair: one element per question; the server normalizes newlines and diffs by content
+function documentQaPairSaveOrUpdate<T = any>(obj: { docUuid: string; answerSegmentId?: string; answerContent?: string; questions: string[] }) {
+  return post<T>({
+    url: '/document-segment/qaPair/saveOrUpdate',
+    data: obj,
   })
 }
 
@@ -605,9 +627,23 @@ function documentSegmentToggleStatus<T = any>(data: {
   })
 }
 
-function knowledgeBaseGraph<T = any>(kbItemUuid: string, maxVertextId: number, maxEdgeId: number, limit: number) {
+// Repair vector drift of one segment: missing embedding ids are cleared and re-embedded
+function documentSegmentRepairVector<T = any>(uuid: string) {
+  return post<T>({
+    url: `/document-segment/repairVector/${uuid}`,
+  })
+}
+
+// Document graph with name-ordered cursor pagination: the first page carries no cursor;
+// follow-ups pass the last element of the previous batch (name / endpoint pair)
+function knowledgeBaseGraph<T = any>(kbItemUuid: string, limit: number, afterVertex?: string, afterEdgeSource?: string, afterEdgeTarget?: string) {
+  let query = `limit=${limit}`
+  if (afterVertex)
+    query += `&afterVertex=${encodeURIComponent(afterVertex)}`
+  if (afterEdgeSource && afterEdgeTarget)
+    query += `&afterEdgeSource=${encodeURIComponent(afterEdgeSource)}&afterEdgeTarget=${encodeURIComponent(afterEdgeTarget)}`
   return get<T>({
-    url: `/knowledge-base-graph/list/${kbItemUuid}?limit=${limit}&maxEdgeId=${maxEdgeId}&maxVertexId=${maxVertextId}`,
+    url: `/knowledge-base-graph/list/${kbItemUuid}?${query}`,
   })
 }
 
@@ -901,6 +937,9 @@ export default {
   knowledgeBaseItemDelete,
   knowledgeBaseItemToggleStatus,
   knowledgeBaseItemRetryIndex,
+  documentIndexFailures,
+  documentIndexProgress,
+  documentQaPairSaveOrUpdate,
   knowledgeBaseItemAutoGenerateQa,
   knowledgeBaseItemInfo,
   knowledgeBaseItemsIndexing,
@@ -913,6 +952,7 @@ export default {
   documentSegmentQuestionDel,
   documentSegmentChildDel,
   documentSegmentToggleStatus,
+  documentSegmentRepairVector,
   knowledgeBaseGraph,
   knowledgeBaseQaSseAsk,
   knowledgeBaseQaRecordSearch,

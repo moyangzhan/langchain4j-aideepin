@@ -130,26 +130,20 @@ public abstract class AbstractLLMService extends CommonModelService {
     }
 
     /**
-     * 健康探测：向模型发送最小化请求验证可用性
-     * <p>
      * Health probe: send a minimal request to verify the model is reachable.
-     * </p>
+     * Exceptions propagate so the caller can classify permanent errors
+     * (auth failure / model disabled — mark immediately) from transient ones (count failures).
      *
      * @return true if the model responded successfully
      */
     public boolean performHealthCheck() {
-        try {
-            ChatModel chatModel = buildChatLLM(ChatModelBuilderProperties.builder().build());
-            ChatRequest request = ChatRequest.builder()
-                    .messages(List.of(UserMessage.from("hi")))
-                    .parameters(ChatRequestParameters.builder().maxOutputTokens(1).build())
-                    .build();
-            chatModel.chat(request);
-            return true;
-        } catch (Exception e) {
-            log.warn("Health check failed for model {}: {}", aiModel.getName(), e.getMessage());
-            return false;
-        }
+        ChatModel chatModel = buildChatLLM(ChatModelBuilderProperties.builder().build());
+        ChatRequest request = ChatRequest.builder()
+                .messages(List.of(UserMessage.from("hi")))
+                .parameters(ChatRequestParameters.builder().maxOutputTokens(1).build())
+                .build();
+        chatModel.chat(request);
+        return true;
     }
 
     /**

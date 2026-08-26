@@ -6,6 +6,7 @@ import com.moyz.adi.common.dto.DocumentSegmentDto;
 import com.moyz.adi.common.dto.DocumentSegmentEditReq;
 import com.moyz.adi.common.dto.DocumentSegmentQuestionEditReq;
 import com.moyz.adi.common.dto.DocumentSegmentToggleStatusReq;
+import com.moyz.adi.common.dto.QaPairEditReq;
 import com.moyz.adi.common.entity.DocumentSegmentChildChunk;
 import com.moyz.adi.common.entity.DocumentSegmentQuestion;
 import com.moyz.adi.common.entity.KbDocument;
@@ -75,6 +76,27 @@ public class DocumentSegmentController {
         KbDocument doc = kbDocumentService.getEnable(req.getDocUuid());
         KnowledgeBase kb = knowledgeBaseService.getOrThrow(doc.getKbUuid());
         return documentSegmentManageService.saveOrUpdateChildChunk(doc, kb, req);
+    }
+
+    /**
+     * Edit a QA pair: answer plus the full question set; questions are content-diffed server-side
+     */
+    @PostMapping("/qaPair/saveOrUpdate")
+    public boolean saveOrUpdateQaPair(@RequestBody @Validated QaPairEditReq req) {
+        kbDocumentService.checkWritePrivilege(req.getDocUuid());
+        KbDocument doc = kbDocumentService.getEnable(req.getDocUuid());
+        KnowledgeBase kb = knowledgeBaseService.getOrThrow(doc.getKbUuid());
+        return documentSegmentManageService.editQaPair(doc, kb, req);
+    }
+
+    /**
+     * Repair vector drift of one segment: null out embedding ids missing from the store
+     * and enqueue a re-embedding task
+     */
+    @PostMapping("/repairVector/{uuid}")
+    public boolean repairVector(@PathVariable @NotBlank String uuid) {
+        assertWritePrivilegeBySegment(uuid);
+        return documentSegmentManageService.repairSegmentVector(uuid);
     }
 
     @PostMapping("/del/{uuid}")

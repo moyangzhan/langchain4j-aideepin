@@ -1,184 +1,110 @@
 <script setup lang='ts'>
-import { nextTick, onMounted, onUpdated, ref } from 'vue'
-import { NButton, NDivider, NFlex } from 'naive-ui'
-import cytoscape from 'cytoscape'
-import api from '@/api'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { NBreadcrumb, NBreadcrumbItem, NCard, NEmpty, NSpin, useMessage } from 'naive-ui'
+import { useRoute } from 'vue-router'
+import DocumentGraphCanvas from './DocumentGraphCanvas.vue'
+import { knowledgeBaseEmptyInfo, knowledgeBaseEmptyItem } from '@/utils/functions'
 import { t } from '@/locales'
+import api from '@/api'
 
-interface Props {
-  docUuid: string
+const route = useRoute()
+const ms = useMessage()
+
+const { kbUuid } = route.params as { kbUuid: string; docUuid: string }
+const curDocUuid = ref<string>('')
+
+const curKb = reactive<KnowledgeBase.Info>(knowledgeBaseEmptyInfo())
+const curDoc = reactive<KnowledgeBase.Document>(knowledgeBaseEmptyItem())
+const docLoading = ref(false)
+
+const canvasHeight = ref<number>(400)
+
+// Empty state reported by the canvas: null = still loading; once loaded empty, an NEmpty hint replaces the canvas
+const graphEmpty = ref<boolean | null>(null)
+
+function onGraphLoaded(isEmpty: boolean) {
+  graphEmpty.value = isEmpty
 }
-const props = withDefaults(defineProps<Props>(), {
-  docUuid: '',
-})
-const limit = 100
-const loading = ref<boolean>(false)
-const vertexCount = ref<number>(0)
-const selectedVertex = ref<KnowledgeBase.KbVertex | null>()
-const selectedEdge = ref<KnowledgeBase.KbEdge | null>()
-const isEmpty = ref<boolean>(false)
-let cy: any = null
 
-async function loadGraph(maxVertexId: number, maxEdgeId: number) {
-  if (loading.value)
-    return
-
-  if (!props.docUuid) {
-    console.log('loadGraph docUuid is empty')
-    return
+const graphicalStatusLabel = computed(() => {
+  switch (curDoc.graphicalStatus) {
+    case 'DOING':
+      return t('knowledgeBase.statusProcessing')
+    case 'DONE':
+      return t('knowledgeBase.statusGraphitized')
+    case 'FAIL':
+      return t('knowledgeBase.statusFailed')
+    default:
+      return t('knowledgeBase.statusPending')
   }
+})
 
-  loading.value = true
+async function loadDocInfo(docUuid: string) {
+  docLoading.value = true
   try {
-    cy.$('node').remove()
-    cy.$('edge').remove()
-    const resp = await api.knowledgeBaseGraph<KnowledgeBase.KbItemGraphResp>(props.docUuid, maxVertexId, maxEdgeId, limit)
-    vertexCount.value = resp.data.vertices.length
-    // 节点/边以实体名为键（后端账本聚合返回，不含图库内部 id）；节点 data.name 即 cytoscape 的节点 id
-    const nodes = resp.data.vertices.map((item) => {
-      return { group: 'nodes', data: item }
-    })
-    const edges = resp.data.edges.map((item) => {
-      return { group: 'edges', data: { source: item.sourceName, target: item.targetName, ...item } }
-    })
-    renderGraph(nodes, edges)
+    const [kbResp, docResp] = await Promise.all([
+      api.knowledgeBaseInfo<KnowledgeBase.Info>(kbUuid),
+      api.knowledgeBaseItemInfo<KnowledgeBase.Document>(docUuid),
+    ])
+    Object.assign(curKb, kbResp.data)
+    Object.assign(curDoc, docResp.data)
+  } catch (error: any) {
+    ms.error(error.message ?? 'error')
   } finally {
-    loading.value = false
+    docLoading.value = false
   }
 }
 
-onUpdated(() => {
-  console.log('DocumentGraph onUpdated')
-  nextTick(() => {
-    loadGraph(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)
-  })
-})
+watch(
+  () => route.params.docUuid,
+  (docUuid) => {
+    const uuid = Array.isArray(docUuid) ? docUuid[0] : docUuid
+    if (uuid) {
+      curDocUuid.value = uuid
+      graphEmpty.value = null
+      loadDocInfo(uuid)
+    }
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
-  console.log('DocumentGraph onMounted')
-  nextTick(() => {
-    initCy()
-    loadGraph(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)
-  })
+  canvasHeight.value = Math.max(400, window.innerHeight - 320)
 })
-
-function initCy() {
-  cy = cytoscape({
-    container: document.getElementById('itemGraphCy'),
-    elements: [],
-    style: [
-      {
-        selector: 'node',
-        style: {
-          content: 'data(name)',
-          width: 30,
-          height: 30,
-        },
-      },
-    ],
-  })
-}
-
-function renderGraph(nodes: any, edges: any) {
-  console.log('renderGraph')
-  if (nodes.length > 0) {
-    cy.add(nodes)
-    cy.nodes().on('click', (e: any) => {
-      const clickedNode = e.target
-      selectedVertex.value = clickedNode.data()
-      selectedEdge.value = null
-    })
-  }
-  if (edges.length > 0) {
-    cy.add(edges)
-    cy.edges().on('click', (e: any) => {
-      const clickedNode = e.target
-      selectedVertex.value = null
-      selectedEdge.value = clickedNode.data()
-    })
-  }
-  relayout()
-  isEmpty.value = cy.elements().length === 0
-}
-
-function relayout() {
-  const options = {
-    name: 'cose',
-    // Called on `layoutready`
-    ready() { },
-    // Called on `layoutstop`
-    stop() { },
-    // Whether to animate while running the layout
-    // true : Animate continuously as the layout is running
-    // false : Just show the end result
-    // 'end' : Animate with the end result, from the initial positions to the end positions
-    animate: true,
-    // Easing of the animation for animate:'end'
-    animationEasing: undefined,
-    // The duration of the animation for animate:'end'
-    animationDuration: undefined,
-    animateFilter(node: any, i: any) { return true },
-    // The layout animates only after this many milliseconds for animate:true
-    // (prevents flashing on fast runs)
-    animationThreshold: 250,
-    refresh: 20,
-    // Whether to fit the network view after when done
-    fit: true,
-    padding: 30,
-    boundingBox: undefined,
-    nodeDimensionsIncludeLabels: false,
-    randomize: false,
-    componentSpacing: 40,
-    nodeRepulsion(node: any) { return 2048 },
-    nodeOverlap: 4,
-    idealEdgeLength(edge: any) { return 32 },
-    edgeElasticity(edge: any) { return 32 },
-    nestingFactor: 1.2,
-    gravity: 1,
-    numIter: 1000,
-    initialTemp: 1000,
-    coolingFactor: 0.99,
-    minTemp: 1.0,
-  }
-  const layout = cy.layout(options)
-  layout.run()
-}
 </script>
 
 <template>
-  <NFlex>
-    <div id="itemGraphCy" style="width:80%; height: 400px;" class="border border-gray-300" />
-    <div class="w-1/6 h-[400px] overflow-y-auto">
-      <NButton v-show="!isEmpty" size="small" :loading="loading" type="info" ghost @click="relayout">
-        {{ t('workflow.relayout') }}
-      </NButton>
-      <NButton v-show="isEmpty" size="small" type="warning" ghost>
-        {{ t('workflow.noData') }}
-      </NButton>
-      <NFlex v-if="selectedVertex" vertical>
-        <NDivider title-placement="left">
-          {{ t('workflow.entity') }}
-        </NDivider>
-        <div>{{ selectedVertex.name }}</div>
-        <NDivider title-placement="left">
-          {{ t('workflow.nameLabel') }}
-        </NDivider>
-        <div>{{ selectedVertex.name }}</div>
-        <NDivider title-placement="left">
-          {{ t('workflow.descriptionLabel') }}
-        </NDivider>
-        <div>{{ selectedVertex.description }}</div>
-      </NFlex>
-      <NFlex v-if="selectedEdge" vertical>
-        <NDivider title-placement="left">
-          {{ t('workflow.relation') }}
-        </NDivider>
-        <div>{{ selectedEdge.sourceName }} → {{ selectedEdge.targetName }}</div>
-        <NDivider title-placement="left">
-          {{ t('workflow.descriptionLabel') }}
-        </NDivider>
-        <div>{{ selectedEdge.description }}</div>
-      </NFlex>
-    </div>
-  </NFlex>
+  <div class="p-4">
+    <NBreadcrumb separator=">">
+      <NBreadcrumbItem href="/">
+        {{ t('common.home') }}
+      </NBreadcrumbItem>
+      <NBreadcrumbItem href="/#/kb-manage">
+        {{ t('knowledgeBase.myKnowledgeBase') }}
+      </NBreadcrumbItem>
+      <NBreadcrumbItem :href="`/#/kb-manage/${kbUuid}`">
+        {{ curKb.title }}
+      </NBreadcrumbItem>
+      <NBreadcrumbItem :href="`/#/kb-manage/${kbUuid}/document/${curDocUuid}/detail`">
+        {{ curDoc.title }}
+      </NBreadcrumbItem>
+      <NBreadcrumbItem :clickable="false">
+        {{ t('knowledgeBase.graphLabel') }}
+      </NBreadcrumbItem>
+    </NBreadcrumb>
+    <NCard style="margin-top: 12px" :title="curDoc.title" hoverable>
+      <template #header-extra>
+        <NSpin v-if="docLoading" :size="14" />
+      </template>
+      <div class="flex flex-wrap gap-x-6 gap-y-1 mb-3" style="font-size: 12px; opacity: 0.7;">
+        <span>{{ t('knowledgeBase.graphLabel') }}: {{ graphicalStatusLabel }}</span>
+        <span v-if="curDoc.graphicalStatusChangeTime">{{ t('knowledgeBase.updateTime') }}: {{ curDoc.graphicalStatusChangeTime }}</span>
+        <span v-if="curDoc.graphicalStatus === 'FAIL' && curDoc.failReason" style="color: #d03050;">{{ curDoc.failReason }}</span>
+      </div>
+      <DocumentGraphCanvas v-if="graphEmpty !== true" :doc-uuid="curDocUuid" :height="canvasHeight" @loaded="onGraphLoaded" />
+      <div v-else class="flex items-center justify-center" :style="{ height: `${canvasHeight}px` }">
+        <NEmpty :description="curDoc.graphicalStatus === 'DOING' ? t('knowledgeBase.graphBuildingTip') : t('knowledgeBase.noGraphData')" />
+      </div>
+    </NCard>
+  </div>
 </template>

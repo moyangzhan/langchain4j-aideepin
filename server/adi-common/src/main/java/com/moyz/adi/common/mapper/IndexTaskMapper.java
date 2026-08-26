@@ -64,6 +64,20 @@ public interface IndexTaskMapper extends BaseMapper<IndexTask> {
     boolean hasRunningByDoc(@Param("docUuid") String docUuid);
 
     /**
+     * Whether the doc has an unfinished (pending or running) task. Retry enqueues without
+     * touching the doc status, so during the queue wait the doc still reads FAIL; the frontend
+     * uses this to tell "queued/executing" apart from "finally failed".
+     */
+    boolean hasUnfinishedByDoc(@Param("docUuid") String docUuid);
+
+    /**
+     * Latest failed document-level task per task type (embedding/graphical). The doc row's
+     * fail_reason keeps only the most recent failure and cannot express both dimensions
+     * failing; the detail page's failure list reads per-dimension reasons from here.
+     */
+    List<IndexTask> listLatestFailedByDoc(@Param("docUuid") String docUuid);
+
+    /**
      * Crash recovery: running rows whose heartbeat timed out are reset to pending for rerun
      */
     int resetStaleRunning(@Param("minutes") int minutes);

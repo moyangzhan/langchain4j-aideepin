@@ -11,6 +11,7 @@ import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.EmbeddingStatusEnum;
 import com.moyz.adi.common.enums.GraphicalStatusEnum;
+import com.moyz.adi.common.util.AdiStringUtil;
 import com.moyz.adi.common.enums.LLMCallRecordSourceType;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.LLMContext;
@@ -56,24 +57,30 @@ import static com.moyz.adi.common.enums.ErrorEnum.A_PARAMS_ERROR;
 import static com.moyz.adi.common.enums.ErrorEnum.A_UPLOAD_FAIL;
 
 /**
- * 问答模式数据流：批量导入（Dify 格式 xlsx/csv）与 LLM 自动生成 QA 对。
+ * QA-mode data flows: bulk import (Dify-format xlsx/csv) and LLM auto generation of QA pairs.
  * <p>
- * 导入格式与 Dify 对齐：首行为表头 question,answer（容错中文表头"问题/答案"及大小写），
- * 其后每行一对问答；相同答案文本的行自动合并为一个答案段挂多个问题。
+ * The import format aligns with Dify: the first row is the header question,answer (tolerating
+ * the Chinese headers 问题/答案 and case differences), each following row is one pair; rows with
+ * identical answer text are merged into one answer segment holding multiple questions.
  */
 @Slf4j
 @Service
 public class DocumentQaService {
 
     /**
-     * QA 批量导入模板（Dify 格式）
+     * QA bulk-import template: one question per cell, never split by newlines; a row with an
+     * empty answer continues the previous non-empty answer (multiple questions per answer —
+     * vertically merged answer cells in Excel read out the same way), and rows with identical
+     * answer text are also merged into one answer with multiple questions
      */
     public static final String QA_IMPORT_TEMPLATE_CSV = "question,answer\n"
             + "What is the capital of France?,The capital of France is Paris.\n"
-            + "法国的首都是哪里?,法国的首都是巴黎。\n";
+            + "Which city is the capital of France?,\n"
+            + "法国的首都是哪里?,法国的首都是巴黎。\n"
+            + "法国的首都是什么城市?,\n";
 
     /**
-     * LLM 生成 QA 对的提示词：要求严格输出 JSON 数组
+     * Prompt for LLM QA generation: requires a strict JSON array output
      */
     public static final String QA_GENERATE_PROMPT = "You are a data annotation expert. Read the text below and generate"
             + " high-quality question-answer pairs based on it. Each question should be answerable from the text alone,"
@@ -106,7 +113,8 @@ public class DocumentQaService {
     @Resource
     private KnowledgeBaseMapper knowledgeBaseMapper;
 
-    // @Lazy: indexTaskService 所在依赖图可能回指本服务的调用方（KbDocumentService），成环时以懒注入打破
+    // @Lazy: indexTaskService's dependency graph may point back at this service's callers
+    // (KbDocumentService); lazy injection breaks the cycle
     @Lazy
     @Resource
     private IndexTaskService indexTaskService;
@@ -114,16 +122,16 @@ public class DocumentQaService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * 解析 QA 文件并落库（不向量化；向量化走索引流程）
+     * Parse the QA file and persist it (no vectorization here; that goes through the index flow)
      *
-     * @return 创建的 qa 模式文档
+     * @return the created qa-mode document
      */
     public KbDocument importQa(KnowledgeBase kb, String fileName, MultipartFile file) {
         List<QaPair> pairs = parseQaFile(fileName, file);
         if (pairs.isEmpty()) {
             throw new BaseException(A_PARAMS_ERROR);
         }
-        // remark 存原始导入文本（Q/A 逐行），便于溯源与重新导入
+        // remark keeps the raw imported text (Q/A per pair) for traceability and re-import
         String remark = pairs.stream()
                 .map(pair -> "Q: " + pair.question() + "\nA: " + pair.answer())
                 .collect(Collectors.joining("\n\n"));
@@ -143,8 +151,10 @@ public class DocumentQaService {
     }
 
     /**
-     * 把问答对物化为段行：相同答案文本合并为一个答案段挂多个问题；答案与库内既有段
-     * 内容一致时并入既有段（问题文本去重），仅新答案新建段行——创建期导入与追加导入共用
+     * Materialize QA pairs into segment rows: identical answer text is merged into one answer
+     * segment holding multiple questions; an answer matching an existing segment's content joins
+     * that segment (question texts deduplicated), and only new answers create segment rows —
+     * shared by creation-time import and append import
      */
     public void saveQaPairs(KnowledgeBase kb, KbDocument doc, List<QaPair> pairs, String source) {
         Map<String, List<String>> answerToQuestions = new LinkedHashMap<>();
@@ -152,7 +162,14 @@ public class DocumentQaService {
             if (StringUtils.isBlank(pair.question()) || StringUtils.isBlank(pair.answer())) {
                 continue;
             }
-            answerToQuestions.computeIfAbsent(pair.answer().trim(), k -> new ArrayList<>()).add(pair.question().trim());
+            // One cell = one question; embedded newlines are collapsed to spaces, never split
+            // (users cannot tell whether copied text contains newlines, and line-splitting would
+            // silently corrupt the question) — normalization guarantees "stored questions never contain newlines"
+            String question = AdiStringUtil.normalizeSingleLine(pair.question());
+            if (question.isEmpty()) {
+                continue;
+            }
+            answerToQuestions.computeIfAbsent(pair.answer().trim(), k -> new ArrayList<>()).add(question);
         }
         Map<String, DocumentSegment> existingAnswers = documentSegmentService.listByDocUuid(doc.getUuid()).stream()
                 .collect(Collectors.toMap(DocumentSegment::getContent, s -> s, (a, b) -> a));
@@ -170,7 +187,8 @@ public class DocumentQaService {
                 answer.setSource(source);
                 documentSegmentService.save(answer);
             }
-            // 并入既有答案/批内重复：问题文本已存在则跳过，避免重复向量化
+            // Joining an existing answer / in-batch duplicates: skip question texts that already
+            // exist to avoid duplicate vectorization
             Set<String> existingQuestionTexts = questionService.listByAnswerIds(List.of(answer.getId())).stream()
                     .map(DocumentSegmentQuestion::getContent)
                     .collect(Collectors.toSet());
@@ -197,8 +215,10 @@ public class DocumentQaService {
     }
 
     /**
-     * 导入问答对到已有 qa 文档（追加语义）：与生成/同文档在跑任务互斥；相同答案并入
-     * 既有段、问题文本去重，随后向量化待嵌问题并按版本条件落定状态（清空失败原因）
+     * Import QA pairs into an existing qa document (append semantics): mutually exclusive with
+     * generation / running tasks on the same document; identical answers join existing segments
+     * with question-text dedup, then pending questions are vectorized and the status is finalized
+     * conditionally on the version (clearing the failure reason)
      */
     public void importQaToDocument(KbDocument doc, MultipartFile file) {
         if (EmbeddingStatusEnum.DOING == doc.getEmbeddingStatus()
@@ -222,8 +242,9 @@ public class DocumentQaService {
             saveQaPairs(kb, doc, pairs, AdiConstant.SegmentSource.DOC);
             segmentIndexService.vectorizePendingQuestions(kb, doc);
         } catch (Exception e) {
-            // 向量化失败也要落定：问题行已入库，状态停在旧值（如 DONE）会让"新问题没向量"
-            // 不可见。版本条件落 FAIL + import: 前缀，与 qa_generate/vectorize/graph 约定一致
+            // Finalize even when vectorization fails: the question rows are already persisted, and
+            // a status stuck at its old value (e.g. DONE) would hide "new questions have no vector".
+            // Version-conditional FAIL with the import: prefix, same convention as qa_generate/vectorize/graph
             ChainWrappers.lambdaUpdateChain(kbDocumentService.getBaseMapper())
                     .eq(KbDocument::getId, doc.getId())
                     .eq(KbDocument::getIndexVersion, versionSnapshot)
@@ -244,10 +265,11 @@ public class DocumentQaService {
     }
 
     /**
-     * （重新）生成统一入口：无段行=直接生成；已有问答对=替换式重新生成。替换前拒绝
-     * 生成中/同文档在跑任务（清理需立即执行，不能移交在途任务的取消善后），随后版本
-     * 推进+清段行/问题/子块/向量并重取文档（异步生成的版本快照以清理后的新值为准），
-     * 标记生成中（列表立即可见）后派发异步任务。保存侧勾选与详情页按钮都走这里。
+     * (Re)generate QA pairs: with no segment rows it generates directly; with existing pairs it
+     * is a replace-style regeneration — after rejecting generation-in-progress / running tasks on
+     * the same document, segment rows / questions / child chunks / vectors are cleared and the
+     * document re-fetched (async generation works off the post-cleanup new version), then marked
+     * as generating and dispatched as an async task.
      */
     public void autoGenerateQa(User user, KbDocument doc) {
         if (doc.getSegmentMode() != com.moyz.adi.common.enums.SegmentModeEnum.QA) {
@@ -281,8 +303,9 @@ public class DocumentQaService {
     }
 
     /**
-     * LLM 自动生成 QA 对（异步）：对已转为 qa 模式的文档分块请求 ingest 模型，
-     * 解析 JSON 对后落库、向量化问题并条件落定状态（版本前进则交给新版本流程）
+     * LLM auto QA generation (async): chunks the qa-mode document's text and requests the ingest
+     * model per chunk, persists the parsed JSON pairs, vectorizes the questions and finalizes the
+     * status conditionally on the version (a version advance hands over to the new-version flow)
      */
     @Async
     public void generateQaAsync(User user, KnowledgeBase kb, KbDocument doc) {
@@ -358,8 +381,9 @@ public class DocumentQaService {
     }
 
     /**
-     * 生成失败落定：仅当版本仍一致时生效（期间内容/模式再变更，状态归新版本流程管）。
-     * 前缀 qa_generate: 标失败阶段（与 vectorize: / graph: 统一的写入侧约定）
+     * Finalize a generation failure: effective only while the version still matches (if content
+     * or mode changed meanwhile, the status belongs to the new-version flow). The qa_generate:
+     * prefix marks the failing stage (same write-side convention as vectorize: / graph:)
      */
     private void markQaFailed(KbDocument doc, int versionSnapshot, String reason) {
         ChainWrappers.lambdaUpdateChain(kbDocumentService.getBaseMapper())
@@ -372,7 +396,7 @@ public class DocumentQaService {
     }
 
     /**
-     * 解析 LLM 输出的 JSON 数组（容错 markdown 代码块包裹）
+     * Parse the JSON array from LLM output (tolerates markdown code-fence wrapping)
      */
     private List<QaPair> parseQaJson(String text) {
         if (StringUtils.isBlank(text)) {
@@ -410,7 +434,8 @@ public class DocumentQaService {
     }
 
     /**
-     * 解析 QA 导入文件（Dify 格式）：xlsx 读取前两列；csv 按逗号分割（支持引号包裹字段）
+     * Parse the QA import file (Dify format): xlsx reads the first two columns; csv splits on
+     * commas (quoted fields supported)
      */
     private List<QaPair> parseQaFile(String fileName, MultipartFile file) {
         String lower = fileName == null ? "" : fileName.toLowerCase();
@@ -435,11 +460,21 @@ public class DocumentQaService {
         }
     }
 
+    /**
+     * Two ways to express multiple questions per answer (csv/xlsx alike, one question per cell,
+     * never split by newlines):
+     * 1. A row with an empty answer continues the previous non-empty answer (the first data row
+     *    must have both values); vertically merged answer cells in Excel read out exactly this
+     *    shape (only the top-left cell holds a value), so the same logic supports them natively
+     * 2. Rows with fully identical answer text are merged by saveQaPairs' answer grouping into
+     *    one answer holding multiple questions
+     */
     private List<QaPair> parseXlsx(MultipartFile file) throws Exception {
         List<QaPair> pairs = new ArrayList<>();
         try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
             boolean firstRow = true;
+            String lastAnswer = null;
             for (Row row : sheet) {
                 String col0 = cellText(row.getCell(0));
                 String col1 = cellText(row.getCell(1));
@@ -450,8 +485,11 @@ public class DocumentQaService {
                     }
                     throw new BaseException(A_PARAMS_ERROR);
                 }
-                if (StringUtils.isNotBlank(col0) && StringUtils.isNotBlank(col1)) {
-                    pairs.add(new QaPair(col0.trim(), col1.trim()));
+                if (StringUtils.isNotBlank(col1)) {
+                    lastAnswer = col1.trim();
+                }
+                if (StringUtils.isNotBlank(col0) && lastAnswer != null) {
+                    pairs.add(new QaPair(col0.trim(), lastAnswer));
                 }
             }
         }
@@ -463,10 +501,11 @@ public class DocumentQaService {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
             boolean firstLine = true;
+            String lastAnswer = null;
             while ((line = reader.readLine()) != null) {
                 if (firstLine) {
                     firstLine = false;
-                    // 去 BOM
+                    // strip BOM
                     if (line.startsWith("\uFEFF")) {
                         line = line.substring(1);
                     }
@@ -482,8 +521,11 @@ public class DocumentQaService {
                 List<String> cols = splitCsvLine(line);
                 String q = col(cols, 0);
                 String a = col(cols, 1);
-                if (StringUtils.isNotBlank(q) && StringUtils.isNotBlank(a)) {
-                    pairs.add(new QaPair(q.trim(), a.trim()));
+                if (StringUtils.isNotBlank(a)) {
+                    lastAnswer = a.trim();
+                }
+                if (StringUtils.isNotBlank(q) && lastAnswer != null) {
+                    pairs.add(new QaPair(q.trim(), lastAnswer));
                 }
             }
         }
@@ -498,7 +540,7 @@ public class DocumentQaService {
     }
 
     /**
-     * csv 行分割：支持双引号包裹（内含逗号/转义引号）
+     * csv line splitting: supports double-quoted fields (embedded commas / escaped quotes)
      */
     private List<String> splitCsvLine(String line) {
         List<String> result = new ArrayList<>();
@@ -542,7 +584,7 @@ public class DocumentQaService {
             return cell.getStringCellValue();
         }
         if (cell.getCellType() == CellType.NUMERIC) {
-            // 避免数字被渲染成科学计数法
+            // keep numbers from rendering in scientific notation
             double d = cell.getNumericCellValue();
             if (d == Math.floor(d) && !Double.isInfinite(d)) {
                 return String.valueOf((long) d);
@@ -560,7 +602,7 @@ public class DocumentQaService {
     }
 
     /**
-     * 问答对
+     * A question-answer pair
      */
     public record QaPair(String question, String answer) {
     }

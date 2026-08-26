@@ -29,7 +29,7 @@ declare namespace KnowledgeBase {
     total: number,
     records: Info[]
   }
-  interface Item {
+  interface Document {
     id: string
     uuid: string
     kbId: string
@@ -106,6 +106,8 @@ declare namespace KnowledgeBase {
     embeddingStatus: string
     graphicalStatus: string
     failReason?: string
+    /** True when the store lacks a backfilled vector (drift); click to repair */
+    vectorMissing?: boolean
     createTime: string
     updateTime: string
     questions?: SegmentQuestion[]
@@ -124,6 +126,15 @@ declare namespace KnowledgeBase {
   interface KbItemGraphResp {
     vertices: KbVertex[]
     edges: KbEdge[]
+    /** Distinct element totals for pagination progress; absent on reference-graph endpoints */
+    totalVertices?: number
+    totalEdges?: number
+  }
+  interface IndexFailure {
+    /** embedding | graphical */
+    taskType: string
+    failReason: string
+    updateTime: string
   }
   interface QaRecordListResp {
     total: number,

@@ -64,15 +64,102 @@ public class ApacheAgeGraphStore implements GraphStore {
                 stmt.executeUpdate(String.format("SELECT * FROM drop_graph('%s', true)", graph));
             }
             if (Boolean.TRUE.equals(createGraph)) {
-                ResultSet resultSet = stmt.executeQuery(String.format("SELECT * FROM ag_graph WHERE name = '%s'", graph));
-                if (!resultSet.isBeforeFirst() && resultSet.getRow() == 0) {
-                    stmt.execute(String.format("SELECT * FROM ag_catalog.create_graph('%s')", graph));
-                }
+                ensureGraphConsistent(stmt);
             }
         } catch (SQLException e) {
             log.error("ApacheAgeGraphStore init error", e);
             throw new BaseException(B_DB_ERROR);
         }
+    }
+
+    /**
+     * Verify and repair the graph catalog (ag_graph/ag_label vs the live schema) at startup:
+     * <ul>
+     * <li>After pg_dump/pg_restore, plain oid columns (ag_graph.graphid, ag_label.graph) keep
+     * stale oids while regnamespace columns re-resolve by name — queries then fail with
+     * "graph with oid xxx does not exist"; realign them to the live namespace oid</li>
+     * <li>If the schema was dropped without drop_graph, catalog rows dangle: clear and rebuild</li>
+     * </ul>
+     */
+    private void ensureGraphConsistent(Statement stmt) throws SQLException {
+        Long catalogGraphId = null;
+        try (ResultSet rs = stmt.executeQuery(String.format("SELECT graphid FROM ag_catalog.ag_graph WHERE name = '%s'", graph))) {
+            if (rs.next()) {
+                catalogGraphId = rs.getLong(1);
+            }
+        }
+        long liveNamespaceOid = 0;
+        try (ResultSet rs = stmt.executeQuery(String.format("SELECT to_regnamespace('%s')::oid", graph))) {
+            if (rs.next()) {
+                liveNamespaceOid = rs.getLong(1);
+            }
+        }
+
+        if (catalogGraphId == null && liveNamespaceOid == 0) {
+            // Fresh environment: create the graph
+            stmt.execute(String.format("SELECT * FROM ag_catalog.create_graph('%s')", graph));
+            return;
+        }
+        if (catalogGraphId != null && liveNamespaceOid == 0) {
+            // Dangling catalog row (schema gone): clear the catalog and rebuild an empty graph
+            log.warn("Graph {} catalog row {} points to a missing schema, rebuilding", graph, catalogGraphId);
+            final long staleGraphId = catalogGraphId;
+            inTransaction(stmt, () -> {
+                stmt.executeUpdate(String.format("DELETE FROM ag_catalog.ag_label WHERE graph = %d", staleGraphId));
+                stmt.executeUpdate(String.format("DELETE FROM ag_catalog.ag_graph WHERE graphid = %d", staleGraphId));
+                stmt.execute(String.format("SELECT * FROM ag_catalog.create_graph('%s')", graph));
+            });
+            return;
+        }
+        if (catalogGraphId == null) {
+            // Schema exists but the catalog row is missing: insert one aligned to it
+            log.warn("Graph {} schema exists but catalog row is missing, inserting catalog row", graph);
+            stmt.executeUpdate(String.format("INSERT INTO ag_catalog.ag_graph(name, graphid, namespace) VALUES ('%s', %d, '%s')", graph, liveNamespaceOid, graph));
+            return;
+        }
+        if (catalogGraphId == liveNamespaceOid) {
+            return;
+        }
+
+        // Stale oid: the FK ag_label.graph -> ag_graph.graphid is checked immediately and
+        // ag_graph.namespace is unique, so the parent row cannot be updated in place — insert a
+        // bridge row on the public namespace to hold the live oid, move the child references,
+        // delete the stale row, then rename the bridge row. All inside one transaction: a
+        // half-done repair left by a crash would hit unique constraints on the next startup
+        log.warn("Graph {} catalog oid {} is stale (live namespace oid {}), self-healing", graph, catalogGraphId, liveNamespaceOid);
+        final long staleGraphId = catalogGraphId;
+        final long liveOid = liveNamespaceOid;
+        String bridge = graph + "_repair_tmp";
+        inTransaction(stmt, () -> {
+            stmt.executeUpdate(String.format("INSERT INTO ag_catalog.ag_graph(name, graphid, namespace) VALUES ('%s', %d, 'public')", bridge, liveOid));
+            stmt.executeUpdate(String.format("UPDATE ag_catalog.ag_label SET graph = %d WHERE graph = %d", liveOid, staleGraphId));
+            stmt.executeUpdate(String.format("DELETE FROM ag_catalog.ag_graph WHERE graphid = %d", staleGraphId));
+            stmt.executeUpdate(String.format("UPDATE ag_catalog.ag_graph SET name = '%s', namespace = '%s' WHERE name = '%s'", graph, graph, bridge));
+        });
+    }
+
+    /**
+     * Wrap multi-statement catalog repairs in a transaction: any failure rolls back everything,
+     * keeping the repair re-runnable after a restart
+     */
+    private void inTransaction(Statement stmt, SqlBlock block) throws SQLException {
+        Connection connection = stmt.getConnection();
+        boolean previousAutoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try {
+            block.run();
+            connection.commit();
+        } catch (SQLException | RuntimeException e) {
+            connection.rollback();
+            throw e;
+        } finally {
+            connection.setAutoCommit(previousAutoCommit);
+        }
+    }
+
+    @FunctionalInterface
+    private interface SqlBlock {
+        void run() throws SQLException;
     }
 
     @Override

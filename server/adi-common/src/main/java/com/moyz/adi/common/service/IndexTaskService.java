@@ -3,6 +3,7 @@ package com.moyz.adi.common.service;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.moyz.adi.common.cosntant.AdiConstant;
+import com.moyz.adi.common.dto.IndexFailureDto;
 import com.moyz.adi.common.entity.DocumentSegment;
 import com.moyz.adi.common.entity.IndexTask;
 import com.moyz.adi.common.entity.KbDocument;
@@ -10,6 +11,7 @@ import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.EmbeddingStatusEnum;
 import com.moyz.adi.common.enums.GraphicalStatusEnum;
+import com.moyz.adi.common.util.AdiStringUtil;
 import com.moyz.adi.common.enums.SegmentModeEnum;
 import com.moyz.adi.common.exception.IndexTaskCancelledException;
 import com.moyz.adi.common.helper.LLMContext;
@@ -42,6 +44,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.DOC_INDEX_TYPE_EMBEDDING;
 import static com.moyz.adi.common.cosntant.AdiConstant.DOC_INDEX_TYPE_GRAPHICAL;
@@ -174,6 +177,34 @@ public class IndexTaskService {
     }
 
     /**
+     * Whether the doc has a queued or executing task: retry enqueues without touching the doc
+     * status, so the queue wait still reads FAIL on the doc — the frontend distinguishes
+     * "queued/executing" from "finally failed" with this.
+     */
+    public boolean hasUnfinishedByDoc(String docUuid) {
+        return indexTaskMapper.hasUnfinishedByDoc(docUuid);
+    }
+
+    /**
+     * Latest failure per index dimension (embedding/graphical) for the detail page failure
+     * list; the doc row keeps only one fail_reason, so simultaneous failures need the task
+     * table. Ties on update_time are deduplicated by task type.
+     */
+    public List<IndexFailureDto> listDocumentFailures(String docUuid) {
+        return indexTaskMapper.listLatestFailedByDoc(docUuid).stream()
+                .collect(Collectors.toMap(IndexTask::getTaskType,
+                        t -> IndexFailureDto.builder()
+                                .taskType(t.getTaskType())
+                                .failReason(t.getFailReason())
+                                .updateTime(t.getUpdateTime())
+                                .build(),
+                        (a, b) -> a))
+                .values()
+                .stream()
+                .toList();
+    }
+
+    /**
      * Consume loop: claim and execute until nothing is claimable. Triggered on enqueue;
      * re-triggered by the poller as a fallback.
      */
@@ -237,7 +268,10 @@ public class IndexTaskService {
         } catch (Exception e) {
             log.error("Index task failed, docUuid:{}, targetType:{}, taskType:{}",
                     task.getDocUuid(), task.getTargetType(), task.getTaskType(), e);
-            String reason = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            // Sanitize the failure reason: providers often return the whole JSON body as the
+            // exception message, which is unreadable in fail_reason
+            String reason = AdiStringUtil.extractJsonMessage(
+                    e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
             // finishOne returns 0 when the row was already taken over (stale-reset or force-failed):
             // a zombie must not finalize the host row either — that belongs to the rerun/breaker
             if (indexTaskMapper.finishOne(task.getId(), STATUS_FAILED, StringUtils.abbreviate(reason, 500)) > 0) {
@@ -532,8 +566,13 @@ public class IndexTaskService {
                             .modelName(llmService.getAiModel().getName())
                             .build());
         } catch (Exception e) {
-            modelHealthService.recordFailure(llmService.getAiModel().getName(), e);
-            throw e;
+            String modelName = llmService.getAiModel().getName();
+            modelHealthService.recordFailure(modelName, e);
+            // Rethrow with the sanitized message plus the model actually used (health
+            // fallback may differ from the KB's ingest model); it lands in fail_reason
+            String friendly = AdiStringUtil.extractJsonMessage(
+                    e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+            throw new RuntimeException(friendly + ", name: " + modelName, e);
         }
     }
 

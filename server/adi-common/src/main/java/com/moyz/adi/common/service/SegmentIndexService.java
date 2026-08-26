@@ -1,6 +1,7 @@
 package com.moyz.adi.common.service;
 
 import com.moyz.adi.common.cosntant.AdiConstant;
+import com.moyz.adi.common.config.AdiProperties;
 import com.moyz.adi.common.entity.DocumentSegment;
 import com.moyz.adi.common.entity.DocumentSegmentChildChunk;
 import com.moyz.adi.common.entity.DocumentSegmentQuestion;
@@ -11,6 +12,7 @@ import com.moyz.adi.common.exception.IndexTaskCancelledException;
 import com.moyz.adi.common.rag.DocumentSplitterFactory;
 import com.moyz.adi.common.rag.TokenEstimatorFactory;
 import com.moyz.adi.common.service.embedding.IKnowledgeEmbeddingService;
+import com.moyz.adi.common.util.AdiStringUtil;
 import com.moyz.adi.common.util.UuidUtil;
 import dev.langchain4j.data.document.DefaultDocument;
 import dev.langchain4j.data.document.Document;
@@ -34,18 +36,19 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
- * 分段索引编排：切段显式化 + 三种模式的向量化。
+ * Segment index orchestration: explicit splitting plus vectorization across the three segment modes.
  * <p>
- * 职责分离：document_segment.content 是返回给 LLM 的内容（text 分段/qa 答案/父段），
- * 被向量化的内容是 text 主表行 / qa 问题行 / parent_child 子块行。
- * 向量表只存向量与 metadata，TextSegment 文本置空——内容唯一事实源在关系表。
+ * Separation of concerns: document_segment.content is what gets returned to the LLM (text segment /
+ * qa answer / parent chunk), while what gets vectorized is the text main-table row / qa question row /
+ * parent_child child-chunk row. The vector store keeps only vectors and metadata (segment uuid as
+ * placeholder text) — relational tables are the single source of truth for content.
  */
 @Slf4j
 @Service
 public class SegmentIndexService {
 
     /**
-     * 向量化分批大小，避免一次 embedAll 触发远程 embedding 接口的批量上限
+     * Vectorization batch size; avoids hitting the remote embedding API's per-request limit with a single embedAll
      */
     private static final int EMBED_BATCH_SIZE = 32;
 
@@ -69,8 +72,11 @@ public class SegmentIndexService {
     @Resource
     private EmbeddingStore<TextSegment> kbEmbeddingStore;
 
+    @Resource
+    private AdiProperties adiProperties;
+
     /**
-     * 文档生效的分段模式；历史数据/未设置为 text
+     * Effective segment mode of the document; unset/legacy rows fall back to text
      */
     public static SegmentModeEnum effectiveMode(KbDocument doc) {
         return doc.getSegmentMode() == null ? SegmentModeEnum.TEXT : doc.getSegmentMode();
@@ -81,20 +87,21 @@ public class SegmentIndexService {
     }
 
     /**
-     * 重建向量化索引。段行不存在时切段（全量、新段一律默认启用）；段行已存在时为
-     * 增量重索引：不重建段行，按状态逐段处理--启用段重新向量化，停用段跳过（不复活）。
-     * cancelSignal 非空时在每个 embed 批次前检查，true 即抛 IndexTaskCancelledException
-     * （任务队列的协作式作废检查点）。
+     * Rebuild the vector index. Splits first when segment rows are absent (full rebuild, new segments
+     * default to enabled); when segment rows already exist this is an incremental reindex: rows are kept
+     * and processed by status — enabled segments are re-embedded, disabled ones skipped (no revival).
+     * When cancelSignal is non-null it is checked before each embed batch and a true result throws
+     * IndexTaskCancelledException (cooperative cancellation checkpoint of the task queue).
      */
     public void reindexEmbedding(KnowledgeBase kb, KbDocument doc, Supplier<Boolean> cancelSignal) {
         SegmentModeEnum mode = effectiveMode(doc);
         log.info("reindexEmbedding, docUuid:{}, mode:{}", doc.getUuid(), mode.getValue());
-        // 清旧向量（按 metadata kb_item_uuid 过滤删除；停用段无向量，删除天然空转）
+        // Drop old vectors (deleted by metadata kb_item_uuid; disabled segments have none, so the delete is a no-op for them)
         iKnowledgeEmbeddingService.deleteByItemUuid(doc.getUuid());
         ensureSegments(kb, doc);
         switch (mode) {
             case TEXT -> {
-                // 启用段置空 embedding_id 待重嵌；停用段保持无向量状态（停用时已置空）
+                // Clear embedding_id of enabled segments for re-embedding; disabled segments stay vector-free (cleared when disabled)
                 documentSegmentService.listEnabledByDocUuid(doc.getUuid()).forEach(row -> {
                     if (row.getEmbeddingId() != null) {
                         documentSegmentService.updateEmbeddingId(row.getId(), null);
@@ -103,7 +110,7 @@ public class SegmentIndexService {
             }
             case QA -> questionService.clearEmbeddingIds(doc.getUuid());
             case PARENT_CHILD -> {
-                // 启用父段下子块置空待重嵌；停用父段下子块跳过
+                // Clear child chunks under enabled parents for re-embedding; children of disabled parents are skipped
                 List<Long> enabledParentIds = documentSegmentService.listEnabledByDocUuid(doc.getUuid()).stream()
                         .map(DocumentSegment::getId)
                         .toList();
@@ -114,8 +121,8 @@ public class SegmentIndexService {
     }
 
     /**
-     * 图谱抽取前确保段行存在并返回主表段列表。
-     * embedding 重跑会重建段行；仅图谱重跑时复用现有段（无段行时先切段）。
+     * Ensure segment rows exist before graph extraction and return the main-table segment list.
+     * Embedding re-runs rebuild segment rows; graph-only re-runs reuse existing segments (splitting first only when absent).
      */
     public List<DocumentSegment> ensureSegments(KnowledgeBase kb, KbDocument doc) {
         List<DocumentSegment> segments = documentSegmentService.listByDocUuid(doc.getUuid());
@@ -127,7 +134,7 @@ public class SegmentIndexService {
     }
 
     /**
-     * 按模式把文档 remark 物化为主表段行（qa 模式的段由问答数据流创建，不在此切分）
+     * Materialize the document remark into main-table segment rows by mode (qa-mode segments are created by QA data flows, not split here)
      */
     public void splitIntoSegments(KnowledgeBase kb, KbDocument doc) {
         SegmentModeEnum mode = effectiveMode(doc);
@@ -162,7 +169,7 @@ public class SegmentIndexService {
             if (StringUtils.isBlank(parentText.text())) {
                 continue;
             }
-            // 逐条保存以回填父段id，供子块引用
+            // Save one by one to backfill the parent segment id for child-chunk references
             DocumentSegment parent = newSegmentRow(kb, doc, parentPosition++, parentText.text());
             documentSegmentService.save(parent);
             int childPosition = 0;
@@ -177,12 +184,13 @@ public class SegmentIndexService {
     }
 
     /**
-     * 对模式规定的向量化内容（text 主表行 / 问题行 / 子块行）中尚未向量化的部分做嵌入入库。
-     * 存入向量库的 TextSegment 文本置空；embedding 基于真实内容计算。
+     * Embed and store the not-yet-vectorized entries among the mode's vectorization targets
+     * (text main-table rows / question rows / child-chunk rows).
+     * The TextSegment text stored in the vector store is a placeholder; embeddings are computed from the real content.
      */
     private void vectorizePending(KnowledgeBase kb, KbDocument doc, SegmentModeEnum mode, Supplier<Boolean> cancelSignal) {
-        // 攒批后一次 embedAndStore，内部再按 EMBED_BATCH_SIZE 分批，避免逐条调用 embedding 接口。
-        // 停用段过滤：增量重索引（段行保留）场景下停用段不参与重嵌，避免停用数据"复活"
+        // Batch up and call embedAndStore once, which sub-batches by EMBED_BATCH_SIZE, to avoid per-item embedding API calls.
+        // Disabled-segment filtering: in incremental reindex (segment rows kept) disabled segments are not re-embedded, preventing disabled data from being "revived"
         List<PendingVector> pending = new ArrayList<>();
         switch (mode) {
             case TEXT -> documentSegmentService.listByDocUuid(doc.getUuid()).stream()
@@ -190,7 +198,7 @@ public class SegmentIndexService {
                     .forEach(row -> pending.add(new PendingVector(row.getUuid(), row.getContent(),
                             id -> documentSegmentService.updateEmbeddingId(row.getId(), id))));
             case QA -> {
-                // 重跑向量化时 clearEmbeddingIds 已把全部问题置空，须过滤停用答案下的问题
+                // clearEmbeddingIds nulled every question on re-run, so questions under disabled answers must be filtered out
                 Set<Long> enabledAnswerIds = documentSegmentService.listEnabledIdsByDocUuid(doc.getUuid());
                 questionService.listByDocUuid(doc.getUuid()).stream()
                         .filter(q -> q.getEmbeddingId() == null && enabledAnswerIds.contains(q.getAnswerSegmentId()))
@@ -212,8 +220,9 @@ public class SegmentIndexService {
     }
 
     /**
-     * 单段向量重建（启用分段用）：按模式收集该段名下 embeddingId 为空的待嵌条目
-     * （停用时已全部置空）——text=本段；qa=答案下全部问题；parent_child=父段下全部子块。
+     * Rebuild vectors of a single segment (used when enabling a segment): collect the segment's
+     * entries whose embeddingId is null (all cleared on disable) by mode — text = this segment;
+     * qa = all questions under the answer; parent_child = all child chunks under the parent.
      */
     public void vectorizeSegment(KnowledgeBase kb, KbDocument doc, DocumentSegment segment) {
         SegmentModeEnum mode = effectiveMode(doc);
@@ -238,9 +247,11 @@ public class SegmentIndexService {
     }
 
     /**
-     * 对文档下尚未向量化的问题行批量嵌入（QA 导入/LLM 生成完成后调用，不重嵌已有问题）。
-     * 过滤停用答案下的问题——新问题挂停用答案时保存但不向量化（由 ManageService 守卫），
-     * 此处兜底防止导入/生成批量场景复活停用段。
+     * Batch-embed the document's not-yet-vectorized question rows (called after QA import / LLM
+     * generation; already-embedded questions are not re-embedded).
+     * Questions under disabled answers are filtered out — a new question attached to a disabled
+     * answer is saved but not vectorized (guarded by ManageService); this is a backstop for the
+     * import/generation bulk paths to prevent reviving disabled segments.
      */
     public void vectorizePendingQuestions(KnowledgeBase kb, KbDocument doc) {
         Set<Long> enabledAnswerIds = documentSegmentService.listEnabledIdsByDocUuid(doc.getUuid());
@@ -256,7 +267,7 @@ public class SegmentIndexService {
     }
 
     /**
-     * cancelSignal 非空时每个批次前检查，true 即协作式取消（版本已推进，任务作废）
+     * When cancelSignal is non-null, check before each batch; true triggers cooperative cancellation (version advanced, task obsolete)
      */
     private void embedAndStore(KnowledgeBase kb, KbDocument doc, List<PendingVector> items, Supplier<Boolean> cancelSignal) {
         for (int from = 0; from < items.size(); from += EMBED_BATCH_SIZE) {
@@ -266,11 +277,21 @@ public class SegmentIndexService {
             List<PendingVector> batch = items.subList(from, Math.min(items.size(), from + EMBED_BATCH_SIZE));
             List<String> embeddingIds = batch.stream().map(item -> UUID.randomUUID().toString()).toList();
             List<String> realTexts = batch.stream().map(PendingVector::content).toList();
-            // 向量表退化为纯检索索引：TextSegment 文本置空，内容只存关系表
+            // The vector store is a pure retrieval index: content lives only in relational tables;
+            // langchain4j requires non-blank TextSegment text, so the segment uuid serves as the placeholder
+            // (the uuid is also kept in metadata; retrieval content is expanded by the post-processor from relational tables, never read from here)
             List<TextSegment> storeSegments = batch.stream()
-                    .map(item -> TextSegment.from("", storeMetadata(kb, doc, item.segmentUuid())))
+                    .map(item -> TextSegment.from(item.segmentUuid(), storeMetadata(kb, doc, item.segmentUuid())))
                     .toList();
-            List<Embedding> embeddings = embeddingModel.embedAll(realTexts.stream().map(TextSegment::from).toList()).content();
+            List<Embedding> embeddings;
+            try {
+                embeddings = embeddingModel.embedAll(realTexts.stream().map(TextSegment::from).toList()).content();
+            } catch (Exception e) {
+                // Sanitize the JSON error body and add the embedding model name; lands in fail_reason
+                String friendly = AdiStringUtil.extractJsonMessage(
+                        e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+                throw new RuntimeException(friendly + ", name: " + adiProperties.getEmbeddingModel(), e);
+            }
             kbEmbeddingStore.addAll(embeddingIds, embeddings, storeSegments);
             for (int i = 0; i < batch.size(); i++) {
                 batch.get(i).embeddingIdSetter().accept(embeddingIds.get(i));
@@ -318,7 +339,7 @@ public class SegmentIndexService {
     }
 
     /**
-     * 切分用 metadata（与旧入库管线保持一致，保证 IsNotIn(KB_ITEM_UUID) 等过滤语义不变）
+     * Metadata used for splitting (kept consistent with the legacy ingest pipeline so filters like IsNotIn(KB_ITEM_UUID) keep their semantics)
      */
     private Metadata baseMetadata(KnowledgeBase kb, KbDocument doc) {
         Metadata metadata = new Metadata();
@@ -328,7 +349,7 @@ public class SegmentIndexService {
     }
 
     /**
-     * 向量库存储用 metadata：在切分 metadata 基础上附段标识
+     * Metadata used for vector-store entries: splitting metadata plus the segment identifier
      */
     private Metadata storeMetadata(KnowledgeBase kb, KbDocument doc, String segmentUuid) {
         Metadata metadata = baseMetadata(kb, doc);
@@ -337,7 +358,7 @@ public class SegmentIndexService {
     }
 
     /**
-     * 待向量化条目：真实内容 + 段uuid + 向量条目id回填动作
+     * Entry awaiting vectorization: real content + segment uuid + embedding-id backfill action
      */
     private record PendingVector(String segmentUuid, String content, Consumer<String> embeddingIdSetter) {
     }

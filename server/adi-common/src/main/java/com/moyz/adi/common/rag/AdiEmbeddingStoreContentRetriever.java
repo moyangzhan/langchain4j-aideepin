@@ -255,7 +255,7 @@ public class AdiEmbeddingStoreContentRetriever implements ContentRetriever {
         List<Content> result;
         if (null != contentPostProcessor) {
             // 按模式展开（问题→答案、子块→父段上卷去重），并由处理器登记保留下来的命中分数；
-            // 查不到关系行的命中会被丢弃（向量表 text 已置空，无回退来源）
+            // Hits without a relational row are dropped (vector-store text is only a placeholder)
             result = contentPostProcessor.process(query, searchResult.matches(), embeddingToScore);
         } else {
             result = searchResult.matches().stream()

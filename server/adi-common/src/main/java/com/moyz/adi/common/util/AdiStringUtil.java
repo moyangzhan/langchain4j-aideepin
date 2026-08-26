@@ -1,5 +1,6 @@
 package com.moyz.adi.common.util;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import org.jsoup.Jsoup;
 
 import java.util.ArrayList;
@@ -13,6 +14,47 @@ public class AdiStringUtil {
     public static String clearStr(String str) {
         org.jsoup.nodes.Document doc = Jsoup.parse(str);
         return doc.text();
+    }
+
+    /**
+     * Normalize to a single line: newlines (and \r) with surrounding whitespace collapse to
+     * one space (plain removal would glue English words together), runs of whitespace shrink
+     * to one space, ends trimmed.
+     * <p>
+     * "One question = one input" is guaranteed by UI granularity; this is the API-level
+     * backstop — copied or imported content may contain newlines the user cannot see, and
+     * splitting on them would silently corrupt the question. Normalization upholds the
+     * invariant "stored questions never contain newlines".
+     */
+    public static String normalizeSingleLine(String text) {
+        if (text == null) {
+            return null;
+        }
+        return text.replaceAll("[\\r\\n]+", " ").replaceAll("\\s{2,}", " ").trim();
+    }
+
+    /**
+     * Extract the message field from text that looks like a JSON error body. LLM/embedding
+     * providers often return the whole body as the exception message (e.g.
+     * {"code":30003,"message":"Model disabled.","data":null}), which is unreadable when
+     * stored and shown to users. Returns the input unchanged when it is not JSON or has no
+     * message. A trailing period is dropped so suffixes like ", name: xxx" append cleanly.
+     */
+    public static String extractJsonMessage(String text) {
+        if (text == null) {
+            return null;
+        }
+        String trimmed = text.strip();
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+            JsonNode node = JsonUtil.toJsonNode(trimmed);
+            if (node != null && node.hasNonNull("message")) {
+                String message = node.get("message").asText().strip();
+                if (!message.isEmpty()) {
+                    return message.endsWith(".") ? message.substring(0, message.length() - 1) : message;
+                }
+            }
+        }
+        return text;
     }
 
     public static String tail(String source, int tailLength) {

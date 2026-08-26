@@ -37,6 +37,12 @@ public class DocumentSegmentDto {
 
     private GraphicalStatusEnum graphicalStatus;
 
+    /**
+     * True when a backfilled embedding id is missing from the vector store (drift detection);
+     * null when no presence checker is available
+     */
+    private Boolean vectorMissing;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;

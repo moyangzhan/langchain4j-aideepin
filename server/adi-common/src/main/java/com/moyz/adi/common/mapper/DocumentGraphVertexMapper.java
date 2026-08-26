@@ -22,7 +22,7 @@ public interface DocumentGraphVertexMapper extends BaseMapper<DocumentGraphVerte
 
     int deleteByDocUuid(@Param("docUuid") String docUuid);
 
-    List<KbVertexDto> aggregateByDoc(@Param("docUuid") String docUuid, @Param("limit") int limit);
+    List<KbVertexDto> aggregateByDoc(@Param("docUuid") String docUuid, @Param("afterName") String afterName, @Param("limit") int limit);
 
-    long countByDocUuid(@Param("docUuid") String docUuid);
+    long countDistinctByDoc(@Param("docUuid") String docUuid);
 }

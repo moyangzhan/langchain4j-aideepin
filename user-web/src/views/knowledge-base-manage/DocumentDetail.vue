@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import type { DataTableColumns } from 'naive-ui'
-import { NAlert, NBreadcrumb, NBreadcrumbItem, NButton, NCard, NDataTable, NIcon, NInput, NModal, NP, NSpace, NSpin, NSwitch, NText, NTooltip, NUpload, NUploadDragger, useDialog, useMessage } from 'naive-ui'
+import { NBreadcrumb, NBreadcrumbItem, NButton, NCard, NCollapse, NCollapseItem, NDataTable, NIcon, NInput, NModal, NP, NSpace, NSwitch, NText, NTooltip, NUpload, NUploadDragger, useDialog, useLoadingBar, useMessage } from 'naive-ui'
 import { QuestionCircle16Regular } from '@vicons/fluent'
 import { computed, h, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -19,8 +19,9 @@ const { kbUuid } = route.params as { kbUuid: string; docUuid: string }
 const curDocUuid = ref<string>('')
 
 const curKb = reactive<KnowledgeBase.Info>(knowledgeBaseEmptyInfo())
-const curDoc = reactive<KnowledgeBase.Item>(knowledgeBaseEmptyItem())
-const docLoading = ref(false)
+const curDoc = reactive<KnowledgeBase.Document>(knowledgeBaseEmptyItem())
+// Entry loads use the global top loading bar; poll refreshes are fully silent
+const loadingBar = useLoadingBar()
 
 const tableMaxHeight = ref<number>(400)
 
@@ -35,15 +36,17 @@ const paginationReactive = reactive({
   prefix: () => t('common.total', { n: paginationReactive.itemCount }),
 })
 
-// 编辑/新增弹窗状态：type 决定调用哪个保存接口
+// Edit/add modal state: type picks the save API (qaPair = pair edit; question + isNew + no
+// answerSegmentId = add QA pair). Both use dynamic question inputs — one input per question
 const editState = reactive<{
   show: boolean
-  type: 'segment' | 'question' | 'child'
+  type: 'segment' | 'question' | 'child' | 'qaPair'
   id?: string
   docUuid: string
   answerSegmentId?: string
   parentSegmentId?: string
   content: string
+  questions: string[]
   answerContent?: string
   isNew: boolean
 }>({
@@ -51,6 +54,7 @@ const editState = reactive<{
   type: 'segment',
   docUuid: '',
   content: '',
+  questions: [],
   isNew: false,
 })
 const submitting = ref(false)
@@ -68,29 +72,117 @@ const embeddingStatusLabel = computed(() => {
   }
 })
 
+// Retry label mirrors what retryIndex actually retries (all failed dimensions, possibly both);
+// QA mode with no pairs triggers AI generation instead
+const retryDocLabel = computed(() => {
+  if (segmentMode.value === 'qa' && paginationReactive.itemCount === 0)
+    return t('knowledgeBase.aiGenerateQa')
+  const embeddingFailed = curDoc.embeddingStatus === 'FAIL'
+  const graphFailed = curDoc.graphicalStatus === 'FAIL'
+  if (embeddingFailed && graphFailed)
+    return t('knowledgeBase.retryBothIndex')
+  if (graphFailed)
+    return t('knowledgeBase.retryGraphitize')
+  return t('knowledgeBase.retryVectorize')
+})
+
+// Failure list: the doc row keeps one fail_reason only; per-dimension reasons come from the task table
+const indexFailures = ref<KnowledgeBase.IndexFailure[]>([])
+
+const failureRows = computed(() => {
+  const rows: { label: string; reason: string }[] = []
+  const findByType = (type: string) => indexFailures.value.find(f => f.taskType === type)
+  if (curDoc.embeddingStatus === 'FAIL')
+    rows.push({ label: t('knowledgeBase.vectorize'), reason: findByType('embedding')?.failReason || curDoc.failReason || t('knowledgeBase.statusFailed') })
+  if (curDoc.graphicalStatus === 'FAIL')
+    rows.push({ label: t('knowledgeBase.graphLabel'), reason: findByType('graphical')?.failReason || curDoc.failReason || t('knowledgeBase.statusFailed') })
+  return rows
+})
+
+const failureSummary = computed(() => {
+  const dims: string[] = []
+  if (curDoc.embeddingStatus === 'FAIL')
+    dims.push(t('knowledgeBase.vectorize'))
+  if (curDoc.graphicalStatus === 'FAIL')
+    dims.push(t('knowledgeBase.graphLabel'))
+  return t('knowledgeBase.indexFailedSummary', { dims: dims.join(', ') })
+})
+
+// Indexing in progress = executing (DOING) or queued (unfinished task rows): retry enqueues
+// without setting DOING, so the doc stays FAIL while queued and taskUnfinished tells queued
+// apart from finally failed
+const taskUnfinished = ref(false)
+const indexRunning = computed(() => curDoc.embeddingStatus === 'DOING' || curDoc.graphicalStatus === 'DOING')
+// Retry submit lock: keep the "processing" state (button hidden) for at least 5s — it covers
+// the request round-trip window before taskUnfinished is confirmed and rapid re-clicks on error
+const retrySubmitting = ref(false)
+const indexInProgress = computed(() => indexRunning.value || taskUnfinished.value || retrySubmitting.value)
+
+const runningSummary = computed(() => {
+  const dims: string[] = []
+  if (curDoc.embeddingStatus === 'DOING' || (curDoc.embeddingStatus === 'FAIL' && (taskUnfinished.value || retrySubmitting.value)))
+    dims.push(t('knowledgeBase.vectorize'))
+  if (curDoc.graphicalStatus === 'DOING' || (curDoc.graphicalStatus === 'FAIL' && (taskUnfinished.value || retrySubmitting.value)))
+    dims.push(t('knowledgeBase.graphLabel'))
+  return t('knowledgeBase.indexRunningSummary', { dims: dims.join(', ') })
+})
+
+// While queued or executing, refresh every 3s (doc status + queue status) until it ends:
+// done collapses the section, a final failure restores the retry button; a page reload
+// mid-queue also recovers the processing state from the task status
+let docRefreshTimer: ReturnType<typeof setTimeout> | null = null
+function scheduleDocRefresh() {
+  if (docRefreshTimer)
+    clearTimeout(docRefreshTimer)
+  if (indexInProgress.value)
+    docRefreshTimer = setTimeout(() => loadDocInfo(curDocUuid.value, true), 3000)
+}
+
 function editTitle() {
+  if (editState.type === 'qaPair')
+    return t('knowledgeBase.editQaPair')
   const prefix = editState.isNew
-    ? (editState.type === 'question' ? t('knowledgeBase.qaQuestion') : t('knowledgeBase.childChunks'))
+    ? (editState.type === 'question' ? t('knowledgeBase.addQaPair') : t('knowledgeBase.childChunks'))
     : t('common.edit')
   return prefix
 }
 
-async function loadDocInfo(docUuid: string) {
-  docLoading.value = true
+// silent=true is a poll refresh: skip re-fetching KB info, swallow errors (next tick retries);
+// entry-load progress is the caller's top loading bar, and post-retry refresh has no overlay
+async function loadDocInfo(docUuid: string, silent = false) {
   try {
-    const [kbResp, docResp] = await Promise.all([
-      api.knowledgeBaseInfo<KnowledgeBase.Info>(kbUuid),
-      api.knowledgeBaseItemInfo<KnowledgeBase.Item>(docUuid),
-    ])
-    Object.assign(curKb, kbResp.data)
+    const docResp = await api.knowledgeBaseItemInfo<KnowledgeBase.Document>(docUuid)
     Object.assign(curDoc, docResp.data)
+    if (!silent) {
+      const kbResp = await api.knowledgeBaseInfo<KnowledgeBase.Info>(kbUuid)
+      Object.assign(curKb, kbResp.data)
+    }
+    indexFailures.value = []
+    if (curDoc.embeddingStatus === 'FAIL' || curDoc.graphicalStatus === 'FAIL') {
+      // Queued vs finally failed is decided by the queue status; a failed fetch degrades to
+      // "finally failed" (retryable) without blocking the page
+      try {
+        const [failures, progress] = await Promise.all([
+          api.documentIndexFailures<KnowledgeBase.IndexFailure[]>(docUuid),
+          api.documentIndexProgress<boolean>(docUuid),
+        ])
+        indexFailures.value = failures.data || []
+        taskUnfinished.value = !!progress.data
+      } catch {
+        indexFailures.value = []
+        taskUnfinished.value = false
+      }
+    } else {
+      taskUnfinished.value = false
+    }
     // 列表为空时（如新建的 QA 文档）用文档自身的分段模式初始化，保证空态下也能新增
     if (segments.value.length === 0 && curDoc.segmentMode)
       segmentMode.value = curDoc.segmentMode as 'text' | 'qa' | 'parent_child'
   } catch (error: any) {
-    ms.error(error.message ?? 'error')
+    if (!silent)
+      ms.error(error.message ?? 'error')
   } finally {
-    docLoading.value = false
+    scheduleDocRefresh()
   }
 }
 
@@ -105,6 +197,25 @@ function isRebuildFailed(row: KnowledgeBase.Segment) {
 
 function retryRebuild(row: KnowledgeBase.Segment) {
   confirmToggleStatus(row, true)
+}
+
+// Repair vector drift: server clears missing embedding ids and enqueues re-embedding
+function confirmRepairVector(row: KnowledgeBase.Segment) {
+  dialog.warning({
+    title: t('knowledgeBase.vectorMissing'),
+    content: t('knowledgeBase.vectorMissingConfirm'),
+    positiveText: t('common.confirm'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: async () => {
+      try {
+        await api.documentSegmentRepairVector(row.uuid)
+        ms.success(t('knowledgeBase.segmentSavedAndReindexing'))
+        loadList(paginationReactive.page)
+      } catch (error: any) {
+        ms.error(error.message ?? 'error')
+      }
+    },
+  })
 }
 
 // （重新）生成问答对：空=直接生成；已有数据=确认后替换式重新生成（服务端守卫在跑/生成中）
@@ -153,18 +264,24 @@ function onQaImportFinish({ event }: { event?: ProgressEvent }) {
       ms.success(t('common.uploadSuccess'))
       loadDocInfo(curDocUuid.value)
       loadList(1)
-    }
-    else {
+    } else {
       ms.error(resp.message || 'error')
     }
-  }
-  catch (error: any) {
+  } catch (error: any) {
     ms.error(error.message ?? 'error')
   }
 }
 
-// 文档级失败重试：入口只看状态列（FAIL），是否展示原因文本与之解耦
+// Document-level retry: gated on the status columns; guarded against re-trigger while running
 async function retryDocIndex() {
+  if (indexInProgress.value)
+    return
+  retrySubmitting.value = true
+  // Hold for at least 5s: covers the round-trip before taskUnfinished is confirmed and rapid
+  // re-clicks on error; indexInProgress takes over seamlessly when the lock expires
+  setTimeout(() => {
+    retrySubmitting.value = false
+  }, 5000)
   try {
     await api.knowledgeBaseItemRetryIndex(curDocUuid.value)
     await loadDocInfo(curDocUuid.value)
@@ -183,8 +300,14 @@ function goEditDocument() {
   router.push(`/kb-manage/${kbUuid}/document/${curDocUuid.value}`)
 }
 
-async function loadList(currentPage: number) {
-  loading.value = true
+function goGraph() {
+  router.push({ name: 'DocumentGraph', params: { kbUuid, docUuid: curDocUuid.value } })
+}
+
+// silent=true is a rebuild poll: no table loading flash; user actions (paging) use non-silent
+async function loadList(currentPage: number, silent = false) {
+  if (!silent)
+    loading.value = true
   try {
     const resp = await api.documentSegmentList<PageResponse>(curDocUuid.value, currentPage, paginationReactive.pageSize)
     segments.value = resp.data.records
@@ -200,11 +323,12 @@ async function loadList(currentPage: number) {
     paginationReactive.itemCount = resp.data.total
     // 删除末页最后一条后回退到第一页，避免停留在空页
     if (segments.value.length === 0 && currentPage > 1) {
-      await loadList(1)
+      await loadList(1, silent)
       return
     }
   } catch (error: any) {
-    ms.error(error.message ?? 'error')
+    if (!silent)
+      ms.error(error.message ?? 'error')
   } finally {
     loading.value = false
     scheduleAutoRefresh()
@@ -217,10 +341,10 @@ function scheduleAutoRefresh() {
   if (refreshTimer)
     clearTimeout(refreshTimer)
   if (segments.value.some(s => isRebuilding(s)))
-    refreshTimer = setTimeout(() => loadList(paginationReactive.page), 3000)
+    refreshTimer = setTimeout(() => loadList(paginationReactive.page, true), 3000)
 }
 
-function openEdit(type: 'segment' | 'question' | 'child', row: any) {
+function openEdit(type: 'segment' | 'child', row: any) {
   Object.assign(editState, {
     show: true,
     type,
@@ -242,18 +366,7 @@ function openAddQaPair() {
     answerSegmentId: undefined,
     answerContent: '',
     content: '',
-    isNew: true,
-  })
-}
-
-function openAddQuestion(answerSegmentId: string) {
-  Object.assign(editState, {
-    show: true,
-    type: 'question',
-    id: undefined,
-    docUuid: curDocUuid.value,
-    answerSegmentId,
-    content: '',
+    questions: [''],
     isNew: true,
   })
 }
@@ -270,8 +383,31 @@ function openAddChild(parentSegmentId: string) {
   })
 }
 
+// Pair edit: one input per question (prefilled), answer in its own box; saved via content diff
+function openEditQaPair(row: KnowledgeBase.Segment) {
+  Object.assign(editState, {
+    show: true,
+    type: 'qaPair',
+    id: row.id,
+    docUuid: curDocUuid.value,
+    answerSegmentId: row.id,
+    content: '',
+    questions: (row.questions || []).map(q => q.content),
+    answerContent: row.content,
+    isNew: false,
+  })
+}
+
 async function saveEdit() {
-  if (!editState.content.trim()) {
+  // Question-set types (pair edit / add QA pair): one input per question; trim, drop blanks, dedupe
+  const questionListType = editState.type === 'qaPair' || (editState.type === 'question' && editState.isNew && !editState.answerSegmentId)
+  const questions = [...new Set(editState.questions.map(q => q.trim()).filter(q => q.length > 0))]
+  if (questionListType) {
+    if (questions.length === 0 || !(editState.answerContent || '').trim()) {
+      ms.warning(t('common.inputPlaceholder'))
+      return
+    }
+  } else if (!editState.content.trim()) {
     ms.warning(t('common.inputPlaceholder'))
     return
   }
@@ -279,14 +415,34 @@ async function saveEdit() {
     submitting.value = true
     if (editState.type === 'segment') {
       await api.documentSegmentSaveOrUpdate({ id: editState.id!, docUuid: editState.docUuid, content: editState.content } as KnowledgeBase.Segment)
-    } else if (editState.type === 'question') {
-      await api.documentSegmentQuestionSaveOrUpdate({
-        id: editState.id,
+    } else if (editState.type === 'qaPair') {
+      // Server diffs by content: unchanged questions keep vectors, answer-only changes do not
+      // re-embed — hence the generic save-success message
+      await api.documentQaPairSaveOrUpdate({
         docUuid: editState.docUuid,
         answerSegmentId: editState.answerSegmentId,
         answerContent: editState.answerContent,
-        content: editState.content,
+        questions,
       })
+      ms.success(t('common.saveSuccess'))
+      editState.show = false
+      loadList(paginationReactive.page)
+      return
+    } else if (editState.type === 'question') {
+      // Add QA pair: the first question creates the answer segment; the rest attach to it
+      const first = await api.documentSegmentQuestionSaveOrUpdate<any>({
+        docUuid: editState.docUuid,
+        answerContent: editState.answerContent,
+        content: questions[0],
+      })
+      const answerSegmentId: string | undefined = first.data?.answerSegmentId
+      for (const question of questions.slice(1)) {
+        await api.documentSegmentQuestionSaveOrUpdate<any>({
+          docUuid: editState.docUuid,
+          answerSegmentId,
+          content: question,
+        })
+      }
     } else {
       await api.documentSegmentChildSaveOrUpdate({
         id: editState.id,
@@ -305,7 +461,7 @@ async function saveEdit() {
   }
 }
 
-function confirmDelete(type: 'segment' | 'question' | 'child', uuid: string) {
+function confirmDelete(type: 'segment' | 'child', uuid: string) {
   dialog.warning({
     title: t('common.delete'),
     content: t('common.deleteConfirm'),
@@ -315,8 +471,6 @@ function confirmDelete(type: 'segment' | 'question' | 'child', uuid: string) {
       try {
         if (type === 'segment')
           await api.documentSegmentDel(uuid)
-        else if (type === 'question')
-          await api.documentSegmentQuestionDel(uuid)
         else
           await api.documentSegmentChildDel(uuid)
         ms.success(t('common.deleteSuccess'))
@@ -375,17 +529,9 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Segment> => {
         ],
       }),
       key: 'questions',
+      // Questions column is display-only: per-question edits go through the action column's edit
       render: row => h('div', { class: 'flex flex-col gap-1' }, {
-        default: () => [
-          ...(row.questions || []).map(q => h('div', { class: 'flex items-center gap-2' }, {
-            default: () => [
-              h('span', { style: 'cursor: pointer;', onClick: () => openEdit('question', q) }, { default: () => truncated(q.content, 40) }),
-              h(NButton, { text: true, type: 'error', size: 'tiny', onClick: () => confirmDelete('question', q.uuid) }, { default: () => t('common.delete') }),
-            ],
-          })),
-          // 停用段隐藏新增入口（后端已守卫不向量化，此处仅体验优化）
-          ...(row.isEnabled === false ? [] : [h(NButton, { text: true, type: 'primary', size: 'tiny', onClick: () => openAddQuestion(row.id) }, { default: () => `+ ${t('knowledgeBase.qaQuestion')}` })]),
-        ],
+        default: () => (row.questions || []).map(q => h('div', { class: 'truncate' }, { default: () => truncated(q.content, 40) })),
       }),
     })
   }
@@ -396,9 +542,10 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Segment> => {
         ? t('knowledgeBase.segmentModeParentChild')
         : t('knowledgeBase.docFragment'),
     key: 'content',
+    // qa mode: answers are edited via the action column; other modes keep click-to-edit
     render: row => h('div', {
-      style: 'cursor: pointer; white-space: pre-wrap;',
-      onClick: () => openEdit('segment', row),
+      style: `white-space: pre-wrap;${segmentMode.value === 'qa' ? '' : 'cursor: pointer;'}`,
+      onClick: segmentMode.value === 'qa' ? undefined : () => openEdit('segment', row),
     }, { default: () => truncated(row.content) }),
   })
   if (segmentMode.value === 'parent_child') {
@@ -444,14 +591,25 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Segment> => {
           elements.push(h('span', { style: 'font-size:12px;color:#f0a020;margin-left:6px;' }, { default: () => t('knowledgeBase.statusProcessing') }))
         else if (isRebuildFailed(row))
           elements.push(h('span', { style: 'font-size:12px;color:#d03050;margin-left:6px;cursor:pointer;', title: row.failReason || '', onClick: () => retryRebuild(row) }, { default: () => t('knowledgeBase.statusFailed') }))
+        // Drift indicator: status says vectorized but the store lacks the vector
+        if (row.vectorMissing && row.isEnabled !== false && !isRebuilding(row))
+          elements.push(h('span', { style: 'font-size:12px;color:#d03050;margin-left:6px;cursor:pointer;', onClick: () => confirmRepairVector(row) }, { default: () => t('knowledgeBase.vectorMissing') }))
         return h('div', { class: 'flex items-center' }, { default: () => elements })
       },
     },
     {
       title: t('common.action'),
       key: 'actions',
-      width: 80,
-      render: row => h(NButton, { text: true, type: 'error', size: 'small', onClick: () => confirmDelete('segment', row.uuid) }, { default: () => t('common.delete') }),
+      width: segmentMode.value === 'qa' ? 100 : 80,
+      // qa mode: pair-edit entry; other modes keep delete only (content edits via content column)
+      render: row => segmentMode.value === 'qa'
+        ? h('div', { class: 'flex items-center gap-2' }, {
+          default: () => [
+            h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => openEditQaPair(row) }, { default: () => t('common.edit') }),
+            h(NButton, { text: true, type: 'error', size: 'small', onClick: () => confirmDelete('segment', row.uuid) }, { default: () => t('common.delete') }),
+          ],
+        })
+        : h(NButton, { text: true, type: 'error', size: 'small', onClick: () => confirmDelete('segment', row.uuid) }, { default: () => t('common.delete') }),
     },
   )
   return cols
@@ -469,8 +627,9 @@ watch(
     const uuid = Array.isArray(docUuid) ? docUuid[0] : docUuid
     if (uuid) {
       curDocUuid.value = uuid
-      loadDocInfo(uuid)
-      loadList(1)
+      // Entry loads share the global top loading bar; no local spinners
+      loadingBar.start()
+      Promise.all([loadDocInfo(uuid), loadList(1)]).finally(() => loadingBar.finish())
     }
   },
   { immediate: true },
@@ -483,6 +642,8 @@ onMounted(() => {
 onUnmounted(() => {
   if (refreshTimer)
     clearTimeout(refreshTimer)
+  if (docRefreshTimer)
+    clearTimeout(docRefreshTimer)
 })
 </script>
 
@@ -502,36 +663,39 @@ onUnmounted(() => {
         {{ curDoc.title }}
       </NBreadcrumbItem>
     </NBreadcrumb>
-    <NAlert
-      v-if="curDoc.embeddingStatus === 'FAIL' || curDoc.graphicalStatus === 'FAIL'"
-      type="error"
-      :show-icon="true"
-      style="margin-top: 12px"
-    >
-      <div class="flex items-center justify-between gap-3">
-        <span>{{ curDoc.failReason || t('knowledgeBase.statusFailed') }}</span>
-        <NButton size="small" type="error" @click="retryDocIndex">
-          {{ t('knowledgeBase.retry') }}
+    <NCard style="margin-top: 12px" :title="curDoc.title" hoverable>
+      <div style="white-space: pre-wrap;">
+        {{ curDoc.brief }}
+      </div>
+      <div class="flex flex-wrap gap-x-6 gap-y-1 mt-2" style="font-size: 12px; opacity: 0.7;">
+        <span>{{ t('knowledgeBase.vectorize') }}: {{ embeddingStatusLabel }}</span>
+        <span>{{ t('knowledgeBase.wordCount') }}: {{ curDoc.wordCount }}</span>
+        <span>{{ t('knowledgeBase.embeddingHitCount') }}: {{ curDoc.embeddingHitCount }}</span>
+        <span>{{ t('knowledgeBase.createTime') }}: {{ curDoc.createTime }}</span>
+        <span>{{ t('knowledgeBase.updateTime') }}: {{ curDoc.updateTime }}</span>
+      </div>
+      <!-- content → metadata → actions -->
+      <div class="flex items-center gap-4 mt-3">
+        <!-- remark is the document's own content regardless of segment mode -->
+        <NButton text type="primary" size="tiny" @click="showRawContent = true">
+          {{ t('knowledgeBase.viewRawContent') }}
+        </NButton>
+        <!-- Same rule as the list page: disabled with a tooltip when not graphitized;
+               native disabled buttons swallow mouse events, so the tooltip wraps it -->
+        <NTooltip v-if="curDoc.graphicalStatus === 'NONE'" trigger="hover">
+          <template #trigger>
+            <span class="inline-flex">
+              <NButton text type="primary" size="tiny" disabled>
+                {{ t('knowledgeBase.openGraph') }}
+              </NButton>
+            </span>
+          </template>
+          {{ t('knowledgeBase.notGraphitized') }}
+        </NTooltip>
+        <NButton v-else text type="primary" size="tiny" @click="goGraph">
+          {{ t('knowledgeBase.openGraph') }}
         </NButton>
       </div>
-    </NAlert>
-    <NCard style="margin-top: 12px" :title="curDoc.title" hoverable>
-      <NSpin :show="docLoading">
-        <div class="flex items-center gap-2">
-          <span style="white-space: pre-wrap;">{{ curDoc.brief }}</span>
-          <!-- 正文查看与分段模式无关：remark 是文档本身的内容，模式只决定索引方式 -->
-          <NButton text type="primary" size="tiny" @click="showRawContent = true">
-            {{ t('knowledgeBase.viewRawContent') }}
-          </NButton>
-        </div>
-        <div class="flex flex-wrap gap-x-6 gap-y-1 mt-2" style="font-size: 12px; opacity: 0.7;">
-          <span>{{ t('knowledgeBase.vectorize') }}: {{ embeddingStatusLabel }}</span>
-          <span>{{ t('knowledgeBase.wordCount') }}: {{ curDoc.wordCount }}</span>
-          <span>{{ t('knowledgeBase.embeddingHitCount') }}: {{ curDoc.embeddingHitCount }}</span>
-          <span>{{ t('knowledgeBase.createTime') }}: {{ curDoc.createTime }}</span>
-          <span>{{ t('knowledgeBase.updateTime') }}: {{ curDoc.updateTime }}</span>
-        </div>
-      </NSpin>
     </NCard>
     <NCard style="margin-top: 12px" :title="segmentMode === 'qa' ? t('knowledgeBase.qaPairList') : t('knowledgeBase.segmentList')" hoverable>
       <template #header-extra>
@@ -550,24 +714,62 @@ onUnmounted(() => {
       <NDataTable
         remote :loading="loading" :max-height="tableMaxHeight" :columns="columns" :data="segments"
         :pagination="paginationReactive" :single-line="false" :bordered="true" @update:page="onHandlePageChange"
-      >
-      </NDataTable>
+      />
     </NCard>
+
+    <!-- Failure list: collapsed by default, the header keeps failures visible; expanding shows
+         per-dimension reasons. While retrying it switches to the running state (button hidden)
+         and auto-refreshes via polling -->
+    <NCollapse v-if="failureRows.length > 0 || indexInProgress" style="margin-top: 12px">
+      <NCollapseItem name="indexFailures">
+        <template #header>
+          <div class="flex items-center justify-between w-full pr-2">
+            <span :style="{ color: indexInProgress ? '#f0a020' : '#d03050', fontWeight: '600' }">
+              {{ indexInProgress ? runningSummary : failureSummary }}
+            </span>
+            <NButton v-if="!indexInProgress" size="small" type="error" @click.stop="retryDocIndex">
+              {{ retryDocLabel }}
+            </NButton>
+          </div>
+        </template>
+        <ul v-if="failureRows.length > 0" class="flex flex-col gap-1 m-0 p-0" style="list-style: none;">
+          <li v-for="row in failureRows" :key="row.label">
+            <span style="font-weight: 600;">{{ row.label }}:</span> {{ row.reason }}
+          </li>
+        </ul>
+      </NCollapseItem>
+    </NCollapse>
 
     <NModal v-model:show="editState.show" style="width: 60%;" preset="card" :title="editTitle()">
       <NSpace vertical>
-        {{ editState.type === 'question' ? t('knowledgeBase.qaQuestion') : '' }}
-        <NInput
-          v-model:value="editState.content"
-          type="textarea"
-          :autosize="{ minRows: 6, maxRows: 16 }"
-          :placeholder="editState.type === 'question' && editState.isNew ? t('knowledgeBase.qaQuestionLinesPlaceholder') : ''"
-        />
-        <span v-if="editState.type === 'question'" style="font-size: 12px; opacity: 0.65;">
-          {{ t('knowledgeBase.qaQuestionMultiTip') }}
-        </span>
-        <!-- 新增问答对时的答案输入：问题在上（先问后答，与列序一致） -->
-        <template v-if="editState.type === 'question' && editState.isNew && !editState.answerSegmentId">
+        <!-- Question set (add QA pair / pair edit): one input per question; the API layer
+             collapses any newlines so users never need to care -->
+        <template v-if="editState.type === 'qaPair' || (editState.type === 'question' && editState.isNew && !editState.answerSegmentId)">
+          <div>{{ t('knowledgeBase.qaQuestion') }}</div>
+          <div v-for="(_, idx) in editState.questions" :key="idx" class="flex items-center gap-2">
+            <NInput v-model:value="editState.questions[idx]" :placeholder="t('knowledgeBase.qaQuestionInputPlaceholder')" />
+            <NButton
+              v-if="editState.questions.length > 1" text type="error" size="tiny"
+              @click="editState.questions.splice(idx, 1)"
+            >
+              ✕
+            </NButton>
+          </div>
+          <NButton dashed size="small" @click="editState.questions.push('')">
+            + {{ t('knowledgeBase.addQuestion') }}
+          </NButton>
+          <span style="font-size: 12px; opacity: 0.65;">{{ t('knowledgeBase.qaQuestionMultiTip') }}</span>
+        </template>
+        <!-- text segment / qa answer / parent chunk: multiline content -->
+        <template v-else>
+          <NInput
+            v-model:value="editState.content"
+            type="textarea"
+            :autosize="{ minRows: 6, maxRows: 16 }"
+          />
+        </template>
+        <!-- Answer input for add-pair / pair-edit; questions first, matching column order -->
+        <template v-if="editState.type === 'qaPair' || (editState.type === 'question' && editState.isNew && !editState.answerSegmentId)">
           {{ t('knowledgeBase.qaAnswer') }}
           <NInput
             v-model:value="editState.answerContent"

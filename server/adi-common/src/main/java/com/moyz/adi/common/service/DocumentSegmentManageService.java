@@ -8,6 +8,7 @@ import com.moyz.adi.common.dto.DocumentSegmentDto;
 import com.moyz.adi.common.dto.DocumentSegmentEditReq;
 import com.moyz.adi.common.dto.DocumentSegmentQuestionDto;
 import com.moyz.adi.common.dto.DocumentSegmentQuestionEditReq;
+import com.moyz.adi.common.dto.QaPairEditReq;
 import com.moyz.adi.common.entity.DocumentSegment;
 import com.moyz.adi.common.entity.DocumentSegmentChildChunk;
 import com.moyz.adi.common.entity.DocumentSegmentQuestion;
@@ -18,7 +19,9 @@ import com.moyz.adi.common.enums.EmbeddingStatusEnum;
 import com.moyz.adi.common.enums.GraphicalStatusEnum;
 import com.moyz.adi.common.enums.SegmentModeEnum;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.rag.EmbeddingPresenceChecker;
 import com.moyz.adi.common.service.embedding.IKnowledgeEmbeddingService;
+import com.moyz.adi.common.util.AdiStringUtil;
 import com.moyz.adi.common.util.UuidUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -26,14 +29,18 @@ import com.moyz.adi.common.cosntant.AdiConstant;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -76,6 +83,10 @@ public class DocumentSegmentManageService {
     @Resource
     private IKnowledgeEmbeddingService iKnowledgeEmbeddingService;
 
+    // Optional: only some vector stores support presence checks; absent -> no drift flag
+    @Resource
+    private ObjectProvider<EmbeddingPresenceChecker> presenceCheckerProvider;
+
     /**
      * 模式感知的分段分页列表：qa 附问题列表，parent_child 附子块列表
      */
@@ -93,20 +104,72 @@ public class DocumentSegmentManageService {
         List<DocumentSegmentDto> records = page.getRecords().stream().map(this::toDto).collect(Collectors.toList());
 
         SegmentModeEnum mode = SegmentIndexService.effectiveMode(doc);
+        Map<Long, List<DocumentSegmentQuestion>> questionsByAnswer = Map.of();
+        Map<Long, List<DocumentSegmentChildChunk>> childrenByParent = Map.of();
         if (mode == SegmentModeEnum.QA && !records.isEmpty()) {
-            Map<Long, List<DocumentSegmentQuestionDto>> byAnswer = questionService.listByDocUuid(docUuid).stream()
-                    .map(this::toQuestionDto)
-                    .collect(Collectors.groupingBy(DocumentSegmentQuestionDto::getAnswerSegmentId, LinkedHashMap::new, Collectors.toList()));
+            questionsByAnswer = questionService.listByDocUuid(docUuid).stream()
+                    .collect(Collectors.groupingBy(DocumentSegmentQuestion::getAnswerSegmentId, LinkedHashMap::new, Collectors.toList()));
+            Map<Long, List<DocumentSegmentQuestionDto>> byAnswer = questionsByAnswer.entrySet().stream()
+                    .collect(Collectors.toMap(Map.Entry::getKey,
+                            e -> e.getValue().stream().map(this::toQuestionDto).toList(),
+                            (a, b) -> a, LinkedHashMap::new));
             records.forEach(dto -> dto.setQuestions(byAnswer.getOrDefault(dto.getId(), List.of())));
         }
         if (mode == SegmentModeEnum.PARENT_CHILD && !records.isEmpty()) {
-            Map<Long, List<DocumentSegmentChildChunkDto>> byParent = childChunkService.listByDocUuid(docUuid).stream()
-                    .map(this::toChildDto)
-                    .collect(Collectors.groupingBy(DocumentSegmentChildChunkDto::getParentSegmentId, LinkedHashMap::new, Collectors.toList()));
+            childrenByParent = childChunkService.listByDocUuid(docUuid).stream()
+                    .collect(Collectors.groupingBy(DocumentSegmentChildChunk::getParentSegmentId, LinkedHashMap::new, Collectors.toList()));
+            Map<Long, List<DocumentSegmentChildChunkDto>> byParent = childrenByParent.entrySet().stream()
+                    .collect(Collectors.toMap(Map.Entry::getKey,
+                            e -> e.getValue().stream().map(this::toChildDto).toList(),
+                            (a, b) -> a, LinkedHashMap::new));
             records.forEach(dto -> dto.setChildren(byParent.getOrDefault(dto.getId(), List.of())));
+        }
+        EmbeddingPresenceChecker checker = presenceCheckerProvider.getIfAvailable();
+        if (checker != null && !records.isEmpty()) {
+            markVectorMissing(mode, page.getRecords(), records, questionsByAnswer, childrenByParent, checker);
         }
         result.setRecords(records);
         return result;
+    }
+
+    /**
+     * Drift detection: a backfilled embedding id that the store no longer has means the
+     * status column lies. Mode-aware — the vectorized units are the segment row itself (text),
+     * its questions (qa) or its child chunks (parent_child). Disabled segments are skipped
+     * (their vectors are intentionally absent).
+     */
+    private void markVectorMissing(SegmentModeEnum mode, List<DocumentSegment> segments, List<DocumentSegmentDto> records,
+                                   Map<Long, List<DocumentSegmentQuestion>> questionsByAnswer,
+                                   Map<Long, List<DocumentSegmentChildChunk>> childrenByParent,
+                                   EmbeddingPresenceChecker checker) {
+        Map<Long, DocumentSegmentDto> dtoById = records.stream()
+                .collect(Collectors.toMap(DocumentSegmentDto::getId, d -> d));
+        Map<Long, List<String>> idsToCheckBySegment = new LinkedHashMap<>();
+        for (DocumentSegment segment : segments) {
+            if (Boolean.FALSE.equals(segment.getIsEnabled())) {
+                continue;
+            }
+            List<String> ids = switch (mode) {
+                case TEXT -> segment.getEmbeddingId() != null ? List.of(segment.getEmbeddingId()) : List.of();
+                case QA -> questionsByAnswer.getOrDefault(segment.getId(), List.of()).stream()
+                        .map(DocumentSegmentQuestion::getEmbeddingId).filter(Objects::nonNull).toList();
+                case PARENT_CHILD -> childrenByParent.getOrDefault(segment.getId(), List.of()).stream()
+                        .map(DocumentSegmentChildChunk::getEmbeddingId).filter(Objects::nonNull).toList();
+            };
+            if (!ids.isEmpty()) {
+                idsToCheckBySegment.put(segment.getId(), ids);
+            }
+        }
+        if (idsToCheckBySegment.isEmpty()) {
+            return;
+        }
+        Set<String> existing = checker.findExisting(idsToCheckBySegment.values().stream()
+                .flatMap(List::stream).collect(Collectors.toSet()));
+        idsToCheckBySegment.forEach((segmentId, ids) -> {
+            if (ids.stream().anyMatch(id -> !existing.contains(id))) {
+                dtoById.get(segmentId).setVectorMissing(true);
+            }
+        });
     }
 
     /**
@@ -138,19 +201,24 @@ public class DocumentSegmentManageService {
     }
 
     /**
-     * 新增/编辑 QA 问题：
-     * id 非空→编辑问题（重嵌，内容原样保存不拆行）；answerSegmentId 非空→挂到已有答案；
-     * 否则用 answerContent 新建答案行。创建路径 content 按行拆分批量录入（去空白、批内
-     * 与存量问题文本去重），一次入队重建。
+     * Create or edit a QA question:
+     * non-null id edits that question (re-embedded); non-null answerSegmentId attaches it to an
+     * existing answer; otherwise a new answer row is created from answerContent. One request
+     * carries one question; the content is normalized (newlines collapse to spaces, never split)
+     * and deduplicated against existing question texts before enqueueing one rebuild.
      */
     public DocumentSegmentQuestion saveOrUpdateQuestion(KbDocument doc, KnowledgeBase kb, DocumentSegmentQuestionEditReq req) {
+        String content = AdiStringUtil.normalizeSingleLine(req.getContent());
+        if (content.isEmpty()) {
+            throw new BaseException(A_PARAMS_ERROR);
+        }
         if (req.getId() != null) {
             DocumentSegmentQuestion question = questionService.getById(req.getId());
             if (question == null || Boolean.TRUE.equals(question.getIsDeleted()) || !question.getDocUuid().equals(req.getDocUuid())) {
                 throw new BaseException(A_DATA_NOT_FOUND);
             }
             String oldEmbeddingId = question.getEmbeddingId();
-            question.setContent(req.getContent());
+            question.setContent(content);
             questionService.updateById(question);
             if (oldEmbeddingId != null) {
                 iKnowledgeEmbeddingService.deleteByIds(List.of(oldEmbeddingId));
@@ -180,35 +248,26 @@ public class DocumentSegmentManageService {
                 throw new BaseException(A_DATA_NOT_FOUND);
             }
         }
-        // 创建路径支持一行一个问题批量录入：拆行去空白、批内去重、与既有问题文本去重；
-        // 编辑单问（id 非空分支）不拆行，内容原样保存
+        // One question per request (normalized above); skip if the text already exists
         Set<String> existingQuestionTexts = questionService.listByAnswerIds(List.of(answerSegmentId)).stream()
                 .map(DocumentSegmentQuestion::getContent)
                 .collect(Collectors.toSet());
-        List<String> questionTexts = Arrays.stream(req.getContent().split("\\n"))
-                .map(String::trim)
-                .filter(StringUtils::isNotBlank)
-                .distinct()
-                .filter(text -> !existingQuestionTexts.contains(text))
-                .toList();
-        if (questionTexts.isEmpty()) {
+        if (existingQuestionTexts.contains(content)) {
             throw new BaseException(A_PARAMS_ERROR);
         }
         int position = nextQuestionPosition(answerSegmentId);
         DocumentSegmentQuestion first = null;
-        for (String text : questionTexts) {
+        {
             DocumentSegmentQuestion question = new DocumentSegmentQuestion();
             question.setUuid(UuidUtil.createShort());
             question.setKbUuid(doc.getKbUuid());
             question.setDocUuid(doc.getUuid());
             question.setAnswerSegmentId(answerSegmentId);
             question.setPosition(position++);
-            question.setContent(text);
+            question.setContent(content);
             question.setHitCount(0);
             questionService.save(question);
-            if (first == null) {
-                first = question;
-            }
+            first = question;
         }
         // 入队重建（执行器跳过停用段；停用段的问题 embeddingId 留空，启用时统一重建）
         enqueueSegmentEmbedding(kb, doc, answerSegmentId);
@@ -322,6 +381,155 @@ public class DocumentSegmentManageService {
                 .eq(DocumentSegmentQuestion::getId, question.getId())
                 .set(DocumentSegmentQuestion::getIsDeleted, true)
                 .update();
+    }
+
+    /**
+     * Edit a QA pair: update the answer and replace the question set by content diff.
+     * Questions matching the new list are kept as-is (vectors and hit counts preserved);
+     * removed ones are deleted with their vectors; new ones are inserted and enqueued for one
+     * rebuild. An answer-only change does not re-embed (answers are not vectorized in qa mode).
+     * Existing texts are compared after normalization, so legacy multi-line rows are repaired
+     * to the normalized text on save.
+     */
+    @Transactional
+    public boolean editQaPair(KbDocument doc, KnowledgeBase kb, QaPairEditReq req) {
+        DocumentSegment answer = documentSegmentService.getById(req.getAnswerSegmentId());
+        if (answer == null || Boolean.TRUE.equals(answer.getIsDeleted()) || !answer.getDocUuid().equals(req.getDocUuid())) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
+        if (StringUtils.isNotBlank(req.getAnswerContent()) && !req.getAnswerContent().equals(answer.getContent())) {
+            answer.setContent(req.getAnswerContent());
+            documentSegmentService.updateById(answer);
+            // Same semantics as editSegment's qa branch: bump the version to expire in-flight
+            // segment tasks; no re-embedding
+            bumpSegmentVersion(answer.getId());
+        }
+        List<String> newTexts = req.getQuestions().stream()
+                .map(AdiStringUtil::normalizeSingleLine)
+                .filter(StringUtils::isNotBlank)
+                .distinct()
+                .toList();
+        if (newTexts.isEmpty()) {
+            throw new BaseException(A_PARAMS_ERROR);
+        }
+        Set<String> newTextSet = new LinkedHashSet<>(newTexts);
+        List<DocumentSegmentQuestion> existing = questionService.listByAnswerIds(List.of(answer.getId()));
+        boolean questionsChanged = false;
+        List<String> embeddingIdsToRemove = new ArrayList<>();
+        // Normalized text is the identity key: legacy multi-line rows compare equal to
+        // normalized input, avoiding needless delete-and-rebuild
+        Map<String, DocumentSegmentQuestion> existingByNormText = new LinkedHashMap<>();
+        for (DocumentSegmentQuestion question : existing) {
+            String normText = AdiStringUtil.normalizeSingleLine(question.getContent());
+            if (!newTextSet.contains(normText)) {
+                if (question.getEmbeddingId() != null) {
+                    embeddingIdsToRemove.add(question.getEmbeddingId());
+                }
+                questionService.lambdaUpdate()
+                        .eq(DocumentSegmentQuestion::getId, question.getId())
+                        .set(DocumentSegmentQuestion::getIsDeleted, true)
+                        .update();
+                questionsChanged = true;
+            }
+            else {
+                existingByNormText.putIfAbsent(normText, question);
+            }
+        }
+        if (!embeddingIdsToRemove.isEmpty()) {
+            iKnowledgeEmbeddingService.deleteByIds(embeddingIdsToRemove);
+        }
+        int position = nextQuestionPosition(answer.getId());
+        for (String text : newTexts) {
+            if (existingByNormText.containsKey(text)) {
+                // Kept row with non-normalized stored text (legacy newlines/whitespace):
+                // rewrite it to the normalized form
+                DocumentSegmentQuestion kept = existingByNormText.get(text);
+                if (!text.equals(kept.getContent())) {
+                    kept.setContent(text);
+                    questionService.updateById(kept);
+                }
+                continue;
+            }
+            DocumentSegmentQuestion question = new DocumentSegmentQuestion();
+            question.setUuid(UuidUtil.createShort());
+            question.setKbUuid(doc.getKbUuid());
+            question.setDocUuid(doc.getUuid());
+            question.setAnswerSegmentId(answer.getId());
+            question.setPosition(position++);
+            question.setContent(text);
+            question.setHitCount(0);
+            questionService.save(question);
+            questionsChanged = true;
+        }
+        if (questionsChanged) {
+            enqueueSegmentEmbedding(kb, doc, answer.getId());
+        }
+        return true;
+    }
+
+    /**
+     * Repair vector drift of one segment: null out the embedding ids that the store no
+     * longer has (mode-aware: segment row / questions / child chunks) and enqueue one
+     * segment re-embedding task. No-op when nothing is missing or no checker is available.
+     */
+    public boolean repairSegmentVector(String segmentUuid) {
+        EmbeddingPresenceChecker checker = presenceCheckerProvider.getIfAvailable();
+        if (checker == null) {
+            return false;
+        }
+        DocumentSegment segment = documentSegmentService.lambdaQuery()
+                .eq(DocumentSegment::getUuid, segmentUuid)
+                .eq(DocumentSegment::getIsDeleted, false)
+                .one();
+        if (segment == null) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
+        // Disabled segments intentionally have no vectors
+        if (Boolean.FALSE.equals(segment.getIsEnabled())) {
+            return false;
+        }
+        KbDocument doc = kbDocumentService.getEnable(segment.getDocUuid());
+        if (doc == null) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
+        KnowledgeBase kb = knowledgeBaseService.getOrThrow(doc.getKbUuid());
+        SegmentModeEnum mode = SegmentIndexService.effectiveMode(doc);
+        List<String> toCheck = switch (mode) {
+            case TEXT -> segment.getEmbeddingId() != null ? List.of(segment.getEmbeddingId()) : List.of();
+            case QA -> questionService.listByAnswerIds(List.of(segment.getId())).stream()
+                    .map(DocumentSegmentQuestion::getEmbeddingId).filter(Objects::nonNull).toList();
+            case PARENT_CHILD -> childChunkService.listByParentIds(List.of(segment.getId())).stream()
+                    .map(DocumentSegmentChildChunk::getEmbeddingId).filter(Objects::nonNull).toList();
+        };
+        if (toCheck.isEmpty()) {
+            return false;
+        }
+        Set<String> existing = checker.findExisting(toCheck);
+        boolean changed = false;
+        if (mode == SegmentModeEnum.TEXT) {
+            if (!existing.contains(segment.getEmbeddingId())) {
+                documentSegmentService.updateEmbeddingId(segment.getId(), null);
+                changed = true;
+            }
+        } else if (mode == SegmentModeEnum.QA) {
+            for (DocumentSegmentQuestion question : questionService.listByAnswerIds(List.of(segment.getId()))) {
+                if (question.getEmbeddingId() != null && !existing.contains(question.getEmbeddingId())) {
+                    questionService.updateEmbeddingId(question.getId(), null);
+                    changed = true;
+                }
+            }
+        } else {
+            for (DocumentSegmentChildChunk child : childChunkService.listByParentIds(List.of(segment.getId()))) {
+                if (child.getEmbeddingId() != null && !existing.contains(child.getEmbeddingId())) {
+                    childChunkService.updateEmbeddingId(child.getId(), null);
+                    changed = true;
+                }
+            }
+        }
+        if (changed) {
+            indexTaskService.enqueueSegment(kb, doc, segment, AdiConstant.DOC_INDEX_TYPE_EMBEDDING, ThreadContext.getCurrentUser());
+        }
+        return changed;
     }
 
     /**

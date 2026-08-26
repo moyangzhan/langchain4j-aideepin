@@ -22,7 +22,7 @@ public interface DocumentGraphEdgeMapper extends BaseMapper<DocumentGraphEdge> {
 
     int deleteByDocUuid(@Param("docUuid") String docUuid);
 
-    List<KbEdgeDto> aggregateByDoc(@Param("docUuid") String docUuid, @Param("limit") int limit);
+    List<KbEdgeDto> aggregateByDoc(@Param("docUuid") String docUuid, @Param("afterSource") String afterSource, @Param("afterTarget") String afterTarget, @Param("limit") int limit);
 
-    long countByDocUuid(@Param("docUuid") String docUuid);
+    long countDistinctByDoc(@Param("docUuid") String docUuid);
 }

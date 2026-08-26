@@ -87,6 +87,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/knowledge-base-manage/DocumentDetail.vue'),
   },
   {
+    path: '/kb-manage/:kbUuid/document/:docUuid/graph',
+    name: 'DocumentGraph',
+    component: () => import('@/views/knowledge-base-manage/DocumentGraph.vue'),
+  },
+  {
     path: '/workflow',
     component: WorkflowBaseLayout,
     name: 'WfIndex',

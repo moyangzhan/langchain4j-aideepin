@@ -47,22 +47,24 @@ function splitParamsChanged() {
 }
 
 function applyModelDefaults() {
-  if (!tmpKb.ingestModelName) {
+  if (!tmpKb.ingestModelId) {
     const firstEnableModel = appStore.llms.find((item: { enable: any }) => item.enable)
     if (firstEnableModel) {
-      tmpKb.ingestModelName = firstEnableModel.modelName
       tmpKb.ingestModelId = firstEnableModel.modelId
+      tmpKb.ingestModelName = firstEnableModel.modelName
     }
   } else {
-    tmpKb.ingestModelName = appStore.llms.find(item => item.modelName === tmpKb.ingestModelName)?.modelName || ''
+    // Edit echo resolves the name from the id; keep the server name when the model is no longer selectable
+    tmpKb.ingestModelName = appStore.llms.find(item => item.modelId === tmpKb.ingestModelId)?.modelName || tmpKb.ingestModelName
   }
   if (!tmpKb.ingestTokenEstimator)
     tmpKb.ingestTokenEstimator = TOKEN_ESTIMATOR[0].value
 }
 
-function onModelChange(modelName: string) {
-  tmpKb.ingestModelName = modelName
-  tmpKb.ingestModelId = appStore.llms.find(item => item.modelName === modelName)?.modelId || ''
+// NSelect option value is the modelId (see appStore.setLLMs); the callback receives it
+function onModelChange(modelId: string) {
+  tmpKb.ingestModelId = modelId
+  tmpKb.ingestModelName = appStore.llms.find(item => item.modelId === modelId)?.modelName || ''
 }
 
 function onTokenEstimatorChange(tokenEstimator: string) {
@@ -230,7 +232,7 @@ onMounted(async () => {
                 <div>{{ t('knowledgeBase.modelExtractTip') }}</div>
               </NTooltip>
             </div>
-            <NSelect :value="tmpKb.ingestModelName" :options="appStore.llms" :on-update:value="onModelChange" />
+            <NSelect :value="tmpKb.ingestModelId" :options="appStore.llms" :on-update:value="onModelChange" />
           </div>
         </NCard>
         <NCard style="margin-top: 12px" :title="t('knowledgeBase.docRecallSetting')" hoverable>

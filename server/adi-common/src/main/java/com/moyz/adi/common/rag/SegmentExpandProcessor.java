@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
  *       parent_child → 上卷父段内容；多个子块命中同一父段时去重合并（保最高分）
  *   → (可选 rerank) → 拼进 prompt
  * </pre>
- * 查不到关系行的命中直接丢弃（向量表 text 已置空，无回退来源）。
+ * Hits without a relational row are dropped (vector-store text is only a placeholder).
  * 只把保留下来的命中写入 embeddingToScore，避免悬空引用与命中统计。
  */
 @Slf4j
@@ -113,7 +113,7 @@ public class SegmentExpandProcessor implements RetrievedContentProcessor {
                 }
                 continue;
             }
-            // 查不到关系行（脏数据/未迁移）→ 丢弃；向量表 text 已置空，无回退来源
+            // No relational row (dirty data) → drop; vector-store text is only a placeholder
             log.warn("No relational segment row for embedding hit {}, dropped", embeddingId);
         }
         return contentReranker.rerank(query.text(), result);

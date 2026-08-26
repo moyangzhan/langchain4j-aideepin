@@ -103,6 +103,13 @@
         SELECT EXISTS(SELECT 1 FROM adi_index_task WHERE doc_uuid = #{docUuid} AND status = 'running')
     </select>
 
+    <!-- Unfinished (queued or executing) task presence: retry enqueues without touching the doc
+         status, so the queue wait still reads FAIL on the doc; the frontend uses this to tell
+         "queued/executing" apart from "finally failed" -->
+    <select id="hasUnfinishedByDoc" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM adi_index_task WHERE doc_uuid = #{docUuid} AND status IN ('pending', 'running'))
+    </select>
+
     <!-- Crash recovery: running rows whose heartbeat timed out are reset to pending for rerun -->
     <update id="resetStaleRunning">
         UPDATE adi_index_task
@@ -121,4 +128,18 @@
                   t.target_type, t.task_type, t.index_version, t.status, t.fail_reason, t.stop_flag,
                   t.start_time, t.heartbeat_time, t.create_time, t.update_time
     </select>
+<!-- Latest failed document-level task per task type: per-dimension failure reasons for the
+         detail page failure list (doc.fail_reason keeps only the most recent one) -->
+    <select id="listLatestFailedByDoc" resultType="com.moyz.adi.common.entity.IndexTask">
+        SELECT t.*
+        FROM adi_index_task t
+        JOIN (
+            SELECT task_type, MAX(update_time) AS max_time
+            FROM adi_index_task
+            WHERE doc_uuid = #{docUuid} AND target_type = 'document' AND status = 'failed'
+            GROUP BY task_type
+        ) latest ON t.task_type = latest.task_type AND t.update_time = latest.max_time
+        WHERE t.doc_uuid = #{docUuid} AND t.target_type = 'document' AND t.status = 'failed'
+    </select>
 </mapper>
+

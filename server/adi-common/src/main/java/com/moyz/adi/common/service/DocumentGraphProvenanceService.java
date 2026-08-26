@@ -83,23 +83,29 @@ public class DocumentGraphProvenanceService {
     }
 
     /**
-     * 文档图谱页聚合：顶点（实体名 + 全部贡献片段拼接的描述）
+     * Detail-page aggregation: vertices (entity name + descriptions concatenated from all contributing segments);
+     * a non-empty afterName loads incrementally in name order
      */
-    public List<KbVertexDto> aggregateVerticesByDoc(String docUuid, int limit) {
-        return vertexMapper.aggregateByDoc(docUuid, limit);
+    public List<KbVertexDto> aggregateVerticesByDoc(String docUuid, String afterName, int limit) {
+        return vertexMapper.aggregateByDoc(docUuid, afterName, limit);
     }
 
     /**
-     * 文档图谱页聚合：边（规范化端点对 + 片段拼接描述 + 强度求和）
+     * Detail-page aggregation: edges (normalized endpoint pair + concatenated description + summed weight);
+     * non-empty afterSource/afterTarget loads incrementally
      */
-    public List<KbEdgeDto> aggregateEdgesByDoc(String docUuid, int limit) {
-        return edgeMapper.aggregateByDoc(docUuid, limit);
+    public List<KbEdgeDto> aggregateEdgesByDoc(String docUuid, String afterSource, String afterTarget, int limit) {
+        return edgeMapper.aggregateByDoc(docUuid, afterSource, afterTarget, limit);
     }
 
     /**
-     * 该文档在账本中是否已有行（无行 = 存量文档，图谱页回退图库查询，懒迁移语义）
+     * Distinct element counts of the document graph (pagination progress display)
      */
-    public boolean existsByDocUuid(String docUuid) {
-        return vertexMapper.countByDocUuid(docUuid) > 0 || edgeMapper.countByDocUuid(docUuid) > 0;
+    public long countVerticesByDoc(String docUuid) {
+        return vertexMapper.countDistinctByDoc(docUuid);
+    }
+
+    public long countEdgesByDoc(String docUuid) {
+        return edgeMapper.countDistinctByDoc(docUuid);
     }
 }

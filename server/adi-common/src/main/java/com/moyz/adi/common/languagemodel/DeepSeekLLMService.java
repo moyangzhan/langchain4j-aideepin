@@ -47,7 +47,8 @@ public class DeepSeekLLMService extends OpenAiLLMService {
                 .modelName(aiModel.getName())
                 .temperature(properties.getTemperature())
                 .maxRetries(1)
-                .timeout(Duration.of(60, ChronoUnit.SECONDS))
+                // Sync calls wait for the full response; reasoning models easily exceed 60s
+                .timeout(Duration.of(300, ChronoUnit.SECONDS))
                 .apiKey(platform.getApiKey());
         if (Boolean.TRUE.equals(properties.getReturnThinking())) {
             builder.returnThinking(true);

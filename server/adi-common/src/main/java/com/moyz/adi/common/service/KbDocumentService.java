@@ -361,6 +361,8 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
             indexTaskService.enqueueDocument(doc.getKbUuid(), uuid, DOC_INDEX_TYPE_GRAPHICAL, user);
             enqueued = true;
         }
+        // DOING is set by the executor when it claims the task, not here; the frontend tells
+        // queued from finally failed via /document/indexProgress
         return enqueued;
     }
 

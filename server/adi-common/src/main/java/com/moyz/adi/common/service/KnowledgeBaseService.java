@@ -110,12 +110,20 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     private LLMCallRecordService llmCallRecordService;
 
     public KnowledgeBase saveOrUpdate(KbEditReq kbEditReq) {
+        boolean isEdit = null != kbEditReq.getId() && kbEditReq.getId() > 0;
+        if (null == kbEditReq.getIngestModelId() || kbEditReq.getIngestModelId() <= 0) {
+            // Editing requires an explicit model: silently substituting the first available
+            // one would mask caller bugs; only creation keeps the auto default
+            if (isEdit) {
+                throw new BaseException(A_PARAMS_ERROR);
+            }
+        }
         KnowledgeBase knowledgeBase = new KnowledgeBase();
         BeanUtils.copyProperties(kbEditReq, knowledgeBase, "id", "uuid", "ingestTokenizer", "ingestEmbeddingModel");
         if (null != kbEditReq.getIngestModelId() && kbEditReq.getIngestModelId() > 0) {
             knowledgeBase.setIngestModelName(aiModelService.getByIdOrThrow(kbEditReq.getIngestModelId()).getName());
         } else {
-            //没有指定抽取图谱知识时的LLM时，自动指定第一个可用的
+            // No model specified on creation: default to the first available one
             LLMContext.getFirstEnableAndFree().ifPresent(llmService -> {
                 knowledgeBase.setIngestModelName(llmService.getAiModel().getName());
                 knowledgeBase.setIngestModelId(llmService.getAiModel().getId());
@@ -124,7 +132,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         if (StringUtils.isNotBlank(kbEditReq.getIngestTokenEstimator()) && AdiConstant.TokenEstimator.ALL.contains(kbEditReq.getIngestTokenEstimator())) {
             knowledgeBase.setIngestTokenEstimator(kbEditReq.getIngestTokenEstimator());
         }
-        if (null == kbEditReq.getId() || kbEditReq.getId() < 1) {
+        if (!isEdit) {
             User user = ThreadContext.getCurrentUser();
             knowledgeBase.setUuid(UuidUtil.createShort());
             knowledgeBase.setOwnerId(user.getId());

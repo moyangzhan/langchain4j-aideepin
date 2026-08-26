@@ -40,18 +40,23 @@
         DELETE FROM adi_document_graph_vertex WHERE doc_uuid = #{docUuid}
     </delete>
 
-    <!-- 文档图谱页聚合：元素级描述 = 片段按行序换行拼接（与图库 desc + "\n" + desc 的合并行为等价） -->
+    <!-- Detail-page aggregation: per-element description = contributing segments joined by
+         newline in row order; name-ordered cursor pagination (afterName = last name of the
+         previous batch) -->
     <select id="aggregateByDoc" resultType="com.moyz.adi.common.dto.KbVertexDto">
         SELECT name AS name,
                string_agg(COALESCE(description, ''), chr(10) ORDER BY id) AS description
         FROM adi_document_graph_vertex
         WHERE doc_uuid = #{docUuid}
+        <if test="afterName != null and afterName != ''">
+            AND name &gt; #{afterName}
+        </if>
         GROUP BY name
         ORDER BY name
         LIMIT #{limit}
     </select>
 
-    <select id="countByDocUuid" resultType="long">
-        SELECT COUNT(*) FROM adi_document_graph_vertex WHERE doc_uuid = #{docUuid}
+    <select id="countDistinctByDoc" resultType="long">
+        SELECT COUNT(DISTINCT name) FROM adi_document_graph_vertex WHERE doc_uuid = #{docUuid}
     </select>
 </mapper>

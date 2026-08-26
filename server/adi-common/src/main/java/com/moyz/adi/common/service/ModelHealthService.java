@@ -79,12 +79,16 @@ public class ModelHealthService {
         AiModel aiModel = service.getAiModel();
         String modelName = aiModel.getName();
         boolean success;
+        boolean permanentFailure = false;
         String failReason = null;
         try {
             success = CompletableFuture.supplyAsync(service::performHealthCheck, mainExecutor)
                     .get(PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (Exception e) {
             success = false;
+            // Auth/model-disabled errors can never succeed on retry: mark immediately,
+            // same policy as recordFailure(Throwable) for real invocations
+            permanentFailure = isPermanentModelError(e);
             failReason = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
         }
 
@@ -93,6 +97,10 @@ public class ModelHealthService {
         if (success) {
             // 任何一次成功 → 立即恢复 HEALTHY
             log.info("Health check passed for model:{}", modelName);
+        } else if (permanentFailure) {
+            consecutiveFailures = FAILURE_THRESHOLD;
+            log.warn("Health check failed for model:{} (permanent auth/model error, marking UNHEALTHY), reason:{}",
+                    modelName, failReason);
         } else {
             consecutiveFailures = (previous != null ? previous.getConsecutiveFailures() : 0) + 1;
             log.warn("Health check failed for model:{} ({} of {}), reason:{}",

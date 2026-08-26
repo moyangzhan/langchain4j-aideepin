@@ -53,7 +53,9 @@ public class OpenAiLLMService extends AbstractLLMService {
                 .modelName(aiModel.getName())
                 .temperature(properties.getTemperature())
                 .maxRetries(1)
-                .timeout(Duration.of(60, ChronoUnit.SECONDS))
+                // Sync calls (graph extraction / QA generation) wait for the full response;
+                // reasoning models with large prompts easily exceed 60s
+                .timeout(Duration.of(300, ChronoUnit.SECONDS))
                 .apiKey(platform.getApiKey());
         if (StringUtils.isNotBlank(platform.getBaseUrl())) {
             builder.baseUrl(platform.getBaseUrl());

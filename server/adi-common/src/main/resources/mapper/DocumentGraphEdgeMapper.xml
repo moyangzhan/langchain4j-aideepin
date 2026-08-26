@@ -39,19 +39,25 @@
         DELETE FROM adi_document_graph_edge WHERE doc_uuid = #{docUuid}
     </delete>
 
-    <!-- 文档图谱页聚合：描述 = 片段拼接，权重 = 片段强度求和 -->
+    <!-- Detail-page aggregation: description = segments joined, weight = summed strength;
+         endpoint-pair lexicographic cursor pagination (row-value comparison matching ORDER BY) -->
     <select id="aggregateByDoc" resultType="com.moyz.adi.common.dto.KbEdgeDto">
         SELECT source_name AS sourceName, target_name AS targetName,
                string_agg(COALESCE(description, ''), chr(10) ORDER BY id) AS description,
                SUM(COALESCE(weight, 1.0)) AS weight
         FROM adi_document_graph_edge
         WHERE doc_uuid = #{docUuid}
+        <if test="afterSource != null and afterSource != ''">
+            AND (source_name, target_name) &gt; (#{afterSource}, #{afterTarget})
+        </if>
         GROUP BY source_name, target_name
         ORDER BY source_name, target_name
         LIMIT #{limit}
     </select>
 
-    <select id="countByDocUuid" resultType="long">
-        SELECT COUNT(*) FROM adi_document_graph_edge WHERE doc_uuid = #{docUuid}
+    <select id="countDistinctByDoc" resultType="long">
+        SELECT COUNT(*) FROM (
+            SELECT 1 FROM adi_document_graph_edge WHERE doc_uuid = #{docUuid} GROUP BY source_name, target_name
+        ) t
     </select>
 </mapper>

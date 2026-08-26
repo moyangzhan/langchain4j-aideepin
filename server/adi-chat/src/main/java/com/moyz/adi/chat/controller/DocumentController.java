@@ -2,6 +2,7 @@ package com.moyz.adi.chat.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.base.ThreadContext;
+import com.moyz.adi.common.dto.IndexFailureDto;
 import com.moyz.adi.common.dto.KbDocumentDto;
 import com.moyz.adi.common.dto.KbDocumentEditReq;
 import com.moyz.adi.common.dto.KbDocumentToggleStatusReq;
@@ -9,6 +10,7 @@ import com.moyz.adi.common.entity.KbDocument;
 import com.moyz.adi.common.enums.SegmentModeEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.service.DocumentQaService;
+import com.moyz.adi.common.service.IndexTaskService;
 import com.moyz.adi.common.service.KbDocumentService;
 import com.moyz.adi.common.service.KnowledgeBaseService;
 import jakarta.annotation.Resource;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_DATA_NOT_FOUND;
 import static com.moyz.adi.common.enums.ErrorEnum.A_PARAMS_ERROR;
@@ -39,6 +42,9 @@ public class DocumentController {
 
     @Resource
     private DocumentQaService documentQaService;
+
+    @Resource
+    private IndexTaskService indexTaskService;
 
     @PostMapping("/saveOrUpdate")
     public KbDocument saveOrUpdate(@RequestBody KbDocumentEditReq itemEditReq) {
@@ -72,6 +78,26 @@ public class DocumentController {
     @PostMapping("/retryIndex/{uuid}")
     public boolean retryIndex(@PathVariable String uuid) {
         return kbDocumentService.retryIndex(uuid);
+    }
+
+    /**
+     * Latest failure per index dimension for the detail page failure list
+     * (the doc row keeps only one fail_reason)
+     */
+    @GetMapping("/indexFailures/{uuid}")
+    public List<IndexFailureDto> indexFailures(@PathVariable String uuid) {
+        kbDocumentService.checkReadPrivilege(uuid);
+        return indexTaskService.listDocumentFailures(uuid);
+    }
+
+    /**
+     * Whether the doc has a queued or running index task; the doc status stays FAIL
+     * until the executor claims the task, so this distinguishes queued from finally failed
+     */
+    @GetMapping("/indexProgress/{uuid}")
+    public boolean indexProgress(@PathVariable String uuid) {
+        kbDocumentService.checkReadPrivilege(uuid);
+        return indexTaskService.hasUnfinishedByDoc(uuid);
     }
 
     /**

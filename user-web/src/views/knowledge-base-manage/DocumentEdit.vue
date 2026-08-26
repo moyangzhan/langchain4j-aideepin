@@ -15,7 +15,7 @@ const { kbUuid, docUuid } = route.params as { kbUuid: string; docUuid?: string }
 const isEdit = computed(() => !!docUuid)
 
 const curKb = reactive<KnowledgeBase.Info>(knowledgeBaseEmptyInfo())
-const tmpItem = reactive<KnowledgeBase.Item>(knowledgeBaseEmptyItem())
+const tmpItem = reactive<KnowledgeBase.Document>(knowledgeBaseEmptyItem())
 const submitting = ref<boolean>(false)
 const loading = ref<boolean>(false)
 
@@ -70,7 +70,7 @@ async function saveOrUpdate() {
 async function doSave() {
   try {
     submitting.value = true
-    await api.knowledgeBaseItemSaveOrUpdate<KnowledgeBase.Item>(tmpItem)
+    await api.knowledgeBaseItemSaveOrUpdate<KnowledgeBase.Document>(tmpItem)
     // qa 模式编辑正文不触发重索引（问答对与 remark 无关），成功提示按模式区分
     ms.success(tmpItem.segmentMode === 'qa' ? t('common.saveSuccess') : t('knowledgeBase.savedAndReindexing'))
     router.back()
@@ -87,7 +87,7 @@ onMounted(async () => {
     const kbResp = await api.knowledgeBaseInfo<KnowledgeBase.Info>(kbUuid)
     Object.assign(curKb, kbResp.data)
     if (isEdit.value && docUuid) {
-      const resp = await api.knowledgeBaseItemInfo<KnowledgeBase.Item>(docUuid)
+      const resp = await api.knowledgeBaseItemInfo<KnowledgeBase.Document>(docUuid)
       Object.assign(tmpItem, resp.data)
       if (!tmpItem.segmentMode)
         tmpItem.segmentMode = 'text'

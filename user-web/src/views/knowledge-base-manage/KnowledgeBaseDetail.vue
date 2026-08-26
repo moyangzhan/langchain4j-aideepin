@@ -4,7 +4,6 @@ import { NAlert, NBreadcrumb, NBreadcrumbItem, NButton, NCard, NCheckbox, NCheck
 import { ArchiveOutline } from '@vicons/ionicons5'
 import { useRoute, useRouter } from 'vue-router'
 import type { UploadFileInfo, UploadInst } from 'naive-ui'
-import DocumentGraph from './DocumentGraph.vue'
 import { createColumns } from './documentColumns'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
 import { useAuthStore } from '@/store'
@@ -19,15 +18,12 @@ const router = useRouter()
 const { kbUuid: curKbUuid } = route.params as { kbUuid: string; kbId: string }
 console.log('knowledge-base uuid', curKbUuid)
 
-const showGraphModal = ref<boolean>(false)
-const docUuidForGraph = ref<string>('')
-
 const modalMainHeight = ref<number>(500)
 const tableMaxHeight = ref<number>(500)
 const loading = ref<boolean>(false)
 const showUploadModal = ref<boolean>(false)
 const showIndexModal = ref<boolean>(false)
-const itemList = ref<KnowledgeBase.Item[]>([])
+const itemList = ref<KnowledgeBase.Document[]>([])
 const indexAfterUpload = ref(false)
 const indexTypeSelected = ref<string[]>(['embedding'])
 const uploadRef = ref<UploadInst | null>(null)
@@ -45,7 +41,7 @@ const { isMobile } = useBasicLayout()
 const authStore = useAuthStore()
 const token = ref<string>(authStore.token)
 const checkedItemRowKeys = ref<string[]>([])
-const checkedItems = ref<KnowledgeBase.Item[]>([])
+const checkedItems = ref<KnowledgeBase.Document[]>([])
 const curKnowledgeBase: KnowledgeBase.Info = reactive<KnowledgeBase.Info>(knowledgeBaseEmptyInfo())
 
 // 文件预览
@@ -69,7 +65,7 @@ const openFileInNewTab = function (url: string) {
   x.send()
 }
 
-const showFileContent = (selected: KnowledgeBase.Item = knowledgeBaseEmptyItem()) => {
+const showFileContent = (selected: KnowledgeBase.Document = knowledgeBaseEmptyItem()) => {
   // window.open(`/api${selected.sourceFileUrl}?token=${token.value}`, '_blank')
   previewFileContent.value = ''
   previewFileName.value = ''
@@ -133,20 +129,19 @@ function onQaUploadFinish({ event }: { event?: ProgressEvent }) {
   }
 }
 
-const viewSegments = (row: KnowledgeBase.Item) => {
+const viewSegments = (row: KnowledgeBase.Document) => {
   router.push({ name: 'DocumentDetail', params: { kbUuid: curKbUuid, docUuid: row.uuid } })
 }
 
-const showGraph = (selected: KnowledgeBase.Item = knowledgeBaseEmptyItem()) => {
-  showGraphModal.value = true
-  docUuidForGraph.value = selected.uuid
+const showGraph = (row: KnowledgeBase.Document) => {
+  router.push({ name: 'DocumentGraph', params: { kbUuid: curKbUuid, docUuid: row.uuid } })
 }
 
-const editItem = (row: KnowledgeBase.Item) => {
+const editItem = (row: KnowledgeBase.Document) => {
   router.push({ name: 'DocumentEdit', params: { kbUuid: curKbUuid, docUuid: row.uuid } })
 }
 
-function rowKey(row: KnowledgeBase.Item) {
+function rowKey(row: KnowledgeBase.Document) {
   return row.uuid
 }
 
@@ -199,7 +194,6 @@ async function textIndexing() {
     ms.error(error.message ?? 'error')
   } finally {
     loading.value = false
-    docUuidForGraph.value = ''
   }
 }
 
@@ -222,9 +216,9 @@ function onHandleCheckedRowKeys(keys: Array<string | number>, rows: object[], me
     return `${key}`
   })
   // 跨页面选择时，rows 中的非当前页的数据为 null，所以将 null 过滤掉，并将非当前页的值填充
-  const itemMap = new Map<string, KnowledgeBase.Item>()
-  const tmpItems = [] as KnowledgeBase.Item[]
-  tmpItems.push(...(rows as KnowledgeBase.Item[]))
+  const itemMap = new Map<string, KnowledgeBase.Document>()
+  const tmpItems = [] as KnowledgeBase.Document[]
+  tmpItems.push(...(rows as KnowledgeBase.Document[]))
   tmpItems.push(...checkedItems.value)
   tmpItems.forEach((item) => {
     if (item)
@@ -235,7 +229,7 @@ function onHandleCheckedRowKeys(keys: Array<string | number>, rows: object[], me
     .map(([, value]) => value)
 }
 
-function removeCheckedItem(item: KnowledgeBase.Item) {
+function removeCheckedItem(item: KnowledgeBase.Document) {
   checkedItemRowKeys.value = checkedItemRowKeys.value.filter((key) => {
     return key !== item.uuid
   })
@@ -313,7 +307,7 @@ function setResp(currentPage: number, data: PageResponse) {
   paginationReactive.itemCount = data.total
 }
 
-function deleteKbItem(row: KnowledgeBase.Item) {
+function deleteKbItem(row: KnowledgeBase.Document) {
   dialog.warning({
     title: t('knowledgeBase.deleteConfirmTitle'),
     content: t('common.deleteNotRecover'),
@@ -328,7 +322,7 @@ function deleteKbItem(row: KnowledgeBase.Item) {
   })
 }
 
-function toggleStatus(row: KnowledgeBase.Item, isEnabled: boolean) {
+function toggleStatus(row: KnowledgeBase.Document, isEnabled: boolean) {
   const action = isEnabled ? t('knowledgeBase.enable') : t('knowledgeBase.disable')
   dialog.warning({
     title: t('knowledgeBase.deleteConfirmTitle'),
@@ -508,9 +502,6 @@ watch(
     </NSpace>
   </NModal>
 
-  <NModal v-model:show="showGraphModal" style="width: 90%;" display-directive="show" preset="card" :title="t('knowledgeBase.graphLabel')">
-    <DocumentGraph :doc-uuid="docUuidForGraph" />
-  </NModal>
   <NModal v-model:show="showIndexModal" style="width: 90%; max-width:550px" preset="card" :title="t('knowledgeBase.selectIndexType')">
     <NFlex vertical>
       <NAlert :title="t('common.tip')" type="info">

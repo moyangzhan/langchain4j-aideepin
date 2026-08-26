@@ -33,28 +33,8 @@ public class KnowledgeBaseGraphService {
                 .build());
     }
 
-    public List<GraphVertex> listVerticesByKbItemUuid(String kbItemUuid, long maxId, int limit) {
-        Filter filter = new IsEqualTo(AdiConstant.MetadataKey.KB_ITEM_UUID, kbItemUuid);
-        return kbGraphStore.searchVertices(
-                GraphVertexSearch.builder()
-                        .limit(limit)
-                        .maxId(maxId)
-                        .metadataFilter(filter)
-                        .build()
-        );
-    }
-
     public List<Triple<GraphVertex, GraphEdge, GraphVertex>> listEdgesByKbUuid(String kbUuid, long maxId, int limit) {
         Filter filter = new IsEqualTo(AdiConstant.MetadataKey.KB_UUID, kbUuid);
-        return kbGraphStore.searchEdges(GraphEdgeSearch.builder()
-                .edge(GraphSearchCondition.builder().metadataFilter(filter).build())
-                .maxId(maxId)
-                .limit(limit)
-                .build());
-    }
-
-    public List<Triple<GraphVertex, GraphEdge, GraphVertex>> listEdgesByKbItemUuid(String kbItemUuid, long maxId, int limit) {
-        Filter filter = new IsEqualTo(AdiConstant.MetadataKey.KB_ITEM_UUID, kbItemUuid);
         return kbGraphStore.searchEdges(GraphEdgeSearch.builder()
                 .edge(GraphSearchCondition.builder().metadataFilter(filter).build())
                 .maxId(maxId)
