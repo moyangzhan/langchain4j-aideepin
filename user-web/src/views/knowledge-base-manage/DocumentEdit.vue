@@ -1,6 +1,7 @@
 <script setup lang='ts'>
-import { computed, onMounted, reactive, ref } from 'vue'
-import { NAlert, NBreadcrumb, NBreadcrumbItem, NButton, NCard, NCheckbox, NInput, NInputNumber, NSelect, NSpace, NSpin, useDialog, useMessage } from 'naive-ui'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { NAlert, NBreadcrumb, NBreadcrumbItem, NButton, NCard, NCheckbox, NInput, NInputNumber, NSelect, NSpace, NSpin, NUpload, useDialog, useMessage } from 'naive-ui'
+import type { UploadFileInfo } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 import { knowledgeBaseEmptyInfo, knowledgeBaseEmptyItem } from '@/utils/functions'
 import { t } from '@/locales'
@@ -33,11 +34,25 @@ const segmentModeOptions = [
 const originalSegmentMode = ref<string>('')
 const segmentModeChanged = computed(() => isEdit.value && !!originalSegmentMode.value && tmpItem.segmentMode !== originalSegmentMode.value)
 
+// A new Q&A document may carry a pair file (xlsx/csv) submitted with the form in one
+// multipart request: parsed, imported and vectorized synchronously on save
+const qaFileList = ref<UploadFileInfo[]>([])
+const hasQaFile = computed(() => qaFileList.value.length > 0 && !!qaFileList.value[0].file)
+// The pair file and AI auto-generation are mutually exclusive: picking a file unchecks and
+// disables the generate option (re-enabled after the file is removed)
+watch(hasQaFile, (val) => {
+  if (val)
+    tmpItem.autoGenerateQa = false
+})
+
 // Switching to qa mode defaults auto-generation on; switching away clears it.
 // Loading an existing qa doc keeps the checkbox off (fill-later is opt-in).
 function onSegmentModeChange(val: string) {
   tmpItem.segmentMode = val
   tmpItem.autoGenerateQa = val === 'qa'
+  // Leaving qa mode drops the picked pair file
+  if (val !== 'qa')
+    qaFileList.value = []
 }
 
 const pageTitle = computed(() => {
@@ -70,10 +85,18 @@ async function saveOrUpdate() {
 async function doSave() {
   try {
     submitting.value = true
-    await api.knowledgeBaseItemSaveOrUpdate<KnowledgeBase.Document>(tmpItem)
+    // With a pair file the save goes through the multipart endpoint
+    const qaFile = hasQaFile.value ? qaFileList.value[0].file : null
+    const resp = qaFile
+      ? await api.knowledgeBaseItemSaveOrUpdateWithFile<KnowledgeBase.Document>(tmpItem, qaFile)
+      : await api.knowledgeBaseItemSaveOrUpdate<KnowledgeBase.Document>(tmpItem)
     // qa 模式编辑正文不触发重索引（问答对与 remark 无关），成功提示按模式区分
     ms.success(tmpItem.segmentMode === 'qa' ? t('common.saveSuccess') : t('knowledgeBase.savedAndReindexing'))
-    router.back()
+    // A newly created Q&A doc opens its detail page; edits keep the back navigation
+    if (!isEdit.value && tmpItem.segmentMode === 'qa' && resp.data?.uuid)
+      router.replace({ name: 'DocumentDetail', params: { kbUuid, docUuid: resp.data.uuid } })
+    else
+      router.back()
   } catch (error: any) {
     ms.error(error.message ?? 'error')
   } finally {
@@ -151,11 +174,24 @@ onMounted(async () => {
             <NCheckbox
               v-if="tmpItem.segmentMode === 'qa'"
               v-model:checked="tmpItem.autoGenerateQa"
+              :disabled="hasQaFile"
               style="margin-top: 4px"
             >
               {{ hasQaPairs ? t('knowledgeBase.regenerateQaLabel') : t('knowledgeBase.autoGenerateQaLabel') }}
             </NCheckbox>
           </NAlert>
+          <!-- New Q&A doc: optional pair-file import, mutually exclusive with AI generation -->
+          <template v-if="tmpItem.segmentMode === 'qa' && !isEdit">
+            {{ t('knowledgeBase.importQa') }}
+            <NUpload v-model:file-list="qaFileList" :max="1" accept=".xlsx,.xls,.csv" :default-upload="false">
+              <NButton size="small" ghost type="primary">
+                {{ t('knowledgeBase.selectQaFile') }}
+              </NButton>
+            </NUpload>
+            <span style="font-size: 12px; opacity: 0.65;">
+              {{ t('knowledgeBase.importQaFileFormTip') }}
+            </span>
+          </template>
           <template v-if="tmpItem.segmentMode === 'parent_child'">
             {{ t('knowledgeBase.childMaxChunkSize') }}
             <NInputNumber v-model:value="tmpItem.childMaxChunkSize" :min="50" />

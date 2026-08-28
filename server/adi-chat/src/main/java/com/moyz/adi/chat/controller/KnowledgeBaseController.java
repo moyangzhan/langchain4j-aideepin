@@ -8,6 +8,7 @@ import com.moyz.adi.common.dto.KbDocumentIndexBatchReq;
 import com.moyz.adi.common.dto.KbSearchReq;
 import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.entity.KnowledgeBase;
+import com.moyz.adi.common.enums.SegmentModeEnum;
 import com.moyz.adi.common.service.KnowledgeBaseService;
 import jakarta.annotation.Resource;
 import jakarta.validation.constraints.Min;
@@ -48,19 +49,23 @@ public class KnowledgeBaseController {
     /**
 * Upload, parse and index documents
      * 上传、解析并索引文档
-     *
+*
 * @param uuid             知识库uuid / Knowledge base UUID
 * @param indexAfterUpload 是否上传完接着索引文档 / Whether to index documents after upload
 * @param doc              二进制文件 / Binary file
-     * @return 上传成功的文件信息
+* @param segmentMode      segment mode (text/qa/parent_child); qa parses the file as Q&A pair data and vectorizes immediately
+* @param childMaxChunkSize child chunk max token size, used by parent-child mode only
+* @return the uploaded file info
      */
     @PostMapping(path = "/upload/{uuid}", headers = "content-type=multipart/form-data", produces = MediaType.APPLICATION_JSON_VALUE)
     public AdiFile upload(@PathVariable String uuid,
                           @RequestParam(value = "indexAfterUpload", defaultValue = "true") Boolean indexAfterUpload,
                           @RequestParam(defaultValue = "") String indexTypes,
+                          @RequestParam(value = "segmentMode", required = false) SegmentModeEnum segmentMode,
+                          @RequestParam(value = "childMaxChunkSize", required = false) Integer childMaxChunkSize,
                           @RequestParam("file") MultipartFile doc) {
         List<String> indexTypeList = Arrays.stream(indexTypes.split(",")).map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.toList());
-        return knowledgeBaseService.uploadDoc(uuid, indexAfterUpload, doc, indexTypeList);
+        return knowledgeBaseService.uploadDoc(uuid, indexAfterUpload, doc, indexTypeList, segmentMode, childMaxChunkSize);
     }
 
     /**

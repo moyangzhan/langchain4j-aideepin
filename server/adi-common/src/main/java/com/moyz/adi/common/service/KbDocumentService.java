@@ -33,6 +33,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
@@ -127,6 +128,33 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
         if (null != saved && saved.getSegmentMode() == SegmentModeEnum.QA
                 && Boolean.TRUE.equals(itemEditReq.getAutoGenerateQa())) {
             documentQaService.autoGenerateQa(ThreadContext.getCurrentUser(), saved);
+        }
+        return saved;
+    }
+
+    /**
+     * Save the form together with an optional Q&A file: the file is parsed and validated first
+     * (a bad file aborts before anything is persisted); file and AI generation are mutually
+     * exclusive, the generate flag is forced off when a file is present; after the document is
+     * saved the pairs are imported and vectorized synchronously
+     */
+    public KbDocument saveOrUpdateWithQaFile(KbDocumentEditReq itemEditReq, MultipartFile qaFile) {
+        boolean hasFile = null != qaFile && !qaFile.isEmpty();
+        List<DocumentQaService.QaPair> pairs = null;
+        if (hasFile) {
+            if (SegmentModeEnum.QA != itemEditReq.getSegmentMode()) {
+                throw new BaseException(A_PARAMS_ERROR);
+            }
+            String fileName = qaFile.getOriginalFilename();
+            pairs = documentQaService.parseQaFile(fileName == null || fileName.isBlank() ? "qa_import" : fileName, qaFile);
+            if (pairs.isEmpty()) {
+                throw new BaseException(A_PARAMS_ERROR);
+            }
+            itemEditReq.setAutoGenerateQa(false);
+        }
+        KbDocument saved = saveOrUpdate(itemEditReq);
+        if (hasFile && null != saved) {
+            documentQaService.importQaPairs(saved, pairs);
         }
         return saved;
     }

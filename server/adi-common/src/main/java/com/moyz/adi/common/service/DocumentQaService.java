@@ -215,12 +215,25 @@ public class DocumentQaService {
     }
 
     /**
-     * Import QA pairs into an existing qa document (append semantics): mutually exclusive with
-     * generation / running tasks on the same document; identical answers join existing segments
-     * with question-text dedup, then pending questions are vectorized and the status is finalized
-     * conditionally on the version (clearing the failure reason)
+     * Import QA pairs from a file into an existing qa document (append semantics); see {@link #importQaPairs}
      */
     public void importQaToDocument(KbDocument doc, MultipartFile file) {
+        String fileName = file.getOriginalFilename();
+        List<QaPair> pairs = parseQaFile(fileName == null || fileName.isBlank() ? "qa_import" : fileName, file);
+        if (pairs.isEmpty()) {
+            throw new BaseException(A_PARAMS_ERROR);
+        }
+        importQaPairs(doc, pairs);
+    }
+
+    /**
+     * Import already-parsed QA pairs into an existing qa document (append semantics): mutually exclusive with
+     * generation / running tasks on the same document; identical answers join existing segments
+     * with question-text dedup, then pending questions are vectorized and the status is finalized
+     * conditionally on the version (clearing the failure reason) — shared by the file append-import
+     * and the create-with-file save flow
+     */
+    public void importQaPairs(KbDocument doc, List<QaPair> pairs) {
         if (EmbeddingStatusEnum.DOING == doc.getEmbeddingStatus()
                 || GraphicalStatusEnum.DOING == doc.getGraphicalStatus()
                 || indexTaskService.hasRunningByDoc(doc.getUuid())) {
@@ -233,11 +246,6 @@ public class DocumentQaService {
             throw new BaseException(A_DATA_NOT_FOUND);
         }
         int versionSnapshot = doc.getIndexVersion() == null ? 0 : doc.getIndexVersion();
-        String fileName = file.getOriginalFilename();
-        List<QaPair> pairs = parseQaFile(fileName == null || fileName.isBlank() ? "qa_import" : fileName, file);
-        if (pairs.isEmpty()) {
-            throw new BaseException(A_PARAMS_ERROR);
-        }
         try {
             saveQaPairs(kb, doc, pairs, AdiConstant.SegmentSource.DOC);
             segmentIndexService.vectorizePendingQuestions(kb, doc);
@@ -245,16 +253,46 @@ public class DocumentQaService {
             // Finalize even when vectorization fails: the question rows are already persisted, and
             // a status stuck at its old value (e.g. DONE) would hide "new questions have no vector".
             // Version-conditional FAIL with the import: prefix, same convention as qa_generate/vectorize/graph
-            ChainWrappers.lambdaUpdateChain(kbDocumentService.getBaseMapper())
-                    .eq(KbDocument::getId, doc.getId())
-                    .eq(KbDocument::getIndexVersion, versionSnapshot)
-                    .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.FAIL)
-                    .set(KbDocument::getEmbeddingStatusChangeTime, java.time.LocalDateTime.now())
-                    .set(KbDocument::getFailReason, StringUtils.abbreviate(
-                            "import: " + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()), 500))
-                    .update();
+            markEmbeddingFailed(doc, versionSnapshot,
+                    e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
             throw e;
         }
+        markEmbeddingDone(doc, versionSnapshot);
+    }
+
+    /**
+     * Vectorize a just-created qa document's pending questions and finalize its embedding
+     * status (no user-level indexing guard); on failure the document is marked FAIL with
+     * an "import: " reason and the error propagates
+     */
+    public void vectorizePendingQaDoc(KnowledgeBase kb, KbDocument doc) {
+        int versionSnapshot = doc.getIndexVersion() == null ? 0 : doc.getIndexVersion();
+        ChainWrappers.lambdaUpdateChain(kbDocumentService.getBaseMapper())
+                .eq(KbDocument::getId, doc.getId())
+                .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
+                .set(KbDocument::getEmbeddingStatusChangeTime, java.time.LocalDateTime.now())
+                .update();
+        try {
+            segmentIndexService.vectorizePendingQuestions(kb, doc);
+        } catch (Exception e) {
+            markEmbeddingFailed(doc, versionSnapshot,
+                    e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+            throw e;
+        }
+        markEmbeddingDone(doc, versionSnapshot);
+    }
+
+    private void markEmbeddingFailed(KbDocument doc, int versionSnapshot, String reason) {
+        ChainWrappers.lambdaUpdateChain(kbDocumentService.getBaseMapper())
+                .eq(KbDocument::getId, doc.getId())
+                .eq(KbDocument::getIndexVersion, versionSnapshot)
+                .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.FAIL)
+                .set(KbDocument::getEmbeddingStatusChangeTime, java.time.LocalDateTime.now())
+                .set(KbDocument::getFailReason, StringUtils.abbreviate("import: " + reason, 500))
+                .update();
+    }
+
+    private void markEmbeddingDone(KbDocument doc, int versionSnapshot) {
         ChainWrappers.lambdaUpdateChain(kbDocumentService.getBaseMapper())
                 .eq(KbDocument::getId, doc.getId())
                 .eq(KbDocument::getIndexVersion, versionSnapshot)
@@ -437,7 +475,7 @@ public class DocumentQaService {
      * Parse the QA import file (Dify format): xlsx reads the first two columns; csv splits on
      * commas (quoted fields supported)
      */
-    private List<QaPair> parseQaFile(String fileName, MultipartFile file) {
+    List<QaPair> parseQaFile(String fileName, MultipartFile file) {
         String lower = fileName == null ? "" : fileName.toLowerCase();
         try {
             List<QaPair> pairs;

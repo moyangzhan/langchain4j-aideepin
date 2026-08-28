@@ -147,6 +147,19 @@ public class IndexTaskService {
         task.setIndexVersion(doc.getIndexVersion() == null ? 0 : doc.getIndexVersion());
         indexTaskMapper.supersede(task);
         indexTaskMapper.enqueue(task);
+        // an empty qa doc has nothing to index and keeps its current status
+        boolean emptyQaDoc = SegmentModeEnum.QA == doc.getSegmentMode()
+                && documentSegmentService.listByDocUuid(doc.getUuid()).isEmpty();
+        if (!emptyQaDoc) {
+            boolean embedding = DOC_INDEX_TYPE_EMBEDDING.equals(taskType);
+            ChainWrappers.lambdaUpdateChain(kbDocumentMapper)
+                    .eq(KbDocument::getId, doc.getId())
+                    .set(embedding, KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
+                    .set(embedding, KbDocument::getEmbeddingStatusChangeTime, java.time.LocalDateTime.now())
+                    .set(!embedding, KbDocument::getGraphicalStatus, GraphicalStatusEnum.DOING)
+                    .set(!embedding, KbDocument::getGraphicalStatusChangeTime, java.time.LocalDateTime.now())
+                    .update();
+        }
         self.dispatch();
     }
 

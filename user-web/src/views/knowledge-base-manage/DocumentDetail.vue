@@ -807,7 +807,7 @@ onUnmounted(() => {
       </template>
     </NModal>
 
-    <NModal v-model:show="showQaImportModal" style="width: 60%;" preset="card" :title="t('knowledgeBase.importQa')">
+    <NModal v-model:show="showQaImportModal" style="width: 60%;" preset="card" :title="t('knowledgeBase.importQaTo', { name: curDoc.title })">
       <NSpace vertical>
         <NP>{{ t('knowledgeBase.importQaTip') }}</NP>
         <NUpload

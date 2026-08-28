@@ -30,6 +30,8 @@ public class ResponseWrapper implements ResponseBodyAdvice<Object> {
             return JsonUtil.toJson(new BaseResponse<>(true, str));
         } else if (result instanceof org.springframework.core.io.Resource) {
             return result;
+        } else if (result instanceof byte[]) {
+            return result;
         }
         return new BaseResponse<>(true, result);
     }

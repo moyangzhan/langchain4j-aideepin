@@ -51,6 +51,18 @@ public class DocumentController {
         return kbDocumentService.saveOrUpdate(itemEditReq);
     }
 
+    /**
+     * Save the form together with an optional Q&A file (multipart: form fields + file part):
+     * the file is parsed and validated first, then the document is created/updated, the pairs
+     * imported and vectorized synchronously; mutually exclusive with post-save AI generation
+     * (the generate flag is ignored when a file is present)
+     */
+    @PostMapping("/saveOrUpdateWithFile")
+    public KbDocument saveOrUpdateWithFile(KbDocumentEditReq itemEditReq,
+                                           @RequestParam(value = "file", required = false) MultipartFile file) {
+        return kbDocumentService.saveOrUpdateWithQaFile(itemEditReq, file);
+    }
+
     @GetMapping("/search")
     public Page<KbDocumentDto> search(String kbUuid, String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
         knowledgeBaseService.checkReadPrivilege(kbUuid);
@@ -91,8 +103,8 @@ public class DocumentController {
     }
 
     /**
-     * Whether the doc has a queued or running index task; the doc status stays FAIL
-     * until the executor claims the task, so this distinguishes queued from finally failed
+     * Whether the doc has a queued or running index task (a dimension is marked DOING at
+     * enqueue, so this distinguishes still-working from finally failed)
      */
     @GetMapping("/indexProgress/{uuid}")
     public boolean indexProgress(@PathVariable String uuid) {

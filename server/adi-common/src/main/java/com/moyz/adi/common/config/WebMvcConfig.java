@@ -1,9 +1,11 @@
 package com.moyz.adi.common.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.moyz.adi.common.enums.SegmentModeEnum;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.format.FormatterRegistry;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -28,6 +30,21 @@ public class WebMvcConfig implements WebMvcConfigurer {
         converters.add(new StringHttpMessageConverter());
         converters.add(new MappingJackson2HttpMessageConverter(objectMapper));
         converters.add(new ByteArrayHttpMessageConverter());
+    }
+
+    /**
+     * Binds segmentMode query params / form fields by enum value, case-insensitively
+     * (qa/text/parent_child)
+     */
+    @Override
+    public void addFormatters(FormatterRegistry registry) {
+        registry.addConverter(String.class, SegmentModeEnum.class, source -> {
+            SegmentModeEnum mode = SegmentModeEnum.fromValue(source);
+            if (mode == null) {
+                throw new IllegalArgumentException("Invalid segmentMode: " + source);
+            }
+            return mode;
+        });
     }
 
     @Override

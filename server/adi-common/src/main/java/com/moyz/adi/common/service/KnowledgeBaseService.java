@@ -55,6 +55,7 @@ import java.text.MessageFormat;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE;
@@ -186,7 +187,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 .orElseThrow(() -> new BaseException(A_DATA_NOT_FOUND));
         for (MultipartFile doc : docs) {
             try {
-                result.add(uploadDoc(knowledgeBase, doc, embedding, indexTypes));
+                result.add(uploadDoc(knowledgeBase, doc, embedding, indexTypes, SegmentModeEnum.TEXT, null));
             } catch (Exception e) {
                 log.warn("uploadDocs fail,fileName:{}", doc.getOriginalFilename(), e);
             }
@@ -194,18 +195,42 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         return result;
     }
 
-    public AdiFile uploadDoc(String kbUuid, Boolean indexAfterUpload, MultipartFile doc, List<String> indexTypes) {
+    /**
+     * @param segmentMode       segment mode; qa parses the file as Q&A pair data (Dify-format xlsx/csv),
+     *                          one Q&A document per file
+     * @param childMaxChunkSize child chunk max token size, used by parent-child mode only
+     */
+    public AdiFile uploadDoc(String kbUuid, Boolean indexAfterUpload, MultipartFile doc, List<String> indexTypes,
+                             SegmentModeEnum segmentMode, Integer childMaxChunkSize) {
+        checkWritePrivilege(null, kbUuid);
         KnowledgeBase knowledgeBase = ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(KnowledgeBase::getUuid, kbUuid)
                 .eq(KnowledgeBase::getIsDeleted, false)
                 .oneOpt()
                 .orElseThrow(() -> new BaseException(A_DATA_NOT_FOUND));
-        return uploadDoc(knowledgeBase, doc, indexAfterUpload, indexTypes);
+        return uploadDoc(knowledgeBase, doc, indexAfterUpload, indexTypes, segmentMode, childMaxChunkSize);
     }
 
-    private AdiFile uploadDoc(KnowledgeBase knowledgeBase, MultipartFile doc, Boolean indexAfterUpload, List<String> indexTypes) {
+    private AdiFile uploadDoc(KnowledgeBase knowledgeBase, MultipartFile doc, Boolean indexAfterUpload, List<String> indexTypes,
+                              SegmentModeEnum segmentMode, Integer childMaxChunkSize) {
         try {
             String fileName = doc.getOriginalFilename();
+            // Q&A mode: the file is the pair data; no source file record is kept (raw Q/A
+            // text goes into remark) and questions are vectorized synchronously
+            if (SegmentModeEnum.QA == segmentMode) {
+                KbDocument qaDoc = documentQaService.importQa(knowledgeBase,
+                        fileName == null || fileName.isBlank() ? "qa_import" : fileName, doc);
+                // user-level in-flight key held for the duration of the synchronous vectorization
+                String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
+                stringRedisTemplate.opsForValue().set(userIndexKey, "0", 10, TimeUnit.MINUTES);
+                try {
+                    documentQaService.vectorizePendingQaDoc(knowledgeBase, qaDoc);
+                } finally {
+                    stringRedisTemplate.delete(userIndexKey);
+                }
+                stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, knowledgeBase.getUuid());
+                return null;
+            }
             AdiFile adiFile = fileService.saveFile(doc, false);
 
             //解析文档
@@ -228,16 +253,24 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             knowledgeBaseItem.setTitle(fileName);
             knowledgeBaseItem.setBrief(StringUtils.substring(content, 0, 200));
             knowledgeBaseItem.setRemark(content);
-            // 分段模式为文档级，普通文件上传默认 text；QA 模式文档由问答导入/生成流程创建
-            knowledgeBaseItem.setSegmentMode(SegmentModeEnum.TEXT);
+            // Segment mode is document-level, chosen by the upload entry; defaults to text
+            knowledgeBaseItem.setSegmentMode(null == segmentMode ? SegmentModeEnum.TEXT : segmentMode);
+            if (null != childMaxChunkSize) {
+                knowledgeBaseItem.setChildMaxChunkSize(childMaxChunkSize);
+            }
             boolean success = kbDocumentService.save(knowledgeBaseItem);
             if (success && Boolean.TRUE.equals(indexAfterUpload)) {
-                indexItems(List.of(uuid), indexTypes);
+                // default index type is embedding; empty types would enqueue nothing
+                List<String> types = indexTypes.isEmpty() ? List.of(AdiConstant.DOC_INDEX_TYPE_EMBEDDING) : indexTypes;
+                kbDocumentService.checkAndIndexing(knowledgeBase, List.of(uuid), types);
             }
 
             //Replace file path with url
             adiFile.setPath(FileOperatorContext.getFileUrl(adiFile));
             return adiFile;
+        } catch (BaseException e) {
+            // BaseException carries a user-readable message; rethrow as-is
+            throw e;
         } catch (Exception e) {
             log.error("upload error", e);
             throw new BaseException(A_UPLOAD_FAIL);

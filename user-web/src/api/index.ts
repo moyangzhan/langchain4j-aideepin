@@ -519,6 +519,41 @@ function knowledgeBaseItemSaveOrUpdate<T = any>(obj: KnowledgeBase.Document) {
   })
 }
 
+/**
+ * Save the form together with a Q&A pair file (multipart): when creating a qa-mode document an
+ * xlsx/csv pair file can be attached; the server parses and validates it first, then creates
+ * the document, imports the pairs and vectorizes synchronously. Empty fields are omitted
+ */
+function knowledgeBaseItemSaveOrUpdateWithFile<T = any>(obj: KnowledgeBase.Document, qaFile: File) {
+  const formData = new FormData()
+  if (obj.id)
+    formData.append('id', obj.id)
+  if (obj.kbId)
+    formData.append('kbId', obj.kbId)
+  if (obj.uuid)
+    formData.append('uuid', obj.uuid)
+  formData.append('kbUuid', obj.kbUuid)
+  formData.append('title', obj.title)
+  if (obj.brief)
+    formData.append('brief', obj.brief)
+  if (obj.remark)
+    formData.append('remark', obj.remark)
+  if (obj.segmentMode)
+    formData.append('segmentMode', obj.segmentMode)
+  if (obj.childMaxChunkSize)
+    formData.append('childMaxChunkSize', `${obj.childMaxChunkSize}`)
+  if (obj.autoGenerateQa !== undefined)
+    formData.append('autoGenerateQa', `${obj.autoGenerateQa}`)
+  formData.append('file', qaFile)
+  return post<T>({
+    url: '/document/saveOrUpdateWithFile',
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
+}
+
 function knowledgeBaseItemDelete<T = any>(uuid: string) {
   return post<T>({
     url: `/document/del/${uuid}`,
@@ -933,6 +968,7 @@ export default {
   knowledgeBaseSaveOrUpdate,
   knowledgeBaseDelete,
   knowledgeBaseItemSaveOrUpdate,
+  knowledgeBaseItemSaveOrUpdateWithFile,
   knowledgeBaseItemSearch,
   knowledgeBaseItemDelete,
   knowledgeBaseItemToggleStatus,

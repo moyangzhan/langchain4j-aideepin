@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import { computed, nextTick, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { NAlert, NBreadcrumb, NBreadcrumbItem, NButton, NCard, NCheckbox, NCheckboxGroup, NDataTable, NFlex, NIcon, NInput, NModal, NP, NSpace, NTag, NText, NUpload, NUploadDragger, useDialog, useMessage } from 'naive-ui'
+import { NAlert, NBreadcrumb, NBreadcrumbItem, NButton, NCard, NCheckbox, NCheckboxGroup, NDataTable, NFlex, NIcon, NInput, NInputNumber, NModal, NP, NSelect, NSpace, NTag, NText, NUpload, NUploadDragger, useDialog, useMessage } from 'naive-ui'
 import { ArchiveOutline } from '@vicons/ionicons5'
 import { useRoute, useRouter } from 'vue-router'
 import type { UploadFileInfo, UploadInst } from 'naive-ui'
@@ -24,12 +24,37 @@ const loading = ref<boolean>(false)
 const showUploadModal = ref<boolean>(false)
 const showIndexModal = ref<boolean>(false)
 const itemList = ref<KnowledgeBase.Document[]>([])
-const indexAfterUpload = ref(false)
 const indexTypeSelected = ref<string[]>(['embedding'])
 const uploadRef = ref<UploadInst | null>(null)
 const headers = { Authorization: '' }
-const fileListLength = ref(0)
 const fileList = ref<UploadFileInfo[]>([])
+
+// Upload-modal segment mode: in qa mode files are parsed as Q&A pair data (Dify format),
+// one Q&A document per file, vectorized immediately
+const uploadSegmentMode = ref<string>('text')
+const uploadChildMaxChunkSize = ref<number | null>(null)
+const segmentModeOptions = [
+  { label: t('knowledgeBase.segmentModeText'), value: 'text' },
+  { label: t('knowledgeBase.segmentModeQa'), value: 'qa' },
+  { label: t('knowledgeBase.segmentModeParentChild'), value: 'parent_child' },
+]
+const uploadAccept = computed(() => (uploadSegmentMode.value === 'qa' ? '.xlsx,.xls,.csv' : undefined))
+const uploadAction = computed(() => {
+  let url = `/api/knowledge-base/upload/${curKbUuid}?segmentMode=${uploadSegmentMode.value}`
+  if (uploadSegmentMode.value === 'parent_child' && uploadChildMaxChunkSize.value)
+    url += `&childMaxChunkSize=${uploadChildMaxChunkSize.value}`
+  return url
+})
+const uploadModeTip = computed(() => ({
+  text: t('knowledgeBase.segmentModeTextTip'),
+  qa: t('knowledgeBase.segmentModeQaTip'),
+  parent_child: t('knowledgeBase.segmentModeParentChildTip'),
+}[uploadSegmentMode.value] ?? ''))
+// Switching the mode clears the picked files
+watch(uploadSegmentMode, () => {
+  fileList.value = []
+})
+const fileListLength = computed(() => fileList.value.length)
 const paginationReactive = reactive({
   page: 1,
   pageSize: 10,
@@ -107,26 +132,8 @@ const showFileContent = (selected: KnowledgeBase.Document = knowledgeBaseEmptyIt
   showFileContentModal.value = true
 }
 
-const showQaImportModal = ref<boolean>(false)
-
 function downloadQaTemplate() {
   window.open('/api/document/qaImportTemplate')
-}
-
-function onQaUploadFinish({ event }: { event?: ProgressEvent }) {
-  showQaImportModal.value = false
-  try {
-    const resp = JSON.parse((event?.target as XMLHttpRequest)?.responseText || '{}')
-    if (resp.success) {
-      ms.success(t('common.uploadSuccess'))
-      indexingCheck()
-      search(1)
-    } else {
-      ms.error(resp.message || t('common.uploadFailed'))
-    }
-  } catch (e) {
-    ms.error(t('common.uploadFailed'))
-  }
 }
 
 const viewSegments = (row: KnowledgeBase.Document) => {
@@ -253,12 +260,12 @@ async function onUploadBefore(data: {
   file: UploadFileInfo
   fileList: UploadFileInfo[]
 }) {
+  // qa mode: accept only filters the file picker, not drag-and-drop; guard the extension here
+  if (uploadSegmentMode.value === 'qa' && !/\.(xlsx|xls|csv)$/i.test(data.file.name)) {
+    ms.error(t('knowledgeBase.qaUploadFileHint'))
+    return false
+  }
   return true
-}
-
-function onUploadChange(options: { fileList: UploadFileInfo[] }) {
-  console.log('onUploadChange')
-  fileListLength.value = options.fileList.length
 }
 
 function onUploadSubmit() {
@@ -266,6 +273,8 @@ function onUploadSubmit() {
   setTimeout(() => {
     showUploadModal.value = false
     search(1)
+    // uploads index asynchronously now; refresh again once indexing finishes
+    indexingCheck()
   }, 3000)
 }
 
@@ -283,10 +292,12 @@ function onUploadFinish({
   }
   const { success, message } = respData
   console.log('onUploadFinish', success, message)
-  if (success)
+  if (success) {
     ms.success(t('common.uploadSuccess'))
-  else
+    indexingCheck()
+  } else {
     ms.error(message || t('common.uploadFailed'))
+  }
 
   return file
 }
@@ -350,11 +361,8 @@ onMounted(async () => {
     await initData()
   inited.value = true
 })
-// 仅从编辑页返回时刷新当前页，确保新增/修改的文档可见；从分段列表返回直接复用缓存；
-// 从 KB 编辑页返回时知识库信息（标题/描述/公开状态）可能已变，一并重取
-// Refresh only when returning from the edit pages so new/modified docs are visible;
-// returning from the segment list reuses the cached list as-is; returning from the
-// KB edit page also reloads the KB info (title/description/visibility may have changed)
+// Refresh the current page on return from the edit/detail pages; returning from the KB edit
+// page also reloads the KB info (title/description/visibility may have changed)
 const cameFromRoute = ref('')
 router.afterEach((to, from) => {
   if (to.name === 'KnowledgeBaseManageDetail')
@@ -368,7 +376,7 @@ onActivated(() => {
     search(paginationReactive.page)
     return
   }
-  if (['DocumentAdd', 'DocumentEdit'].includes(cameFromRoute.value))
+  if (['DocumentAdd', 'DocumentEdit', 'DocumentDetail'].includes(cameFromRoute.value))
     search(paginationReactive.page)
 })
 watch(
@@ -415,9 +423,6 @@ watch(
           <NButton type="primary" size="small" @click="router.push({ name: 'DocumentAdd', params: { kbUuid: curKbUuid } })">
             {{ t('knowledgeBase.addByForm') }}
           </NButton>
-          <NButton type="primary" size="small" @click="() => (showQaImportModal = true)">
-            {{ t('knowledgeBase.importQa') }}
-          </NButton>
           <NButton type="primary" size="small" @click="() => showUploadModal = !showUploadModal">
             {{ t('knowledgeBase.addByFile') }}
           </NButton>
@@ -447,11 +452,30 @@ watch(
   <NModal v-model:show="showUploadModal" style="width: 90%;  min-height: 700px;" preset="card" :title="t('knowledgeBase.knowledgeItemUpload')">
     <NCard style="margin-top: 12px" :title="t('knowledgeBase.uploadDocToGenerate')" hoverable>
       <NSpace vertical>
+        {{ t('knowledgeBase.segmentMode') }}
+        <NSelect v-model:value="uploadSegmentMode" :options="segmentModeOptions" />
+        <div style="font-size: 12px; opacity: 0.7">
+          {{ uploadModeTip }}
+        </div>
+        <!-- qa mode: format note and template download -->
+        <template v-if="uploadSegmentMode === 'qa'">
+          <NP depth="3" style="font-size: 12px; margin: 0;">
+            {{ t('knowledgeBase.importQaTip') }}
+          </NP>
+          <div>
+            <NButton type="primary" ghost size="small" @click="downloadQaTemplate">
+              {{ t('knowledgeBase.downloadTemplate') }}
+            </NButton>
+          </div>
+        </template>
+        <template v-else-if="uploadSegmentMode === 'parent_child'">
+          {{ t('knowledgeBase.childMaxChunkSize') }}
+          <NInputNumber v-model:value="uploadChildMaxChunkSize" :min="50" style="width: 100%" />
+        </template>
         <NUpload
-          ref="uploadRef" multiple :default-file-list="fileList" directory-dnd
-          :action="`/api/knowledge-base/upload/${curKbUuid}?indexAfterUpload=${indexAfterUpload}`"
+          ref="uploadRef" v-model:file-list="fileList" multiple directory-dnd
+          :action="uploadAction" :accept="uploadAccept"
           :default-upload="false" :max="20" :headers="headers" @before-upload="onUploadBefore" @finish="onUploadFinish"
-          @change="onUploadChange"
         >
           <NUploadDragger>
             <div style="margin-bottom: 12px">
@@ -463,7 +487,12 @@ watch(
               {{ t('knowledgeBase.clickOrDragToUpload') }}
             </NText>
             <NP depth="3" style="margin: 8px 0 0 0">
-              {{ t('knowledgeBase.supportedFileFormats') }}<br>
+              <template v-if="uploadSegmentMode === 'qa'">
+                {{ t('knowledgeBase.qaUploadFileHint') }}<br>
+              </template>
+              <template v-else>
+                {{ t('knowledgeBase.supportedFileFormats') }}<br>
+              </template>
               {{ t('knowledgeBase.fileSizeLimit') }}
             </NP>
           </NUploadDragger>
@@ -475,31 +504,6 @@ watch(
         </NFlex>
       </NSpace>
     </NCard>
-  </NModal>
-
-  <NModal v-model:show="showQaImportModal" style="width: 60%;" preset="card" :title="t('knowledgeBase.importQa')">
-    <NSpace vertical>
-      <NP>{{ t('knowledgeBase.importQaTip') }}</NP>
-      <NUpload
-        :max="1" accept=".xlsx,.xls,.csv" directory-dnd
-        :action="`/api/document/uploadQa/${curKbUuid}`"
-        :headers="headers" @finish="onQaUploadFinish"
-      >
-        <NUploadDragger>
-          <NText style="font-size: 16px">
-            {{ t('knowledgeBase.clickOrDragToUpload') }}
-          </NText>
-          <NP depth="3" style="margin: 8px 0 0 0">
-            XLSX / CSV
-          </NP>
-        </NUploadDragger>
-      </NUpload>
-      <NFlex>
-        <NButton type="primary" ghost @click="downloadQaTemplate">
-          {{ t('knowledgeBase.downloadTemplate') }}
-        </NButton>
-      </NFlex>
-    </NSpace>
   </NModal>
 
   <NModal v-model:show="showIndexModal" style="width: 90%; max-width:550px" preset="card" :title="t('knowledgeBase.selectIndexType')">
