@@ -477,6 +477,7 @@ export default {
     statusVectorized: 'Vectorized',
     statusGraphitized: 'Graphitized',
     statusFailed: 'Failed',
+    statusDisabled: 'Disabled',
     retryVectorize: 'Re-vectorize',
     retryGraphitize: 'Re-graphitize',
     retryBothIndex: 'Re-vectorize and re-graphitize',

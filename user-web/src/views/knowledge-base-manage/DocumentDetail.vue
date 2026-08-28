@@ -1,7 +1,7 @@
 <script setup lang='ts'>
 import type { DataTableColumns } from 'naive-ui'
-import { NBreadcrumb, NBreadcrumbItem, NButton, NCard, NCollapse, NCollapseItem, NDataTable, NIcon, NInput, NModal, NP, NSpace, NSwitch, NText, NTooltip, NUpload, NUploadDragger, useDialog, useLoadingBar, useMessage } from 'naive-ui'
-import { QuestionCircle16Regular } from '@vicons/fluent'
+import { NBreadcrumb, NBreadcrumbItem, NButton, NCard, NCollapse, NCollapseItem, NDataTable, NIcon, NInput, NModal, NP, NSpace, NText, NTooltip, NUpload, NUploadDragger, useDialog, useLoadingBar, useMessage } from 'naive-ui'
+import { CheckmarkCircle12Filled, QuestionCircle16Regular } from '@vicons/fluent'
 import { computed, h, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/store'
@@ -186,13 +186,9 @@ async function loadDocInfo(docUuid: string, silent = false) {
   }
 }
 
-// 启用分段的重建是异步的：重建中禁用开关防竞态；失败可点击标签重试（幂等）
+// Segment rebuilds run async; a rebuilding row suspends interactive indicators
 function isRebuilding(row: KnowledgeBase.Segment) {
   return row.embeddingStatus === 'DOING' || row.graphicalStatus === 'DOING'
-}
-
-function isRebuildFailed(row: KnowledgeBase.Segment) {
-  return row.isEnabled !== false && (row.embeddingStatus === 'FAIL' || row.graphicalStatus === 'FAIL')
 }
 
 function retryRebuild(row: KnowledgeBase.Segment) {
@@ -577,22 +573,29 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Segment> => {
       width: 90,
     },
     {
-      title: t('knowledgeBase.status'),
-      key: 'isEnabled',
-      width: 130,
+      // Pure vectorization status display
+      title: t('knowledgeBase.vectorize'),
+      key: 'embeddingStatus',
+      width: 120,
       render: (row) => {
-        const elements: any[] = [h(NSwitch, {
-          size: 'small',
-          value: row.isEnabled !== false,
-          disabled: isRebuilding(row),
-          onUpdateValue: (value: boolean) => confirmToggleStatus(row, value),
-        })]
-        if (isRebuilding(row))
-          elements.push(h('span', { style: 'font-size:12px;color:#f0a020;margin-left:6px;' }, { default: () => t('knowledgeBase.statusProcessing') }))
-        else if (isRebuildFailed(row))
-          elements.push(h('span', { style: 'font-size:12px;color:#d03050;margin-left:6px;cursor:pointer;', title: row.failReason || '', onClick: () => retryRebuild(row) }, { default: () => t('knowledgeBase.statusFailed') }))
+        if (row.isEnabled === false)
+          return h('span', { style: 'font-size:12px;opacity:0.55;' }, { default: () => t('knowledgeBase.statusDisabled') })
+        const elements: any[] = []
+        if (row.embeddingStatus === 'DOING') {
+          elements.push(h('span', { style: 'font-size:12px;color:#f0a020;' }, { default: () => t('knowledgeBase.statusProcessing') }))
+        }
+        else if (row.embeddingStatus === 'FAIL') {
+          elements.push(h('span', { style: 'font-size:12px;color:#d03050;cursor:pointer;', title: row.failReason || '', onClick: () => retryRebuild(row) }, { default: () => t('knowledgeBase.statusFailed') }))
+        }
+        else if (row.embeddingStatus === 'DONE') {
+          // Vectorized is the steady state: a green check reads faster than text (title keeps the label)
+          elements.push(h(NIcon, { size: 14, color: '#18a058', title: t('knowledgeBase.statusVectorized') }, { default: () => h(CheckmarkCircle12Filled) }))
+        }
+        else {
+          elements.push(h('span', { style: 'font-size:12px;opacity:0.55;' }, { default: () => t('knowledgeBase.statusPending') }))
+        }
         // Drift indicator: status says vectorized but the store lacks the vector
-        if (row.vectorMissing && row.isEnabled !== false && !isRebuilding(row))
+        if (row.vectorMissing && !isRebuilding(row))
           elements.push(h('span', { style: 'font-size:12px;color:#d03050;margin-left:6px;cursor:pointer;', onClick: () => confirmRepairVector(row) }, { default: () => t('knowledgeBase.vectorMissing') }))
         return h('div', { class: 'flex items-center' }, { default: () => elements })
       },

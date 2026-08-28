@@ -477,6 +477,7 @@ export default {
     statusVectorized: '已向量化',
     statusGraphitized: '已图谱化',
     statusFailed: '失败',
+    statusDisabled: '已停用',
     retryVectorize: '重新向量化',
     retryGraphitize: '重新图谱化',
     retryBothIndex: '重新向量化和图谱化',
