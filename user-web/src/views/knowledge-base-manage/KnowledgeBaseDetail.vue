@@ -246,21 +246,31 @@ function onUploadError({ file }: { file: UploadFileInfo; event?: ProgressEvent }
   ms.error(t('common.uploadFailed'))
 }
 
+// true from submit until every file settles (uploaded / failed) or the modal is closed:
+// drives the button's loading state and blocks double submits
+const uploadSubmitting = ref(false)
+
 function onUploadSubmit() {
+  if (uploadSubmitting.value)
+    return
   uploadHasError = false
+  uploadSubmitting.value = true
   uploadRef.value?.submit()
   closeWhenUploadDone()
 }
 
 function closeWhenUploadDone() {
   setTimeout(() => {
-    if (!showUploadModal.value)
+    if (!showUploadModal.value) {
+      uploadSubmitting.value = false
       return
+    }
     const busy = fileList.value.some(f => f.status === 'pending' || f.status === 'uploading')
     if (busy) {
       closeWhenUploadDone()
       return
     }
+    uploadSubmitting.value = false
     if (!uploadHasError) {
       showUploadModal.value = false
       search(1)
@@ -497,7 +507,7 @@ watch(
           </NUploadDragger>
         </NUpload>
         <NFlex>
-          <NButton type="primary" :disabled="!fileListLength" @click="onUploadSubmit">
+          <NButton type="primary" :disabled="!fileListLength" :loading="uploadSubmitting" @click="onUploadSubmit">
             {{ t('knowledgeBase.uploadAndGenerate') }}
           </NButton>
         </NFlex>
