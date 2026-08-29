@@ -218,7 +218,7 @@ public class ApacheAgeGraphStore implements GraphStore {
                     .metadataFilter(updateInfo.getMetadataFilter())
                     .build();
             String whereClause = GraphStoreUtil.buildWhereClause(whereCondition, "v");
-            String setClause = GraphStoreUtil.buildSetClause(updateInfo.getNewData().getMetadata());
+            String setClause = GraphStoreUtil.buildSetClause(updateInfo.getNewData().getMetadata(), "v");
             String prepareSql = """
                     select * from cypher('%s', $$
                        match (v)
@@ -428,7 +428,7 @@ public class ApacheAgeGraphStore implements GraphStore {
         try (Connection connection = setupConnection()) {
             String whereClause1 = GraphStoreUtil.buildWhereClause(edgeEditInfo.getSourceFilter(), "v1");
             String whereClause2 = GraphStoreUtil.buildWhereClause(edgeEditInfo.getTargetFilter(), "v2");
-            String setClause = GraphStoreUtil.buildSetClause(edgeEditInfo.getEdge().getMetadata());
+            String setClause = GraphStoreUtil.buildSetClause(edgeEditInfo.getEdge().getMetadata(), "e");
             // 无向匹配：与 searchEdges/getEdge 的查找语义保持一致（边的身份不含方向）。
             // 若按有向匹配，getEdge（无向）能找到、updateEdge 却更新不到方向相反的同一条边，静默丢失一次追加
             String prepareSql = """

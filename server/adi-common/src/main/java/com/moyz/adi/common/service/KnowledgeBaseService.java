@@ -220,13 +220,20 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             if (SegmentModeEnum.QA == segmentMode) {
                 KbDocument qaDoc = documentQaService.importQa(knowledgeBase,
                         fileName == null || fileName.isBlank() ? "qa_import" : fileName, doc);
-                // user-level in-flight key held for the duration of the synchronous vectorization
+                // user-level in-flight key held for the duration of the synchronous vectorization.
+                // Protocol matches the task executor (seed when absent, increment per in-flight
+                // unit, decrement + delete at <=0): a plain SET/DELETE clobbers the executor's
+                // live counter when a concurrently dispatched task is being counted
                 String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
-                stringRedisTemplate.opsForValue().set(userIndexKey, "0", 10, TimeUnit.MINUTES);
+                stringRedisTemplate.opsForValue().setIfAbsent(userIndexKey, "0", 10, TimeUnit.MINUTES);
+                stringRedisTemplate.opsForValue().increment(userIndexKey);
                 try {
                     documentQaService.vectorizePendingQaDoc(knowledgeBase, qaDoc, ThreadContext.getCurrentUser());
                 } finally {
-                    stringRedisTemplate.delete(userIndexKey);
+                    Long remaining = stringRedisTemplate.opsForValue().decrement(userIndexKey);
+                    if (remaining != null && remaining <= 0) {
+                        stringRedisTemplate.delete(userIndexKey);
+                    }
                 }
                 stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, knowledgeBase.getUuid());
                 return null;
@@ -562,6 +569,15 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     public boolean toggleStar(User user, String kbUuid) {
 
         KnowledgeBase knowledgeBase = self.getOrThrow(kbUuid);
+        // starring requires a readable KB (owner or public): without the check a private KB's
+        // existence can be probed and its star count inflated by strangers
+        if (!Boolean.TRUE.equals(user.getIsAdmin())
+                && !knowledgeBase.getOwnerId().equals(user.getId())
+                && !Boolean.TRUE.equals(knowledgeBase.getIsPublic())) {
+            // NOT_FOUND (same as checkReadPrivilege): an auth error would disclose that the
+            // private KB exists
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
         boolean star;
         KnowledgeBaseStar oldRecord = knowledgeBaseStarRecordService.getRecord(user.getId(), kbUuid);
         if (null == oldRecord) {
@@ -646,6 +662,8 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             );
             sseAskParam.setSseUuid(sseUuid);
             sseAskParam.setModelName(aiModel.getName());
+            // consumed by the QA LLM call record (model_platform column); was never set before
+            sseAskParam.setModelPlatform(aiModel.getPlatform());
             sseAskParam.setUser(user);
             if (maxResults == 0) {
                 log.info("User question too long, no need to retrieve docs; strict mode returns error, relaxed mode continues to LLM");
@@ -750,7 +768,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         callRecord.setSourceType(LLMCallRecordSourceType.KNOWLEDGE_BASE_QA.getValue());
         callRecord.setSourceId(qaRecord.getId());
         callRecord.setUserId(user.getId());
-        callRecord.setModelPlatform(updateQaParam.getSseAskParam().getModelName());
+        callRecord.setModelPlatform(updateQaParam.getSseAskParam().getModelPlatform());
         callRecord.setModelName(updateQaParam.getSseAskParam().getModelName());
         callRecord.setInputTokens(inputOutputTokenCost.getLeft());
         callRecord.setOutputTokens(inputOutputTokenCost.getRight());

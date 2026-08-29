@@ -19,6 +19,8 @@ import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.rag.DocumentSplitterFactory;
 import com.moyz.adi.common.rag.TokenEstimatorFactory;
+import com.moyz.adi.common.service.UserDayCostService;
+import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.util.UuidUtil;
 import com.moyz.adi.common.vo.ChatModelBuilderProperties;
 import dev.langchain4j.data.document.DefaultDocument;
@@ -181,28 +183,43 @@ public class DocumentQaService {
         Map<String, DocumentSegment> existingAnswers = documentSegmentService.listByDocUuid(doc.getUuid()).stream()
                 .collect(Collectors.toMap(DocumentSegment::getContent, s -> s, (a, b) -> a));
         int answerPosition = existingAnswers.size();
-        for (Map.Entry<String, List<String>> entry : answerToQuestions.entrySet()) {
-            DocumentSegment answer = existingAnswers.get(entry.getKey());
-            if (answer == null) {
-                answer = new DocumentSegment();
+        // Create all new answer rows first (one batch): every question target then has its id,
+        // and the existing-question lookup runs as a single query instead of one per answer
+        List<DocumentSegment> newAnswers = new ArrayList<>();
+        Map<String, DocumentSegment> answerByKey = new LinkedHashMap<>(existingAnswers);
+        for (String answerText : answerToQuestions.keySet()) {
+            if (!answerByKey.containsKey(answerText)) {
+                DocumentSegment answer = new DocumentSegment();
                 answer.setUuid(UuidUtil.createShort());
                 answer.setKbUuid(kb.getUuid());
                 answer.setDocUuid(doc.getUuid());
                 answer.setPosition(answerPosition++);
-                answer.setContent(entry.getKey());
+                answer.setContent(answerText);
                 answer.setHitCount(0);
                 answer.setSource(source);
-                documentSegmentService.save(answer);
+                newAnswers.add(answer);
+                answerByKey.put(answerText, answer);
             }
+        }
+        if (!newAnswers.isEmpty()) {
+            documentSegmentService.saveBatch(newAnswers);
+        }
+        List<Long> involvedAnswerIds = answerToQuestions.keySet().stream()
+                .map(key -> answerByKey.get(key).getId())
+                .collect(Collectors.toList());
+        Map<Long, Set<String>> existingTextsByAnswer = questionService.listByAnswerIds(involvedAnswerIds).stream()
+                .collect(Collectors.groupingBy(DocumentSegmentQuestion::getAnswerSegmentId,
+                        Collectors.mapping(DocumentSegmentQuestion::getContent, Collectors.toSet())));
+        List<DocumentSegmentQuestion> questions = new ArrayList<>();
+        for (Map.Entry<String, List<String>> entry : answerToQuestions.entrySet()) {
+            DocumentSegment answer = answerByKey.get(entry.getKey());
             // Joining an existing answer / in-batch duplicates: skip question texts that already
-            // exist to avoid duplicate vectorization
-            Set<String> existingQuestionTexts = questionService.listByAnswerIds(List.of(answer.getId())).stream()
-                    .map(DocumentSegmentQuestion::getContent)
-                    .collect(Collectors.toSet());
-            List<DocumentSegmentQuestion> questions = new ArrayList<>();
+            // exist (db or this batch) to avoid duplicate vectorization
+            Set<String> existingQuestionTexts = existingTextsByAnswer.getOrDefault(answer.getId(), Set.of());
+            Set<String> batchSeen = new java.util.HashSet<>();
             int questionPosition = existingQuestionTexts.size();
             for (String questionText : entry.getValue()) {
-                if (existingQuestionTexts.contains(questionText)) {
+                if (existingQuestionTexts.contains(questionText) || !batchSeen.add(questionText)) {
                     continue;
                 }
                 DocumentSegmentQuestion question = new DocumentSegmentQuestion();
@@ -215,9 +232,9 @@ public class DocumentQaService {
                 question.setHitCount(0);
                 questions.add(question);
             }
-            if (!questions.isEmpty()) {
-                questionService.saveBatch(questions);
-            }
+        }
+        if (!questions.isEmpty()) {
+            questionService.saveBatch(questions);
         }
     }
 
@@ -373,6 +390,8 @@ public class DocumentQaService {
     public void generateQaAsync(User user, KnowledgeBase kb, KbDocument doc) {
         AbstractLLMService llmService = null;
         int versionSnapshot = doc.getIndexVersion() == null ? 0 : doc.getIndexVersion();
+        int totalTokens = 0;
+        long startTime = System.currentTimeMillis();
         try {
             llmService = LLMContext.getServiceById(kb.getIngestModelId(), true);
             ChatModel chatModel = llmService.buildChatLLM(ChatModelBuilderProperties.builder()
@@ -391,16 +410,18 @@ public class DocumentQaService {
             List<TextSegment> chunks = splitter.split(new DefaultDocument(doc.getRemark(), metadata));
 
             List<QaPair> pairs = new ArrayList<>();
-            int totalTokens = 0;
-            long startTime = System.currentTimeMillis();
             for (TextSegment chunk : chunks) {
                 if (StringUtils.isBlank(chunk.text())) {
                     continue;
                 }
                 ChatResponse response = chatModel.chat(dev.langchain4j.data.message.UserMessage.from(
                         QA_GENERATE_PROMPT.replace("{input_text}", chunk.text())));
-                if (response.tokenUsage() != null) {
+                if (response.tokenUsage() != null && response.tokenUsage().totalTokenCount() != null) {
                     totalTokens += response.tokenUsage().totalTokenCount();
+                    // deduct per chunk (same as graph extraction): tokens already spent must
+                    // count against the daily quota even if a later chunk fails
+                    SpringUtil.getBean(UserDayCostService.class).appendCostToUser(
+                            user, response.tokenUsage().totalTokenCount(), llmService.getAiModel().getIsFree());
                 }
                 pairs.addAll(parseQaJson(response.aiMessage().text()));
             }
@@ -419,27 +440,38 @@ public class DocumentQaService {
                     .set(KbDocument::getFailReason, "")
                     .update();
             log.info("generateQa done, docUuid:{}, pairs:{}", doc.getUuid(), pairs.size());
-
-            if (totalTokens > 0 && user != null) {
-                com.moyz.adi.common.entity.LLMCallRecord callRecord = new com.moyz.adi.common.entity.LLMCallRecord();
-                callRecord.setUuid(UuidUtil.createShort());
-                callRecord.setSourceType(LLMCallRecordSourceType.KNOWLEDGE_BASE_INGEST.getValue());
-                callRecord.setSourceId(doc.getId());
-                callRecord.setUserId(user.getId());
-                callRecord.setModelPlatform(llmService.getAiModel().getPlatform());
-                callRecord.setModelName(llmService.getAiModel().getName());
-                callRecord.setInputTokens(totalTokens);
-                callRecord.setOutputTokens(0);
-                callRecord.setDuration((int) (System.currentTimeMillis() - startTime));
-                llmCallRecordService.saveAsync(callRecord);
-            }
         } catch (Exception e) {
             if (null != llmService) {
                 modelHealthService.recordFailure(llmService.getAiModel().getName(), e);
             }
             log.error("generateQa error, docUuid:{}", doc.getUuid(), e);
             markQaFailed(doc, versionSnapshot, e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+        } finally {
+            // record whatever was consumed, success or failure: chunks already billed before an
+            // abort must not vanish from the token monitor
+            saveQaCallRecord(user, doc, llmService, totalTokens, System.currentTimeMillis() - startTime);
         }
+    }
+
+    /**
+     * QA 生成（LLM）的调用记录：按文档聚合一条 KNOWLEDGE_BASE_INGEST。成功与失败都记——
+     * 失败前已消耗的 chunk 同样产生了真实计费。
+     */
+    private void saveQaCallRecord(User user, KbDocument doc, AbstractLLMService llmService, int totalTokens, long durationMs) {
+        if (user == null || llmService == null || totalTokens <= 0) {
+            return;
+        }
+        com.moyz.adi.common.entity.LLMCallRecord callRecord = new com.moyz.adi.common.entity.LLMCallRecord();
+        callRecord.setUuid(UuidUtil.createShort());
+        callRecord.setSourceType(LLMCallRecordSourceType.KNOWLEDGE_BASE_INGEST.getValue());
+        callRecord.setSourceId(doc.getId());
+        callRecord.setUserId(user.getId());
+        callRecord.setModelPlatform(llmService.getAiModel().getPlatform());
+        callRecord.setModelName(llmService.getAiModel().getName());
+        callRecord.setInputTokens(totalTokens);
+        callRecord.setOutputTokens(0);
+        callRecord.setDuration((int) durationMs);
+        llmCallRecordService.saveAsync(callRecord);
     }
 
     /**
@@ -561,26 +593,43 @@ public class DocumentQaService {
     private List<QaPair> parseCsv(MultipartFile file) throws Exception {
         List<QaPair> pairs = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
-            String line;
-            boolean firstLine = true;
+            boolean headerHandled = false;
             String lastAnswer = null;
-            while ((line = reader.readLine()) != null) {
-                if (firstLine) {
-                    firstLine = false;
-                    // strip BOM
-                    if (line.startsWith("\uFEFF")) {
-                        line = line.substring(1);
+            String line;
+            // A quoted field may contain newlines: accumulate lines until the record's quotes
+            // balance (hasOpenQuote), so such records parse as one row instead of garbage
+            StringBuilder pending = null;
+            while ((line = reader.readLine()) != null || pending != null) {
+                if (line != null) {
+                    if (pending == null) {
+                        pending = new StringBuilder(line);
+                    } else {
+                        pending.append('\n').append(line);
                     }
-                    if (line.isBlank()) {
+                }
+                if (line != null && hasOpenQuote(pending.toString())) {
+                    continue;
+                }
+                String record = pending.toString();
+                pending = null;
+                if (!headerHandled) {
+                    // strip BOM
+                    if (record.startsWith("\uFEFF")) {
+                        record = record.substring(1);
+                    }
+                    // blank leading lines keep waiting for the real header: consuming the flag
+                    // here would import the "question,answer" row as a data pair
+                    if (record.isBlank()) {
                         continue;
                     }
-                    List<String> cols = splitCsvLine(line);
+                    headerHandled = true;
+                    List<String> cols = splitCsvLine(record);
                     if (isHeaderRow(col(cols, 0), col(cols, 1))) {
                         continue;
                     }
                     throw new BaseException(A_PARAMS_ERROR);
                 }
-                List<String> cols = splitCsvLine(line);
+                List<String> cols = splitCsvLine(record);
                 String q = col(cols, 0);
                 String a = col(cols, 1);
                 if (StringUtils.isNotBlank(a)) {
@@ -592,6 +641,24 @@ public class DocumentQaService {
             }
         }
         return pairs;
+    }
+
+    /**
+     * 记录中引号是否未闭合（考虑 "" 转义）：true 意味着该记录跨行，需继续拼接
+     */
+    private boolean hasOpenQuote(String s) {
+        boolean inQuotes = false;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '"') {
+                if (inQuotes && i + 1 < s.length() && s.charAt(i + 1) == '"') {
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            }
+        }
+        return inQuotes;
     }
 
     private boolean isHeaderRow(String col0, String col1) {

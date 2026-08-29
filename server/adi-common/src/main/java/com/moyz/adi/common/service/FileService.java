@@ -23,8 +23,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_AI_IMAGE_NO_AUTH;
@@ -243,6 +246,23 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
 
     public String getWatermarkImagesPath(AdiFile adiFile) {
         return watermarkImagesPath + adiFile.getUuid() + "." + adiFile.getExt();
+    }
+
+    /**
+     * 批量取文件url，keyed by 文件uuid（缺失/已删除的文件不产生条目）：
+     * 列表页一次查询回填，替代逐行 getUrl 的 N+1
+     */
+    public Map<String, String> getUrlByUuids(Collection<String> fileUuids) {
+        if (CollectionUtils.isEmpty(fileUuids)) {
+            return Collections.emptyMap();
+        }
+        Map<String, String> result = new HashMap<>();
+        this.lambdaQuery()
+                .in(AdiFile::getUuid, fileUuids)
+                .eq(AdiFile::getIsDeleted, false)
+                .list()
+                .forEach(adiFile -> result.put(adiFile.getUuid(), FileOperatorContext.getFileUrl(adiFile)));
+        return result;
     }
 
     public String getUrl(String fileUuid) {

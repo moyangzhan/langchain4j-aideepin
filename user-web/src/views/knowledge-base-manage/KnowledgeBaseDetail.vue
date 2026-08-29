@@ -83,8 +83,19 @@ const showFileContent = (selected: KnowledgeBase.Document = knowledgeBaseEmptyIt
   filePreview.show = true
 }
 
-function downloadQaTemplate() {
-  window.open('/api/document/qaImportTemplate')
+async function downloadQaTemplate() {
+  try {
+    const resp = await api.downloadQaImportTemplate()
+    const url = URL.createObjectURL(resp.data)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'qa_import_template.csv'
+    link.click()
+    // revoke after the download has started: immediate revocation can abort it in some browsers
+    setTimeout(() => URL.revokeObjectURL(url), 0)
+  } catch (error: any) {
+    ms.error(error.message ?? 'error')
+  }
 }
 
 const viewSegments = (row: KnowledgeBase.Document) => {

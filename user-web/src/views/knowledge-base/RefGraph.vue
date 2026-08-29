@@ -32,9 +32,12 @@ function parseAndRender(graphRef: KnowledgeBase.QaRecordGraphRef) {
   cy.$('node').remove()
   cy.$('edge').remove()
   // 实体名为节点键（与文档图谱页一致，不依赖图库内部 id）
-  const nodes = graphRef.vertices.map((item) => {
-    return { group: 'nodes', data: { id: item.name, name: item.name, description: item.description } }
-  })
+  // 同名顶点去重：重复的实体名会让 cy.add 抛错（id 冲突）
+  const nodes = graphRef.vertices
+    .filter((item, idx, arr) => arr.findIndex(v => v.name === item.name) === idx)
+    .map((item) => {
+      return { group: 'nodes', data: { id: item.name, name: item.name, description: item.description } }
+    })
   const edges = graphRef.edges.map((item) => {
     return { group: 'edges', data: { source: item.sourceName, target: item.targetName, description: item.description } }
   })

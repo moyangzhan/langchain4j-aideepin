@@ -85,9 +85,15 @@ public class SegmentNeo4jBackfillRunner implements ApplicationRunner {
         for (KnowledgeBase kb : knowledgeBases) {
             EmbeddingSearchResult<TextSegment> searchResult =
                     store.searchByMetadata(new IsEqualTo(AdiConstant.MetadataKey.KB_UUID, kb.getUuid()), SCAN_LIMIT_PER_KB);
+            if (searchResult.matches().size() >= SCAN_LIMIT_PER_KB) {
+                log.warn("Segment neo4j backfill hit the per-KB scan cap ({}) for kb {}: remaining nodes are NOT backfilled this run and will retry on the next startup",
+                        SCAN_LIMIT_PER_KB, kb.getUuid());
+            }
             List<DocumentSegment> rows = new ArrayList<>();
             List<String> backfilledIds = new ArrayList<>();
-            int position = 0;
+            // position is per-document (zero-based order inside each doc), mirroring the
+            // pgvector migration's PARTITION BY kb_item_uuid
+            java.util.Map<String, Integer> nextPosByDoc = new java.util.HashMap<>();
             for (EmbeddingMatch<TextSegment> match : searchResult.matches()) {
                 String text = match.embedded().text();
                 String docUuid = match.embedded().metadata().getString(AdiConstant.MetadataKey.KB_ITEM_UUID);
@@ -99,7 +105,7 @@ public class SegmentNeo4jBackfillRunner implements ApplicationRunner {
                 row.setUuid(UuidUtil.createShort());
                 row.setKbUuid(kb.getUuid());
                 row.setDocUuid(docUuid);
-                row.setPosition(position++);
+                row.setPosition(nextPosByDoc.merge(docUuid, 1, Integer::sum) - 1);
                 row.setContent(text);
                 row.setHitCount(0);
                 row.setEmbeddingId(match.embeddingId());

@@ -96,6 +96,8 @@ async function doSaveKb() {
     kbStore.setReloadKbInfosSignal(true)
     ms.success(t('common.saveSuccess'))
     router.back()
+  } catch (error: any) {
+    ms.error(error.message ?? 'error')
   } finally {
     submitting.value = false
   }
@@ -113,6 +115,8 @@ onMounted(async () => {
     originalTitle.value = tmpKb.title
     kbEditOrigin = { ...resp.data }
     applyModelDefaults()
+  } catch (error: any) {
+    ms.error(error.message ?? 'error')
   } finally {
     loading.value = false
   }

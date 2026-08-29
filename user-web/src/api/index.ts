@@ -587,6 +587,12 @@ function documentIndexProgress<T = any>(uuid: string) {
   })
 }
 
+// QA import template download: authenticated blob (the endpoint is no longer in the public
+// whitelist), the caller turns the response into an object URL and triggers the save
+function downloadQaImportTemplate() {
+  return getRawAxios().get<Blob>('/document/qaImportTemplate', { responseType: 'blob' })
+}
+
 function documentAttachment<T = any>(uuid: string) {
   return get<T>({
     url: `/document/attachment/${uuid}`,
@@ -988,6 +994,7 @@ export default {
   knowledgeBaseItemRetryIndex,
   documentIndexFailures,
   documentIndexProgress,
+  downloadQaImportTemplate,
   documentAttachment,
   documentQaPairSaveOrUpdate,
   knowledgeBaseItemAutoGenerateQa,

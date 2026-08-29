@@ -290,7 +290,13 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
      */
     public Page<KbDocumentDto> search(String kbUuid, String keyword, Integer currentPage, Integer pageSize) {
         Page<KbDocumentDto> page = baseMapper.searchByKb(new Page<>(currentPage, pageSize), kbUuid, keyword);
-        page.getRecords().forEach(item -> item.setSourceFileUrl(fileService.getUrl(item.getSourceFileUuid())));
+        // one batched lookup instead of a per-row query (N+1 on large pages)
+        List<String> fileUuids = page.getRecords().stream()
+                .map(KbDocumentDto::getSourceFileUuid)
+                .filter(StringUtils::isNotBlank)
+                .toList();
+        java.util.Map<String, String> urlByUuid = fileService.getUrlByUuids(fileUuids);
+        page.getRecords().forEach(item -> item.setSourceFileUrl(urlByUuid.get(item.getSourceFileUuid())));
         return page;
     }
 
@@ -309,10 +315,12 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
             if (hasWritePrivilege(kbItemUuid)) {
                 KbDocument item = getEnable(kbItemUuid);
                 if (item != null) {
-                    if (!hasTask) {
-                        stringRedisTemplate.opsForValue().set(userIndexKey, "0", 10, TimeUnit.MINUTES);
-                        hasTask = true;
-                    }
+                if (!hasTask) {
+                    // seed only when absent: a plain SET would clobber the live counter the
+                    // task executor maintains with increment/decrement while its tasks run
+                    stringRedisTemplate.opsForValue().setIfAbsent(userIndexKey, "0", 10, TimeUnit.MINUTES);
+                    hasTask = true;
+                }
                     User user = ThreadContext.getCurrentUser();
                     for (String indexType : indexTypes) {
                         indexTaskService.enqueueDocument(knowledgeBase.getUuid(), kbItemUuid, indexType, user);

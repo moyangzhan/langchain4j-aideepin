@@ -12,6 +12,7 @@ import com.moyz.adi.common.entity.DocumentSegmentChildChunk;
 import com.moyz.adi.common.entity.DocumentSegmentQuestion;
 import com.moyz.adi.common.entity.KbDocument;
 import com.moyz.adi.common.entity.KnowledgeBase;
+import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.service.DocumentSegmentManageService;
 import com.moyz.adi.common.service.KbDocumentService;
 import com.moyz.adi.common.service.KnowledgeBaseService;
@@ -21,6 +22,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import static com.moyz.adi.common.enums.ErrorEnum.A_DATA_NOT_FOUND;
 
 /**
  * 分段管理（模式感知）：列表 / 编辑 / 删除。
@@ -64,6 +67,11 @@ public class DocumentSegmentController {
     public DocumentSegmentQuestion saveOrUpdateQuestion(@RequestBody @Validated DocumentSegmentQuestionEditReq req) {
         kbDocumentService.checkWritePrivilege(req.getDocUuid());
         KbDocument doc = kbDocumentService.getEnable(req.getDocUuid());
+        // admins bypass the privilege probe without an existence check: a bogus/deleted uuid
+        // must 404 instead of NPE
+        if (doc == null) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
         KnowledgeBase kb = knowledgeBaseService.getOrThrow(doc.getKbUuid());
         return documentSegmentManageService.saveOrUpdateQuestion(doc, kb, req);
     }
@@ -75,6 +83,11 @@ public class DocumentSegmentController {
     public DocumentSegmentChildChunk saveOrUpdateChild(@RequestBody @Validated DocumentSegmentChildChunkEditReq req) {
         kbDocumentService.checkWritePrivilege(req.getDocUuid());
         KbDocument doc = kbDocumentService.getEnable(req.getDocUuid());
+        // admins bypass the privilege probe without an existence check: a bogus/deleted uuid
+        // must 404 instead of NPE
+        if (doc == null) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
         KnowledgeBase kb = knowledgeBaseService.getOrThrow(doc.getKbUuid());
         return documentSegmentManageService.saveOrUpdateChildChunk(doc, kb, req);
     }
@@ -86,6 +99,11 @@ public class DocumentSegmentController {
     public boolean regenerateChild(@RequestBody @Validated DocumentSegmentChildChunkRegenerateReq req) {
         kbDocumentService.checkWritePrivilege(req.getDocUuid());
         KbDocument doc = kbDocumentService.getEnable(req.getDocUuid());
+        // admins bypass the privilege probe without an existence check: a bogus/deleted uuid
+        // must 404 instead of NPE
+        if (doc == null) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
         KnowledgeBase kb = knowledgeBaseService.getOrThrow(doc.getKbUuid());
         return documentSegmentManageService.regenerateChildChunks(doc, kb, req);
     }
@@ -97,6 +115,11 @@ public class DocumentSegmentController {
     public boolean saveOrUpdateQaPair(@RequestBody @Validated QaPairEditReq req) {
         kbDocumentService.checkWritePrivilege(req.getDocUuid());
         KbDocument doc = kbDocumentService.getEnable(req.getDocUuid());
+        // admins bypass the privilege probe without an existence check: a bogus/deleted uuid
+        // must 404 instead of NPE
+        if (doc == null) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
         KnowledgeBase kb = knowledgeBaseService.getOrThrow(doc.getKbUuid());
         return documentSegmentManageService.editQaPair(doc, kb, req);
     }

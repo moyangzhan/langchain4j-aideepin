@@ -113,6 +113,9 @@ public class KnowledgeBaseController {
      */
     @GetMapping("/info/{uuid}")
     public KnowledgeBase info(@PathVariable String uuid) {
+        // read privilege like every other KB-scoped endpoint: without it any authenticated
+        // user can read a private KB's full entity (owner, prompts, retrieval config)
+        knowledgeBaseService.checkReadPrivilege(uuid);
         return knowledgeBaseService.lambdaQuery()
                 .eq(KnowledgeBase::getUuid, uuid)
                 .eq(KnowledgeBase::getIsDeleted, false)

@@ -53,6 +53,8 @@ const editState = reactive<{
   questions: string[]
   answerContent?: string
   isNew: boolean
+  // add-QA-pair retry progress: question texts already persisted this attempt
+  savedQuestions?: string[]
 }>({
   show: false,
   type: 'segment',
@@ -266,14 +268,45 @@ async function doGenerateQa() {
 // 导入问答对到当前文档（追加语义，相同答案并入既有段）：直传后端解析，成功后刷新
 const showQaImportModal = ref(false)
 const qaImportHeaders = { Authorization: '' }
+// controlled file list: cleared after a successful import so reopening the modal starts fresh
+// (a leftover finished row would block a new pick under :max=1)
+const qaImportFileList = ref<import('naive-ui').UploadFileInfo[]>([])
+
+async function onQaImportBefore(data: {
+  file: import('naive-ui').UploadFileInfo
+  fileList: import('naive-ui').UploadFileInfo[]
+}) {
+  // accept only filters the file picker, not drag-and-drop; guard the extension here
+  if (!/\.(xlsx|xls|csv)$/i.test(data.file.name)) {
+    ms.error(t('knowledgeBase.qaUploadFileHint'))
+    return false
+  }
+  return true
+}
+
+// non-2xx responses fire @error, not @finish: without this handler the row just hangs silently
+function onQaImportError() {
+  ms.error(t('common.uploadFailed'))
+}
 
 watch(() => authStore.token, (val) => {
   if (val)
     qaImportHeaders.Authorization = val
 }, { immediate: true })
 
-function downloadQaTemplate() {
-  window.open('/api/document/qaImportTemplate')
+async function downloadQaTemplate() {
+  try {
+    const resp = await api.downloadQaImportTemplate()
+    const url = URL.createObjectURL(resp.data)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'qa_import_template.csv'
+    link.click()
+    // revoke after the download has started: immediate revocation can abort it in some browsers
+    setTimeout(() => URL.revokeObjectURL(url), 0)
+  } catch (error: any) {
+    ms.error(error.message ?? 'error')
+  }
 }
 
 function onQaImportFinish({ event }: { event?: ProgressEvent }) {
@@ -282,6 +315,7 @@ function onQaImportFinish({ event }: { event?: ProgressEvent }) {
     const resp = JSON.parse((event?.target as XMLHttpRequest)?.responseText || '{}')
     if (resp.success) {
       ms.success(t('common.uploadSuccess'))
+      qaImportFileList.value = []
       loadDocInfo(curDocUuid.value)
       loadList(1)
     } else {
@@ -437,6 +471,7 @@ function openAddQaPair() {
     content: '',
     questions: [''],
     isNew: true,
+    savedQuestions: [],
   })
 }
 
@@ -469,7 +504,7 @@ function openEditQaPair(row: KnowledgeBase.Segment) {
 
 async function saveEdit() {
   // Question-set types (pair edit / add QA pair): one input per question; trim, drop blanks, dedupe
-  const questionListType = editState.type === 'qaPair' || (editState.type === 'question' && editState.isNew && !editState.answerSegmentId)
+  const questionListType = editState.type === 'qaPair' || (editState.type === 'question' && editState.isNew)
   const questions = [...new Set(editState.questions.map(q => q.trim()).filter(q => q.length > 0))]
   if (questionListType) {
     if (questions.length === 0 || !(editState.answerContent || '').trim()) {
@@ -498,19 +533,25 @@ async function saveEdit() {
       loadList(paginationReactive.page)
       return
     } else if (editState.type === 'question') {
-      // Add QA pair: the first question creates the answer segment; the rest attach to it
-      const first = await api.documentSegmentQuestionSaveOrUpdate<any>({
-        docUuid: editState.docUuid,
-        answerContent: editState.answerContent,
-        content: questions[0],
-      })
-      const answerSegmentId: string | undefined = first.data?.answerSegmentId
-      for (const question of questions.slice(1)) {
-        await api.documentSegmentQuestionSaveOrUpdate<any>({
+      // Add QA pair: the first unsaved question creates the answer segment (unless a previous
+      // attempt already created it); the rest attach to it. Persisted texts are tracked so a
+      // mid-loop failure retries the missing ones instead of duplicating the answer segment and
+      // already-saved questions (the backend also rejects duplicate question texts); text keys
+      // survive list edits between attempts, an index counter would not
+      const saved = new Set(editState.savedQuestions ?? [])
+      for (const question of questions) {
+        if (saved.has(question))
+          continue
+        const resp = await api.documentSegmentQuestionSaveOrUpdate<any>({
           docUuid: editState.docUuid,
-          answerSegmentId,
+          answerContent: editState.answerSegmentId ? undefined : editState.answerContent,
+          answerSegmentId: editState.answerSegmentId,
           content: question,
         })
+        if (!editState.answerSegmentId)
+          editState.answerSegmentId = resp.data?.answerSegmentId
+        saved.add(question)
+        editState.savedQuestions = [...saved]
       }
     } else {
       await api.documentSegmentChildSaveOrUpdate({
@@ -811,7 +852,7 @@ onActivated(() => {
       <NSpace vertical>
         <!-- Question set (add QA pair / pair edit): one input per question; the API layer
              collapses any newlines so users never need to care -->
-        <template v-if="editState.type === 'qaPair' || (editState.type === 'question' && editState.isNew && !editState.answerSegmentId)">
+        <template v-if="editState.type === 'qaPair' || (editState.type === 'question' && editState.isNew)">
           <div>{{ t('knowledgeBase.qaQuestion') }}</div>
           <div v-for="(_, idx) in editState.questions" :key="idx" class="flex items-center gap-2">
             <NInput v-model:value="editState.questions[idx]" :placeholder="t('knowledgeBase.qaQuestionInputPlaceholder')" />
@@ -836,7 +877,7 @@ onActivated(() => {
           />
         </template>
         <!-- Answer input for add-pair / pair-edit; questions first, matching column order -->
-        <template v-if="editState.type === 'qaPair' || (editState.type === 'question' && editState.isNew && !editState.answerSegmentId)">
+        <template v-if="editState.type === 'qaPair' || (editState.type === 'question' && editState.isNew)">
           {{ t('knowledgeBase.qaAnswer') }}
           <NInput
             v-model:value="editState.answerContent"
@@ -875,9 +916,11 @@ onActivated(() => {
       <NSpace vertical>
         <NP>{{ t('knowledgeBase.importQaTip') }}</NP>
         <NUpload
+          v-model:file-list="qaImportFileList"
           :max="1" accept=".xlsx,.xls,.csv" directory-dnd
           :action="`/api/document/importQa/${curDocUuid}`"
-          :headers="qaImportHeaders" @finish="onQaImportFinish"
+          :headers="qaImportHeaders" @before-upload="onQaImportBefore" @finish="onQaImportFinish"
+          @error="onQaImportError"
         >
           <NUploadDragger>
             <NText style="font-size: 16px">

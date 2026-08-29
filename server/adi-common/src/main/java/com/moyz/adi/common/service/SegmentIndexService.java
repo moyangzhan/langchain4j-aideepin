@@ -297,36 +297,64 @@ public class SegmentIndexService {
     private void embedAndStore(KnowledgeBase kb, KbDocument doc, List<PendingVector> items, Supplier<Boolean> cancelSignal, User user) {
         long startTime = System.currentTimeMillis();
         int totalTokens = 0;
-        for (int from = 0; from < items.size(); from += EMBED_BATCH_SIZE) {
-            if (cancelSignal != null && Boolean.TRUE.equals(cancelSignal.get())) {
-                throw new IndexTaskCancelledException("Index version advanced during embedding, docUuid:" + doc.getUuid());
-            }
-            List<PendingVector> batch = items.subList(from, Math.min(items.size(), from + EMBED_BATCH_SIZE));
-            List<String> embeddingIds = batch.stream().map(item -> UUID.randomUUID().toString()).toList();
-            List<String> realTexts = batch.stream().map(PendingVector::content).toList();
-            // The vector store is a pure retrieval index: content lives only in relational tables;
-            // langchain4j requires non-blank TextSegment text, so the segment uuid serves as the placeholder
-            // (the uuid is also kept in metadata; retrieval content is expanded by the post-processor from relational tables, never read from here)
-            List<TextSegment> storeSegments = batch.stream()
-                    .map(item -> TextSegment.from(item.segmentUuid(), storeMetadata(kb, doc, item.segmentUuid())))
-                    .toList();
-            List<Embedding> embeddings;
-            try {
-                var response = embeddingModel.embedAll(realTexts.stream().map(TextSegment::from).toList());
-                embeddings = response.content();
-                if (response.tokenUsage() != null && response.tokenUsage().totalTokenCount() != null) {
-                    totalTokens += response.tokenUsage().totalTokenCount();
+        // ids already added to the store by this run: on failure/cancellation they are rolled
+        // back (store entries removed AND the rows' embedding_id re-nulled), otherwise the
+        // retry filters on embeddingId == null and never re-embeds those rows
+        List<String> storedIds = new ArrayList<>(items.size());
+        List<PendingVector> applied = new ArrayList<>(items.size());
+        try {
+            for (int from = 0; from < items.size(); from += EMBED_BATCH_SIZE) {
+                if (cancelSignal != null && Boolean.TRUE.equals(cancelSignal.get())) {
+                    throw new IndexTaskCancelledException("Index version advanced during embedding, docUuid:" + doc.getUuid());
                 }
-            } catch (Exception e) {
-                // Sanitize the JSON error body and add the embedding model name; lands in fail_reason
-                String friendly = AdiStringUtil.extractJsonMessage(
-                        e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
-                throw new RuntimeException(friendly + ", name: " + adiProperties.getEmbeddingModel(), e);
+                List<PendingVector> batch = items.subList(from, Math.min(items.size(), from + EMBED_BATCH_SIZE));
+                List<String> embeddingIds = batch.stream().map(item -> UUID.randomUUID().toString()).toList();
+                List<String> realTexts = batch.stream().map(PendingVector::content).toList();
+                // The vector store is a pure retrieval index: content lives only in relational tables;
+                // langchain4j requires non-blank TextSegment text, so the segment uuid serves as the placeholder
+                // (the uuid is also kept in metadata; retrieval content is expanded by the post-processor from relational tables, never read from here)
+                List<TextSegment> storeSegments = batch.stream()
+                        .map(item -> TextSegment.from(item.segmentUuid(), storeMetadata(kb, doc, item.segmentUuid())))
+                        .toList();
+                List<Embedding> embeddings;
+                try {
+                    var response = embeddingModel.embedAll(realTexts.stream().map(TextSegment::from).toList());
+                    embeddings = response.content();
+                    if (response.tokenUsage() != null && response.tokenUsage().totalTokenCount() != null) {
+                        totalTokens += response.tokenUsage().totalTokenCount();
+                    }
+                } catch (Exception e) {
+                    // Sanitize the JSON error body and add the embedding model name; lands in fail_reason
+                    String friendly = AdiStringUtil.extractJsonMessage(
+                            e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+                    throw new RuntimeException(friendly + ", name: " + adiProperties.getEmbeddingModel(), e);
+                }
+                kbEmbeddingStore.addAll(embeddingIds, embeddings, storeSegments);
+                storedIds.addAll(embeddingIds);
+                for (int i = 0; i < batch.size(); i++) {
+                    batch.get(i).embeddingIdSetter().accept(embeddingIds.get(i));
+                    applied.add(batch.get(i));
+                }
             }
-            kbEmbeddingStore.addAll(embeddingIds, embeddings, storeSegments);
-            for (int i = 0; i < batch.size(); i++) {
-                batch.get(i).embeddingIdSetter().accept(embeddingIds.get(i));
+        } catch (Exception e) {
+            // restore the "embeddingId == null means pending" invariant for the rows whose ids
+            // were already backfilled, then drop the stored vectors
+            for (PendingVector appliedRow : applied) {
+                try {
+                    appliedRow.embeddingIdSetter().accept(null);
+                } catch (Exception rowError) {
+                    log.warn("Failed to re-null embedding id during rollback, docUuid:{}", doc.getUuid(), rowError);
+                }
             }
+            if (!storedIds.isEmpty()) {
+                try {
+                    kbEmbeddingStore.removeAll(storedIds);
+                } catch (Exception cleanupError) {
+                    log.warn("Failed to roll back {} stored embeddings for doc {}, orphans remain until the next reindex",
+                            storedIds.size(), doc.getUuid(), cleanupError);
+                }
+            }
+            throw e;
         }
         recordEmbeddingUsage(user, doc, totalTokens, System.currentTimeMillis() - startTime);
     }

@@ -251,6 +251,10 @@ public class GraphStoreIngestor {
             if (null != graphEdgeWithVertices) {
                 GraphEdge existGraphEdge = graphEdgeWithVertices.getMiddle();
                 weight += existGraphEdge.getWeight();
+                // append kb_item_uuid into the metadata BEFORE building the update payload:
+                // appending after the update wrote the un-appended metadata and the merged value
+                // was never persisted (same order as the vertex branch above)
+                appendExistsToNewOne(existGraphEdge.getMetadata(), metadata);
                 GraphEdgeEditInfo graphEdgeEditInfo = new GraphEdgeEditInfo();
                 graphEdgeEditInfo.setSourceFilter(GraphSearchCondition.builder()
                         .names(List.of(sourceName))
@@ -264,10 +268,9 @@ public class GraphStoreIngestor {
                         .textSegmentId(existGraphEdge.getTextSegmentId() + "," + chunkId)
                         .description(existGraphEdge.getDescription() + "\n" + edgeDescription)
                         .weight(weight)
+                        .metadata(metadata)
                         .build());
                 graphStore.updateEdge(graphEdgeEditInfo);
-
-                appendExistsToNewOne(existGraphEdge.getMetadata(), metadata);
             } else {
 //Create if not exists
                 //检查sourceName的节点是否存在，不存在则创建

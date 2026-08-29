@@ -166,10 +166,12 @@ public class DocumentSegmentService extends ServiceImpl<DocumentSegmentMapper, D
         long questions = questionService.lambdaQuery()
                 .eq(DocumentSegmentQuestion::getKbUuid, kbUuid)
                 .eq(DocumentSegmentQuestion::getIsDeleted, false)
+                .isNotNull(DocumentSegmentQuestion::getEmbeddingId)
                 .count();
         long children = childChunkService.lambdaQuery()
                 .eq(DocumentSegmentChildChunk::getKbUuid, kbUuid)
                 .eq(DocumentSegmentChildChunk::getIsDeleted, false)
+                .isNotNull(DocumentSegmentChildChunk::getEmbeddingId)
                 .count();
         return (int) (main + questions + children);
     }
