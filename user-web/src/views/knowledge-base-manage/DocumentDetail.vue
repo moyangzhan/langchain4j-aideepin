@@ -504,9 +504,11 @@ async function saveEdit() {
 }
 
 function confirmDelete(type: 'segment' | 'child', uuid: string) {
+  // Parent segment deletion cascades to its child chunks and their vectors
+  const parent = type === 'segment' && segmentMode.value === 'parent_child'
   dialog.warning({
-    title: t('common.delete'),
-    content: t('common.deleteConfirm'),
+    title: parent ? t('knowledgeBase.deleteParent') : t('common.delete'),
+    content: parent ? t('knowledgeBase.deleteParentConfirm') : t('common.deleteConfirmTip'),
     positiveText: t('common.confirm'),
     negativeText: t('common.cancel'),
     onPositiveClick: async () => {
@@ -524,19 +526,29 @@ function confirmDelete(type: 'segment' | 'child', uuid: string) {
   })
 }
 
-// 停用分段会删除其向量与图谱数据；启用会重新生成（图谱抽取消耗模型额度），操作前均需确认
+// 停用分段会删除其向量与图谱数据（同步清理，耗时随图谱足迹增长）；启用会重新生成（图谱抽取消耗模型额度），操作前均需确认。
+// 文档未图谱化时后端只处理向量，提示词同步收敛为仅向量口径
 function confirmToggleStatus(row: KnowledgeBase.Segment, isEnabled: boolean) {
+  const hasGraph = curDoc.graphicalStatus === 'DONE'
+  const content = isEnabled
+    ? (hasGraph ? t('knowledgeBase.segmentEnableConfirm') : t('knowledgeBase.segmentEnableVectorOnlyConfirm'))
+    : (hasGraph ? t('knowledgeBase.segmentDisableConfirm') : t('knowledgeBase.segmentDisableVectorOnlyConfirm'))
   dialog.warning({
     title: isEnabled ? t('knowledgeBase.enable') : t('knowledgeBase.disable'),
-    content: isEnabled ? t('knowledgeBase.segmentEnableConfirm') : t('knowledgeBase.segmentDisableConfirm'),
+    content,
     positiveText: t('common.confirm'),
     negativeText: t('common.cancel'),
     onPositiveClick: async () => {
+      // The toggle request runs the index cleanup/rebuild setup synchronously; keep a visible
+      // global indicator next to the dialog button spinner until it settles
+      loadingBar.start()
       try {
         await api.documentSegmentToggleStatus({ uuid: row.uuid, isEnabled })
         ms.success(t('common.saveSuccess'))
-        loadList(paginationReactive.page)
+        await loadList(paginationReactive.page)
+        loadingBar.finish()
       } catch (error: any) {
+        loadingBar.error()
         ms.error(error.message ?? 'error')
       }
     },
@@ -589,10 +601,11 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Segment> => [
   {
     title: t('common.action'),
     key: 'actions',
-    width: 100,
+    width: 140,
     render: row => h('div', { class: 'flex items-center gap-2' }, {
       default: () => [
         h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => openEdit('segment', row) }, { default: () => t('common.edit') }),
+        h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => confirmToggleStatus(row, row.isEnabled === false) }, { default: () => row.isEnabled === false ? t('knowledgeBase.enable') : t('knowledgeBase.disable') }),
         h(NButton, { text: true, type: 'error', size: 'small', onClick: () => confirmDelete('segment', row.uuid) }, { default: () => t('common.delete') }),
       ],
     }),
@@ -704,6 +717,7 @@ onUnmounted(() => {
         @add-child="openAddChild"
         @delete-child="uuid => confirmDelete('child', uuid)"
         @delete-segment="uuid => confirmDelete('segment', uuid)"
+        @toggle-status="seg => confirmToggleStatus(seg, seg.isEnabled === false)"
         @rechunk="confirmRegenerateChildren"
         @retry="retryRebuild"
         @repair="confirmRepairVector"
@@ -715,6 +729,7 @@ onUnmounted(() => {
         :item-count="paginationReactive.itemCount" :loading="loading" :max-height="tableMaxHeight"
         @edit-pair="openEditQaPair"
         @delete-segment="uuid => confirmDelete('segment', uuid)"
+        @toggle-status="seg => confirmToggleStatus(seg, seg.isEnabled === false)"
         @retry="retryRebuild"
         @repair="confirmRepairVector"
         @update:page="onHandlePageChange"

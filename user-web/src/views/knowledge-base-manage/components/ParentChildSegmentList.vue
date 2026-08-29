@@ -21,6 +21,7 @@ const emit = defineEmits<{
   (e: 'addChild', parentSegmentId: string): void
   (e: 'deleteChild', uuid: string): void
   (e: 'deleteSegment', uuid: string): void
+  (e: 'toggleStatus', seg: KnowledgeBase.Segment): void
   (e: 'rechunk', seg: KnowledgeBase.Segment): void
   (e: 'retry', seg: KnowledgeBase.Segment): void
   (e: 'repair', seg: KnowledgeBase.Segment): void
@@ -106,25 +107,28 @@ export default { name: 'ParentChildSegmentList' }
             <span>{{ t('knowledgeBase.segmentHitCount') }}: {{ seg.hitCount }}</span>
             <span>{{ t('knowledgeBase.wordCount') }}: {{ seg.wordCount }}</span>
           </div>
+          <div class="pc-actions">
+            <NButton v-if="seg.isEnabled !== false" text type="primary" size="tiny" @click="emit('addChild', seg.id)">
+              + {{ t('knowledgeBase.childChunks') }}
+            </NButton>
+            <NButton v-if="seg.isEnabled !== false" text type="primary" size="tiny" @click="emit('rechunk', seg)">
+              {{ t('knowledgeBase.rechunkChildren') }}
+            </NButton>
+            <NButton text type="primary" size="tiny" @click="emit('editSegment', seg)">
+              {{ t('knowledgeBase.editParent') }}
+            </NButton>
+            <NButton text type="primary" size="tiny" @click="emit('toggleStatus', seg)">
+              {{ seg.isEnabled === false ? t('knowledgeBase.enableParent') : t('knowledgeBase.disableParent') }}
+            </NButton>
+            <NButton text type="error" size="tiny" @click="emit('deleteSegment', seg.uuid)">
+              {{ t('knowledgeBase.deleteParent') }}
+            </NButton>
+          </div>
           <NDataTable
             size="small" :columns="childColumns" :data="seg.children || []"
             :row-key="(row: KnowledgeBase.SegmentChildChunk) => row.uuid"
             :bordered="true" :single-line="false"
           />
-          <div class="pc-actions">
-            <NButton v-if="seg.isEnabled !== false" text type="primary" size="tiny" @click="emit('addChild', seg.id)">
-              + {{ t('knowledgeBase.childChunks') }}
-            </NButton>
-            <NButton text type="primary" size="tiny" @click="emit('editSegment', seg)">
-              {{ t('common.edit') }}
-            </NButton>
-            <NButton v-if="seg.isEnabled !== false" text type="primary" size="tiny" @click="emit('rechunk', seg)">
-              {{ t('knowledgeBase.rechunkChildren') }}
-            </NButton>
-            <NButton text type="error" size="tiny" @click="emit('deleteSegment', seg.uuid)">
-              {{ t('common.delete') }}
-            </NButton>
-          </div>
         </div>
       </NCollapseItem>
     </NCollapse>

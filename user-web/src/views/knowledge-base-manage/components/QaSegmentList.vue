@@ -18,6 +18,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'editPair', seg: KnowledgeBase.Segment): void
+  (e: 'toggleStatus', seg: KnowledgeBase.Segment): void
   (e: 'deleteSegment', uuid: string): void
   (e: 'retry', seg: KnowledgeBase.Segment): void
   (e: 'repair', seg: KnowledgeBase.Segment): void
@@ -72,10 +73,11 @@ const columns = computed<DataTableColumns<KnowledgeBase.Segment>>(() => [
   {
     title: t('common.action'),
     key: 'actions',
-    width: 100,
+    width: 140,
     render: row => h('div', { class: 'flex items-center gap-2' }, {
       default: () => [
         h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => emit('editPair', row) }, { default: () => t('common.edit') }),
+        h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => emit('toggleStatus', row) }, { default: () => row.isEnabled === false ? t('knowledgeBase.enable') : t('knowledgeBase.disable') }),
         h(NButton, { text: true, type: 'error', size: 'small', onClick: () => emit('deleteSegment', row.uuid) }, { default: () => t('common.delete') }),
       ],
     }),
