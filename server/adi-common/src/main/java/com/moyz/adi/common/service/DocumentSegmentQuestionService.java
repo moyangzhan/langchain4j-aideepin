@@ -25,7 +25,7 @@ public class DocumentSegmentQuestionService extends ServiceImpl<DocumentSegmentQ
     }
 
     /**
-     * 按向量库条目id批量查问题行
+     * 按向量库条目id批量查问题行（未删除；软删行不得参与展开/重建，防止已删内容复活）
      */
     public List<DocumentSegmentQuestion> listByEmbeddingIds(List<String> embeddingIds) {
         if (CollectionUtils.isEmpty(embeddingIds)) {
@@ -33,11 +33,12 @@ public class DocumentSegmentQuestionService extends ServiceImpl<DocumentSegmentQ
         }
         return lambdaQuery()
                 .in(DocumentSegmentQuestion::getEmbeddingId, embeddingIds)
+                .eq(DocumentSegmentQuestion::getIsDeleted, false)
                 .list();
     }
 
     /**
-     * 按答案分段id批量查问题行
+     * 按答案分段id批量查问题行（未删除；重建/编辑去重只看有效行）
      */
     public List<DocumentSegmentQuestion> listByAnswerIds(List<Long> answerSegmentIds) {
         if (CollectionUtils.isEmpty(answerSegmentIds)) {
@@ -45,6 +46,7 @@ public class DocumentSegmentQuestionService extends ServiceImpl<DocumentSegmentQ
         }
         return lambdaQuery()
                 .in(DocumentSegmentQuestion::getAnswerSegmentId, answerSegmentIds)
+                .eq(DocumentSegmentQuestion::getIsDeleted, false)
                 .list();
     }
 

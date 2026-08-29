@@ -10,7 +10,9 @@
 --     column exists for them (intentional: the child chunk size only takes effect for
 --     parent_child documents).
 --   * Section 1 RENAME is not idempotent (PostgreSQL has no IF EXISTS for RENAME); run once.
---   * Section 4 loops over all known suffixed KB embedding tables (to_regclass-guarded). It is
+--   * Section 3 loops over every adi_knowledge_base_embedding* table found in the schema
+--     (the suffix is dynamic: platform_dimension, e.g. bge_384 / qwen_1024 / openai_1536 /
+--     anything configured), so no deployment is silently left out. It is
 --     naturally idempotent: once "text" is cleared, subsequent runs insert nothing and update nothing.
 --   * After this migration the KB vector table's "text" column is empty for migrated rows: the
 --     relational segment tables are the single source of truth for segment content. For very large
@@ -205,25 +207,22 @@ execute procedure update_modified_column();
 
 -- ============================================================
 -- Section 3: backfill segments from existing pgvector KB embedding tables, then clear their text
--- All existing data is text-mode. The loop covers the base table and every known suffixed variant;
--- to_regclass guards deployments that never created some of them. hit_count may be missing on the
--- vector table (added at app startup by ensureColumns); the expression degrades to 0 in that case.
+-- All existing data is text-mode. The loop enumerates the base table and every suffixed variant
+-- from information_schema (the suffix is dynamic: platform_dimension); hit_count may be missing on
+-- the vector table (added at app startup by ensureColumns); the expression degrades to 0 in that case.
 -- ============================================================
 
 DO $$
 DECLARE
     vec_table text;
-    vec_tables text[] := ARRAY[
-        'adi_knowledge_base_embedding',
-        'adi_knowledge_base_embedding_bge_384',
-        'adi_knowledge_base_embedding_qwen_1024',
-        'adi_knowledge_base_embedding_openai_1536'
-        ];
     hit_count_expr text;
 BEGIN
-    FOREACH vec_table IN ARRAY vec_tables LOOP
-        CONTINUE WHEN to_regclass(vec_table) IS NULL;
-
+    FOR vec_table IN
+        SELECT table_name FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name LIKE 'adi_knowledge_base_embedding%'
+        ORDER BY table_name
+    LOOP
         IF EXISTS (SELECT 1 FROM information_schema.columns
                    WHERE table_schema = 'public' AND table_name = vec_table AND column_name = 'hit_count') THEN
             hit_count_expr := 'COALESCE(vec.hit_count, 0)';

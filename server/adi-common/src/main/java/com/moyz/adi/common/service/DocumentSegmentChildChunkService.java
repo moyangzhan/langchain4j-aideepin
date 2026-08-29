@@ -25,7 +25,7 @@ public class DocumentSegmentChildChunkService extends ServiceImpl<DocumentSegmen
     }
 
     /**
-     * 按向量库条目id批量查子块行
+     * 按向量库条目id批量查子块行（未删除；软删行不得参与展开/重建，防止已删内容复活）
      */
     public List<DocumentSegmentChildChunk> listByEmbeddingIds(List<String> embeddingIds) {
         if (CollectionUtils.isEmpty(embeddingIds)) {
@@ -33,11 +33,12 @@ public class DocumentSegmentChildChunkService extends ServiceImpl<DocumentSegmen
         }
         return lambdaQuery()
                 .in(DocumentSegmentChildChunk::getEmbeddingId, embeddingIds)
+                .eq(DocumentSegmentChildChunk::getIsDeleted, false)
                 .list();
     }
 
     /**
-     * 按父分段id批量查子块行
+     * 按父分段id批量查子块行（未删除；重建/编辑去重只看有效行）
      */
     public List<DocumentSegmentChildChunk> listByParentIds(List<Long> parentSegmentIds) {
         if (CollectionUtils.isEmpty(parentSegmentIds)) {
@@ -45,6 +46,7 @@ public class DocumentSegmentChildChunkService extends ServiceImpl<DocumentSegmen
         }
         return lambdaQuery()
                 .in(DocumentSegmentChildChunk::getParentSegmentId, parentSegmentIds)
+                .eq(DocumentSegmentChildChunk::getIsDeleted, false)
                 .list();
     }
 

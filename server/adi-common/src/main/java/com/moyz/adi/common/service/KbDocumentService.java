@@ -121,16 +121,23 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
             baseMapper.insert(item);
         } else {
             KbDocument old = baseMapper.selectById(itemEditReq.getId());
+            // the row resolved by id is authoritative: every side effect below keys on it,
+            // a client uuid that disagrees must be rejected instead of trusted
+            if (old == null || !Objects.equals(old.getUuid(), itemEditReq.getUuid())) {
+                throw new BaseException(A_DATA_NOT_FOUND);
+            }
+            uuid = old.getUuid();
             item.setId(itemEditReq.getId());
             baseMapper.updateById(item);
             invalidateSegmentsIfChanged(old, itemEditReq, uuid);
         }
 
-        stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, itemEditReq.getKbUuid());
-
         KbDocument saved = ChainWrappers.lambdaQueryChain(baseMapper)
                 .eq(KbDocument::getUuid, uuid)
                 .one();
+        if (null != saved) {
+            stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, saved.getKbUuid());
+        }
         // 保存为 qa 模式且勾选自动生成：无段行直接生成，已有问答对替换式重新生成（清空后重建）
         if (null != saved && saved.getSegmentMode() == SegmentModeEnum.QA
                 && Boolean.TRUE.equals(itemEditReq.getAutoGenerateQa())) {
@@ -315,6 +322,10 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
         if (!success) {
             return false;
         }
+        // cancel queued/running index tasks first: pending fails in place, running aborts at its
+        // next checkpoint -- otherwise an in-flight task would re-split and re-embed the deleted
+        // document's content right after the cleanup below
+        indexTaskService.cancelByDoc(uuid);
         iKnowledgeEmbeddingService.deleteByItemUuid(uuid);
         documentSegmentService.deleteByDocUuid(uuid);
 

@@ -137,6 +137,11 @@ public class IndexTaskService {
             log.warn("enqueueDocument skipped, doc not found:{}", docUuid);
             return;
         }
+        // never (re)index a soft-deleted document: a stale trigger must not resurrect it
+        if (Boolean.TRUE.equals(doc.getIsDeleted())) {
+            log.warn("enqueueDocument skipped, doc deleted:{}", docUuid);
+            return;
+        }
         IndexTask task = new IndexTask();
         task.setKbUuid(kbUuid);
         task.setDocUuid(docUuid);
@@ -215,6 +220,14 @@ public class IndexTaskService {
                 .values()
                 .stream()
                 .toList();
+    }
+
+    /**
+     * Cancel every unfinished task of a document (called on document delete): pending rows
+     * fail in place, running rows get stop_flag and abort at their next checkpoint.
+     */
+    public void cancelByDoc(String docUuid) {
+        indexTaskMapper.cancelUnfinishedByDoc(docUuid, "document deleted");
     }
 
     /**
@@ -340,7 +353,7 @@ public class IndexTaskService {
 
     private boolean executeDocumentEmbedding(IndexTask task) {
         KbDocument doc = kbDocumentMapper.getByUuid(task.getDocUuid());
-        if (doc == null) {
+        if (doc == null || Boolean.TRUE.equals(doc.getIsDeleted())) {
             return false;
         }
         KnowledgeBase kb = knowledgeBaseMapper.selectOne(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<KnowledgeBase>()
@@ -389,7 +402,7 @@ public class IndexTaskService {
 
     private boolean executeDocumentGraphical(IndexTask task) {
         KbDocument doc = kbDocumentMapper.getByUuid(task.getDocUuid());
-        if (doc == null) {
+        if (doc == null || Boolean.TRUE.equals(doc.getIsDeleted())) {
             return false;
         }
         KnowledgeBase kb = knowledgeBaseMapper.selectOne(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<KnowledgeBase>()
@@ -457,7 +470,7 @@ public class IndexTaskService {
         KbDocument doc = kbDocumentMapper.getByUuid(segment.getDocUuid());
         KnowledgeBase kb = knowledgeBaseMapper.selectOne(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<KnowledgeBase>()
                 .eq(KnowledgeBase::getUuid, segment.getKbUuid()).eq(KnowledgeBase::getIsDeleted, false));
-        if (doc == null || kb == null) {
+        if (doc == null || Boolean.TRUE.equals(doc.getIsDeleted()) || kb == null) {
             return false;
         }
         segmentIndexService.vectorizeSegment(kb, doc, segment);
@@ -494,7 +507,7 @@ public class IndexTaskService {
         KbDocument doc = kbDocumentMapper.getByUuid(segment.getDocUuid());
         KnowledgeBase kb = knowledgeBaseMapper.selectOne(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<KnowledgeBase>()
                 .eq(KnowledgeBase::getUuid, segment.getKbUuid()).eq(KnowledgeBase::getIsDeleted, false));
-        if (doc == null || kb == null) {
+        if (doc == null || Boolean.TRUE.equals(doc.getIsDeleted()) || kb == null) {
             return false;
         }
         User user = userService.getById(task.getUserId());
@@ -597,7 +610,7 @@ public class IndexTaskService {
      * a no-op.
      */
     private void enqueueLatestDocument(IndexTask task, KbDocument doc) {
-        if (doc == null) {
+        if (doc == null || Boolean.TRUE.equals(doc.getIsDeleted())) {
             return;
         }
         indexTaskMapper.enqueue(buildLatestDocumentTask(task, doc));

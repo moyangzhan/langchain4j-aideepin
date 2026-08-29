@@ -42,6 +42,12 @@ public interface IndexTaskMapper extends BaseMapper<IndexTask> {
     IndexTask claimOne();
 
     /**
+     * Cancel every unfinished task of a document (document delete): pending fails in place,
+     * running only gets stop_flag (executor aborts at its next checkpoint).
+     */
+    int cancelUnfinishedByDoc(@Param("docUuid") String docUuid, @Param("reason") String reason);
+
+    /**
      * Finalize (done/failed). The status='running' guard: a row already stale-reset or
      * force-failed is no longer running; a late finish from a zombie executor must not
      * overwrite its status. Returns 0 for exactly that case — the caller must not finalize

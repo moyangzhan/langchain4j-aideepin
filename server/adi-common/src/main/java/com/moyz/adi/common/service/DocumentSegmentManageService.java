@@ -388,10 +388,12 @@ public class DocumentSegmentManageService {
         questionService.lambdaUpdate()
                 .eq(DocumentSegmentQuestion::getAnswerSegmentId, segment.getId())
                 .set(DocumentSegmentQuestion::getIsDeleted, true)
+                .set(DocumentSegmentQuestion::getEmbeddingId, null)
                 .update();
         childChunkService.lambdaUpdate()
                 .eq(DocumentSegmentChildChunk::getParentSegmentId, segment.getId())
                 .set(DocumentSegmentChildChunk::getIsDeleted, true)
+                .set(DocumentSegmentChildChunk::getEmbeddingId, null)
                 .update();
         documentSegmentService.lambdaUpdate()
                 .eq(DocumentSegment::getId, segment.getId())
@@ -417,9 +419,12 @@ public class DocumentSegmentManageService {
         if (question.getEmbeddingId() != null) {
             iKnowledgeEmbeddingService.deleteByIds(List.of(question.getEmbeddingId()));
         }
+        // clear the id along with the soft delete: a dangling embedding_id on a deleted row
+        // must never be mistaken for a rebuildable entry
         return questionService.lambdaUpdate()
                 .eq(DocumentSegmentQuestion::getId, question.getId())
                 .set(DocumentSegmentQuestion::getIsDeleted, true)
+                .set(DocumentSegmentQuestion::getEmbeddingId, null)
                 .update();
     }
 
@@ -586,9 +591,11 @@ public class DocumentSegmentManageService {
         if (child.getEmbeddingId() != null) {
             iKnowledgeEmbeddingService.deleteByIds(List.of(child.getEmbeddingId()));
         }
+        // clear the id along with the soft delete (same rationale as deleteQuestion)
         return childChunkService.lambdaUpdate()
                 .eq(DocumentSegmentChildChunk::getId, child.getId())
                 .set(DocumentSegmentChildChunk::getIsDeleted, true)
+                .set(DocumentSegmentChildChunk::getEmbeddingId, null)
                 .update();
     }
 

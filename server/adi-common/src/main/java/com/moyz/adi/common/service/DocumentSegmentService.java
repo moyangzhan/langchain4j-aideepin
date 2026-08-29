@@ -51,7 +51,7 @@ public class DocumentSegmentService extends ServiceImpl<DocumentSegmentMapper, D
     }
 
     /**
-     * 按向量库条目id批量查主表段行（text 模式命中）
+     * 按向量库条目id批量查主表段行（text 模式命中；未删除，软删行不得参与展开/重建）
      */
     public List<DocumentSegment> listByEmbeddingIds(List<String> embeddingIds) {
         if (CollectionUtils.isEmpty(embeddingIds)) {
@@ -59,6 +59,7 @@ public class DocumentSegmentService extends ServiceImpl<DocumentSegmentMapper, D
         }
         return lambdaQuery()
                 .in(DocumentSegment::getEmbeddingId, embeddingIds)
+                .eq(DocumentSegment::getIsDeleted, false)
                 .list();
     }
 

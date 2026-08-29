@@ -30,11 +30,14 @@ function getAndRenderGraph() {
 function parseAndRender(graphRef: KnowledgeBase.QaRecordGraphRef) {
   cy.$('node').remove()
   cy.$('edge').remove()
-  const nodes = graphRef.vertices.map((item) => {
-    return { group: 'nodes', data: { id: `${item.id}`, name: item.name, description: item.description } }
-  })
+  // 实体名为节点键（与文档图谱页一致，不依赖图库内部 id）；同名顶点去重
+  const nodes = graphRef.vertices
+    .filter((item, idx, arr) => arr.findIndex((v) => v.name === item.name) === idx)
+    .map((item) => {
+      return { group: 'nodes', data: { id: item.name, name: item.name, description: item.description } }
+    })
   const edges = graphRef.edges.map((item) => {
-    return { group: 'edges', data: { id: `${item.id}`, label: `${item.label}`, source: `${item.startId}`, target: `${item.endId}`, description: item.description } }
+    return { group: 'edges', data: { source: item.sourceName, target: item.targetName, description: item.description } }
   })
   renderGraph(nodes, edges)
 }
@@ -144,7 +147,7 @@ onMounted(() => {
         <NDivider title-placement="left">
           {{ t('chat.entity') }}
         </NDivider>
-        <div>{{ selectedVertex.id }}</div>
+        <div>{{ selectedVertex.name }}</div>
         <NDivider title-placement="left">
           {{ t('common.name') }}
         </NDivider>
@@ -158,7 +161,7 @@ onMounted(() => {
         <NDivider title-placement="left">
           {{ t('chat.relation') }}
         </NDivider>
-        <div>{{ selectedEdge.id }}</div>
+        <div>{{ selectedEdge.sourceName }} → {{ selectedEdge.targetName }}</div>
         <NDivider title-placement="left">
           {{ t('common.description') }}
         </NDivider>

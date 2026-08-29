@@ -75,6 +75,21 @@
     </select>
 
     <!--
+      Cancel every unfinished task of a document (used on document delete): pending rows fail
+      in place with the cause; running rows only get stop_flag so the executor aborts at its
+      next checkpoint. A deleted document must never be re-indexed by a stale queued task.
+    -->
+    <update id="cancelUnfinishedByDoc">
+        UPDATE adi_index_task
+        SET status      = CASE WHEN status = 'pending' THEN 'failed' ELSE status END,
+            fail_reason = CASE WHEN status = 'pending' THEN #{reason} ELSE fail_reason END,
+            stop_flag   = true,
+            update_time = now()
+        WHERE doc_uuid = #{docUuid}
+          AND status IN ('pending', 'running')
+    </update>
+
+    <!--
       Finalize (done/failed). The status='running' guard: a row already stale-reset (back to
       pending) or force-failed is no longer running; a late finish from a zombie executor must
       not overwrite its status.
