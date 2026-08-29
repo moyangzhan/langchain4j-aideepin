@@ -119,6 +119,13 @@ public class DocumentQaService {
     @Resource
     private IndexTaskService indexTaskService;
 
+    // @Lazy self proxy: generateQaAsync must be dispatched through the proxy, otherwise the
+    // @Async annotation is bypassed by the direct this-call and generation runs in the
+    // HTTP request thread
+    @Lazy
+    @Resource
+    private DocumentQaService self;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -246,9 +253,14 @@ public class DocumentQaService {
             throw new BaseException(A_DATA_NOT_FOUND);
         }
         int versionSnapshot = doc.getIndexVersion() == null ? 0 : doc.getIndexVersion();
+        // atomic in-progress acquire (the stale-entity checks above are best-effort only):
+        // concurrent imports double-pass the read checks, only one wins the conditional update
+        if (!tryMarkEmbeddingDoing(doc)) {
+            throw new BaseException(A_DOC_INDEX_DOING);
+        }
         try {
             saveQaPairs(kb, doc, pairs, AdiConstant.SegmentSource.DOC);
-            segmentIndexService.vectorizePendingQuestions(kb, doc);
+            segmentIndexService.vectorizePendingQuestions(kb, doc, com.moyz.adi.common.base.ThreadContext.getCurrentUser());
         } catch (Exception e) {
             // Finalize even when vectorization fails: the question rows are already persisted, and
             // a status stuck at its old value (e.g. DONE) would hide "new questions have no vector".
@@ -265,15 +277,13 @@ public class DocumentQaService {
      * status (no user-level indexing guard); on failure the document is marked FAIL with
      * an "import: " reason and the error propagates
      */
-    public void vectorizePendingQaDoc(KnowledgeBase kb, KbDocument doc) {
+    public void vectorizePendingQaDoc(KnowledgeBase kb, KbDocument doc, User user) {
         int versionSnapshot = doc.getIndexVersion() == null ? 0 : doc.getIndexVersion();
-        ChainWrappers.lambdaUpdateChain(kbDocumentService.getBaseMapper())
-                .eq(KbDocument::getId, doc.getId())
-                .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
-                .set(KbDocument::getEmbeddingStatusChangeTime, java.time.LocalDateTime.now())
-                .update();
+        if (!tryMarkEmbeddingDoing(doc)) {
+            throw new BaseException(A_DOC_INDEX_DOING);
+        }
         try {
-            segmentIndexService.vectorizePendingQuestions(kb, doc);
+            segmentIndexService.vectorizePendingQuestions(kb, doc, user);
         } catch (Exception e) {
             markEmbeddingFailed(doc, versionSnapshot,
                     e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
@@ -331,13 +341,27 @@ public class DocumentQaService {
                 return;
             }
         }
-        ChainWrappers.lambdaUpdateChain(kbDocumentService.getBaseMapper())
-                .eq(KbDocument::getUuid, doc.getUuid())
+        // atomic in-progress acquire: the entity above may be stale, only one concurrent flow
+        // may flip the doc into DOING (double-click / racing import both fail fast here)
+        if (!tryMarkEmbeddingDoing(doc)) {
+            throw new BaseException(A_DOC_INDEX_DOING);
+        }
+        self.generateQaAsync(user, kb, doc);
+    }
+
+    /**
+     * 原子占用：仅当文档当前既非嵌入 DOING 也非图谱 DOING 时置嵌入 DOING。
+     * 条件更新返回 false 意味着已被并发流程占用（TOCTOU 收口）。
+     */
+    private boolean tryMarkEmbeddingDoing(KbDocument doc) {
+        return ChainWrappers.lambdaUpdateChain(kbDocumentService.getBaseMapper())
+                .eq(KbDocument::getId, doc.getId())
+                .ne(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
+                .ne(KbDocument::getGraphicalStatus, GraphicalStatusEnum.DOING)
                 .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
                 .set(KbDocument::getEmbeddingStatusChangeTime, java.time.LocalDateTime.now())
                 .set(KbDocument::getFailReason, "")
                 .update();
-        generateQaAsync(user, kb, doc);
     }
 
     /**
@@ -386,7 +410,7 @@ public class DocumentQaService {
                 return;
             }
             saveQaPairs(kb, doc, pairs, AdiConstant.SegmentSource.DOC);
-            segmentIndexService.vectorizePendingQuestions(kb, doc);
+            segmentIndexService.vectorizePendingQuestions(kb, doc, user);
             ChainWrappers.lambdaUpdateChain(kbDocumentService.getBaseMapper())
                     .eq(KbDocument::getId, doc.getId())
                     .eq(KbDocument::getIndexVersion, versionSnapshot)

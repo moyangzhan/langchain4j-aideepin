@@ -502,6 +502,7 @@ export default {
     retryBothIndex: 'Re-vectorize and re-graphitize',
     indexFailedSummary: 'Index failed: {dims}',
     indexRunningSummary: 'Indexing: {dims}',
+    pollStopped: 'Status refresh failed repeatedly; auto refresh stopped. Please reload the page manually',
     selectKnowledgeFirst: 'Select documents first',
     selectAtLeastOneRow: 'Please select at least one row',
     selectAtLeastOneIndexType: 'Please select at least one index type',

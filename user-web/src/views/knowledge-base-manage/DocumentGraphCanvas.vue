@@ -1,9 +1,12 @@
 <script setup lang='ts'>
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from 'vue'
 import { NButton, NDivider, NFlex } from 'naive-ui'
+import { useMessage } from 'naive-ui'
 import cytoscape from 'cytoscape'
 import api from '@/api'
 import { t } from '@/locales'
+
+const ms = useMessage()
 
 interface Props {
   docUuid: string
@@ -36,12 +39,16 @@ const loadedVertices = ref<number>(0)
 const loadedEdges = ref<number>(0)
 const hasMore = computed(() => loadedVertices.value < totalVertices.value || loadedEdges.value < totalEdges.value)
 
+// Request sequence + doc snapshot: a response only applies if it is still the latest request
+// for the same document — a doc switch mid-flight must neither render the old doc's graph into
+// the reset canvas nor silently drop the new doc's load. Concurrent duplicate loads (load-more
+// double click) are harmless: they fetch the same cursor page and appendBatch dedupes by id.
+let requestSeq = 0
 async function loadGraph() {
-  if (loading.value)
-    return
-
   if (!props.docUuid)
     return
+  const seq = ++requestSeq
+  const docUuidAtRequest = props.docUuid
 
   loading.value = true
   try {
@@ -53,6 +60,8 @@ async function loadGraph() {
       edgeCursorVal?.source,
       edgeCursorVal?.target,
     )
+    if (seq !== requestSeq || docUuidAtRequest !== props.docUuid)
+      return
     totalVertices.value = resp.data.totalVertices ?? resp.data.vertices.length
     totalEdges.value = resp.data.totalEdges ?? resp.data.edges.length
     if (resp.data.vertices.length > 0)
@@ -60,6 +69,9 @@ async function loadGraph() {
     if (resp.data.edges.length > 0)
       edgeCursor.value = { source: resp.data.edges[resp.data.edges.length - 1].sourceName, target: resp.data.edges[resp.data.edges.length - 1].targetName }
     appendBatch(resp.data.vertices, resp.data.edges)
+  } catch (error: any) {
+    if (seq === requestSeq)
+      ms.error(error.message ?? 'error')
   } finally {
     loading.value = false
   }
@@ -95,6 +107,28 @@ onMounted(() => {
     loadGraph()
   })
 })
+
+// KeepAlive caches one page per doc route: destroy the cytoscape instance on deactivation or
+// every visited doc-graph page leaks a live one; re-activation rebuilds the canvas and reloads
+// (skipped on the first activation right after mount, where onMounted already loaded)
+onDeactivated(destroyCy)
+onActivated(() => {
+  nextTick(() => {
+    if (cy)
+      return
+    initCy()
+    resetForDoc()
+    loadGraph()
+  })
+})
+onUnmounted(destroyCy)
+
+function destroyCy() {
+  // also invalidate any in-flight load: its response would otherwise apply to a null canvas
+  requestSeq++
+  cy?.destroy()
+  cy = null
+}
 
 function initCy() {
   cy = cytoscape({

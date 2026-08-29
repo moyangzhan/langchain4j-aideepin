@@ -15,6 +15,8 @@ import com.moyz.adi.common.service.IndexTaskService;
 import com.moyz.adi.common.service.KbDocumentService;
 import com.moyz.adi.common.service.KnowledgeBaseService;
 import jakarta.annotation.Resource;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.http.HttpHeaders;
@@ -48,7 +50,7 @@ public class DocumentController {
     private IndexTaskService indexTaskService;
 
     @PostMapping("/saveOrUpdate")
-    public KbDocument saveOrUpdate(@RequestBody KbDocumentEditReq itemEditReq) {
+    public KbDocument saveOrUpdate(@RequestBody @Valid KbDocumentEditReq itemEditReq) {
         return kbDocumentService.saveOrUpdate(itemEditReq);
     }
 
@@ -59,13 +61,13 @@ public class DocumentController {
      * (the generate flag is ignored when a file is present)
      */
     @PostMapping("/saveOrUpdateWithFile")
-    public KbDocument saveOrUpdateWithFile(KbDocumentEditReq itemEditReq,
+    public KbDocument saveOrUpdateWithFile(@Valid KbDocumentEditReq itemEditReq,
                                            @RequestParam(value = "file", required = false) MultipartFile file) {
         return kbDocumentService.saveOrUpdateWithQaFile(itemEditReq, file);
     }
 
     @GetMapping("/search")
-    public Page<KbDocumentDto> search(String kbUuid, String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
+    public Page<KbDocumentDto> search(String kbUuid, String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(1) @Max(100) Integer pageSize) {
         knowledgeBaseService.checkReadPrivilege(kbUuid);
         return kbDocumentService.search(kbUuid, keyword, currentPage, pageSize);
     }
@@ -89,7 +91,7 @@ public class DocumentController {
     }
 
     @PostMapping("/toggle-status")
-    public boolean toggleStatus(@RequestBody KbDocumentToggleStatusReq req) {
+    public boolean toggleStatus(@RequestBody @Valid KbDocumentToggleStatusReq req) {
         return kbDocumentService.toggleStatus(req.getUuid(), req.getIsEnabled());
     }
 

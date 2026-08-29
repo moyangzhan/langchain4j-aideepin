@@ -54,10 +54,14 @@
           AND status IN ('pending', 'running')
     </update>
 
-    <!-- PG UPDATE..RETURNING must run via executeQuery, hence the select tag -->
+    <!-- PG UPDATE..RETURNING must run via executeQuery, hence the select tag.
+         executor_epoch is (re)generated per claim: a fresh execution epoch. Heartbeat, finalize
+         and stop checks all match on (id, epoch), so a zombie executor (its row was stale-reset
+         and re-claimed under a new epoch) can no longer finalize a row owned by someone else. -->
     <select id="claimOne" resultType="com.moyz.adi.common.entity.IndexTask">
         UPDATE adi_index_task t
-        SET status = 'running', update_time = now(), start_time = now(), heartbeat_time = now(), stop_flag = false
+        SET status = 'running', update_time = now(), start_time = now(), heartbeat_time = now(), stop_flag = false,
+            executor_epoch = md5(random()::text || clock_timestamp()::text)
         WHERE t.id = (
             SELECT p.id
             FROM adi_index_task p
@@ -71,7 +75,7 @@
         )
         RETURNING t.id, t.kb_uuid, t.doc_uuid, t.user_id, t.segment_uuid,
                   t.target_type, t.task_type, t.index_version, t.status, t.fail_reason, t.stop_flag,
-                  t.start_time, t.heartbeat_time, t.create_time, t.update_time
+                  t.executor_epoch, t.start_time, t.heartbeat_time, t.create_time, t.update_time
     </select>
 
     <!--
@@ -90,28 +94,31 @@
     </update>
 
     <!--
-      Finalize (done/failed). The status='running' guard: a row already stale-reset (back to
-      pending) or force-failed is no longer running; a late finish from a zombie executor must
-      not overwrite its status.
+      Finalize (done/failed). Guards: status='running' (a row already stale-reset or force-failed
+      is no longer running) AND the claiming executor's epoch (a re-claimed row belongs to the new
+      executor; a late finish from the previous zombie must not overwrite it).
     -->
     <update id="finishOne">
         UPDATE adi_index_task
         SET status = #{status},
             fail_reason = #{failReason},
             update_time = now()
-        WHERE id = #{id} AND status = 'running'
+        WHERE id = #{id} AND status = 'running' AND executor_epoch = #{executorEpoch}
     </update>
 
-    <!-- Runtime heartbeat: refresh the liveness proof. Returns 0 = the row is no longer running (recovered or force-failed; this executor is a zombie) -->
+    <!-- Runtime heartbeat: refresh the liveness proof. Returns 0 = the row is no longer running
+         under this executor's epoch (recovered, force-failed or re-claimed; this executor is a zombie) -->
     <update id="heartbeat">
         UPDATE adi_index_task
         SET heartbeat_time = now()
-        WHERE id = #{id} AND status = 'running'
+        WHERE id = #{id} AND status = 'running' AND executor_epoch = #{executorEpoch}
     </update>
 
-    <!-- Cooperative stop checkpoint: this row is still running and carries the stop flag set by a newer-version enqueue -->
+    <!-- Cooperative stop checkpoint: this row is still running under our epoch and carries the
+         stop flag set by a newer-version enqueue -->
     <select id="isStopFlagSet" resultType="boolean">
-        SELECT EXISTS(SELECT 1 FROM adi_index_task WHERE id = #{id} AND status = 'running' AND stop_flag)
+        SELECT EXISTS(SELECT 1 FROM adi_index_task
+                      WHERE id = #{id} AND status = 'running' AND executor_epoch = #{executorEpoch} AND stop_flag)
     </select>
 
     <select id="hasRunningByDoc" resultType="boolean">
@@ -123,6 +130,16 @@
          "queued/executing" apart from "finally failed" -->
     <select id="hasUnfinishedByDoc" resultType="boolean">
         SELECT EXISTS(SELECT 1 FROM adi_index_task WHERE doc_uuid = #{docUuid} AND status IN ('pending', 'running'))
+    </select>
+
+    <!-- Unfinished DOCUMENT-level task presence: a queued/running document reindex also invalidates
+         concurrent segment edits (their output would be superseded by the doc task's snapshot), so
+         edit paths reject while this is true. Segment-level tasks are versioned per segment and
+         deliberately excluded. -->
+    <select id="hasUnfinishedDocTaskByDoc" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM adi_index_task
+                      WHERE doc_uuid = #{docUuid} AND target_type = 'document'
+                        AND status IN ('pending', 'running'))
     </select>
 
     <!-- Crash recovery: running rows whose heartbeat timed out are reset to pending for rerun -->

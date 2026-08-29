@@ -48,24 +48,25 @@ public interface IndexTaskMapper extends BaseMapper<IndexTask> {
     int cancelUnfinishedByDoc(@Param("docUuid") String docUuid, @Param("reason") String reason);
 
     /**
-     * Finalize (done/failed). The status='running' guard: a row already stale-reset or
-     * force-failed is no longer running; a late finish from a zombie executor must not
-     * overwrite its status. Returns 0 for exactly that case — the caller must not finalize
-     * the host row either when its own task row was already taken over.
+     * Finalize (done/failed). Guards: status='running' AND the claiming executor's epoch —
+     * a row stale-reset and re-claimed under a new epoch must not be finalized by the previous
+     * (zombie) executor. Returns 0 for exactly that case — the caller must not finalize the
+     * host row either when its own task row was already taken over.
      */
-    int finishOne(@Param("id") Long id, @Param("status") String status, @Param("failReason") String failReason);
+    int finishOne(@Param("id") Long id, @Param("executorEpoch") String executorEpoch,
+                  @Param("status") String status, @Param("failReason") String failReason);
 
     /**
-     * Runtime heartbeat. Returns 0 = the row is no longer running (recovered or force-failed);
-     * this executor is a zombie
+     * Runtime heartbeat. Returns 0 = the row is no longer running under this executor's epoch
+     * (recovered, force-failed or re-claimed); this executor is a zombie.
      */
-    int heartbeat(@Param("id") Long id);
+    int heartbeat(@Param("id") Long id, @Param("executorEpoch") String executorEpoch);
 
     /**
-     * Cooperative stop checkpoint: this row is still running and carries the stop flag set by
-     * a newer-version enqueue
+     * Cooperative stop checkpoint: this row is still running under our epoch and carries the
+     * stop flag set by a newer-version enqueue
      */
-    boolean isStopFlagSet(@Param("id") Long id);
+    boolean isStopFlagSet(@Param("id") Long id, @Param("executorEpoch") String executorEpoch);
 
     boolean hasRunningByDoc(@Param("docUuid") String docUuid);
 
@@ -75,6 +76,13 @@ public interface IndexTaskMapper extends BaseMapper<IndexTask> {
      * uses this to tell "queued/executing" apart from "finally failed".
      */
     boolean hasUnfinishedByDoc(@Param("docUuid") String docUuid);
+
+    /**
+     * Whether the doc has an unfinished DOCUMENT-level task (pending or running). Concurrent
+     * segment edits are rejected while true: the doc task's snapshot would supersede their
+     * output. Segment-level tasks are versioned per segment and excluded.
+     */
+    boolean hasUnfinishedDocTaskByDoc(@Param("docUuid") String docUuid);
 
     /**
      * Latest failed document-level task per task type (embedding/graphical). The doc row's

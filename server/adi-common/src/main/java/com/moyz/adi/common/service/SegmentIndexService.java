@@ -7,6 +7,9 @@ import com.moyz.adi.common.entity.DocumentSegmentChildChunk;
 import com.moyz.adi.common.entity.DocumentSegmentQuestion;
 import com.moyz.adi.common.entity.KbDocument;
 import com.moyz.adi.common.entity.KnowledgeBase;
+import com.moyz.adi.common.entity.LLMCallRecord;
+import com.moyz.adi.common.entity.User;
+import com.moyz.adi.common.enums.LLMCallRecordSourceType;
 import com.moyz.adi.common.enums.SegmentModeEnum;
 import com.moyz.adi.common.exception.IndexTaskCancelledException;
 import com.moyz.adi.common.rag.DocumentSplitterFactory;
@@ -25,7 +28,9 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -75,6 +80,15 @@ public class SegmentIndexService {
     @Resource
     private AdiProperties adiProperties;
 
+    @Resource
+    private LLMCallRecordService llmCallRecordService;
+
+    // @Lazy self proxy: splitIntoSegments must run through the proxy for @Transactional to
+    // apply (callers like reindexEmbedding are deliberately non-transactional)
+    @Lazy
+    @Resource
+    private SegmentIndexService self;
+
     /**
      * Effective segment mode of the document; unset/legacy rows fall back to text
      */
@@ -83,7 +97,7 @@ public class SegmentIndexService {
     }
 
     public void reindexEmbedding(KnowledgeBase kb, KbDocument doc) {
-        reindexEmbedding(kb, doc, null);
+        reindexEmbedding(kb, doc, null, null);
     }
 
     /**
@@ -93,7 +107,7 @@ public class SegmentIndexService {
      * When cancelSignal is non-null it is checked before each embed batch and a true result throws
      * IndexTaskCancelledException (cooperative cancellation checkpoint of the task queue).
      */
-    public void reindexEmbedding(KnowledgeBase kb, KbDocument doc, Supplier<Boolean> cancelSignal) {
+    public void reindexEmbedding(KnowledgeBase kb, KbDocument doc, User user, Supplier<Boolean> cancelSignal) {
         SegmentModeEnum mode = effectiveMode(doc);
         log.info("reindexEmbedding, docUuid:{}, mode:{}", doc.getUuid(), mode.getValue());
         // Drop old vectors (deleted by metadata kb_item_uuid; disabled segments have none, so the delete is a no-op for them)
@@ -117,7 +131,7 @@ public class SegmentIndexService {
                 childChunkService.clearEmbeddingIdsByParentIds(enabledParentIds);
             }
         }
-        vectorizePending(kb, doc, mode, cancelSignal);
+        vectorizePending(kb, doc, mode, cancelSignal, user);
     }
 
     /**
@@ -127,15 +141,19 @@ public class SegmentIndexService {
     public List<DocumentSegment> ensureSegments(KnowledgeBase kb, KbDocument doc) {
         List<DocumentSegment> segments = documentSegmentService.listByDocUuid(doc.getUuid());
         if (segments.isEmpty()) {
-            splitIntoSegments(kb, doc);
+            self.splitIntoSegments(kb, doc);
             segments = documentSegmentService.listByDocUuid(doc.getUuid());
         }
         return segments;
     }
 
     /**
-     * Materialize the document remark into main-table segment rows by mode (qa-mode segments are created by QA data flows, not split here)
+     * Materialize the document remark into main-table segment rows by mode (qa-mode segments are created by QA data flows, not split here).
+     * Transactional so a partial split can never commit: a crash mid-split followed by the
+     * heartbeat rerun would otherwise take the incremental branch and silently keep a truncated
+     * document (segments exist => no full re-split) while marking it DONE.
      */
+    @Transactional
     public void splitIntoSegments(KnowledgeBase kb, KbDocument doc) {
         SegmentModeEnum mode = effectiveMode(doc);
         switch (mode) {
@@ -198,7 +216,7 @@ public class SegmentIndexService {
      * (text main-table rows / question rows / child-chunk rows).
      * The TextSegment text stored in the vector store is a placeholder; embeddings are computed from the real content.
      */
-    private void vectorizePending(KnowledgeBase kb, KbDocument doc, SegmentModeEnum mode, Supplier<Boolean> cancelSignal) {
+    private void vectorizePending(KnowledgeBase kb, KbDocument doc, SegmentModeEnum mode, Supplier<Boolean> cancelSignal, User user) {
         // Batch up and call embedAndStore once, which sub-batches by EMBED_BATCH_SIZE, to avoid per-item embedding API calls.
         // Disabled-segment filtering: in incremental reindex (segment rows kept) disabled segments are not re-embedded, preventing disabled data from being "revived"
         List<PendingVector> pending = new ArrayList<>();
@@ -226,7 +244,7 @@ public class SegmentIndexService {
                                 id -> childChunkService.updateEmbeddingId(c.getId(), id))));
             }
         }
-        embedAndStore(kb, doc, pending, cancelSignal);
+        embedAndStore(kb, doc, pending, cancelSignal, user);
     }
 
     /**
@@ -234,7 +252,7 @@ public class SegmentIndexService {
      * entries whose embeddingId is null (all cleared on disable) by mode — text = this segment;
      * qa = all questions under the answer; parent_child = all child chunks under the parent.
      */
-    public void vectorizeSegment(KnowledgeBase kb, KbDocument doc, DocumentSegment segment) {
+    public void vectorizeSegment(KnowledgeBase kb, KbDocument doc, DocumentSegment segment, User user) {
         SegmentModeEnum mode = effectiveMode(doc);
         List<PendingVector> pending = new ArrayList<>();
         switch (mode) {
@@ -253,7 +271,7 @@ public class SegmentIndexService {
                     .forEach(c -> pending.add(new PendingVector(c.getUuid(), c.getContent(),
                             id -> childChunkService.updateEmbeddingId(c.getId(), id))));
         }
-        embedAndStore(kb, doc, pending);
+        embedAndStore(kb, doc, pending, null, user);
     }
 
     /**
@@ -263,23 +281,22 @@ public class SegmentIndexService {
      * answer is saved but not vectorized (guarded by ManageService); this is a backstop for the
      * import/generation bulk paths to prevent reviving disabled segments.
      */
-    public void vectorizePendingQuestions(KnowledgeBase kb, KbDocument doc) {
+    public void vectorizePendingQuestions(KnowledgeBase kb, KbDocument doc, User user) {
         Set<Long> enabledAnswerIds = documentSegmentService.listEnabledIdsByDocUuid(doc.getUuid());
         List<PendingVector> pending = questionService.listByDocUuid(doc.getUuid()).stream()
                 .filter(q -> q.getEmbeddingId() == null && enabledAnswerIds.contains(q.getAnswerSegmentId()))
                 .map(q -> new PendingVector(q.getUuid(), q.getContent(), id -> questionService.updateEmbeddingId(q.getId(), id)))
                 .toList();
-        embedAndStore(kb, doc, pending);
-    }
-
-    private void embedAndStore(KnowledgeBase kb, KbDocument doc, List<PendingVector> items) {
-        embedAndStore(kb, doc, items, null);
+        embedAndStore(kb, doc, pending, null, user);
     }
 
     /**
-     * When cancelSignal is non-null, check before each batch; true triggers cooperative cancellation (version advanced, task obsolete)
+     * When cancelSignal is non-null, check before each batch; true triggers cooperative cancellation
+     * (version advanced, task obsolete). Embedding token usage is aggregated and recorded per document.
      */
-    private void embedAndStore(KnowledgeBase kb, KbDocument doc, List<PendingVector> items, Supplier<Boolean> cancelSignal) {
+    private void embedAndStore(KnowledgeBase kb, KbDocument doc, List<PendingVector> items, Supplier<Boolean> cancelSignal, User user) {
+        long startTime = System.currentTimeMillis();
+        int totalTokens = 0;
         for (int from = 0; from < items.size(); from += EMBED_BATCH_SIZE) {
             if (cancelSignal != null && Boolean.TRUE.equals(cancelSignal.get())) {
                 throw new IndexTaskCancelledException("Index version advanced during embedding, docUuid:" + doc.getUuid());
@@ -295,7 +312,11 @@ public class SegmentIndexService {
                     .toList();
             List<Embedding> embeddings;
             try {
-                embeddings = embeddingModel.embedAll(realTexts.stream().map(TextSegment::from).toList()).content();
+                var response = embeddingModel.embedAll(realTexts.stream().map(TextSegment::from).toList());
+                embeddings = response.content();
+                if (response.tokenUsage() != null && response.tokenUsage().totalTokenCount() != null) {
+                    totalTokens += response.tokenUsage().totalTokenCount();
+                }
             } catch (Exception e) {
                 // Sanitize the JSON error body and add the embedding model name; lands in fail_reason
                 String friendly = AdiStringUtil.extractJsonMessage(
@@ -307,6 +328,30 @@ public class SegmentIndexService {
                 batch.get(i).embeddingIdSetter().accept(embeddingIds.get(i));
             }
         }
+        recordEmbeddingUsage(user, doc, totalTokens, System.currentTimeMillis() - startTime);
+    }
+
+    /**
+     * 嵌入调用也是 token 消耗：按文档聚合记一条 KNOWLEDGE_BASE_INGEST 调用记录（与图谱抽取/QA
+     * 生成同款）。只记可观测性，不扣日额度——嵌入计费语义此前不存在，保持现状。
+     */
+    private void recordEmbeddingUsage(User user, KbDocument doc, int totalTokens, long durationMs) {
+        if (user == null || totalTokens <= 0) {
+            return;
+        }
+        com.moyz.adi.common.entity.LLMCallRecord record = new LLMCallRecord();
+        record.setUuid(UuidUtil.createShort());
+        record.setSourceType(LLMCallRecordSourceType.KNOWLEDGE_BASE_INGEST.getValue());
+        record.setSourceId(doc.getId());
+        record.setUserId(user.getId());
+        String embeddingModel = adiProperties.getEmbeddingModel();
+        int colon = embeddingModel == null ? -1 : embeddingModel.indexOf(':');
+        record.setModelPlatform(colon > 0 ? embeddingModel.substring(0, colon) : "");
+        record.setModelName(embeddingModel);
+        record.setInputTokens(totalTokens);
+        record.setOutputTokens(0);
+        record.setDuration((int) durationMs);
+        llmCallRecordService.saveAsync(record);
     }
 
     private DocumentSplitter createSplitter(KnowledgeBase kb, Integer maxSegmentSize) {

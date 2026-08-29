@@ -66,6 +66,14 @@ public class IndexTask implements Serializable {
     private Boolean stopFlag;
 
     /**
+     * 执行代次（claim 时生成）：心跳/终态/停止检查都以 (id, epoch) 为准。心跳超时被重置
+     * pending 后若有新执行器重新领取同一行（新 epoch），原执行器（僵尸）的迟到写入全部
+     * 落空，防止其 finishOne 把新执行者正在跑的行误置终态、击穿同文档串行化。
+     */
+    @TableField("executor_epoch")
+    private String executorEpoch;
+
+    /**
      * 最近一次领取（开始执行）时刻；未运行过为 null。update_time 在终态时即结束时刻，
      * 两者之差即执行时长（供 done 历史行分析）。
      */

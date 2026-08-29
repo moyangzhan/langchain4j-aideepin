@@ -34,6 +34,8 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.text.MessageFormat;
 import java.util.List;
@@ -85,7 +87,9 @@ public class IndexTaskService {
     /** Max-runtime circuit breaker: force-fails hung tasks in a live process; must far exceed any normal task */
     private static final int MAX_RUNNING_MINUTES = 120;
 
-    private final ScheduledExecutorService heartbeatExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+    // small pool instead of a single thread: one slow heartbeat DB call must not delay the
+    // heartbeats of all other running tasks past the stale threshold
+    private final ScheduledExecutorService heartbeatExecutor = Executors.newScheduledThreadPool(2, r -> {
         Thread t = new Thread(r, "index-task-heartbeat");
         t.setDaemon(true);
         return t;
@@ -165,7 +169,7 @@ public class IndexTaskService {
                     .set(!embedding, KbDocument::getGraphicalStatusChangeTime, java.time.LocalDateTime.now())
                     .update();
         }
-        self.dispatch();
+        dispatchAfterCommit();
     }
 
     /**
@@ -183,7 +187,25 @@ public class IndexTaskService {
         task.setIndexVersion(segment.getIndexVersion() == null ? 0 : segment.getIndexVersion());
         indexTaskMapper.supersede(task);
         indexTaskMapper.enqueue(task);
-        self.dispatch();
+        dispatchAfterCommit();
+    }
+
+    /**
+     * Trigger the consume loop only after the caller's transaction (if any) has committed:
+     * an async dispatch racing an uncommitted enqueue INSERT finds nothing claimable and
+     * exits, leaving the pending row stuck until the next unrelated trigger.
+     */
+    private void dispatchAfterCommit() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    self.dispatch();
+                }
+            });
+        } else {
+            self.dispatch();
+        }
     }
 
     /**
@@ -201,6 +223,14 @@ public class IndexTaskService {
      */
     public boolean hasUnfinishedByDoc(String docUuid) {
         return indexTaskMapper.hasUnfinishedByDoc(docUuid);
+    }
+
+    /**
+     * Whether the doc has a queued or executing DOCUMENT-level task; segment edit paths reject
+     * while true (their re-embed output would be superseded by the doc task's snapshot).
+     */
+    public boolean hasUnfinishedDocTaskByDoc(String docUuid) {
+        return indexTaskMapper.hasUnfinishedDocTaskByDoc(docUuid);
     }
 
     /**
@@ -286,11 +316,11 @@ public class IndexTaskService {
         ScheduledFuture<?> heartbeat = startHeartbeat(task);
         try {
             boolean skipped = route(task);
-            indexTaskMapper.finishOne(task.getId(), STATUS_DONE, skipped ? "skipped: superseded by newer version" : "");
+            indexTaskMapper.finishOne(task.getId(), task.getExecutorEpoch(), STATUS_DONE, skipped ? "skipped: superseded by newer version" : "");
         } catch (IndexTaskCancelledException e) {
             log.info("Index task cancelled, docUuid:{}, reason:{}", task.getDocUuid(), e.getMessage());
             onCancelled(task);
-            indexTaskMapper.finishOne(task.getId(), STATUS_DONE, "skipped: superseded by newer version");
+            indexTaskMapper.finishOne(task.getId(), task.getExecutorEpoch(), STATUS_DONE, "skipped: superseded by newer version");
         } catch (Exception e) {
             log.error("Index task failed, docUuid:{}, targetType:{}, taskType:{}",
                     task.getDocUuid(), task.getTargetType(), task.getTaskType(), e);
@@ -298,9 +328,10 @@ public class IndexTaskService {
             // exception message, which is unreadable in fail_reason
             String reason = AdiStringUtil.extractJsonMessage(
                     e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
-            // finishOne returns 0 when the row was already taken over (stale-reset or force-failed):
-            // a zombie must not finalize the host row either — that belongs to the rerun/breaker
-            if (indexTaskMapper.finishOne(task.getId(), STATUS_FAILED, StringUtils.abbreviate(reason, 500)) > 0) {
+            // finishOne returns 0 when the row was already taken over (stale-reset, force-failed
+            // or re-claimed under a new epoch): a zombie must not finalize the host row either —
+            // that belongs to the rerun/breaker
+            if (indexTaskMapper.finishOne(task.getId(), task.getExecutorEpoch(), STATUS_FAILED, StringUtils.abbreviate(reason, 500)) > 0) {
                 markHostFailed(task, reason);
             }
         } finally {
@@ -324,9 +355,9 @@ public class IndexTaskService {
         AtomicBoolean zombieReported = new AtomicBoolean(false);
         return heartbeatExecutor.scheduleAtFixedRate(() -> {
             try {
-                if (indexTaskMapper.heartbeat(task.getId()) == 0
+                if (indexTaskMapper.heartbeat(task.getId(), task.getExecutorEpoch()) == 0
                         && zombieReported.compareAndSet(false, true)) {
-                    log.warn("Index task heartbeat lost: row no longer running (reset or force-failed), id:{}, docUuid:{}",
+                    log.warn("Index task heartbeat lost: row no longer running under our epoch (reset, force-failed or re-claimed), id:{}, docUuid:{}",
                             task.getId(), task.getDocUuid());
                 }
             } catch (Exception e) {
@@ -381,7 +412,7 @@ public class IndexTaskService {
                 .set(KbDocument::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
                 .set(KbDocument::getFailReason, "")
                 .update();
-        segmentIndexService.reindexEmbedding(kb, doc, versionGuard(task));
+        segmentIndexService.reindexEmbedding(kb, doc, userService.getById(task.getUserId()), versionGuard(task));
         // Conditional finalize: only takes effect when the version still matches; otherwise the
         // version advanced during execution -> this run's output is entirely stale, so take over
         // the cleanup too (segments written before a missed cancellation are still there, and
@@ -430,7 +461,7 @@ public class IndexTaskService {
         List<DocumentSegment> segments = segmentIndexService.ensureSegments(kb, doc).stream()
                 .filter(segment -> !Boolean.FALSE.equals(segment.getIsEnabled()))
                 .toList();
-        ingestGraph(doc, user, segments, llmService, chatModel);
+        ingestGraph(doc, user, segments, llmService, chatModel, versionGuard(task));
         boolean finalized = ChainWrappers.lambdaUpdateChain(kbDocumentMapper)
                 .eq(KbDocument::getId, doc.getId())
                 .eq(KbDocument::getIndexVersion, task.getIndexVersion())
@@ -473,7 +504,7 @@ public class IndexTaskService {
         if (doc == null || Boolean.TRUE.equals(doc.getIsDeleted()) || kb == null) {
             return false;
         }
-        segmentIndexService.vectorizeSegment(kb, doc, segment);
+        segmentIndexService.vectorizeSegment(kb, doc, segment, userService.getById(task.getUserId()));
         boolean finalized = updateSegmentStatusConditionally(segment.getId(), task.getIndexVersion(),
                 DocumentSegment::getEmbeddingStatus, EmbeddingStatusEnum.DONE);
         if (!finalized) {
@@ -517,7 +548,7 @@ public class IndexTaskService {
         AbstractLLMService llmService = LLMContext.getServiceById(kb.getIngestModelId(), true);
         ChatModel chatModel = llmService.buildChatLLM(
                 ChatModelBuilderProperties.builder().temperature(kb.getQueryLlmTemperature()).build());
-        ingestGraph(doc, user, List.of(segment), llmService, chatModel);
+        ingestGraph(doc, user, List.of(segment), llmService, chatModel, versionGuard(task));
         boolean finalized = updateSegmentStatusConditionally(segment.getId(), task.getIndexVersion(),
                 DocumentSegment::getGraphicalStatus, GraphicalStatusEnum.DONE);
         if (!finalized) {
@@ -565,7 +596,7 @@ public class IndexTaskService {
      */
     private Supplier<Boolean> versionGuard(IndexTask task) {
         return () -> {
-            if (indexTaskMapper.isStopFlagSet(task.getId())) {
+            if (indexTaskMapper.isStopFlagSet(task.getId(), task.getExecutorEpoch())) {
                 return true;
             }
             KbDocument doc = kbDocumentMapper.getByUuid(task.getDocUuid());
@@ -577,7 +608,7 @@ public class IndexTaskService {
      * Ingest segments into the graph store; failures are recorded against the ingest model's health
      */
     private void ingestGraph(KbDocument doc, User user, List<DocumentSegment> segments,
-                             AbstractLLMService llmService, ChatModel chatModel) {
+                             AbstractLLMService llmService, ChatModel chatModel, Supplier<Boolean> cancelSignal) {
         try {
             GraphRagContext.get(AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE).ingest(
                     GraphIngestParam.builder()
@@ -590,7 +621,12 @@ public class IndexTaskService {
                             .sourceId(doc.getId())
                             .modelPlatform(llmService.getAiModel().getPlatform())
                             .modelName(llmService.getAiModel().getName())
+                            .cancelSignal(cancelSignal)
                             .build());
+        } catch (IndexTaskCancelledException e) {
+            // cooperative cancellation is not a model failure: rethrow as-is so the task
+            // executor runs its cancellation cleanup instead of recording a health failure
+            throw e;
         } catch (Exception e) {
             String modelName = llmService.getAiModel().getName();
             modelHealthService.recordFailure(modelName, e);

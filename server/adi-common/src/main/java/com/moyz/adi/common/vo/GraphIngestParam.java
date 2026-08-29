@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * 图谱化入库参数。图谱复用 document_segment 段行（切段已显式化），
@@ -33,4 +34,9 @@ public class GraphIngestParam {
      */
     private String modelPlatform;
     private String modelName;
+    /**
+     * 协作式取消信号（任务队列的版本守卫）：每段抽取前检查，true 即抛
+     * IndexTaskCancelledException——被新版本 supersede 的图谱任务不再继续消耗 LLM token
+     */
+    private Supplier<Boolean> cancelSignal;
 }

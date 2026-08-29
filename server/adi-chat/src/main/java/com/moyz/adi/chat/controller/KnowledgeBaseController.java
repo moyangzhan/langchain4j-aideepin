@@ -11,6 +11,8 @@ import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.enums.SegmentModeEnum;
 import com.moyz.adi.common.service.KnowledgeBaseService;
 import jakarta.annotation.Resource;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -32,7 +34,7 @@ public class KnowledgeBaseController {
     private KnowledgeBaseService knowledgeBaseService;
 
     @PostMapping("/saveOrUpdate")
-    public KnowledgeBase saveOrUpdate(@RequestBody KbEditReq kbEditReq) {
+    public KnowledgeBase saveOrUpdate(@RequestBody @Valid KbEditReq kbEditReq) {
         return knowledgeBaseService.saveOrUpdate(kbEditReq);
     }
 
@@ -82,7 +84,7 @@ public class KnowledgeBaseController {
     public Page<KbInfoResp> searchMine(@RequestParam(defaultValue = "") String keyword,
                                        @RequestParam(defaultValue = "false") Boolean includeOthersPublic,
                                        @NotNull @Min(1) Integer currentPage,
-                                       @NotNull @Min(10) Integer pageSize) {
+                                       @NotNull @Min(1) @Max(100) Integer pageSize) {
         return knowledgeBaseService.searchMine(keyword, includeOthersPublic, currentPage, pageSize);
     }
 
@@ -98,7 +100,7 @@ public class KnowledgeBaseController {
     @GetMapping("/public/search")
     public Page<KbInfoResp> searchPublic(@RequestParam(defaultValue = "") String keyword,
                                          @NotNull @Min(1) Integer currentPage,
-                                         @NotNull @Min(10) Integer pageSize) {
+                                         @NotNull @Min(1) @Max(100) Integer pageSize) {
         return knowledgeBaseService.search(KbSearchReq.builder().isPublic(true).title(keyword).build(), currentPage, pageSize);
     }
 
@@ -149,7 +151,7 @@ public class KnowledgeBaseController {
      * @return 成功或失败
      */
     @PostMapping("/item/indexing-list")
-    public boolean indexItems(@RequestBody KbDocumentIndexBatchReq req) {
+    public boolean indexItems(@RequestBody @Valid KbDocumentIndexBatchReq req) {
         return knowledgeBaseService.indexItems(List.of(req.getUuids()), List.of(req.getIndexTypes()));
     }
 

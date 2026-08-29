@@ -359,6 +359,11 @@ ALTER TABLE adi_document
 
 COMMENT ON COLUMN adi_document.index_version IS 'Generation of indexed artifacts built from this document; +1 on remark / segment_mode / KB split-param change (title and other metadata excluded). Index tasks snapshot it for staleness detection and merge-debounce';
 
+-- Executor fencing column: CREATE TABLE IF NOT EXISTS above only covers fresh installs; a
+-- database that already ran an earlier revision of this script has the table without the column
+ALTER TABLE adi_index_task
+    ADD COLUMN IF NOT EXISTS executor_epoch varchar(32) DEFAULT '' NOT NULL;
+
 CREATE TABLE IF NOT EXISTS adi_index_task
 (
     id             bigserial primary key,
@@ -372,6 +377,7 @@ CREATE TABLE IF NOT EXISTS adi_index_task
     status         varchar(20)  not null,
     fail_reason    varchar(500) default '' not null,
     stop_flag      boolean      default false not null,
+    executor_epoch varchar(32)  default '' not null,
     start_time     timestamp,
     heartbeat_time timestamp,
     create_time    timestamp    default CURRENT_TIMESTAMP not null,
@@ -399,6 +405,7 @@ COMMENT ON COLUMN adi_index_task.index_version IS 'Snapshot of the target busine
 COMMENT ON COLUMN adi_index_task.status       IS 'pending | running | done | failed. A newer-version enqueue supersedes same-key older pending rows to failed; failed is revived in place by a same-version re-enqueue (manual retry); done rows stay as run history';
 COMMENT ON COLUMN adi_index_task.fail_reason  IS 'Truncated failure reason when status = failed (exception message, supersede notice, or the max-duration breaker notice); empty otherwise';
 COMMENT ON COLUMN adi_index_task.stop_flag    IS 'Cooperative stop signal: set by a newer-version enqueue on this key''s older RUNNING row (status is NOT changed - the same-doc serialization gate stays closed until the executor aborts at its next checkpoint); reset to false on claim and on failed-row revive';
+COMMENT ON COLUMN adi_index_task.executor_epoch IS 'Execution epoch generated at claim: heartbeat / finalize / stop checks match on (id, token), so a zombie executor (its row was stale-reset and re-claimed under a new token) cannot finalize a row now owned by another executor';
 COMMENT ON COLUMN adi_index_task.start_time     IS 'Claim time of the latest attempt (NULL while never run); update_time at done/failed is the finish time - the pair gives execution duration for history analysis';
 COMMENT ON COLUMN adi_index_task.heartbeat_time IS 'Executor liveness proof: initialized at claim and periodically refreshed while running (NULL when never run). A running row whose heartbeat is stale beyond the poller threshold is reset to pending (process-crash recovery)';
 COMMENT ON COLUMN adi_index_task.update_time  IS 'Last row change (enqueue / supersede / claim / finish / recovery); plain audit column - liveness is judged by heartbeat_time, not this column';

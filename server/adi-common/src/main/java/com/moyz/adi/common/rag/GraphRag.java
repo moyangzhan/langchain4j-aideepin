@@ -6,6 +6,7 @@ import com.moyz.adi.common.entity.LLMCallRecord;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.enums.LLMCallRecordSourceType;
+import com.moyz.adi.common.exception.IndexTaskCancelledException;
 import com.moyz.adi.common.helper.QuotaHelper;
 import com.moyz.adi.common.service.LLMCallRecordService;
 import com.moyz.adi.common.service.UserDayCostService;
@@ -56,6 +57,12 @@ public class GraphRag {
         int totalOutputTokens = 0;
         List<Triple<TextSegment, String, String>> extracted = new ArrayList<>();
         for (DocumentSegment segment : graphIngestParam.getSegments()) {
+            // cooperative cancellation checkpoint (same contract as the embedding batches):
+            // a superseded graph task must not keep burning LLM tokens on stale content
+            if (graphIngestParam.getCancelSignal() != null
+                    && Boolean.TRUE.equals(graphIngestParam.getCancelSignal().get())) {
+                throw new IndexTaskCancelledException("Index version advanced during graph extraction, docUuid:" + segment.getDocUuid());
+            }
             if (StringUtils.isBlank(segment.getContent())) {
                 continue;
             }

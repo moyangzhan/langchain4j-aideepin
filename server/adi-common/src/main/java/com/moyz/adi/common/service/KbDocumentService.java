@@ -83,6 +83,9 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
     private IndexTaskService indexTaskService;
 
     @Resource
+    private com.moyz.adi.common.mapper.KnowledgeBaseMapper knowledgeBaseMapper;
+
+    @Resource
     private FileService fileService;
 
     public KbDocument saveOrUpdate(KbDocumentEditReq itemEditReq) {
@@ -114,10 +117,18 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
             item.setChildMaxChunkSize(childSize);
         }
         if (null == itemEditReq.getId() || itemEditReq.getId() < 1) {
+            // kbId is derived server-side from the authorized KB: a client-controlled kb_id
+            // could diverge from kb_uuid and poison every privilege join (they join on kb_id)
+            KnowledgeBase kb = knowledgeBaseMapper.selectOne(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<KnowledgeBase>()
+                    .eq(KnowledgeBase::getUuid, itemEditReq.getKbUuid())
+                    .eq(KnowledgeBase::getIsDeleted, false));
+            if (kb == null) {
+                throw new BaseException(A_DATA_NOT_FOUND);
+            }
             uuid = UuidUtil.createShort();
             item.setUuid(uuid);
-            item.setKbId(itemEditReq.getKbId());
-            item.setKbUuid(itemEditReq.getKbUuid());
+            item.setKbId(kb.getId());
+            item.setKbUuid(kb.getUuid());
             baseMapper.insert(item);
         } else {
             KbDocument old = baseMapper.selectById(itemEditReq.getId());
@@ -312,22 +323,18 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
         return true;
     }
 
-    @Transactional
     public boolean softDelete(String uuid) {
         checkWritePrivilege(uuid);
-        boolean success = ChainWrappers.lambdaUpdateChain(baseMapper)
-                .eq(KbDocument::getUuid, uuid)
-                .set(KbDocument::getIsDeleted, true)
-                .update();
-        if (!success) {
+        // DB writes in one transaction; remote store cleanup stays OUTSIDE it — the vector and
+        // graph stores can be remote (neo4j profile) and holding a pooled DB connection across
+        // those calls for a doc with many contributions pins the pool
+        if (!self.softDeleteDb(uuid)) {
             return false;
         }
-        // cancel queued/running index tasks first: pending fails in place, running aborts at its
-        // next checkpoint -- otherwise an in-flight task would re-split and re-embed the deleted
-        // document's content right after the cleanup below
-        indexTaskService.cancelByDoc(uuid);
+        // best-effort vector cleanup: on failure the orphaned vectors are unreachable (their
+        // segment rows are soft-deleted and excluded from retrieval expansion) and get purged
+        // by the next doc-level reindex of this uuid
         iKnowledgeEmbeddingService.deleteByItemUuid(uuid);
-        documentSegmentService.deleteByDocUuid(uuid);
 
         KbDocument item = baseMapper.getByUuid(uuid);
         if (null != item) {
@@ -340,6 +347,26 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
             }
             stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, item.getKbUuid());
         }
+        return true;
+    }
+
+    /**
+     * 删除的库内部分（单事务）：软删文档行、取消其全部索引任务、级联软删段/问题/子块。
+     */
+    @Transactional
+    public boolean softDeleteDb(String uuid) {
+        boolean success = ChainWrappers.lambdaUpdateChain(baseMapper)
+                .eq(KbDocument::getUuid, uuid)
+                .set(KbDocument::getIsDeleted, true)
+                .update();
+        if (!success) {
+            return false;
+        }
+        // cancel queued/running index tasks first: pending fails in place, running aborts at its
+        // next checkpoint -- otherwise an in-flight task would re-split and re-embed the deleted
+        // document's content right after the cleanup below
+        indexTaskService.cancelByDoc(uuid);
+        documentSegmentService.deleteByDocUuid(uuid);
         return true;
     }
 

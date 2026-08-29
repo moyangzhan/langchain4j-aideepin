@@ -502,6 +502,7 @@ export default {
     retryBothIndex: '重新向量化和图谱化',
     indexFailedSummary: '索引失败：{dims}',
     indexRunningSummary: '索引执行中：{dims}',
+    pollStopped: '状态刷新连续失败，已停止自动刷新，请手动刷新页面',
     selectKnowledgeFirst: '先选择文档',
     selectAtLeastOneRow: '至少选中一行',
     selectAtLeastOneIndexType: '至少选中一种索引类型',

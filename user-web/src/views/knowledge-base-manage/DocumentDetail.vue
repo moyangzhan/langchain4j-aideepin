@@ -1,7 +1,7 @@
 <script setup lang='ts'>
 import type { DataTableColumns } from 'naive-ui'
 import { NBreadcrumb, NBreadcrumbItem, NButton, NCard, NCollapse, NCollapseItem, NDataTable, NInput, NModal, NP, NSpace, NText, NUpload, NUploadDragger, useDialog, useLoadingBar, useMessage } from 'naive-ui'
-import { computed, h, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, h, onActivated, onDeactivated, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ParentChildSegmentList from './components/ParentChildSegmentList.vue'
 import QaSegmentList from './components/QaSegmentList.vue'
@@ -133,12 +133,28 @@ const runningSummary = computed(() => {
 
 // While queued or executing, refresh every 3s (doc status + queue status) until it ends:
 // done collapses the section, a final failure restores the retry button; a page reload
-// mid-queue also recovers the processing state from the task status
+// mid-queue also recovers the processing state from the task status.
+// Consecutive silent failures (doc deleted, expired token, network down) are capped so the
+// poller cannot spin forever on a permanently failing request
+const MAX_POLL_FAILURES = 5
+let pollFailureCount = 0
+let pollFailureReported = false
+function resetPollFailures() {
+  pollFailureCount = 0
+  pollFailureReported = false
+}
+function recordPollFailure() {
+  pollFailureCount++
+  if (pollFailureCount >= MAX_POLL_FAILURES && !pollFailureReported) {
+    pollFailureReported = true
+    ms.error(t('knowledgeBase.pollStopped'))
+  }
+}
 let docRefreshTimer: ReturnType<typeof setTimeout> | null = null
 function scheduleDocRefresh() {
   if (docRefreshTimer)
     clearTimeout(docRefreshTimer)
-  if (indexInProgress.value)
+  if (indexInProgress.value && pollFailureCount < MAX_POLL_FAILURES)
     docRefreshTimer = setTimeout(() => loadDocInfo(curDocUuid.value, true), 3000)
 }
 
@@ -153,10 +169,16 @@ function editTitle() {
 
 // silent=true is a poll refresh: skip re-fetching KB info, swallow errors (next tick retries);
 // entry-load progress is the caller's top loading bar, and post-retry refresh has no overlay
+// QA generation (and index runs) finish asynchronously: on the DOING -> settled transition
+// reload the segment list too — the list poller only runs while some segment row is rebuilding
+// and an empty list (generation in progress) otherwise never picks up the finished pairs
 async function loadDocInfo(docUuid: string, silent = false) {
   try {
     const docResp = await api.knowledgeBaseItemInfo<KnowledgeBase.Document>(docUuid)
+    const wasDoing = curDoc.embeddingStatus === 'DOING'
     Object.assign(curDoc, docResp.data)
+    if (wasDoing && curDoc.embeddingStatus !== 'DOING')
+      loadList(paginationReactive.page, true)
     if (!silent) {
       const kbResp = await api.knowledgeBaseInfo<KnowledgeBase.Info>(kbUuid)
       Object.assign(curKb, kbResp.data)
@@ -182,9 +204,12 @@ async function loadDocInfo(docUuid: string, silent = false) {
     // 列表为空时（如新建的 QA 文档）用文档自身的分段模式初始化，保证空态下也能新增
     if (segments.value.length === 0 && curDoc.segmentMode)
       segmentMode.value = curDoc.segmentMode as 'text' | 'qa' | 'parent_child'
+    resetPollFailures()
   } catch (error: any) {
     if (!silent)
       ms.error(error.message ?? 'error')
+    else
+      recordPollFailure()
   } finally {
     scheduleDocRefresh()
   }
@@ -371,6 +396,8 @@ async function loadList(currentPage: number, silent = false) {
   } catch (error: any) {
     if (!silent)
       ms.error(error.message ?? 'error')
+    else
+      recordPollFailure()
   } finally {
     loading.value = false
     scheduleAutoRefresh()
@@ -382,7 +409,7 @@ let refreshTimer: ReturnType<typeof setTimeout> | null = null
 function scheduleAutoRefresh() {
   if (refreshTimer)
     clearTimeout(refreshTimer)
-  if (segments.value.some(s => isSegmentRebuilding(s)))
+  if (segments.value.some(s => isSegmentRebuilding(s)) && pollFailureCount < MAX_POLL_FAILURES)
     refreshTimer = setTimeout(() => loadList(paginationReactive.page, true), 3000)
 }
 
@@ -641,6 +668,21 @@ onUnmounted(() => {
     clearTimeout(refreshTimer)
   if (docRefreshTimer)
     clearTimeout(docRefreshTimer)
+})
+
+// KeepAlive caches this page per route: mid-indexing navigation away must pause the pollers
+// (the deactivated instance keeps running otherwise) and coming back must resume them;
+// re-activation also clears the failure cap so a recovered network can resume polling
+onDeactivated(() => {
+  if (refreshTimer)
+    clearTimeout(refreshTimer)
+  if (docRefreshTimer)
+    clearTimeout(docRefreshTimer)
+})
+onActivated(() => {
+  resetPollFailures()
+  scheduleDocRefresh()
+  scheduleAutoRefresh()
 })
 </script>
 

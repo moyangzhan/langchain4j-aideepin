@@ -31,6 +31,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -87,6 +88,12 @@ public class DocumentSegmentManageService {
     // Optional: only some vector stores support presence checks; absent -> no drift flag
     @Resource
     private ObjectProvider<EmbeddingPresenceChecker> presenceCheckerProvider;
+
+    // @Lazy self proxy: editQaPair's DB diff must run in a transaction via the proxy while the
+    // vector deletions stay outside it
+    @Lazy
+    @Resource
+    private DocumentSegmentManageService self;
 
     /**
      * 模式感知的分段分页列表：qa 附问题列表，parent_child 附子块列表
@@ -174,6 +181,19 @@ public class DocumentSegmentManageService {
     }
 
     /**
+     * 编辑/删除路径的并发守卫：文档级索引任务在队或执行中时拒绝——文档任务按自己的快照
+     * 全量重建，编辑结果会被旧快照覆盖（旧内容向量驻留）。段级任务按段版本互相 supersede，
+     * 不在此守卫范围。
+     */
+    private void rejectWhileDocTaskActive(KbDocument doc) {
+        if (doc.getEmbeddingStatus() == EmbeddingStatusEnum.DOING
+                || doc.getGraphicalStatus() == GraphicalStatusEnum.DOING
+                || indexTaskService.hasUnfinishedDocTaskByDoc(doc.getUuid())) {
+            throw new BaseException(A_DOC_INDEX_DOING);
+        }
+    }
+
+    /**
      * 编辑主表段内容（text 段文本 / 答案 / 父段）。text 模式会重新向量化该段。
      */
     public boolean editSegment(DocumentSegmentEditReq req) {
@@ -185,17 +205,21 @@ public class DocumentSegmentManageService {
         if (doc == null) {
             throw new BaseException(A_DATA_NOT_FOUND);
         }
+        rejectWhileDocTaskActive(doc);
         String oldEmbeddingId = segment.getEmbeddingId();
         segment.setContent(req.getContent());
         documentSegmentService.updateById(segment);
 
-        // 一切索引写入走任务队列：text 模式删旧向量+置空后入队重建；qa/parent_child 主行编辑
-        // 仅推进段版本（使在途段级图谱任务诚实过期），向量由各自问题/子块编辑路径处理
+        // 一切索引写入走任务队列：text 模式删旧向量+置空后入队重建（无论此前是否已嵌入，
+        // 未嵌入的行编辑后同样需要入队）；qa/parent_child 主行编辑仅推进段版本（使在途段级
+        // 图谱任务诚实过期），向量由各自问题/子块编辑路径处理
         bumpSegmentVersion(segment.getId());
-        if (SegmentIndexService.effectiveMode(doc) == SegmentModeEnum.TEXT && oldEmbeddingId != null) {
-            KnowledgeBase kb = knowledgeBaseService.getOrThrow(doc.getKbUuid());
-            iKnowledgeEmbeddingService.deleteByIds(List.of(oldEmbeddingId));
+        if (SegmentIndexService.effectiveMode(doc) == SegmentModeEnum.TEXT) {
+            if (oldEmbeddingId != null) {
+                iKnowledgeEmbeddingService.deleteByIds(List.of(oldEmbeddingId));
+            }
             documentSegmentService.updateEmbeddingId(segment.getId(), null);
+            KnowledgeBase kb = knowledgeBaseService.getOrThrow(doc.getKbUuid());
             indexTaskService.enqueueSegment(kb, doc, segment, AdiConstant.DOC_INDEX_TYPE_EMBEDDING, ThreadContext.getCurrentUser());
         }
         return true;
@@ -209,6 +233,7 @@ public class DocumentSegmentManageService {
      * and deduplicated against existing question texts before enqueueing one rebuild.
      */
     public DocumentSegmentQuestion saveOrUpdateQuestion(KbDocument doc, KnowledgeBase kb, DocumentSegmentQuestionEditReq req) {
+        rejectWhileDocTaskActive(doc);
         String content = AdiStringUtil.normalizeSingleLine(req.getContent());
         if (content.isEmpty()) {
             throw new BaseException(A_PARAMS_ERROR);
@@ -221,11 +246,12 @@ public class DocumentSegmentManageService {
             String oldEmbeddingId = question.getEmbeddingId();
             question.setContent(content);
             questionService.updateById(question);
+            // always re-enqueue: a never-embedded row must be indexed after its edit too
             if (oldEmbeddingId != null) {
                 iKnowledgeEmbeddingService.deleteByIds(List.of(oldEmbeddingId));
-                questionService.updateEmbeddingId(question.getId(), null);
-                enqueueSegmentEmbedding(kb, doc, question.getAnswerSegmentId());
             }
+            questionService.updateEmbeddingId(question.getId(), null);
+            enqueueSegmentEmbedding(kb, doc, question.getAnswerSegmentId());
             return question;
         }
         Long answerSegmentId = req.getAnswerSegmentId();
@@ -279,6 +305,7 @@ public class DocumentSegmentManageService {
      * 新增/编辑子块：id 非空→编辑（重嵌）；parentSegmentId 非空→父段下追加。
      */
     public DocumentSegmentChildChunk saveOrUpdateChildChunk(KbDocument doc, KnowledgeBase kb, DocumentSegmentChildChunkEditReq req) {
+        rejectWhileDocTaskActive(doc);
         if (req.getId() != null) {
             DocumentSegmentChildChunk child = childChunkService.getById(req.getId());
             if (child == null || Boolean.TRUE.equals(child.getIsDeleted()) || !child.getDocUuid().equals(req.getDocUuid())) {
@@ -287,11 +314,12 @@ public class DocumentSegmentManageService {
             String oldEmbeddingId = child.getEmbeddingId();
             child.setContent(req.getContent());
             childChunkService.updateById(child);
+            // always re-enqueue: a never-embedded row must be indexed after its edit too
             if (oldEmbeddingId != null) {
                 iKnowledgeEmbeddingService.deleteByIds(List.of(oldEmbeddingId));
-                childChunkService.updateEmbeddingId(child.getId(), null);
-                enqueueSegmentEmbedding(kb, doc, child.getParentSegmentId());
             }
+            childChunkService.updateEmbeddingId(child.getId(), null);
+            enqueueSegmentEmbedding(kb, doc, child.getParentSegmentId());
             return child;
         }
         if (req.getParentSegmentId() == null) {
@@ -320,6 +348,7 @@ public class DocumentSegmentManageService {
      * content into new chunks, then enqueue a rebuild.
      */
     public boolean regenerateChildChunks(KbDocument doc, KnowledgeBase kb, DocumentSegmentChildChunkRegenerateReq req) {
+        rejectWhileDocTaskActive(doc);
         DocumentSegment segment = documentSegmentService.getById(req.getId());
         if (segment == null || Boolean.TRUE.equals(segment.getIsDeleted()) || !segment.getDocUuid().equals(req.getDocUuid())) {
             throw new BaseException(A_DATA_NOT_FOUND);
@@ -365,6 +394,11 @@ public class DocumentSegmentManageService {
         if (segment == null) {
             throw new BaseException(A_DATA_NOT_FOUND);
         }
+        KbDocument doc = kbDocumentService.getEnable(segment.getDocUuid());
+        if (doc == null) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
+        rejectWhileDocTaskActive(doc);
         List<String> embeddingIds = new ArrayList<>();
         if (segment.getEmbeddingId() != null) {
             embeddingIds.add(segment.getEmbeddingId());
@@ -402,6 +436,14 @@ public class DocumentSegmentManageService {
         if (!embeddingIds.isEmpty()) {
             iKnowledgeEmbeddingService.deleteByIds(embeddingIds);
         }
+        // 图谱足迹清理（账本驱动，与停用/删文档同款；尽力而为，失败不阻断删除，
+        // 残留可由该文档后续图谱重跑收敛）——不清理则被删段继续充当"其他贡献者"，
+        // 后续别段的停用清理会因此少删共享元素
+        try {
+            knowledgeBaseGraphService.removeSegmentGraphFootprint(segment.getKbUuid(), segment.getUuid());
+        } catch (Exception e) {
+            log.error("Remove segment graph footprint failed, segmentUuid:{}", uuid, e);
+        }
         return true;
     }
 
@@ -436,8 +478,22 @@ public class DocumentSegmentManageService {
      * Existing texts are compared after normalization, so legacy multi-line rows are repaired
      * to the normalized text on save.
      */
-    @Transactional
     public boolean editQaPair(KbDocument doc, KnowledgeBase kb, QaPairEditReq req) {
+        rejectWhileDocTaskActive(doc);
+        // DB diff in one transaction; vector deletions run after commit so a rollback can never
+        // leave rows pointing at already-deleted vectors
+        List<String> embeddingIdsToRemove = self.editQaPairTx(kb, doc, req);
+        if (!embeddingIdsToRemove.isEmpty()) {
+            iKnowledgeEmbeddingService.deleteByIds(embeddingIdsToRemove);
+        }
+        return true;
+    }
+
+    /**
+     * editQaPair 的库内事务部分：答案更新 + 问题集合按内容 diff 替换，返回待删除的向量条目 id。
+     */
+    @Transactional
+    public List<String> editQaPairTx(KnowledgeBase kb, KbDocument doc, QaPairEditReq req) {
         DocumentSegment answer = documentSegmentService.getById(req.getAnswerSegmentId());
         if (answer == null || Boolean.TRUE.equals(answer.getIsDeleted()) || !answer.getDocUuid().equals(req.getDocUuid())) {
             throw new BaseException(A_DATA_NOT_FOUND);
@@ -473,15 +529,13 @@ public class DocumentSegmentManageService {
                 questionService.lambdaUpdate()
                         .eq(DocumentSegmentQuestion::getId, question.getId())
                         .set(DocumentSegmentQuestion::getIsDeleted, true)
+                        .set(DocumentSegmentQuestion::getEmbeddingId, null)
                         .update();
                 questionsChanged = true;
             }
             else {
                 existingByNormText.putIfAbsent(normText, question);
             }
-        }
-        if (!embeddingIdsToRemove.isEmpty()) {
-            iKnowledgeEmbeddingService.deleteByIds(embeddingIdsToRemove);
         }
         int position = nextQuestionPosition(answer.getId());
         for (String text : newTexts) {
@@ -509,7 +563,7 @@ public class DocumentSegmentManageService {
         if (questionsChanged) {
             enqueueSegmentEmbedding(kb, doc, answer.getId());
         }
-        return true;
+        return embeddingIdsToRemove;
     }
 
     /**
@@ -614,8 +668,9 @@ public class DocumentSegmentManageService {
         if (doc.getEmbeddingStatus() == EmbeddingStatusEnum.DOING || doc.getGraphicalStatus() == GraphicalStatusEnum.DOING) {
             throw new BaseException(A_DOC_INDEX_DOING);
         }
-        // 同 doc 有队列任务在跑时拒绝：disable 的同步清理会与任务写入交错
-        if (indexTaskService.hasRunningByDoc(doc.getUuid())) {
+        // 同 doc 有文档级队列任务在跑时拒绝：disable 的同步清理会与任务写入交错
+        // （段级任务按段版本 supersede，不阻塞启停）
+        if (indexTaskService.hasUnfinishedDocTaskByDoc(doc.getUuid())) {
             throw new BaseException(A_DOC_INDEX_DOING);
         }
         KnowledgeBase kb = knowledgeBaseService.getOrThrow(doc.getKbUuid());

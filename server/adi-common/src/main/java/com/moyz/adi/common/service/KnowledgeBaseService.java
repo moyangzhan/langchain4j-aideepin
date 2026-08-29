@@ -224,7 +224,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
                 stringRedisTemplate.opsForValue().set(userIndexKey, "0", 10, TimeUnit.MINUTES);
                 try {
-                    documentQaService.vectorizePendingQaDoc(knowledgeBase, qaDoc);
+                    documentQaService.vectorizePendingQaDoc(knowledgeBase, qaDoc, ThreadContext.getCurrentUser());
                 } finally {
                     stringRedisTemplate.delete(userIndexKey);
                 }
@@ -317,6 +317,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             return false;
         }
         KnowledgeBase knowledgeBase = baseMapper.getByItemUuid(itemUuids.get(0));
+        if (knowledgeBase == null) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
         String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
         Boolean exist = stringRedisTemplate.hasKey(userIndexKey);
         if (Boolean.TRUE.equals(exist)) {
