@@ -380,6 +380,15 @@ public class AdiConstant {
     }
 
     /**
+     * Parent-child mode child chunk size bounds in tokens
+     */
+    public static final class ChildChunkSize {
+        public static final int MIN = 50;
+        public static final int MAX = 4000;
+        public static final int DEFAULT = 200;
+    }
+
+    /**
      * 分段来源（adi_document_segment.source）。
      * doc: 文档入库切分产生；manual: 页面手动创建；annotation: 预留给后续的聊天标注功能
      * （标注 = source=annotation 的 QA 段，复用问答模式结构与检索展开逻辑）。

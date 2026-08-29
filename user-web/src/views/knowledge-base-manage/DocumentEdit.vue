@@ -194,7 +194,10 @@ onMounted(async () => {
           </template>
           <template v-if="tmpItem.segmentMode === 'parent_child'">
             {{ t('knowledgeBase.childMaxChunkSize') }}
-            <NInputNumber v-model:value="tmpItem.childMaxChunkSize" :min="50" />
+            <NInputNumber v-model:value="tmpItem.childMaxChunkSize" :min="50" :max="4000" />
+            <span style="font-size: 12px; opacity: 0.65;">
+              {{ t('knowledgeBase.childMaxChunkSizeTip') }}
+            </span>
           </template>
           {{ t('knowledgeBase.brief') }}
           <NInput v-model:value="tmpItem.brief" type="textarea" show-count :autosize="{ minRows: 2, maxRows: 3 }" />

@@ -104,7 +104,11 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
         item.setSegmentMode(itemEditReq.getSegmentMode() == null ? SegmentModeEnum.TEXT : itemEditReq.getSegmentMode());
         // 子块最大token数（文档级，父子模式专用）；未传时不覆盖已有值，新增时落库默认值
         if (itemEditReq.getChildMaxChunkSize() != null) {
-            item.setChildMaxChunkSize(itemEditReq.getChildMaxChunkSize());
+            Integer childSize = itemEditReq.getChildMaxChunkSize();
+            if (childSize < AdiConstant.ChildChunkSize.MIN || childSize > AdiConstant.ChildChunkSize.MAX) {
+                throw new BaseException(A_PARAMS_ERROR);
+            }
+            item.setChildMaxChunkSize(childSize);
         }
         if (null == itemEditReq.getId() || itemEditReq.getId() < 1) {
             uuid = UuidUtil.createShort();

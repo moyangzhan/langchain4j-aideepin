@@ -256,6 +256,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             // Segment mode is document-level, chosen by the upload entry; defaults to text
             knowledgeBaseItem.setSegmentMode(null == segmentMode ? SegmentModeEnum.TEXT : segmentMode);
             if (null != childMaxChunkSize) {
+                if (childMaxChunkSize < AdiConstant.ChildChunkSize.MIN || childMaxChunkSize > AdiConstant.ChildChunkSize.MAX) {
+                    throw new BaseException(A_PARAMS_ERROR);
+                }
                 knowledgeBaseItem.setChildMaxChunkSize(childMaxChunkSize);
             }
             boolean success = kbDocumentService.save(knowledgeBaseItem);

@@ -32,7 +32,7 @@ const fileList = ref<UploadFileInfo[]>([])
 // Upload-modal segment mode: in qa mode files are parsed as Q&A pair data (Dify format),
 // one Q&A document per file, vectorized immediately
 const uploadSegmentMode = ref<string>('text')
-const uploadChildMaxChunkSize = ref<number | null>(null)
+const uploadChildMaxChunkSize = ref<number | null>(200)
 const segmentModeOptions = [
   { label: t('knowledgeBase.segmentModeText'), value: 'text' },
   { label: t('knowledgeBase.segmentModeQa'), value: 'qa' },
@@ -268,14 +268,43 @@ async function onUploadBefore(data: {
   return true
 }
 
+// stays true when any file in the current submit failed; the modal is kept open so
+// the failed rows and the error message stay visible
+let uploadHasError = false
+
+function markUploadFailed(file: UploadFileInfo) {
+  const row = fileList.value.find(f => f.id === file.id)
+  if (row)
+    row.status = 'error'
+}
+
+function onUploadError({ file }: { file: UploadFileInfo; event?: ProgressEvent }) {
+  uploadHasError = true
+  markUploadFailed(file)
+  ms.error(t('common.uploadFailed'))
+}
+
 function onUploadSubmit() {
+  uploadHasError = false
   uploadRef.value?.submit()
+  closeWhenUploadDone()
+}
+
+function closeWhenUploadDone() {
   setTimeout(() => {
-    showUploadModal.value = false
-    search(1)
-    // uploads index asynchronously now; refresh again once indexing finishes
+    if (!showUploadModal.value)
+      return
+    const busy = fileList.value.some(f => f.status === 'pending' || f.status === 'uploading')
+    if (busy) {
+      closeWhenUploadDone()
+      return
+    }
+    if (!uploadHasError) {
+      showUploadModal.value = false
+      search(1)
+    }
     indexingCheck()
-  }, 3000)
+  }, 1000)
 }
 
 function onUploadFinish({
@@ -287,8 +316,10 @@ function onUploadFinish({
 }) {
   const respData = JSON.parse((event?.target as XMLHttpRequest).response)
   if (!respData) {
+    uploadHasError = true
+    markUploadFailed(file)
     ms.error(t('knowledgeBase.uploadFailedResponseError'))
-    return
+    return file
   }
   const { success, message } = respData
   console.log('onUploadFinish', success, message)
@@ -296,6 +327,8 @@ function onUploadFinish({
     ms.success(t('common.uploadSuccess'))
     indexingCheck()
   } else {
+    uploadHasError = true
+    markUploadFailed(file)
     ms.error(message || t('common.uploadFailed'))
   }
 
@@ -470,12 +503,16 @@ watch(
         </template>
         <template v-else-if="uploadSegmentMode === 'parent_child'">
           {{ t('knowledgeBase.childMaxChunkSize') }}
-          <NInputNumber v-model:value="uploadChildMaxChunkSize" :min="50" style="width: 100%" />
+          <NInputNumber v-model:value="uploadChildMaxChunkSize" :min="50" :max="4000" style="width: 100%" />
+          <span style="font-size: 12px; opacity: 0.65;">
+            {{ t('knowledgeBase.childMaxChunkSizeTip') }}
+          </span>
         </template>
         <NUpload
           ref="uploadRef" v-model:file-list="fileList" multiple directory-dnd
           :action="uploadAction" :accept="uploadAccept"
           :default-upload="false" :max="20" :headers="headers" @before-upload="onUploadBefore" @finish="onUploadFinish"
+          @error="onUploadError"
         >
           <NUploadDragger>
             <div style="margin-bottom: 12px">

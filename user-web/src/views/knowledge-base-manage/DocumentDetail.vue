@@ -287,6 +287,33 @@ async function retryDocIndex() {
   }
 }
 
+// One-click graph extraction for this doc (same endpoint as the batch index modal,
+// graphical only); enqueue marks the dimension DOING so the poll takes over
+async function graphitize() {
+  if (indexInProgress.value)
+    return
+  try {
+    await api.knowledgeBaseItemsIndexing([curDocUuid.value], ['graphical'])
+    ms.success(t('knowledgeBase.indexTaskRunning'))
+    await loadDocInfo(curDocUuid.value)
+  } catch (error: any) {
+    ms.error(error.message ?? 'error')
+  }
+}
+
+// Graph extraction runs the KB ingest model and consumes its tokens; confirm before enqueuing
+function confirmGraphitize() {
+  if (indexInProgress.value)
+    return
+  dialog.warning({
+    title: t('knowledgeBase.clickToGraphitize'),
+    content: t('knowledgeBase.graphitizeConfirm', { model: curKb.ingestModelName || '-' }),
+    positiveText: t('common.confirm'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: () => graphitize(),
+  })
+}
+
 // 正文弹窗：只读查看；编辑跳转文档编辑页——正文编辑联动标题/摘要/模式切换/自动生成
 // 等一系列文档级语义，统一在编辑页完成，不在详情页复刻 saveOrUpdate 的子集
 const showRawContent = ref(false)
@@ -583,15 +610,12 @@ const createColumns = (): DataTableColumns<KnowledgeBase.Segment> => {
         const elements: any[] = []
         if (row.embeddingStatus === 'DOING') {
           elements.push(h('span', { style: 'font-size:12px;color:#f0a020;' }, { default: () => t('knowledgeBase.statusProcessing') }))
-        }
-        else if (row.embeddingStatus === 'FAIL') {
+        } else if (row.embeddingStatus === 'FAIL') {
           elements.push(h('span', { style: 'font-size:12px;color:#d03050;cursor:pointer;', title: row.failReason || '', onClick: () => retryRebuild(row) }, { default: () => t('knowledgeBase.statusFailed') }))
-        }
-        else if (row.embeddingStatus === 'DONE') {
+        } else if (row.embeddingStatus === 'DONE') {
           // Vectorized is the steady state: a green check reads faster than text (title keeps the label)
           elements.push(h(NIcon, { size: 14, color: '#18a058', title: t('knowledgeBase.statusVectorized') }, { default: () => h(CheckmarkCircle12Filled) }))
-        }
-        else {
+        } else {
           elements.push(h('span', { style: 'font-size:12px;opacity:0.55;' }, { default: () => t('knowledgeBase.statusPending') }))
         }
         // Drift indicator: status says vectorized but the store lacks the vector
@@ -683,18 +707,14 @@ onUnmounted(() => {
         <NButton text type="primary" size="tiny" @click="showRawContent = true">
           {{ t('knowledgeBase.viewRawContent') }}
         </NButton>
-        <!-- Same rule as the list page: disabled with a tooltip when not graphitized;
-               native disabled buttons swallow mouse events, so the tooltip wraps it -->
-        <NTooltip v-if="curDoc.graphicalStatus === 'NONE'" trigger="hover">
-          <template #trigger>
-            <span class="inline-flex">
-              <NButton text type="primary" size="tiny" disabled>
-                {{ t('knowledgeBase.openGraph') }}
-              </NButton>
-            </span>
-          </template>
-          {{ t('knowledgeBase.notGraphitized') }}
-        </NTooltip>
+        <!-- Not graphitized yet: hint text with a one-click generate action (confirm dialog
+             first, since extraction runs the KB ingest model and consumes tokens) -->
+        <span v-if="curDoc.graphicalStatus === 'NONE'" style="font-size: 12px;">
+          {{ t('knowledgeBase.graphNotGenerated') }}
+          <NButton text type="primary" size="tiny" :disabled="indexInProgress" @click="confirmGraphitize">
+            {{ t('knowledgeBase.clickToGraphitize') }}
+          </NButton>
+        </span>
         <NButton v-else text type="primary" size="tiny" @click="goGraph">
           {{ t('knowledgeBase.openGraph') }}
         </NButton>
