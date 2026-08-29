@@ -5,6 +5,7 @@ import { ArchiveOutline } from '@vicons/ionicons5'
 import { useRoute, useRouter } from 'vue-router'
 import type { UploadFileInfo, UploadInst } from 'naive-ui'
 import { createColumns } from './documentColumns'
+import FilePreviewModal from './components/FilePreviewModal.vue'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
 import { useAuthStore } from '@/store'
 import { knowledgeBaseEmptyInfo, knowledgeBaseEmptyItem } from '@/utils/functions'
@@ -70,66 +71,16 @@ const checkedItems = ref<KnowledgeBase.Document[]>([])
 const curKnowledgeBase: KnowledgeBase.Info = reactive<KnowledgeBase.Info>(knowledgeBaseEmptyInfo())
 
 // 文件预览
-const showFileContentModal = ref<boolean>(false)
-const previewFileUrl = ref<string>('')
-const previewMimeType = ref<string>('')
-const previewFileContent = ref<string>('')
-const previewFileName = ref<string>('')
-
-const openFileInNewTab = function (url: string) {
-  const x = new window.XMLHttpRequest()
-  x.open('GET', url, true)
-  x.responseType = 'blob'
-  x.onload = () => {
-    const url = window.URL.createObjectURL(x.response)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = previewFileName.value
-    a.click()
-  }
-  x.send()
-}
+const filePreview = reactive({
+  show: false,
+  url: '',
+  name: '',
+})
 
 const showFileContent = (selected: KnowledgeBase.Document = knowledgeBaseEmptyItem()) => {
-  // window.open(`/api${selected.sourceFileUrl}?token=${token.value}`, '_blank')
-  previewFileContent.value = ''
-  previewFileName.value = ''
-  previewFileUrl.value = `${selected.sourceFileUrl}?token=${token.value}`
-  previewFileName.value = selected.sourceFileName
-  console.log('previewFileUrl', previewFileUrl.value)
-  const ext = selected.sourceFileName.substring(selected.sourceFileName.lastIndexOf('.') + 1)
-  switch (ext) {
-    case 'pdf':
-      previewMimeType.value = 'application/pdf'
-      break
-    case 'doc':
-    case 'docx':
-      previewMimeType.value = 'application/msword'
-      break
-    case 'ppt':
-    case 'pptx':
-      previewMimeType.value = 'application/vnd.ms-powerpoint'
-      break
-    case 'xls':
-    case 'xlsx':
-      previewMimeType.value = 'application/vnd.ms-excel'
-      break
-    case 'html':
-      previewMimeType.value = 'text/html'
-      break
-    case 'txt':
-      previewMimeType.value = 'text/plain'
-      api.loadFileContent(previewFileUrl.value).then((resp) => {
-        console.log('loadFileContent', resp)
-        previewFileContent.value = resp.data
-      }).catch((err) => {
-        console.error('loadFileContent error', err)
-      })
-      break
-    default:
-      previewMimeType.value = 'text/plain'
-  }
-  showFileContentModal.value = true
+  filePreview.url = selected.sourceFileUrl || ''
+  filePreview.name = selected.sourceFileName || selected.title
+  filePreview.show = true
 }
 
 function downloadQaTemplate() {
@@ -573,22 +524,5 @@ watch(
       </NButton>
     </NFlex>
   </NModal>
-  <NModal v-model:show="showFileContentModal" style="width: 90%; " preset="card" :title="`${t('workflow.filePreviewTitle')}${previewFileName}`">
-    <div style="text-align: center;max-height:700px;overflow-y: auto">
-      <div v-if="previewFileUrl && previewMimeType === 'text/plain'">
-        {{ previewFileContent }}
-      </div>
-      <object
-        v-if="previewFileUrl && previewMimeType !== 'text/plain' && previewMimeType !== 'application/pdf'"
-        :data="previewFileUrl" width="100%" height="90%" :type="previewMimeType"
-      >
-        <p>{{ t('workflow.browserNotSupportEmbed') }}</p>
-      </object>
-    </div>
-    <template #footer>
-      <NButton type="primary" text tag="a" size="small" @click="openFileInNewTab(previewFileUrl)">
-        {{ t('workflow.clickToDownload') }}{{ previewFileName }}
-      </NButton>
-    </template>
-  </NModal>
+  <FilePreviewModal v-model:show="filePreview.show" :file-url="filePreview.url" :file-name="filePreview.name" />
 </template>

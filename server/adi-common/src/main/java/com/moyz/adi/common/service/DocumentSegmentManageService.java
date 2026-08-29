@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.DocumentSegmentChildChunkDto;
 import com.moyz.adi.common.dto.DocumentSegmentChildChunkEditReq;
+import com.moyz.adi.common.dto.DocumentSegmentChildChunkRegenerateReq;
 import com.moyz.adi.common.dto.DocumentSegmentDto;
 import com.moyz.adi.common.dto.DocumentSegmentEditReq;
 import com.moyz.adi.common.dto.DocumentSegmentQuestionDto;
@@ -312,6 +313,45 @@ public class DocumentSegmentManageService {
         // 入队重建（执行器跳过停用段；停用父段的子块 embeddingId 留空，启用时统一重建）
         enqueueSegmentEmbedding(kb, doc, parent.getId());
         return child;
+    }
+
+    /**
+     * Delete the parent's child chunks and their vectors, re-split the parent's current
+     * content into new chunks, then enqueue a rebuild.
+     */
+    public boolean regenerateChildChunks(KbDocument doc, KnowledgeBase kb, DocumentSegmentChildChunkRegenerateReq req) {
+        DocumentSegment segment = documentSegmentService.getById(req.getId());
+        if (segment == null || Boolean.TRUE.equals(segment.getIsDeleted()) || !segment.getDocUuid().equals(req.getDocUuid())) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
+        if (SegmentIndexService.effectiveMode(doc) != SegmentModeEnum.PARENT_CHILD) {
+            throw new BaseException(A_PARAMS_ERROR);
+        }
+        // Disabled segments are skipped by the rebuild executor without a final status write
+        if (Boolean.FALSE.equals(segment.getIsEnabled())) {
+            throw new BaseException(A_PARAMS_ERROR);
+        }
+        List<String> embeddingIds = childChunkService.listByParentIds(List.of(segment.getId())).stream()
+                .map(DocumentSegmentChildChunk::getEmbeddingId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        childChunkService.lambdaUpdate()
+                .eq(DocumentSegmentChildChunk::getParentSegmentId, segment.getId())
+                .set(DocumentSegmentChildChunk::getIsDeleted, true)
+                .update();
+        if (!embeddingIds.isEmpty()) {
+            iKnowledgeEmbeddingService.deleteByIds(embeddingIds);
+        }
+        List<DocumentSegmentChildChunk> newChildren = segmentIndexService.splitChildChunkRows(kb, doc, segment.getId(), segment.getContent());
+        if (!newChildren.isEmpty()) {
+            childChunkService.saveBatch(newChildren);
+        }
+        documentSegmentService.lambdaUpdate()
+                .eq(DocumentSegment::getId, segment.getId())
+                .set(DocumentSegment::getEmbeddingStatus, EmbeddingStatusEnum.DOING)
+                .update();
+        enqueueSegmentEmbedding(kb, doc, segment.getId());
+        return true;
     }
 
     /**

@@ -587,6 +587,12 @@ function documentIndexProgress<T = any>(uuid: string) {
   })
 }
 
+function documentAttachment<T = any>(uuid: string) {
+  return get<T>({
+    url: `/document/attachment/${uuid}`,
+  })
+}
+
 // Edit a QA pair: one element per question; the server normalizes newlines and diffs by content
 function documentQaPairSaveOrUpdate<T = any>(obj: { docUuid: string; answerSegmentId?: string; answerContent?: string; questions: string[] }) {
   return post<T>({
@@ -649,6 +655,13 @@ function documentSegmentQuestionDel<T = any>(uuid: string) {
 function documentSegmentChildDel<T = any>(uuid: string) {
   return post<T>({
     url: `/document-segment/child/del/${uuid}`,
+  })
+}
+
+function documentSegmentChildRegenerate<T = any>(obj: { id: number | string; docUuid: string }) {
+  return post<T>({
+    url: '/document-segment/child/regenerate',
+    data: obj,
   })
 }
 
@@ -975,6 +988,7 @@ export default {
   knowledgeBaseItemRetryIndex,
   documentIndexFailures,
   documentIndexProgress,
+  documentAttachment,
   documentQaPairSaveOrUpdate,
   knowledgeBaseItemAutoGenerateQa,
   knowledgeBaseItemInfo,
@@ -987,6 +1001,7 @@ export default {
   documentSegmentDel,
   documentSegmentQuestionDel,
   documentSegmentChildDel,
+  documentSegmentChildRegenerate,
   documentSegmentToggleStatus,
   documentSegmentRepairVector,
   knowledgeBaseGraph,

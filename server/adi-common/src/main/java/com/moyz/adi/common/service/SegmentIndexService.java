@@ -162,7 +162,6 @@ public class SegmentIndexService {
     private void splitParentChild(KnowledgeBase kb, KbDocument doc) {
         Document document = new DefaultDocument(doc.getRemark(), baseMetadata(kb, doc));
         DocumentSplitter parentSplitter = createSplitter(kb, kb.getIngestMaxSegmentSize());
-        DocumentSplitter childSplitter = createSplitter(kb, childMaxChunkSize(doc));
         List<DocumentSegmentChildChunk> children = new ArrayList<>();
         int parentPosition = 0;
         for (TextSegment parentText : parentSplitter.split(document)) {
@@ -172,15 +171,26 @@ public class SegmentIndexService {
             // Save one by one to backfill the parent segment id for child-chunk references
             DocumentSegment parent = newSegmentRow(kb, doc, parentPosition++, parentText.text());
             documentSegmentService.save(parent);
-            int childPosition = 0;
-            for (TextSegment childText : childSplitter.split(new DefaultDocument(parentText.text(), parentText.metadata()))) {
-                if (StringUtils.isBlank(childText.text())) {
-                    continue;
-                }
-                children.add(newChildChunkRow(kb, doc, parent.getId(), childPosition++, childText.text()));
-            }
+            children.addAll(splitChildChunkRows(kb, doc, parent.getId(), parentText.text()));
         }
         childChunkService.saveBatch(children);
+    }
+
+    /**
+     * Split unsaved child-chunk rows from the given parent content with the document's
+     * child chunk size.
+     */
+    public List<DocumentSegmentChildChunk> splitChildChunkRows(KnowledgeBase kb, KbDocument doc, Long parentSegmentId, String parentContent) {
+        DocumentSplitter childSplitter = createSplitter(kb, childMaxChunkSize(doc));
+        List<DocumentSegmentChildChunk> rows = new ArrayList<>();
+        int position = 0;
+        for (TextSegment childText : childSplitter.split(new DefaultDocument(parentContent, baseMetadata(kb, doc)))) {
+            if (StringUtils.isBlank(childText.text())) {
+                continue;
+            }
+            rows.add(newChildChunkRow(kb, doc, parentSegmentId, position++, childText.text()));
+        }
+        return rows;
     }
 
     /**

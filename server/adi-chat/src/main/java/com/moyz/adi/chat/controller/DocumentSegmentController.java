@@ -2,6 +2,7 @@ package com.moyz.adi.chat.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.dto.DocumentSegmentChildChunkEditReq;
+import com.moyz.adi.common.dto.DocumentSegmentChildChunkRegenerateReq;
 import com.moyz.adi.common.dto.DocumentSegmentDto;
 import com.moyz.adi.common.dto.DocumentSegmentEditReq;
 import com.moyz.adi.common.dto.DocumentSegmentQuestionEditReq;
@@ -76,6 +77,17 @@ public class DocumentSegmentController {
         KbDocument doc = kbDocumentService.getEnable(req.getDocUuid());
         KnowledgeBase kb = knowledgeBaseService.getOrThrow(doc.getKbUuid());
         return documentSegmentManageService.saveOrUpdateChildChunk(doc, kb, req);
+    }
+
+    /**
+     * Re-split child chunks from the parent segment's current content and rebuild vectors
+     */
+    @PostMapping("/child/regenerate")
+    public boolean regenerateChild(@RequestBody @Validated DocumentSegmentChildChunkRegenerateReq req) {
+        kbDocumentService.checkWritePrivilege(req.getDocUuid());
+        KbDocument doc = kbDocumentService.getEnable(req.getDocUuid());
+        KnowledgeBase kb = knowledgeBaseService.getOrThrow(doc.getKbUuid());
+        return documentSegmentManageService.regenerateChildChunks(doc, kb, req);
     }
 
     /**

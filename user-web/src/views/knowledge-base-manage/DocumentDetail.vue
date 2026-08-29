@@ -1,9 +1,13 @@
 <script setup lang='ts'>
 import type { DataTableColumns } from 'naive-ui'
-import { NBreadcrumb, NBreadcrumbItem, NButton, NCard, NCollapse, NCollapseItem, NDataTable, NIcon, NInput, NModal, NP, NSpace, NText, NTooltip, NUpload, NUploadDragger, useDialog, useLoadingBar, useMessage } from 'naive-ui'
-import { CheckmarkCircle12Filled, QuestionCircle16Regular } from '@vicons/fluent'
+import { NBreadcrumb, NBreadcrumbItem, NButton, NCard, NCollapse, NCollapseItem, NDataTable, NInput, NModal, NP, NSpace, NText, NUpload, NUploadDragger, useDialog, useLoadingBar, useMessage } from 'naive-ui'
 import { computed, h, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import ParentChildSegmentList from './components/ParentChildSegmentList.vue'
+import QaSegmentList from './components/QaSegmentList.vue'
+import FilePreviewModal from './components/FilePreviewModal.vue'
+import ExpandableText from './components/ExpandableText.vue'
+import { createStatusColumn, isSegmentRebuilding } from './components/segment-status'
 import { useAuthStore } from '@/store'
 import { knowledgeBaseEmptyInfo, knowledgeBaseEmptyItem } from '@/utils/functions'
 import { t } from '@/locales'
@@ -186,11 +190,6 @@ async function loadDocInfo(docUuid: string, silent = false) {
   }
 }
 
-// Segment rebuilds run async; a rebuilding row suspends interactive indicators
-function isRebuilding(row: KnowledgeBase.Segment) {
-  return row.embeddingStatus === 'DOING' || row.graphicalStatus === 'DOING'
-}
-
 function retryRebuild(row: KnowledgeBase.Segment) {
   confirmToggleStatus(row, true)
 }
@@ -327,6 +326,26 @@ function goGraph() {
   router.push({ name: 'DocumentGraph', params: { kbUuid, docUuid: curDocUuid.value } })
 }
 
+// Attachment preview mirrors the list page's attachment column
+const filePreview = reactive({
+  show: false,
+  url: '',
+  name: '',
+})
+
+async function openAttachment() {
+  try {
+    const resp = await api.documentAttachment<{ name: string; url: string }>(curDocUuid.value)
+    if (resp.data?.url) {
+      filePreview.url = resp.data.url
+      filePreview.name = resp.data.name || curDoc.title
+      filePreview.show = true
+    }
+  } catch (error: any) {
+    ms.error(error.message ?? 'error')
+  }
+}
+
 // silent=true is a rebuild poll: no table loading flash; user actions (paging) use non-silent
 async function loadList(currentPage: number, silent = false) {
   if (!silent)
@@ -363,7 +382,7 @@ let refreshTimer: ReturnType<typeof setTimeout> | null = null
 function scheduleAutoRefresh() {
   if (refreshTimer)
     clearTimeout(refreshTimer)
-  if (segments.value.some(s => isRebuilding(s)))
+  if (segments.value.some(s => isSegmentRebuilding(s)))
     refreshTimer = setTimeout(() => loadList(paginationReactive.page, true), 3000)
 }
 
@@ -505,10 +524,6 @@ function confirmDelete(type: 'segment' | 'child', uuid: string) {
   })
 }
 
-function truncated(text: string, len = 60) {
-  return text.length > len ? `${text.substring(0, len)}...` : text
-}
-
 // 停用分段会删除其向量与图谱数据；启用会重新生成（图谱抽取消耗模型额度），操作前均需确认
 function confirmToggleStatus(row: KnowledgeBase.Segment, isEnabled: boolean) {
   dialog.warning({
@@ -528,119 +543,61 @@ function confirmToggleStatus(row: KnowledgeBase.Segment, isEnabled: boolean) {
   })
 }
 
-const createColumns = (): DataTableColumns<KnowledgeBase.Segment> => {
-  const cols: DataTableColumns<KnowledgeBase.Segment> = [
-    {
-      title: '#',
-      key: 'position',
-      width: 60,
-      render: row => row.position + 1,
+// Rechunk replaces every child chunk under the parent with a fresh split of the parent content
+function confirmRegenerateChildren(row: KnowledgeBase.Segment) {
+  dialog.warning({
+    title: t('knowledgeBase.rechunkChildren'),
+    content: t('knowledgeBase.rechunkChildrenConfirm'),
+    positiveText: t('common.confirm'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: async () => {
+      try {
+        await api.documentSegmentChildRegenerate({ id: row.id, docUuid: curDocUuid.value })
+        ms.success(t('knowledgeBase.segmentSavedAndReindexing'))
+        loadList(paginationReactive.page)
+      } catch (error: any) {
+        ms.error(error.message ?? 'error')
+      }
     },
-  ]
-  // 问答模式下问题列在前：先问后答与"问答对"阅读顺序一致（导入/生成格式同为 question 在前），
-  // 也把 1:N 关系摆成 FAQ 心智模型——几种问法，一个答案
-  if (segmentMode.value === 'qa') {
-    cols.push({
-      // 列头问号图标挂提示：一个答案可关联多个问题（单元格即该答案名下的问题集合）
-      title: () => h('span', { class: 'flex items-center gap-1' }, {
-        default: () => [
-          h('span', t('knowledgeBase.relatedQuestions')),
-          h(NTooltip, { trigger: 'hover' }, {
-            trigger: () => h(NIcon, { size: 14, style: 'cursor: help; opacity: 0.65;' }, { default: () => h(QuestionCircle16Regular) }),
-            default: () => t('knowledgeBase.qaQuestionMultiTip'),
-          }),
-        ],
-      }),
-      key: 'questions',
-      // Questions column is display-only: per-question edits go through the action column's edit
-      render: row => h('div', { class: 'flex flex-col gap-1' }, {
-        default: () => (row.questions || []).map(q => h('div', { class: 'truncate' }, { default: () => truncated(q.content, 40) })),
-      }),
-    })
-  }
-  cols.push({
-    title: segmentMode.value === 'qa'
-      ? t('knowledgeBase.qaAnswer')
-      : segmentMode.value === 'parent_child'
-        ? t('knowledgeBase.segmentModeParentChild')
-        : t('knowledgeBase.docFragment'),
-    key: 'content',
-    // qa mode: answers are edited via the action column; other modes keep click-to-edit
-    render: row => h('div', {
-      style: `white-space: pre-wrap;${segmentMode.value === 'qa' ? '' : 'cursor: pointer;'}`,
-      onClick: segmentMode.value === 'qa' ? undefined : () => openEdit('segment', row),
-    }, { default: () => truncated(row.content) }),
   })
-  if (segmentMode.value === 'parent_child') {
-    cols.push({
-      title: t('knowledgeBase.childChunks'),
-      key: 'children',
-      render: row => h('div', { class: 'flex flex-col gap-1' }, {
-        default: () => [
-          ...(row.children || []).map(c => h('div', { class: 'flex items-center gap-2' }, {
-            default: () => [
-              h('span', { style: 'cursor: pointer;', onClick: () => openEdit('child', c) }, { default: () => truncated(c.content, 40) }),
-              h(NButton, { text: true, type: 'error', size: 'tiny', onClick: () => confirmDelete('child', c.uuid) }, { default: () => t('common.delete') }),
-            ],
-          })),
-          ...(row.isEnabled === false ? [] : [h(NButton, { text: true, type: 'primary', size: 'tiny', onClick: () => openAddChild(row.id) }, { default: () => `+ ${t('knowledgeBase.childChunks')}` })]),
-        ],
-      }),
-    })
-  }
-  cols.push(
-    {
-      title: t('knowledgeBase.segmentHitCount'),
-      key: 'hitCount',
-      width: 90,
-    },
-    {
-      title: t('knowledgeBase.wordCount'),
-      key: 'wordCount',
-      width: 90,
-    },
-    {
-      // Pure vectorization status display
-      title: t('knowledgeBase.vectorize'),
-      key: 'embeddingStatus',
-      width: 120,
-      render: (row) => {
-        if (row.isEnabled === false)
-          return h('span', { style: 'font-size:12px;opacity:0.55;' }, { default: () => t('knowledgeBase.statusDisabled') })
-        const elements: any[] = []
-        if (row.embeddingStatus === 'DOING') {
-          elements.push(h('span', { style: 'font-size:12px;color:#f0a020;' }, { default: () => t('knowledgeBase.statusProcessing') }))
-        } else if (row.embeddingStatus === 'FAIL') {
-          elements.push(h('span', { style: 'font-size:12px;color:#d03050;cursor:pointer;', title: row.failReason || '', onClick: () => retryRebuild(row) }, { default: () => t('knowledgeBase.statusFailed') }))
-        } else if (row.embeddingStatus === 'DONE') {
-          // Vectorized is the steady state: a green check reads faster than text (title keeps the label)
-          elements.push(h(NIcon, { size: 14, color: '#18a058', title: t('knowledgeBase.statusVectorized') }, { default: () => h(CheckmarkCircle12Filled) }))
-        } else {
-          elements.push(h('span', { style: 'font-size:12px;opacity:0.55;' }, { default: () => t('knowledgeBase.statusPending') }))
-        }
-        // Drift indicator: status says vectorized but the store lacks the vector
-        if (row.vectorMissing && !isRebuilding(row))
-          elements.push(h('span', { style: 'font-size:12px;color:#d03050;margin-left:6px;cursor:pointer;', onClick: () => confirmRepairVector(row) }, { default: () => t('knowledgeBase.vectorMissing') }))
-        return h('div', { class: 'flex items-center' }, { default: () => elements })
-      },
-    },
-    {
-      title: t('common.action'),
-      key: 'actions',
-      width: segmentMode.value === 'qa' ? 100 : 80,
-      // qa mode: pair-edit entry; other modes keep delete only (content edits via content column)
-      render: row => segmentMode.value === 'qa'
-        ? h('div', { class: 'flex items-center gap-2' }, {
-          default: () => [
-            h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => openEditQaPair(row) }, { default: () => t('common.edit') }),
-            h(NButton, { text: true, type: 'error', size: 'small', onClick: () => confirmDelete('segment', row.uuid) }, { default: () => t('common.delete') }),
-          ],
-        })
-        : h(NButton, { text: true, type: 'error', size: 'small', onClick: () => confirmDelete('segment', row.uuid) }, { default: () => t('common.delete') }),
-    },
-  )
-  return cols
 }
+
+// Text mode table columns; qa and parent_child modes render their own list components
+const createColumns = (): DataTableColumns<KnowledgeBase.Segment> => [
+  {
+    title: '#',
+    key: 'position',
+    width: 60,
+    render: row => row.position + 1,
+  },
+  {
+    title: t('knowledgeBase.docFragment'),
+    key: 'content',
+    render: row => h(ExpandableText, { text: row.content, lines: 3 }),
+  },
+  {
+    title: t('knowledgeBase.segmentHitCount'),
+    key: 'hitCount',
+    width: 90,
+  },
+  {
+    title: t('knowledgeBase.wordCount'),
+    key: 'wordCount',
+    width: 90,
+  },
+  createStatusColumn(t, { onRetry: retryRebuild, onRepair: confirmRepairVector }),
+  {
+    title: t('common.action'),
+    key: 'actions',
+    width: 100,
+    render: row => h('div', { class: 'flex items-center gap-2' }, {
+      default: () => [
+        h(NButton, { text: true, type: 'primary', size: 'small', onClick: () => openEdit('segment', row) }, { default: () => t('common.edit') }),
+        h(NButton, { text: true, type: 'error', size: 'small', onClick: () => confirmDelete('segment', row.uuid) }, { default: () => t('common.delete') }),
+      ],
+    }),
+  },
+]
 
 const columns = computed<DataTableColumns<KnowledgeBase.Segment>>(() => createColumns())
 
@@ -707,6 +664,10 @@ onUnmounted(() => {
         <NButton text type="primary" size="tiny" @click="showRawContent = true">
           {{ t('knowledgeBase.viewRawContent') }}
         </NButton>
+        <!-- Only file-converted documents carry a source file -->
+        <NButton v-if="curDoc.sourceFileId" text type="primary" size="tiny" @click="openAttachment">
+          {{ t('knowledgeBase.viewAttachment') }}
+        </NButton>
         <!-- Not graphitized yet: hint text with a one-click generate action (confirm dialog
              first, since extraction runs the KB ingest model and consumes tokens) -->
         <span v-if="curDoc.graphicalStatus === 'NONE'" style="font-size: 12px;">
@@ -734,8 +695,34 @@ onUnmounted(() => {
           </NButton>
         </NSpace>
       </template>
+      <ParentChildSegmentList
+        v-if="segmentMode === 'parent_child'"
+        :segments="segments" :page="paginationReactive.page" :page-size="paginationReactive.pageSize"
+        :item-count="paginationReactive.itemCount" :loading="loading"
+        @edit-segment="seg => openEdit('segment', seg)"
+        @edit-child="child => openEdit('child', child)"
+        @add-child="openAddChild"
+        @delete-child="uuid => confirmDelete('child', uuid)"
+        @delete-segment="uuid => confirmDelete('segment', uuid)"
+        @rechunk="confirmRegenerateChildren"
+        @retry="retryRebuild"
+        @repair="confirmRepairVector"
+        @update:page="onHandlePageChange"
+      />
+      <QaSegmentList
+        v-else-if="segmentMode === 'qa'"
+        :segments="segments" :page="paginationReactive.page" :page-size="paginationReactive.pageSize"
+        :item-count="paginationReactive.itemCount" :loading="loading" :max-height="tableMaxHeight"
+        @edit-pair="openEditQaPair"
+        @delete-segment="uuid => confirmDelete('segment', uuid)"
+        @retry="retryRebuild"
+        @repair="confirmRepairVector"
+        @update:page="onHandlePageChange"
+      />
       <NDataTable
+        v-else
         remote :loading="loading" :max-height="tableMaxHeight" :columns="columns" :data="segments"
+        :row-key="(row: KnowledgeBase.Segment) => row.uuid"
         :pagination="paginationReactive" :single-line="false" :bordered="true" @update:page="onHandlePageChange"
       />
     </NCard>
@@ -851,5 +838,6 @@ onUnmounted(() => {
         </NSpace>
       </NSpace>
     </NModal>
+    <FilePreviewModal v-model:show="filePreview.show" :file-url="filePreview.url" :file-name="filePreview.name" />
   </div>
 </template>

@@ -50,6 +50,7 @@ declare namespace KnowledgeBase {
     childMaxChunkSize?: number
     autoGenerateQa?: boolean
     failReason?: string
+    sourceFileId?: string | number
     sourceFileName: string
     sourceFileUuid: string
     sourceFileUrl: string

@@ -6,8 +6,10 @@ import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.AdiConstant;
+import com.moyz.adi.common.dto.KbDocumentAttachmentDto;
 import com.moyz.adi.common.dto.KbDocumentDto;
 import com.moyz.adi.common.dto.KbDocumentEditReq;
+import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.entity.DocumentSegment;
 import com.moyz.adi.common.entity.KbDocument;
@@ -16,6 +18,7 @@ import com.moyz.adi.common.enums.EmbeddingStatusEnum;
 import com.moyz.adi.common.enums.GraphicalStatusEnum;
 import com.moyz.adi.common.enums.SegmentModeEnum;
 import com.moyz.adi.common.exception.BaseException;
+import com.moyz.adi.common.file.FileOperatorContext;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.mapper.KbDocumentMapper;
 import com.moyz.adi.common.rag.GraphRagContext;
@@ -426,6 +429,25 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
     public KbDocument info(String uuid) {
         checkReadPrivilege(uuid);
         return getEnable(uuid);
+    }
+
+    /**
+     * Source file of a file-converted document: display name plus access url.
+     */
+    public KbDocumentAttachmentDto getAttachment(String uuid) {
+        checkReadPrivilege(uuid);
+        KbDocument doc = getEnable(uuid);
+        if (doc == null || doc.getSourceFileId() == null) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
+        AdiFile file = fileService.getById(doc.getSourceFileId());
+        if (file == null) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
+        KbDocumentAttachmentDto dto = new KbDocumentAttachmentDto();
+        dto.setName(StringUtils.isBlank(file.getName()) ? file.getUuid() + "." + file.getExt() : file.getName());
+        dto.setUrl(FileOperatorContext.getFileUrl(file));
+        return dto;
     }
 
     /**

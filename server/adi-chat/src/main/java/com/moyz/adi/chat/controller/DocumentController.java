@@ -3,6 +3,7 @@ package com.moyz.adi.chat.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.IndexFailureDto;
+import com.moyz.adi.common.dto.KbDocumentAttachmentDto;
 import com.moyz.adi.common.dto.KbDocumentDto;
 import com.moyz.adi.common.dto.KbDocumentEditReq;
 import com.moyz.adi.common.dto.KbDocumentToggleStatusReq;
@@ -72,6 +73,14 @@ public class DocumentController {
     @GetMapping("/info/{uuid}")
     public KbDocument info(@PathVariable String uuid) {
         return kbDocumentService.info(uuid);
+    }
+
+    /**
+     * Source file of a file-converted document: display name plus access url
+     */
+    @GetMapping("/attachment/{uuid}")
+    public KbDocumentAttachmentDto attachment(@PathVariable String uuid) {
+        return kbDocumentService.getAttachment(uuid);
     }
 
     @PostMapping("/del/{uuid}")
