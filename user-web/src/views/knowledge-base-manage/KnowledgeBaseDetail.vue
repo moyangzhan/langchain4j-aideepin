@@ -114,11 +114,13 @@ function rowKey(row: KnowledgeBase.Document) {
   return row.uuid
 }
 
-// 序号列宽度按总条数位数自适应，恰好容纳最大序号
-// Serial-number column width auto-fits to the digit count of total rows
+// 序号列宽度按总条数位数自适应；下限按 3 位数计算——旧下限 40px 扣除单元格内边距后
+// 连两位数都放不下会换行
+// Serial-number column width auto-fits to the digit count of total rows, with a floor
+// wide enough for 3 digits (the old 40px floor made two-digit numbers wrap)
 const serialColWidth = computed(() => {
-  const digits = String(Math.max(paginationReactive.itemCount, 1)).length
-  return Math.max(40, digits * 8 + 24)
+  const digits = Math.max(String(Math.max(paginationReactive.itemCount, 1)).length, 3)
+  return digits * 10 + 28
 })
 const columns = computed(() => {
   const cols = createColumns({ viewSegments, showGraph, showFileContent, editItem, deleteKbItem, toggleStatus })
