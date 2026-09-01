@@ -1,11 +1,19 @@
-# AIDeepIn 技术开发文档
+# AIDeepIn 文档
 
-## 系统架构
+AIDeepIn 是一个 AI 辅助平台，提供智能对话、知识库（RAG）、工作流、绘画与开放 API 等能力。文档分三部分：
 
-- [系统架构](architecture.md)
+## 使用指南
 
-## 模型平台
+[使用指南](guide/index.md) —— 面向最终用户：从注册激活到对话、绘画、知识库、工作流、工具、管理端的完整使用手册。
 
-> 模型平台在其他项目中有时也称为"模型提供商"（Model Provider）。
+## API 参考
 
-- [新模型平台接入指南](model-platform-integration.md)
+[API 参考](api/index.md) —— 面向集成方：开放 API（`/ext/v1`）的角色对话、知识库问答、绘图任务、MCP 服务与工作流接口。
+
+## 开发文档
+
+[开发文档](dev/index.md) —— 面向开发者与运维：系统架构、新模型平台接入指南（对话 / 文生图 / TTS / ASR）。
+
+---
+
+[English](../en/index.md)
