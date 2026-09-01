@@ -16,9 +16,17 @@
 | admin-web/ | 管理端 WEB（[Vue 3](https://github.com/vuejs/core) + [Naive UI](https://github.com/tusen-ai/naive-ui)） | [README](admin-web/README.zh-CN.md) |
 | user-web/ | 用户端 WEB（[Vue 3](https://github.com/vuejs/core) + [Naive UI](https://github.com/tusen-ai/naive-ui)） | [README](user-web/README.md) |
 
-## 快速开始
+## 文档
 
-二次开发见 [开发文档](docs/cn/index.md)，部署说明详见 [docker/README.zh-CN.md](docker/README.zh-CN.md) 或各子项目的 README。
+| 分区 | GitHub 上阅读 | 文档站 |
+|:-----|:-------------|:-------|
+| 使用指南 | [docs/cn/guide](docs/cn/guide/index.md) | [站点](https://moyangzhan.github.io/langchain4j-aideepin/cn/guide/) |
+| API 参考 | [docs/cn/api](docs/cn/api/index.md) | [站点](https://moyangzhan.github.io/langchain4j-aideepin/cn/api/) |
+| 开发文档 | [docs/cn/dev](docs/cn/dev/index.md) | [站点](https://moyangzhan.github.io/langchain4j-aideepin/cn/dev/) |
+
+文档站由 GitHub Actions 在 `main` 分支的 `docs/**` 变化时自动构建发布；本地预览：`pnpm install && pnpm run docs:dev`。
+
+部署说明详见 [docker/README.zh-CN.md](docker/README.zh-CN.md) 或各子项目的 README。
 
 ## 功能点
 

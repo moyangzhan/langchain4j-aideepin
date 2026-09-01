@@ -16,9 +16,17 @@ Demo: [http://www.aideepin.com](http://www.aideepin.com/)
 | admin-web/ | Admin dashboard ([Vue 3](https://github.com/vuejs/core) + [Naive UI](https://github.com/tusen-ai/naive-ui)) | [README](admin-web/README.md) |
 | user-web/ | User-facing web app ([Vue 3](https://github.com/vuejs/core) + [Naive UI](https://github.com/tusen-ai/naive-ui)) | [README](user-web/README.md) |
 
-## Quick Start
+## Documentation
 
-See [Development Guide](docs/en/index.md) for secondary development. For deployment, see [docker/README.md](docker/README.md) or each sub-project's README.
+| Section | On GitHub | Rendered site |
+|:--------|:----------|:--------------|
+| User Guide | [docs/en/guide](docs/en/guide/index.md) | [Site](https://moyangzhan.github.io/langchain4j-aideepin/en/guide/) |
+| API Reference | [docs/en/api](docs/en/api/index.md) | [Site](https://moyangzhan.github.io/langchain4j-aideepin/en/api/) |
+| Developer Docs | [docs/en/dev](docs/en/dev/index.md) | [Site](https://moyangzhan.github.io/langchain4j-aideepin/en/dev/) |
+
+The rendered site is auto-built and published by GitHub Actions when `docs/**` changes on `main`. To run it locally: `pnpm install && pnpm run docs:dev`.
+
+For deployment, see [docker/README.md](docker/README.md) or each sub-project's README.
 
 ## Features
 
