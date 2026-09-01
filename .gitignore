@@ -41,3 +41,7 @@ application-dev.yml
 .claude
 tmp
 TODO*
+### VitePress ###
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+node_modules/
