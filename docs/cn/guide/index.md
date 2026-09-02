@@ -55,4 +55,4 @@ AIDeepIn 用户使用手册：从注册激活到知识库、工作流的完整�
 
 ---
 
-[← 返回总目录](../index.md) ｜ [English](../../en/guide/index.md)
+> [← 返回总目录](../index.md) · [English](../../en/guide/index.md)

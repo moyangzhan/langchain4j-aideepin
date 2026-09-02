@@ -30,4 +30,4 @@ The gallery collects **public** AI-generated images from the whole site. Two vie
 
 ---
 
-Previous: [Drawing](draw.md) ｜ Next: [Knowledge Base Overview](../knowledge-base/overview.md)
+Previous: [Drawing](draw.md) · Next: [Knowledge Base Overview](../knowledge-base/overview.md)

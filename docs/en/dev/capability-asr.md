@@ -1,5 +1,7 @@
 # Speech-to-Text (ASR) Capability Integration
 
+> [← Developer Docs](index.md) · [简体中文](../../cn/dev/capability-asr.md)
+
 ## Is Code Required?
 
 **Always required**. The ASR API has no industry-standard format. Each vendor uses different proprietary API formats, so regardless of whether the platform is OpenAI-compatible for chat, you need to write a Service class.
@@ -63,3 +65,7 @@ private synchronized void initAsrModelServiceList(Map<String, ModelPlatform> nam
         model -> new NewAiAsrService(model, nameToPlatform.get(AdiConstant.ModelPlatform.NEWAI)));
 }
 ```
+
+---
+
+Previous: [TTS Integration](capability-tts.md) · Next: [Back to contents](../index.md)

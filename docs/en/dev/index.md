@@ -11,4 +11,4 @@ For developers and operators of this system: understand the architecture and int
 
 ---
 
-[← Back to contents](../index.md) ｜ [简体中文](../../cn/dev/index.md)
+> [← Back to contents](../index.md) · [简体中文](../../cn/dev/index.md)

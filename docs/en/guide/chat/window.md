@@ -103,4 +103,4 @@ Click the mic icon to ask by voice — the recording is transcribed and sent aut
 
 ---
 
-Previous: [Quick Start](../quick-start.md) ｜ Next: [Characters & Presets](character.md)
+Previous: [Quick Start](../quick-start.md) · Next: [Characters & Presets](character.md)

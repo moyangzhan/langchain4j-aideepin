@@ -68,4 +68,4 @@ Row actions on existing pairs: **Edit** (refills questions and answer), **Disabl
 
 ---
 
-Previous: [Import Documents](document.md) ｜ Next: [Segment Management](segment.md)
+Previous: [Import Documents](document.md) · Next: [Segment Management](segment.md)

@@ -39,4 +39,4 @@ Example of the import JSON format:
 
 ---
 
-Previous: [Quota & Usage](account/usage.md) ｜ Next: [Admin Console](admin/admin.md)
+Previous: [Quota & Usage](account/usage.md) · Next: [Admin Console](admin/admin.md)

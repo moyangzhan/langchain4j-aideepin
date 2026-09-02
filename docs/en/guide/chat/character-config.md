@@ -81,4 +81,4 @@ Full voice details in [Voice Input & Playback](voice.md).
 
 ---
 
-Previous: [Characters & Presets](character.md) ｜ Next: [Voice Input & Playback](voice.md)
+Previous: [Characters & Presets](character.md) · Next: [Voice Input & Playback](voice.md)

@@ -68,4 +68,4 @@ curl "http://<host>:9999/ext/v1/draw/<task uuid>" \
 
 ---
 
-Previous: [Knowledge Base Q&A](knowledge-base.md) ｜ Next: [MCP Services](mcp.md)
+Previous: [Knowledge Base Q&A](knowledge-base.md) · Next: [MCP Services](mcp.md)

@@ -1,5 +1,7 @@
 # System Architecture
 
+> [← Developer Docs](index.md) · [简体中文](../../cn/dev/architecture.md)
+
 ## 1. System Overview
 
 AIDeepIn is an AI-powered productivity platform that helps enterprises and teams improve work efficiency through capabilities such as chat, knowledge bases, workflows, and image generation.
@@ -151,7 +153,9 @@ Build automated AI processing pipelines through visual orchestration of processi
 | Image Generation Node | Generates images |
 | Email Node | Sends email |
 
-**Workflow and Chat Relationship**: Users can invoke workflows during conversations. Workflows can internally search knowledge bases and call MCP tools.
+> The table above is an architectural summary; the workflow canvas currently offers 17 node types — see the [User Guide · Apps & Workflows](../guide/workflow/workflow.md).
+
+**Workflow and Chat Relationship**: Workflows can internally search knowledge bases, call MCP tools and generate answers; users run workflows from the "Apps" page or trigger them via the open API.
 
 ### 2.4 MCP (Model Context Protocol)
 
@@ -244,3 +248,7 @@ User enters description → Select image model → Generate image → Save to ga
 | MCP Management | Configure MCP services |
 | Workflow Management | Manage workflow components |
 | System Settings | Storage config, TTS/ASR config, quota config, rate limiting |
+
+---
+
+Previous: [Developer Docs contents](index.md) · Next: [Model Platform Integration Guide](model-platform-integration.md)

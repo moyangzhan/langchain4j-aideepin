@@ -32,7 +32,7 @@ Open **Knowledge Base → Knowledge base management** — the "My knowledge base
 | Field | Description |
 |---|---|
 | Split overlap | Characters shared by adjacent segments (marked "applies to new indexing after change") — keeps boundary information intact |
-| Split strategy | Recursive / by paragraph / by line / by sentence / custom separator (required when custom; presets `\n\n (paragraph)`, `\n (newline)`, free input allowed) |
+| Split strategy | Recursive / by paragraph / by line / by sentence / custom separator (required when custom, e.g. `\n\n`, `\n`) |
 | Max tokens per segment | Upper bound of a segment |
 | Token estimator | OpenAI / Qwen / Huggingface counting conventions — match your embedding model family |
 
@@ -71,7 +71,7 @@ Click **Edit** in the actions column. Note the consequences:
 | Change | Effect |
 |---|---|
 | Retrieval settings, LLM parameters | Immediate, no rebuild |
-| Splitting parameters (overlap / strategy / max tokens…) | Save prompts "Changing split parameters will automatically rebuild the vector indexes of all documents in this knowledge base. Save?" — confirming triggers an **automatic rebuild** of all indexes |
+| Splitting parameters (overlap / strategy / max tokens…) | Save prompts "Changing split parameters will automatically rebuild the vector indexes of all documents in this knowledge base. Save?" — confirming triggers an **automatic rebuild** of all indexes (can take a while for large bases) |
 
 ## API
 
@@ -87,4 +87,4 @@ The **API** action generates this base's API key and endpoint docs — see [API 
 
 ---
 
-Previous: [Overview](overview.md) ｜ Next: [Import Documents](document.md)
+Previous: [Overview](overview.md) · Next: [Import Documents](document.md)

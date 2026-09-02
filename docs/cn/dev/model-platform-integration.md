@@ -1,5 +1,7 @@
 # 新模型平台接入指南
 
+> [← 开发文档](index.md) · [English](../../en/dev/model-platform-integration.md)
+
 ## 1. 概述
 
 AIDeepIn 使用 **策略模式 + 工厂模式 + 上下文模式** 管理多个模型平台。系统当前支持以下能力类型：
@@ -156,3 +158,7 @@ add asr model,model: AiModel(name=newai-asr-v1, ...)
 | `adi-common/.../helper/ImageModelContext.java` | 文生图服务上下文 |
 | `adi-common/.../helper/TtsModelContext.java` | TTS 服务上下文 |
 | `adi-common/.../helper/AsrModelContext.java` | ASR 服务上下文 |
+
+---
+
+上一篇：[系统架构](architecture.md) ｜ 下一篇：[对话 / 图像识别能力接入](capability-chat.md)

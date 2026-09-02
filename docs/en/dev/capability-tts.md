@@ -1,5 +1,7 @@
 # Text-to-Speech (TTS) Capability Integration
 
+> [← Developer Docs](index.md) · [简体中文](../../cn/dev/capability-tts.md)
+
 ## Is Code Required?
 
 **Always required**. The TTS API has no industry-standard format. Each vendor uses different proprietary API formats, so regardless of whether the platform is OpenAI-compatible for chat, you need to write a Service class.
@@ -65,3 +67,7 @@ private synchronized void initTtsModelServiceList(Map<String, ModelPlatform> nam
         model -> new NewAiTtsService(model, nameToPlatform.get(AdiConstant.ModelPlatform.NEWAI)));
 }
 ```
+
+---
+
+Previous: [Text-to-Image Integration](capability-image.md) · Next: [ASR Integration](capability-asr.md)

@@ -20,7 +20,7 @@ On the **Draw** page: pick an image model at the top, fill in the prompt editor 
 
 | Parameter | Options |
 |---|---|
-| Size | Square 1024x1024 / Portrait 1024x1536 / Landscape 1536x1024 |
+| Size | auto / Square 1024x1024 / Portrait 1024x1536 / Landscape 1536x1024 |
 | Quality | auto / low / medium / high (higher = finer, slower and costlier) |
 
 ### Tongyi Wanxiang (DashScope)
@@ -29,7 +29,7 @@ On the **Draw** page: pick an image model at the top, fill in the prompt editor 
 
 | Parameter | Description |
 |---|---|
-| Size | Fixed options |
+| Size | Determined by the selected model's configuration |
 | Number | Images per run (slider 1–4) |
 | Seed | Fixed seed reproduces results; "Random generate" differs each time |
 
@@ -67,7 +67,7 @@ On the **Draw** page: pick an image model at the top, fill in the prompt editor 
 
 | Action | Where | Description |
 |---|---|---|
-| Delete task | Record's more menu | Choose: delete the prompt only, or the prompt plus all images it generated |
+| Delete task | Record's more menu | Deletes the prompt and **all images it generated** (the confirmation lists what goes) |
 | Delete one image | On the image | Removes just that image, keeping the prompt and others |
 | Public / private toggle | On the record | Public images enter the gallery ("Public access enabled"); off restores private ("External access disabled") |
 
@@ -80,4 +80,4 @@ On the **Draw** page: pick an image model at the top, fill in the prompt editor 
 
 ---
 
-Previous: [Voice Input & Playback](../chat/voice.md) ｜ Next: [Gallery](gallery.md)
+Previous: [Voice Input & Playback](../chat/voice.md) · Next: [Gallery](gallery.md)

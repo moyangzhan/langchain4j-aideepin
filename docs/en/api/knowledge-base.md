@@ -20,7 +20,7 @@ POST /ext/v1/knowledge
 
 ### streaming (default)
 
-An SSE text stream. In strict mode, when nothing relevant is retrieved the stream returns `[No answer]` — no model invention.
+An SSE text stream. In strict mode, when nothing relevant is retrieved the API returns **empty content** (the web UI displays it as "[No answer]") — no model invention.
 
 ### blocking
 
@@ -45,4 +45,4 @@ Each call creates a record in the base's Q&A history, viewable and clearable in 
 
 ---
 
-Previous: [Character Chat](character.md) ｜ Next: [Draw Tasks](draw.md)
+Previous: [Character Chat](character.md) · Next: [Draw Tasks](draw.md)

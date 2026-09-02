@@ -1,5 +1,7 @@
 # New Model Platform Integration Guide
 
+> [← Developer Docs](index.md) · [简体中文](../../cn/dev/model-platform-integration.md)
+
 ## 1. Overview
 
 AIDeepIn uses **Strategy Pattern + Factory Pattern + Context Pattern** to manage multiple model platforms. The system currently supports the following capability types:
@@ -156,3 +158,7 @@ If you see `{platform} service is disabled`, it means no models are enabled for 
 | `adi-common/.../helper/ImageModelContext.java` | Image generation service context |
 | `adi-common/.../helper/TtsModelContext.java` | TTS service context |
 | `adi-common/.../helper/AsrModelContext.java` | ASR service context |
+
+---
+
+Previous: [System Architecture](architecture.md) · Next: [Chat / Vision Integration](capability-chat.md)

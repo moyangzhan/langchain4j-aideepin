@@ -25,7 +25,7 @@ Create knowledge base → Import documents (pick segmentation mode) → Index (v
 ## Two Entry Points
 
 - **Knowledge base Q&A**: the **Knowledge Base** menu item — pick a base and ask;
-- **Knowledge base management**: the **Knowledge base management** button at the bottom of the Q&A sidebar — the "My knowledge bases" page for creating and maintaining.
+- **Knowledge base management**: the **Knowledge base management** button at the bottom of the Q&A sidebar (or visit the "My knowledge bases" page directly) — creating and maintaining.
 
 ## Three Segmentation Modes
 
@@ -80,4 +80,4 @@ A knowledge-base-level answering strategy (set at creation, see [Create & Config
 
 ---
 
-Previous: [Gallery](../draw/gallery.md) ｜ Next: [Create & Configure](manage.md)
+Previous: [Gallery](../draw/gallery.md) · Next: [Create & Configure](manage.md)

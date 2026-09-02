@@ -47,4 +47,4 @@ Missing resources or permissions return business errors (e.g. `A_DATA_NOT_FOUND`
 
 ---
 
-Previous: [API Reference](index.md) ｜ Next: [Character Chat](character.md)
+Previous: [API Reference](index.md) · Next: [Character Chat](character.md)

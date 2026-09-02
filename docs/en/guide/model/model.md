@@ -44,4 +44,4 @@ The UI adapts automatically per model:
 
 ---
 
-Previous: [Services & Tools](../mcp/mcp.md) ｜ Next: [Sign-up, Login & Settings](../account/account.md)
+Previous: [Services & Tools](../mcp/mcp.md) · Next: [Sign-up, Login & Settings](../account/account.md)

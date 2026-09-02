@@ -101,6 +101,7 @@ function buildSidebar(lang: 'cn' | 'en') {
   const dev = parseSectionIndex(`${lang}/dev`)
   validateFooterNav(`${lang}/guide`, guide)
   validateFooterNav(`${lang}/api`, api)
+  validateFooterNav(`${lang}/dev`, dev)
   return {
     [`/${lang}/guide/`]: guide,
     [`/${lang}/api/`]: api,

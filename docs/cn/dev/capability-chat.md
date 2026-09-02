@@ -1,5 +1,7 @@
 # 对话 / 图像识别能力接入
 
+> [← 开发文档](index.md) · [English](../../en/dev/capability-chat.md)
+
 对话（`text`）和图像识别（`vision`）使用同一套 LLM 基础设施，共享同一套接入逻辑。
 
 ## 是否需要写代码？
@@ -92,3 +94,7 @@ private synchronized void initLLMServiceList(Map<String, ModelPlatform> nameToPl
             .setProxyAddress(proxyAddress));
 }
 ```
+
+---
+
+上一篇：[新模型平台接入指南](model-platform-integration.md) ｜ 下一篇：[文生图能力接入](capability-image.md)

@@ -11,4 +11,4 @@
 
 ---
 
-[← 返回总目录](../index.md) ｜ [English](../../en/dev/index.md)
+> [← 返回总目录](../index.md) · [English](../../en/dev/index.md)

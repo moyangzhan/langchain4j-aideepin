@@ -50,4 +50,4 @@ Characters linked to the base support this too. Together with **Citations** (hit
 
 ---
 
-Previous: [Segment Management](segment.md) ｜ Next: [Knowledge Base Q&A](kb-qa.md)
+Previous: [Segment Management](segment.md) · Next: [Knowledge Base Q&A](kb-qa.md)

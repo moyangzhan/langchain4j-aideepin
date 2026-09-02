@@ -40,4 +40,4 @@ Start with [API Keys & Authentication](authentication.md).
 
 ---
 
-Previous: [Admin Console](../guide/admin/admin.md) ｜ Next: [API Keys & Authentication](authentication.md)
+Previous: [Admin Console](../guide/admin/admin.md) · Next: [API Keys & Authentication](authentication.md)

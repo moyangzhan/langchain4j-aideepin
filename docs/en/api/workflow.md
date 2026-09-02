@@ -39,4 +39,4 @@ curl -X POST "http://<host>:9999/ext/v1/workflow/run" \
 
 ---
 
-Previous: [MCP Services](mcp.md) ｜ Next: [Developer Docs](../dev/index.md)
+Previous: [MCP Services](mcp.md) · Next: [Developer Docs](../dev/index.md)

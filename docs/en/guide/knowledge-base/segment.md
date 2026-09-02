@@ -66,4 +66,4 @@ Segments (and parents, pairs) can be toggled individually — a way to "take con
 
 ---
 
-Previous: [Q&A Import & Generation](qa-import.md) ｜ Next: [Knowledge Graph](graph.md)
+Previous: [Q&A Import & Generation](qa-import.md) · Next: [Knowledge Graph](graph.md)

@@ -69,4 +69,4 @@ For bulk cleanup use **Clear history** in the details dialog.
 
 ---
 
-Previous: [Knowledge Graph](graph.md) ｜ Next: [Apps & Workflows](../workflow/workflow.md)
+Previous: [Knowledge Graph](graph.md) · Next: [Apps & Workflows](../workflow/workflow.md)

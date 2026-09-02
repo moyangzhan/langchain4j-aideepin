@@ -50,4 +50,4 @@ curl -X POST "http://<host>:9999/ext/v1/character" \
 
 ---
 
-Previous: [API Keys & Authentication](authentication.md) ｜ Next: [Knowledge Base Q&A](knowledge-base.md)
+Previous: [API Keys & Authentication](authentication.md) · Next: [Knowledge Base Q&A](knowledge-base.md)

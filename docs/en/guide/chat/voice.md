@@ -40,4 +40,4 @@ Integrating new ASR/TTS platforms is development work — see [ASR Integration](
 
 ---
 
-Previous: [Character Settings](character-config.md) ｜ Next: [Drawing](../draw/draw.md)
+Previous: [Character Settings](character-config.md) · Next: [Drawing](../draw/draw.md)

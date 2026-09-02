@@ -49,4 +49,4 @@ The **API** item in the more menu generates a tools API key; `/ext/v1/mcp` retur
 
 ---
 
-Previous: [Apps & Workflows](../workflow/workflow.md) ｜ Next: [Model Selection](../model/model.md)
+Previous: [Apps & Workflows](../workflow/workflow.md) · Next: [Model Selection](../model/model.md)

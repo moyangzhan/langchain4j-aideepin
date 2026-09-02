@@ -1,5 +1,7 @@
 # Chat / Vision Capability Integration
 
+> [← Developer Docs](index.md) · [简体中文](../../cn/dev/capability-chat.md)
+
 Chat (`text`) and Vision (`vision`) share the same LLM infrastructure and use the same integration logic.
 
 ## Is Code Required?
@@ -92,3 +94,7 @@ private synchronized void initLLMServiceList(Map<String, ModelPlatform> nameToPl
             .setProxyAddress(proxyAddress));
 }
 ```
+
+---
+
+Previous: [Model Platform Integration Guide](model-platform-integration.md) · Next: [Text-to-Image Integration](capability-image.md)

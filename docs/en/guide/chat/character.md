@@ -24,7 +24,7 @@ Presets are built-in characters grouped by scenario into 11 categories: Tech/Eng
 2. Expand a category and browse the entries.
 3. Click an entry to view its **persona** and decide whether it fits.
 4. Click **Use** — the preset is copied as your own character ("Created successfully").
-5. Used presets are marked **Used** and can be reused (another copy each time).
+5. Used presets are marked **Used**; clicking **Use** again switches to the character you copied earlier — no duplicate is created.
 
 > [!TIP]
 > Presets tagged **with knowledge base** automatically create a dedicated same-named knowledge base when copied — ready-made domain Q&A without manual setup.
@@ -42,4 +42,4 @@ Presets are built-in characters grouped by scenario into 11 categories: Tech/Eng
 
 ---
 
-Previous: [Chat Window](window.md) ｜ Next: [Character Settings](character-config.md)
+Previous: [Chat Window](window.md) · Next: [Character Settings](character-config.md)

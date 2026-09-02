@@ -55,4 +55,4 @@ The AIDeepIn user manual: everything from sign-up to knowledge bases and workflo
 
 ---
 
-[← Back to contents](../index.md) ｜ [简体中文](../../cn/guide/index.md)
+> [← Back to contents](../index.md) · [简体中文](../../cn/guide/index.md)

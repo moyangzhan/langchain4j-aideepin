@@ -1,5 +1,7 @@
 # 语音识别（ASR）能力接入
 
+> [← 开发文档](index.md) · [English](../../en/dev/capability-asr.md)
+
 ## 是否需要写代码？
 
 **始终需要**。ASR 接口没有行业统一的 API 标准，各厂商使用不同的私有 API 格式，因此无论平台是否兼容 OpenAI 对话接口，都需要编写 Service 类。
@@ -63,3 +65,7 @@ private synchronized void initAsrModelServiceList(Map<String, ModelPlatform> nam
         model -> new NewAiAsrService(model, nameToPlatform.get(AdiConstant.ModelPlatform.NEWAI)));
 }
 ```
+
+---
+
+上一篇：[语音合成（TTS）能力接入](capability-tts.md) ｜ 下一篇：[返回总目录](../index.md)

@@ -1,5 +1,7 @@
 # 文生图能力接入
 
+> [← 开发文档](index.md) · [English](../../en/dev/capability-image.md)
+
 ## 是否需要写代码？
 
 **始终需要**。文生图接口没有行业统一的 API 标准，各厂商使用不同的私有 API 格式，因此无论平台是否兼容 OpenAI 对话接口，都需要编写 Service 类。
@@ -95,10 +97,14 @@ src/views/draw/components/
 |------|--------|---------------|-------------|
 | 图片尺寸 | auto/1024x1024/1024x1536/1536x1024 | 固定选项 | 从模型 `properties.image_sizes` 动态读取 |
 | 图片质量 | auto/low/medium/high | — | — |
-| 生成数量 | 1 | 1 | 1-4 |
+| 生成数量 | 1 | 1-4 | 1 |
 | 随机种子 | — | -1（随机） | -1（随机） |
 | 负向提示词 | — | — | — |
 
 ### 图像模型数据要求
 
 前端通过 `appStore.selectedImageModel` 获取当前选中的图像模型信息，该数据来源于 `adi_ai_model` 表。如果新平台需要前端动态读取配置（如 SiliconFlow 从 `properties.image_sizes` 读取尺寸选项），需要在 `adi_ai_model.properties` 中配置对应字段。
+
+---
+
+上一篇：[对话 / 图像识别能力接入](capability-chat.md) ｜ 下一篇：[语音合成（TTS）能力接入](capability-tts.md)

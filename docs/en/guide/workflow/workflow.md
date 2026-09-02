@@ -70,7 +70,7 @@ Input boxes with the variable icon (prompts, query content, mail subjects…) su
 
 | Node | Configuration |
 |---|---|
-| **Start** | Defines input variables (**+Add variable**, with a limit): name, label, type (text / number / file / boolean), required, multiple, max files (file type); plus an opening message |
+| **Start** | Defines input variables (**+Add variable**): name, label, type (text / number / file / boolean), required, multiple, max files (file type); plus an opening message |
 | **End** | Assembles the output (variables allowed); default "Task completed" |
 | **Generate answer** | LLM reply. Prompt tooltip (translated): "If empty, the output of the previous node is used as the prompt" |
 | **Human interaction** | Pauses for user input; "pre-input hint" is shown while paused |
@@ -116,7 +116,7 @@ Input boxes with the variable icon (prompts, query content, mail subjects…) su
 
 | Node | Configuration |
 |---|---|
-| **HTTP request** | Timeout (s), retries, headers (+add), params (+add), Content-Type; **Strip HTML** tooltip (translated): "Turn it on if the response is HTML and only the main content is needed."; output variables: `status_code`, `output` |
+| **HTTP request** | Timeout (s), retries, headers (+add), params (+add), Content-Type; **Strip HTML** tooltip (translated): "Turn it on if the response is HTML and only the main content is needed."; output variables: `status_code` (HTTP status code), `output` (response body) |
 | **Email** | Sender (system / custom); custom: SMTP server (e.g. smtp.exmail.qq.com), port, sender name / email / password; recipients (required, comma-separated), cc, subject (required), body (required, variables allowed) |
 | **Google search** | Query (tooltip: empty = previous node's output), result count, country/region, language |
 
@@ -127,7 +127,7 @@ Input boxes with the variable icon (prompts, query content, mail subjects…) su
 1. **Run** on the canvas (or launch from the app page): fill the start node's inputs (files: TXT, PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, ≤ 10MB);
 2. A **request** record is created; the **requests list** pages through history;
 3. Click for the **execution detail**: each node's inputs/outputs, file previews (download offered when inline preview is unsupported);
-4. Flows with a **human interaction** node pause with "Paused, waiting for user input…" plus the configured hint; supply input (files allowed) to resume;
+4. Flows with a **human interaction** node pause with "Paused, waiting for user input…" plus the configured hint; supply **text** in the input box to resume (file inputs are only available in the flow's start section);
 5. Records can be deleted or cleared ("Inputs and outputs will be deleted together. Continue?").
 
 > [!TIP]
@@ -139,4 +139,4 @@ The **API** item in the more menu generates this app's API key and docs; trigger
 
 ---
 
-Previous: [Knowledge Base Q&A](../knowledge-base/kb-qa.md) ｜ Next: [Services & Tools](../mcp/mcp.md)
+Previous: [Knowledge Base Q&A](../knowledge-base/kb-qa.md) · Next: [Services & Tools](../mcp/mcp.md)

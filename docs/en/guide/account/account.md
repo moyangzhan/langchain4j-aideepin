@@ -56,4 +56,4 @@ The tab also shows your avatar and name (auto-generated, read-only). Quota data:
 
 ---
 
-Previous: [Model Selection](../model/model.md) ｜ Next: [Quota & Usage](usage.md)
+Previous: [Model Selection](../model/model.md) · Next: [Quota & Usage](usage.md)

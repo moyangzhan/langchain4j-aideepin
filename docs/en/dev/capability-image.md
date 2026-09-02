@@ -1,5 +1,7 @@
 # Image Generation Capability Integration
 
+> [← Developer Docs](index.md) · [简体中文](../../cn/dev/capability-image.md)
+
 ## Is Code Required?
 
 **Always required**. The image generation API has no industry-standard format. Each vendor uses different proprietary API formats, so regardless of whether the platform is OpenAI-compatible for chat, you need to write a Service class.
@@ -95,10 +97,14 @@ src/views/draw/components/
 |-----------|--------|---------------|-------------|
 | Image Size | auto/1024x1024/1024x1536/1536x1024 | Fixed options | Dynamically read from model `properties.image_sizes` |
 | Image Quality | auto/low/medium/high | — | — |
-| Generation Count | 1 | 1 | 1-4 |
+| Generation Count | 1 | 1-4 | 1 |
 | Random Seed | — | -1 (random) | -1 (random) |
 | Negative Prompt | — | — | — |
 
 ### Image Model Data Requirements
 
 The frontend reads the currently selected image model via `appStore.selectedImageModel`, which comes from the `adi_ai_model` table. If the new platform needs the frontend to dynamically read configuration (e.g. SiliconFlow reads size options from `properties.image_sizes`), configure the corresponding fields in `adi_ai_model.properties`.
+
+---
+
+Previous: [Chat / Vision Integration](capability-chat.md) · Next: [TTS Integration](capability-tts.md)

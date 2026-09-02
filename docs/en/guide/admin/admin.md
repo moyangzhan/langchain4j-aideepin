@@ -2,7 +2,7 @@
 
 > [← User Guide](../index.md) · [简体中文](../../../cn/guide/admin/admin.md)
 
-The admin console (admin-web) is for system administrators, deployed separately from the user web; sign in with an admin account. Thirteen pages: dashboard, users, model platforms, models, characters, preset characters, knowledge bases, MCP, workflow orchestration (components + flows), token monitoring, and system settings (storage / ASR / TTS / quota / rate limits).
+The admin console (admin-web) is for system administrators, deployed separately from the user web; sign in with an admin account. Sixteen pages across nine top-level menus: dashboard, users, model platforms, models, characters, preset characters, knowledge bases, MCP, workflow orchestration (components + flows), token monitoring, and system settings (storage / ASR / TTS / quota / rate limits).
 
 ## Dashboard
 
@@ -68,7 +68,7 @@ Integrating a brand-new platform (database config + optional code): [Model Platf
 
 ## Characters & Presets
 
-- **Characters**: page banner reads "In this system a character is an AI character"; browse all users' characters (title, persona, total tokens, context flag); edit/delete;
+- **Characters**: page banner reads "In this system a character is an AI persona"; browse all users' characters (title, persona, total tokens, context flag); edit/delete;
 - **Preset characters**: maintain the user-side preset library: title, **type** (11 categories), description, persona, **knowledge base name** (placeholder: "Leave empty to skip auto-creating a knowledge base" — when set, copying the preset auto-creates a same-named dedicated base).
 
 ## Knowledge Base Management
@@ -117,4 +117,4 @@ Source types: unknown, character chat, KB Q&A, KB indexing, workflow node, agent
 
 ---
 
-Previous: [Prompt Store](../prompt-store.md) ｜ Next: [API Reference](../../api/index.md)
+Previous: [Prompt Store](../prompt-store.md) · Next: [API Reference](../../api/index.md)

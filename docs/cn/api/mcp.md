@@ -4,7 +4,7 @@
 
 用**用户级 mcp Key**（见 [API Key 与鉴权](authentication.md)）获取 MCP 服务清单，便于在你的客户端中接入同样的工具。
 
-## 系统全部已启用的服务
+## 系统支持的全部服务
 
 ```http
 GET /ext/v1/mcp/supported

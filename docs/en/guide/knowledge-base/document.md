@@ -92,4 +92,4 @@ Via **Edit** in the actions column (or when adding by form):
 
 ---
 
-Previous: [Create & Configure](manage.md) ｜ Next: [Q&A Import & Generation](qa-import.md)
+Previous: [Create & Configure](manage.md) · Next: [Q&A Import & Generation](qa-import.md)

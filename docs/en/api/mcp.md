@@ -42,4 +42,4 @@ The list reflects what the admin registered; services cannot be added via this A
 
 ---
 
-Previous: [Draw Tasks](draw.md) ｜ Next: [Workflow](workflow.md)
+Previous: [Draw Tasks](draw.md) · Next: [Workflow](workflow.md)

@@ -25,10 +25,10 @@ Metrics with a "/ limit" suffix are quota-bound (e.g. "128 / 1000"); hitting the
 ## Notes
 
 - Free models are usually separately limited; paid models consume platform tokens — choosing a free model for a task eases quota pressure;
-- Quotas are set by the admin across six dimensions: daily/monthly × token/request/image/question (see [Admin Console](../admin/admin.md#quota-configuration)); "Unlimited token quota" means no cap;
+- Quotas are set by the admin across **four dimensions** — tokens, requests, images, chat questions — each with daily and monthly caps (see [Admin Console](../admin/admin.md#quota-configuration)); "Unlimited token quota" means no cap;
 - Besides quotas there is **rate limiting** (requests per time window) — triggered limits ask you to retry later;
 - When exceeded, the affected features report a limit — contact the admin to adjust.
 
 ---
 
-Previous: [Sign-up, Login & Settings](account.md) ｜ Next: [Prompt Store](../prompt-store.md)
+Previous: [Sign-up, Login & Settings](account.md) · Next: [Prompt Store](../prompt-store.md)

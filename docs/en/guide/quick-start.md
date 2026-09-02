@@ -80,4 +80,4 @@ Three fixed entries at the bottom-left:
 
 ---
 
-Previous: [User Guide contents](index.md) ｜ Next: [Chat Window](chat/window.md)
+Previous: [User Guide contents](index.md) · Next: [Chat Window](chat/window.md)
