@@ -5,27 +5,43 @@
 ## Sign Up
 
 1. Click **Login** at the bottom-left and switch to the **Register** tab;
-2. Enter email, password (≥ 6 chars), confirmation and the captcha (click the image to refresh);
-3. On submit, an activation email is sent — check spam if it doesn't arrive, or contact the admin.
+2. Fill in:
+
+| Field | Requirement |
+|---|---|
+| Email | Login account and activation-mail recipient |
+| Password | At least 6 characters |
+| Confirm password | Must match ("The two passwords do not match" otherwise) |
+| Captcha | 4 characters; click the image to refresh |
+
+3. Click **Register** — an activation email is sent.
+
+> [!NOTE]
+> If the mail doesn't arrive, check spam first; otherwise ask the admin to **activate you from the console** (see [Admin Console](../admin/admin.md#user-management)).
 
 ## Activation
 
-1. Click the activation link in the email;
-2. The result page shows **success** with a 5-second countdown back to the home page, or the failure reason (e.g. expired link);
-3. If activation is stuck, the admin can activate you from the console (see [Admin Console](../admin/admin.md#user-management)).
+1. Open the email and click the activation link;
+2. The result page shows **success** with a 5-second countdown back to the home page, or the failure reason (most often an expired link);
+3. If activation is stuck, the admin can activate you from the console.
 
 ## Login & Logout
 
-- Log in with email and password (a captcha may be required after repeated failures);
+- Log in with email and password (a captcha appears when needed);
 - **Settings → Overview → Log out** signs you out.
 
 ## Forgot Password
 
-Reset via the email link: the system resets your password **to the default password** — log in promptly and [change it](#change-password).
+Reset via the email link: the system **resets your password to the default one** (stated in the mail).
+
+> [!WARNING]
+> Log in promptly after the reset and [change the password](#change-password) — don't keep using the default.
 
 ## Change Password
 
-Under **Settings → Change password**: enter the old and new passwords and save.
+1. Open **Settings → Change password**;
+2. Enter the password, the new one, and repeat it;
+3. Save.
 
 ## Preferences
 

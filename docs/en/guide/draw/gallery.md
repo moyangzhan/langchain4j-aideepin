@@ -4,25 +4,29 @@
 
 The gallery collects **public** AI-generated images from the whole site. Two views at the top:
 
-| View | Content |
-|---|---|
-| Public images | Drawings set public by all users |
-| My likes | Images you liked (login required) |
+| View | Content | Login |
+|---|---|---|
+| Public images | Drawings set public by all users | No |
+| My likes | Images you liked | Yes |
+
+> 📷 Screenshot TODO: the gallery page (public images grid). Replace with `![Gallery](../../../image/en/guide/draw/gallery-01.png)` once added.
 
 ## Browsing
 
-- Grid layout, auto-loads more on scroll;
-- Click an image for the **drawing detail**.
+1. Pick a view (Public images / My likes);
+2. Scroll the grid; more loads automatically;
+3. Click an image for the **drawing detail**.
 
 ## Interactions
 
-In the detail view you can:
+| Interaction | Action | Description |
+|---|---|---|
+| Like | Heart icon | Collect the work; revisit under "My likes"; click again to undo |
+| Comment | Comment box | Share your thoughts ("How is this image? Leave your comment~"); paginated; your comments can be deleted |
+| I'll draw one too | Detail button | Reopens drawing with that image's prompt |
 
-- **Like**: collect the work; revisit it under "My likes";
-- **Comment**: share your thoughts; comments are paginated;
-- **I'll draw one too**: reopens drawing with that image's prompt.
-
-To publish your own work, see [Drawing · Management](draw.md#my-drawing-history).
+> [!TIP]
+> To publish your own work see [Drawing · Management](draw.md#management) — once public, others can see, like and comment on it in the gallery.
 
 ---
 

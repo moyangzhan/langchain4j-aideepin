@@ -27,14 +27,20 @@ The selector shows "platform avatar + model name".
 
 The UI adapts automatically per model:
 
-- **Deep thinking**: unsupported models disable the toggle; some can't turn it off (deepseek-reasoner always thinks);
-- **Web search**: availability depends on the model;
-- **Mutual exclusion**: DeepSeek's deep thinking vs tools/web search — enabling both auto-disables one;
-- **Image recognition**: only vision models show the upload entry (PNG / JPG, ≤ 4MB).
+- **Deep thinking**:
+  - Unsupported models disable the toggle ("The model does not support deep thinking");
+  - Models that can't turn it off (e.g. deepseek-reasoner) keep it on ("The model does not support disabling deep thinking");
+- **Web search**: unsupported models show "The model does not support web search";
+- **Mutual exclusion**: DeepSeek's deep thinking vs tools/web search — enabling both auto-disables one with a hint;
+- **Image recognition**: only vision models show the upload entry (PNG / JPG, ≤ 4MB; otherwise "The model does not support image recognition").
 
 ## When a Model Is Unavailable
 
-Greyed-out or flagged models failed health checks — pick another. Enablement and platform configuration are admin tasks, see [Admin Console](../admin/admin.md#model-platforms--models); integrating a brand-new platform is covered in the [Model Platform Integration Guide](../../dev/model-platform-integration.md).
+- Models with a **red dot** failed health checks: hover shows the specific reason (healthReason) or "Unavailable";
+- Pick an available model. Enablement and platform configuration are admin tasks, see [Admin Console](../admin/admin.md#model-platforms--models); integrating a brand-new platform is covered in the [Model Platform Integration Guide](../../dev/model-platform-integration.md).
+
+> [!TIP]
+> Models differ a lot on the same task: prefer reasoner models for reasoning-heavy work; everyday chat is cheaper on regular text models. The free/paid flag affects how your [quota](../account/usage.md) is counted.
 
 ---
 

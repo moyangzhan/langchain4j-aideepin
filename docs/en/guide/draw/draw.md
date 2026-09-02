@@ -4,11 +4,15 @@
 
 On the **Draw** page: pick an image model at the top, fill in the prompt editor (which changes shape per platform), and review **my drawing history** below.
 
+> 📷 Screenshot TODO: the draw page overview (model selector / editor / history). Replace with `![Draw page](../../../image/en/guide/draw/draw-01.png)` once added.
+
 ## Generation Flow
 
-1. Pick a model in the image model selector (each platform has its own editor);
-2. Fill in the prompt and parameters, submit the task;
-3. The task runs asynchronously; images appear in the history when done.
+1. Pick a model in the image model selector — **each platform has its own editor**; switching models switches the editor;
+2. Describe the image in the prompt box (Chinese or English);
+3. Adjust editor parameters as needed (size, count, seed — see below);
+4. Click generate; the task is submitted asynchronously;
+5. Images appear in **my drawing history** when done — you can leave the page while it runs.
 
 ## Per-Platform Editor Parameters
 
@@ -17,7 +21,7 @@ On the **Draw** page: pick an image model at the top, fill in the prompt editor 
 | Parameter | Options |
 |---|---|
 | Size | Square 1024x1024 / Portrait 1024x1536 / Landscape 1536x1024 |
-| Quality | auto / low / medium / high |
+| Quality | auto / low / medium / high (higher = finer, slower and costlier) |
 
 ### Tongyi Wanxiang (DashScope)
 
@@ -26,18 +30,24 @@ On the **Draw** page: pick an image model at the top, fill in the prompt editor 
 | Parameter | Description |
 |---|---|
 | Size | Fixed options |
-| Number | Images per run |
-| Seed | Fixed seed reproduces results; random differs each time |
+| Number | Images per run (slider 1–4) |
+| Seed | Fixed seed reproduces results; "Random generate" differs each time |
 
-**Background generation** — generates a new background for a subject image:
+**Background generation** — generates a new background for a subject image. The in-app usage notes read (translated):
 
-| Parameter | Description |
-|---|---|
-| Subject (required) | PNG, long edge ≤ 2048; **RGBA transparent areas** are where the background is generated |
-| Guidance image (optional) | jpg / png / webp, constrains the background style |
-| Prompt | Background description |
+> Subject image: the image whose background will be generated; required
+> Guidance image: the image for AI to reference
+> Prompt: description of the background
+> Provide at least one of guidance image and prompt
 
-> Background generation relies on publicly accessible Alibaba Cloud OSS URLs; unreadable images fail the task — read the in-page instructions.
+| Parameter | Required | In-app hint (translated) |
+|---|---|---|
+| Subject | yes | Tooltip: "An image with a transparent background (RGBA, 4 channels)"; upload area: "PNG image, long edge no more than 2048 pixels" |
+| Guidance image | no | Tooltip: "Common formats: jpg, png, webp. The guidance image can be RGB or RGBA with transparency; for RGBA, areas with Alpha = 0 do not participate in generation — suitable for guidance images with a subject." |
+| Prompt | no | Background description (at least one of guidance image / prompt, otherwise "Please upload a guidance image or fill in the prompt") |
+
+> [!WARNING]
+> Background generation depends on **public accessibility** of the images: the model fetches the subject and guidance images over the public internet — with Alibaba Cloud OSS storage, images must be public-read; with local storage, the uploaded images must be publicly reachable (unavailable in local development). OSS is enabled in the admin console → System settings → Storage location.
 
 ### SiliconFlow
 
@@ -49,19 +59,24 @@ On the **Draw** page: pick an image model at the top, fill in the prompt editor 
 ## My Drawing History
 
 - Reverse chronological, **infinite scroll**, "No more" at the end;
-- Click a record for the **detail view**: prompt and reference images (original / guidance), comments, **I'll draw one too** (reuse the prompt), and **previous / next** record navigation.
+- Click a record for the **detail view**: prompt and reference images (original / guidance), comments, **I'll draw one too** (reuse the prompt), **previous / next** record navigation ("No previous/next one" at the ends).
+
+> 📷 Screenshot TODO: the drawing detail view (prompt, images, comments). Replace with `![Draw detail](../../../image/en/guide/draw/draw-02.png)` once added.
 
 ### Management
 
-| Action | Description |
-|---|---|
-| Delete task | Choose: delete the prompt only, or the prompt plus all images it generated |
-| Delete one image | Removes just that image, keeping the prompt and others |
-| Public / private toggle | Public images enter the gallery for everyone; off restores private |
+| Action | Where | Description |
+|---|---|---|
+| Delete task | Record's more menu | Choose: delete the prompt only, or the prompt plus all images it generated |
+| Delete one image | On the image | Removes just that image, keeping the prompt and others |
+| Public / private toggle | On the record | Public images enter the gallery ("Public access enabled"); off restores private ("External access disabled") |
+
+> [!TIP]
+> Want more exposure? Set works public and find them in the [Gallery](gallery.md) under "Public images", receiving likes and comments.
 
 ## API
 
-**More → API** in the top bar generates a draw API key and shows the endpoint docs for integrating text-to-image into your own program — see [API Reference · Draw Tasks](../../api/draw.md).
+**More → API** in the top bar generates a draw API key and endpoint docs for integrating text-to-image into your own program (create + poll), see [API Reference · Draw Tasks](../../api/draw.md).
 
 ---
 

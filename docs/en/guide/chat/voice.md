@@ -2,32 +2,37 @@
 
 > [← User Guide](../index.md) · [简体中文](../../../cn/guide/chat/voice.md)
 
-Chat supports a full voice loop: **voice questions** (record → auto-transcribe → send) and **voice answers** (TTS playback).
+Chat supports a full voice loop: **voice questions** (record → auto-transcribe → send) and **voice answers** (TTS playback). Each side works independently, combining into "voice in / text out", "text in / voice out" and other modes.
 
 ## Voice Input (Record a Question)
 
-1. Click the mic icon in the input bar to **start**; the UI shows "Talking (N s)";
-2. Click the icon again to finish — the recording is **sent** automatically;
-3. The audio is transcribed by the system's ASR service and sent as the question.
+1. Click the mic icon in the input bar ("Click to start talking");
+2. Click again to start recording; the icon area shows "Talking (N s)";
+3. Click the icon once more to finish — the recording is **sent automatically**, no extra send click;
+4. The audio is transcribed by the system's ASR service and sent as the question.
+
+> 📷 Screenshot TODO: the input bar while recording ("Talking (N s)"). Replace with `![Voice input](../../../image/en/guide/chat/voice-01.png)` once added.
 
 Notes:
 
 - The ASR service is configured globally by the admin (only one active at a time); users cannot switch it;
-- Max duration and file size follow the system configuration; overlong recordings are cut off.
+- Max duration and file size follow the system configuration (e.g. 60 seconds); overlong recordings are cut off;
+- The transcription becomes the question text and cannot be edited before sending — re-ask by text if recognition is off.
 
 ## Voice Playback (AI Replies)
 
-Controlled in the character's [settings](character-config.md):
+Controlled in the character's [settings](character-config.md#ai-reply-format):
 
-| Setting | Description |
-|---|---|
-| AI reply format | Auto / Text / Voice — "Auto" follows your input format |
-| Auto-play voice replies | Play automatically when the answer arrives |
-| Voice | Selectable with server-side TTS; not needed with browser-side synthesis |
+| Setting | Options | Description |
+|---|---|---|
+| AI reply format | Auto / Text / Voice | "Auto" follows your input format |
+| Auto-play voice replies | On / Off | Play automatically when the answer arrives |
+| Voice | Dropdown | Server-side TTS: pick one; browser-side synthesis: not needed |
 
-For voice answers, click **Show text / Show audio** to switch between the two presentations.
+For voice answers, click **Show text / Show audio** to switch presentation — text to verify content, audio to listen.
 
-> TTS is likewise configured by the admin. Whether synthesis happens server-side or in the browser depends on deployment; browser-side synthesis needs no voice selection.
+> [!NOTE]
+> TTS is likewise configured by the admin. Whether synthesis happens server-side or in the browser depends on deployment: browser-side needs no voice selection, and available voices may differ.
 
 ## For Developers
 

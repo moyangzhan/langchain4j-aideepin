@@ -11,7 +11,7 @@ Click the **Prompt Store** icon at the bottom of the left menu to open the dialo
 
 ## Managing Prompts
 
-- **Add**: enter a title and the prompt text;
+- **Add**: enter a title and the prompt text; duplicates are rejected ("Title duplicated, please re-enter" / "Content duplicated: {msg}, please re-enter");
 - **Edit / Delete**: maintain entries;
 - **Search**: filter by keyword.
 
@@ -19,9 +19,23 @@ Click the **Prompt Store** icon at the bottom of the left menu to open the dialo
 
 | Action | Description |
 |---|---|
-| Local import | Paste prompt JSON to bulk import |
+| Local import | Paste prompt JSON in the dialog to bulk import; malformed input reports "JSON format error, please check the JSON format" |
 | Online import | Pull entries from the online library into local |
 | Export | Download your local prompts as `export_prompts.json` for backup or migration |
+
+Example of the import JSON format:
+
+```json
+[
+  {
+    "act": "Act as an English translator and improver",
+    "prompt": "I want you to act as an English translator, spelling corrector and improver."
+  }
+]
+```
+
+> [!TIP]
+> The JSON format is compatible with popular prompt collections (such as the localized versions of awesome-chatgpt-prompts) — community prompt packs can be reused directly.
 
 ---
 
