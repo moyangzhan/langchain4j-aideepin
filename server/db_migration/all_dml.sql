@@ -12,6 +12,10 @@ VALUES ('catkeeper', '$2a$10$z44gncmQk6xCBCeDx55gMe1Zc8uYtOKcoT4/HE2F92VcF7wP2iq
 INSERT INTO adi_sys_config (name, value)
 VALUES ('google_setting',
         '{"url":"https://www.googleapis.com/customsearch/v1","key":"","cx":""}');
+-- https://documentation.you.com/api-reference/search
+INSERT INTO adi_sys_config (name, value)
+VALUES ('youcom_setting',
+        '{"url":"https://ydc-index.io/v1/search","key":""}');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('request_text_rate_limit', '{"times":24,"minutes":3}');
 INSERT INTO adi_sys_config (name, value)
