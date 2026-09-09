@@ -486,3 +486,17 @@ values (replace(gen_random_uuid()::text, '-', ''), 1, 2, '[
     "encrypted": false
   }
 ]', true);
+
+-- Parallel Search, hosted Streamable HTTP service with no account or API key required
+insert into adi_mcp (uuid, title, transport_type, sse_url, sse_timeout, install_type, website, remark, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'Parallel Search', 'streamable_http',
+        'https://search.parallel.ai/mcp', 30, 'remote', 'https://parallel.ai',
+        '# Parallel Search MCP
+
+A free remote MCP service for live web search and URL fetching. No account or API key is required.
+
+## Tools
+
+- **web_search**: Search the web for current information.
+- **web_fetch**: Extract clean Markdown from a URL.',
+        true);
