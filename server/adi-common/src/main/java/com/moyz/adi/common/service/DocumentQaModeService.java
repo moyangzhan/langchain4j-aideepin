@@ -67,7 +67,7 @@ import static com.moyz.adi.common.enums.ErrorEnum.A_UPLOAD_FAIL;
  */
 @Slf4j
 @Service
-public class DocumentQaService {
+public class DocumentQaModeService {
 
     /**
      * QA bulk-import template: one question per cell, never split by newlines; a row with an
@@ -126,7 +126,7 @@ public class DocumentQaService {
     // HTTP request thread
     @Lazy
     @Resource
-    private DocumentQaService self;
+    private DocumentQaModeService self;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 

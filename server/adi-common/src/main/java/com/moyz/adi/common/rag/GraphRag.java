@@ -102,7 +102,7 @@ public class GraphRag {
     }
 
     /**
-     * 图谱抽取的 LLM 调用记录（可观测性，Token Monitor 展示）：与 QA 生成（DocumentQaService）
+     * 图谱抽取的 LLM 调用记录（可观测性，Token Monitor 展示）：与 QA 生成（DocumentQaModeService）
      * 同款模式，sourceType 为 KNOWLEDGE_BASE_INGEST。此前仅扣减日额度、不落调用记录，属存量缺口。
      */
     private void saveCallRecord(GraphIngestParam graphIngestParam, User user, int inputTokens, int outputTokens, long durationMs) {

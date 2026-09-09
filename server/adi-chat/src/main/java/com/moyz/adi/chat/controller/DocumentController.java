@@ -10,7 +10,7 @@ import com.moyz.adi.common.dto.KbDocumentToggleStatusReq;
 import com.moyz.adi.common.entity.KbDocument;
 import com.moyz.adi.common.enums.SegmentModeEnum;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.service.DocumentQaService;
+import com.moyz.adi.common.service.DocumentQaModeService;
 import com.moyz.adi.common.service.IndexTaskService;
 import com.moyz.adi.common.service.KbDocumentService;
 import com.moyz.adi.common.service.KnowledgeBaseService;
@@ -44,7 +44,7 @@ public class DocumentController {
     private KnowledgeBaseService knowledgeBaseService;
 
     @Resource
-    private DocumentQaService documentQaService;
+    private DocumentQaModeService documentQaModeService;
 
     @Resource
     private IndexTaskService indexTaskService;
@@ -136,7 +136,7 @@ public class DocumentController {
         if (SegmentModeEnum.QA != doc.getSegmentMode()) {
             throw new BaseException(A_PARAMS_ERROR);
         }
-        documentQaService.autoGenerateQa(ThreadContext.getCurrentUser(), doc);
+        documentQaModeService.autoGenerateQa(ThreadContext.getCurrentUser(), doc);
         return true;
     }
 
@@ -153,7 +153,7 @@ public class DocumentController {
         if (SegmentModeEnum.QA != doc.getSegmentMode()) {
             throw new BaseException(A_PARAMS_ERROR);
         }
-        documentQaService.importQaToDocument(doc, file);
+        documentQaModeService.importQaToDocument(doc, file);
         return true;
     }
 
@@ -171,7 +171,7 @@ public class DocumentController {
      */
     @GetMapping("/qaImportTemplate")
     public ResponseEntity<byte[]> qaImportTemplate() {
-        byte[] body = DocumentQaService.QA_IMPORT_TEMPLATE_CSV.getBytes(StandardCharsets.UTF_8);
+        byte[] body = DocumentQaModeService.QA_IMPORT_TEMPLATE_CSV.getBytes(StandardCharsets.UTF_8);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=qa_import_template.csv")
                 .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))

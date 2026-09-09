@@ -62,10 +62,10 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
-    // @Lazy: documentQaService -> kbDocumentService -> 本服务,成环;生成入口仅在保存后调用
+    // @Lazy: documentQaModeService -> kbDocumentService -> 本服务,成环;生成入口仅在保存后调用
     @Lazy
     @Resource
-    private DocumentQaService documentQaService;
+    private DocumentQaModeService documentQaModeService;
 
     @Resource
     private IKnowledgeEmbeddingService iKnowledgeEmbeddingService;
@@ -152,7 +152,7 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
         // 保存为 qa 模式且勾选自动生成：无段行直接生成，已有问答对替换式重新生成（清空后重建）
         if (null != saved && saved.getSegmentMode() == SegmentModeEnum.QA
                 && Boolean.TRUE.equals(itemEditReq.getAutoGenerateQa())) {
-            documentQaService.autoGenerateQa(ThreadContext.getCurrentUser(), saved);
+            documentQaModeService.autoGenerateQa(ThreadContext.getCurrentUser(), saved);
         }
         return saved;
     }
@@ -165,13 +165,13 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
      */
     public KbDocument saveOrUpdateWithQaFile(KbDocumentEditReq itemEditReq, MultipartFile qaFile) {
         boolean hasFile = null != qaFile && !qaFile.isEmpty();
-        List<DocumentQaService.QaPair> pairs = null;
+        List<DocumentQaModeService.QaPair> pairs = null;
         if (hasFile) {
             if (SegmentModeEnum.QA != itemEditReq.getSegmentMode()) {
                 throw new BaseException(A_PARAMS_ERROR);
             }
             String fileName = qaFile.getOriginalFilename();
-            pairs = documentQaService.parseQaFile(fileName == null || fileName.isBlank() ? "qa_import" : fileName, qaFile);
+            pairs = documentQaModeService.parseQaFile(fileName == null || fileName.isBlank() ? "qa_import" : fileName, qaFile);
             if (pairs.isEmpty()) {
                 throw new BaseException(A_PARAMS_ERROR);
             }
@@ -179,7 +179,7 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
         }
         KbDocument saved = saveOrUpdate(itemEditReq);
         if (hasFile && null != saved) {
-            documentQaService.importQaPairs(saved, pairs);
+            documentQaModeService.importQaPairs(saved, pairs);
         }
         return saved;
     }
@@ -430,7 +430,7 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
         User user = ThreadContext.getCurrentUser();
         if (SegmentModeEnum.QA == doc.getSegmentMode()
                 && documentSegmentService.listByDocUuid(uuid).isEmpty()) {
-            documentQaService.autoGenerateQa(user, doc);
+            documentQaModeService.autoGenerateQa(user, doc);
             return true;
         }
         boolean enqueued = false;

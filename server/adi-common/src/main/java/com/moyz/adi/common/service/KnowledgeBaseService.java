@@ -105,7 +105,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     private DocumentSegmentService documentSegmentService;
 
     @Resource
-    private DocumentQaService documentQaService;
+    private DocumentQaModeService documentQaModeService;
 
     @Resource
     private LLMCallRecordService llmCallRecordService;
@@ -168,7 +168,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         checkWritePrivilege(null, kbUuid);
         KnowledgeBase knowledgeBase = getOrThrow(kbUuid);
         String fileName = file.getOriginalFilename();
-        KbDocument doc = documentQaService.importQa(knowledgeBase, fileName == null || fileName.isBlank() ? "qa_import" : fileName, file);
+        KbDocument doc = documentQaModeService.importQa(knowledgeBase, fileName == null || fileName.isBlank() ? "qa_import" : fileName, file);
         indexItems(List.of(doc.getUuid()), List.of(AdiConstant.DOC_INDEX_TYPE_EMBEDDING));
         stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, kbUuid);
         return doc;
@@ -218,7 +218,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             // Q&A mode: the file is the pair data; no source file record is kept (raw Q/A
             // text goes into remark) and questions are vectorized synchronously
             if (SegmentModeEnum.QA == segmentMode) {
-                KbDocument qaDoc = documentQaService.importQa(knowledgeBase,
+                KbDocument qaDoc = documentQaModeService.importQa(knowledgeBase,
                         fileName == null || fileName.isBlank() ? "qa_import" : fileName, doc);
                 // user-level in-flight key held for the duration of the synchronous vectorization.
                 // Protocol matches the task executor (seed when absent, increment per in-flight
@@ -228,7 +228,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 stringRedisTemplate.opsForValue().setIfAbsent(userIndexKey, "0", 10, TimeUnit.MINUTES);
                 stringRedisTemplate.opsForValue().increment(userIndexKey);
                 try {
-                    documentQaService.vectorizePendingQaDoc(knowledgeBase, qaDoc, ThreadContext.getCurrentUser());
+                    documentQaModeService.vectorizePendingQaDoc(knowledgeBase, qaDoc, ThreadContext.getCurrentUser());
                 } finally {
                     Long remaining = stringRedisTemplate.opsForValue().decrement(userIndexKey);
                     if (remaining != null && remaining <= 0) {
