@@ -2,7 +2,7 @@
 
 > [← User Guide](../index.md) · [简体中文](../../../cn/guide/chat/voice.md)
 
-Chat supports a full voice loop: **voice questions** (record → auto-transcribe → send) and **voice answers** (TTS playback). Each side works independently, combining into "voice in / text out", "text in / voice out" and other modes.
+Chat supports voice on both sides: **voice questions** (record → auto-transcribe → send) and **voice answers** (TTS playback). Each side works independently — for example "voice in / text out" or "text in / voice out".
 
 ## Voice Input (Record a Question)
 
@@ -11,13 +11,16 @@ Chat supports a full voice loop: **voice questions** (record → auto-transcribe
 3. Click the icon once more to finish — the recording is **sent automatically**, no extra send click;
 4. The audio is transcribed by the system's ASR service and sent as the question.
 
-> 📷 Screenshot TODO: the input bar while recording ("Talking (N s)"). Replace with `![Voice input](../../../image/en/guide/chat/voice-01.png)` once added.
+<figure>
+  <img src="../../../image/cn/guide/chat/voice-01.png" alt="Voice input">
+  <figcaption>Voice input</figcaption>
+</figure>
 
 Notes:
 
 - The ASR service is configured globally by the admin (only one active at a time); users cannot switch it;
 - Max duration and file size follow the system configuration (e.g. 60 seconds); overlong recordings are cut off;
-- The transcription becomes the question text and cannot be edited before sending — re-ask by text if recognition is off.
+- The transcription becomes the question text and cannot be edited before sending — ask again by text if the recognition is wrong.
 
 ## Voice Playback (AI Replies)
 
@@ -29,10 +32,10 @@ Controlled in the character's [settings](character-config.md#ai-reply-format):
 | Auto-play voice replies | On / Off | Play automatically when the answer arrives |
 | Voice | Dropdown | Server-side TTS: pick one; browser-side synthesis: not needed |
 
-For voice answers, click **Show text / Show audio** to switch presentation — text to verify content, audio to listen.
+For voice answers, click **Show text / Show audio** to switch between them — text to check the content, audio to listen.
 
 > [!NOTE]
-> TTS is likewise configured by the admin. Whether synthesis happens server-side or in the browser depends on deployment: browser-side needs no voice selection, and available voices may differ.
+> TTS is also configured by the admin. Whether synthesis happens server-side or in the browser depends on deployment: browser-side needs no voice selection, and available voices may differ.
 
 ## For Developers
 

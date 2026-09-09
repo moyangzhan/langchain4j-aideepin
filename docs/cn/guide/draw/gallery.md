@@ -9,7 +9,10 @@
 | 公开图片 | 所有用户设为公开的绘图作品 | 否 |
 | 我的点赞 | 你点赞过的图片 | 是 |
 
-> 📷 截图待补：画廊页（公开图片网格视图）。放图后替换为 `![画廊](../../../image/cn/guide/draw/gallery-01.png)`
+<figure>
+  <img src="../../../image/cn/guide/draw/gallery-01.png" alt="画廊">
+  <figcaption>画廊</figcaption>
+</figure>
 
 ## 浏览
 

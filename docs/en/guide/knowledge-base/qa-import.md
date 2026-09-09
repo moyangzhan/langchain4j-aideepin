@@ -8,7 +8,7 @@ Q&A-mode documents use question-answer pairs as the retrieval unit: hitting any 
 |---|---|---|
 | **File import** | An already-curated FAQ sheet | High (manual) |
 | **AI generation** | Only raw prose available | Medium (needs proofreading) |
-| **Manual upkeep** | A few additions / fixes | High |
+| **Manual maintenance** | A few additions / fixes | High |
 
 ## File Import
 
@@ -25,7 +25,7 @@ File format (in-app hint, translated):
 - Each file becomes one standalone Q&A document named after the file.
 
 > [!NOTE]
-> Uploading a file is mutually exclusive with "AI auto-generation": picking a file unchecks AI generation automatically. Only one of the two can seed the initial pairs.
+> Uploading a file is mutually exclusive with "AI auto-generation": picking a file unchecks AI generation automatically. Only one of the two can create the initial pairs.
 
 ### Way 2: append to an existing document
 
@@ -33,16 +33,24 @@ File format (in-app hint, translated):
 2. Click the header **Import Q&A pairs** (dialog "Import Q&A pairs into '{document}'");
 3. Pick an XLSX / CSV file — pairs are **appended**, existing content untouched.
 
-> 📷 Screenshot TODO: the import-QA dialog (file picker + template download). Replace with `![Import Q&A pairs](../../../image/en/guide/knowledge-base/qa-import-01.png)` once added.
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/qa-import-01.png" alt="Import Q&A pairs">
+  <figcaption>Import Q&A pairs</figcaption>
+</figure>
 
 ## AI-Generated Pairs
 
-The AI distills pairs from the document body (using the base's [ingest model](manage.md#3-document-index-settings-model)):
+The AI distills pairs from the document body (using the base's [ingest model](manage.md#_3-document-index-settings-model)):
 
 1. Check **"Auto-generate Q&A pairs from the body after saving"** when creating;
 2. Generation runs asynchronously; check the pair list shortly after.
 
 Once pairs exist the control becomes **"Clear current pairs and regenerate"**:
+
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/qa-import-02.png" alt="AI-generated Q&A pairs">
+  <figcaption>AI-generated Q&A pairs</figcaption>
+</figure>
 
 > [!WARNING]
 > Regenerating **first clears all current pairs** (including manual and imported ones), unrecoverable (confirmation required). Export a backup first if in doubt.
@@ -56,13 +64,13 @@ Click **Add Q&A pair** in the pair list:
 3. Save.
 
 > [!TIP]
-> The in-app hint reads: "One answer can be associated with multiple questions; hitting any of them recalls the answer" — attach different phrasings ("how to claim expenses", "expense process", "reimbursement") to one answer to boost hit rate.
+> The in-app hint reads: "One answer can be associated with multiple questions; hitting any of them recalls the answer" — attach different phrasings ("how to claim expenses", "expense process", "reimbursement") to one answer to increase the hit rate.
 
 Row actions on existing pairs: **Edit** (refills questions and answer), **Disable / Enable**, **Delete**.
 
 ## Tips
 
-- Official material, accuracy first → curate and import manually;
+- Official material, accuracy first → organize and import manually;
 - Lots of existing prose → AI-generate first, then proofread each pair;
 - New frequent questions after launch → append manual pairs or files; avoid regenerating everything.
 

@@ -4,7 +4,10 @@
 
 对话界面分为三块：左侧**角色列表**、中间**消息区**、底部**输入区**。每个角色拥有独立的对话历史，切换角色即切换会话。
 
-> 📷 截图待补：对话界面总览，标注角色列表 / 消息区 / 输入区。放图后替换为 `![对话界面](../../../image/cn/guide/chat/window-01.png)`
+<figure>
+  <img src="../../../image/cn/guide/chat/window-01.png" alt="对话界面">
+  <figcaption>对话界面</figcaption>
+</figure>
 
 ## 发送消息与流式回答
 
@@ -89,7 +92,10 @@
 | 引用 | 展示命中的知识库片段。按文档分段模式展示：问答模式显示命中的问题与答案；父子分段模式显示命中的子块及其父段；通用分段显示段文本 |
 | 图谱 | 展示本次回答参考的知识图谱片段 |
 
-> 📷 截图待补：回答下方的引用弹窗（任一分段模式）。放图后替换为 `![引用资料](../../../image/cn/guide/chat/window-02.png)`
+<figure>
+  <img src="../../../image/cn/guide/chat/window-02.png" alt="引用资料">
+  <figcaption>引用资料</figcaption>
+</figure>
 
 > [!TIP]
 > 「引用」为空说明本次回答未命中知识库内容（或角色未关联知识库）。想让回答有据可查，先阅读[知识库概览](../knowledge-base/overview.md)。

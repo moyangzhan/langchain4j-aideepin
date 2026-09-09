@@ -7,7 +7,10 @@
 - 顶部搜索框按标题过滤（输入后回车或点击搜索按钮）；
 - 表格底部分页，显示「共 {n} 条」。
 
-> 📷 截图待补：「我的知识库」列表页（表格 + 添加按钮 + 搜索框）。放图后替换为 `![我的知识库](../../../image/cn/guide/knowledge-base/manage-01.png)`
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/manage-01.png" alt="我的知识库">
+  <figcaption>我的知识库</figcaption>
+</figure>
 
 ## 新建知识库
 
@@ -62,7 +65,10 @@
 | 系统提示词 | 知识库问答时的角色设定（如「你是公司制度助手，回答必须基于检索内容」） |
 | 创造性 / 随机性 | 回答温度（temperature）：越低越保守，越高越发散 |
 
-> 📷 截图待补：建库表单的五组设置卡片（滚动截全）。放图后替换为 `![建库表单](../../../image/cn/guide/knowledge-base/manage-02.png)`
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/manage-02.png" alt="建库表单">
+  <figcaption>建库表单</figcaption>
+</figure>
 
 ## 编辑知识库
 

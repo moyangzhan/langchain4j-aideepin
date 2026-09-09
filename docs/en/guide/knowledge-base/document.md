@@ -5,9 +5,12 @@
 From "My knowledge bases" click the title or **Docs** to open the knowledge base detail (document list). The toolbar offers two ways to add:
 
 - **Add (form)**: type title, summary and body — for single short pieces;
-- **Add (file)**: batch upload — for real imports.
+- **Add (file)**: batch upload — for importing existing files.
 
-> 📷 Screenshot TODO: the knowledge base detail page (document table + toolbar). Replace with `![Document list](../../../image/en/guide/knowledge-base/document-01.png)` once added.
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/document-01.png" alt="Document list">
+  <figcaption>Document list</figcaption>
+</figure>
 
 ## Uploading Files
 
@@ -55,7 +58,10 @@ Uploading only creates documents and segments — **they become retrievable once
 
 4. Confirm — "Index task running in background"; the list polls every 3 seconds.
 
-> 📷 Screenshot TODO: the index dialog (type checkboxes + selected documents). Replace with `![Index dialog](../../../image/en/guide/knowledge-base/document-03.png)` once added.
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/document-03.png" alt="Index dialog">
+  <figcaption>Index dialog</figcaption>
+</figure>
 
 Un-graphed documents can be indexed later from the [segment management](segment.md) page's document card.
 
@@ -69,7 +75,7 @@ Un-graphed documents can be indexed later from the [segment management](segment.
 | Attachment | The uploaded file; click to preview |
 | Characters | Body length — the first indicator of healthy parsing |
 | Vector hits / graph hits | How often this document's segments were recalled — long-standing 0 means content doesn't match questions |
-| Enabled | Toggle. Off = excluded from retrieval (consequences in [Segment Management](segment.md#enablingdisabling-segments)) |
+| Enabled | Toggle. Off = excluded from retrieval (consequences in [Segment Management](segment.md#enabling-disabling-segments-all-modes)) |
 | Created / updated | Recent changes |
 
 Actions: **Segments** (segment management), **Graph** (view; disabled with "Not graphed yet" until extracted), **Edit**, **Delete**.

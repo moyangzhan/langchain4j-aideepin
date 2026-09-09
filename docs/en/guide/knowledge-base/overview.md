@@ -2,9 +2,9 @@
 
 > [← User Guide](../index.md) · [简体中文](../../../cn/guide/knowledge-base/overview.md)
 
-A knowledge base (RAG) hands your own material to the AI: imported documents are split into **segments** and **indexed**; when you ask, the system retrieves the most relevant segments and injects them into the model, grounding answers with traceable **citations**.
+A knowledge base (RAG) gives the AI access to your own material: imported documents are split into **segments** and **indexed**; when you ask, the system retrieves the most relevant segments and injects them into the model, grounding answers with traceable **citations**.
 
-Good fits: policy Q&A, product-manual support, personal notes retrieval, domain assistants.
+Good use cases: policy Q&A, product-manual support, personal notes search, domain assistants.
 
 ## Overall Flow
 
@@ -17,10 +17,18 @@ Create knowledge base → Import documents (pick segmentation mode) → Index (v
 | 1. Create | Retrieval and splitting settings | [Create & Configure](manage.md) |
 | 2. Import | Form entry or file upload, choose segmentation mode | [Import Documents](document.md) |
 | 3. Index | Vectorization (required) and graph extraction (optional) | [Import Documents](document.md#indexing) |
-| 4. Maintain | Segment enable/disable, QA upkeep, retries | [Segment Management](segment.md), [Q&A Import & Generation](qa-import.md) |
+| 4. Maintain | Segment enable/disable, QA maintenance, retries | [Segment Management](segment.md), [Q&A Import & Generation](qa-import.md) |
 | 5. Use | Knowledge base Q&A, or link the base to a character | [Knowledge Base Q&A](kb-qa.md), [Character Settings](../chat/character-config.md) |
 
-> 📷 Screenshot TODO: the KB Q&A page and the "My knowledge bases" page. Replace with `![KB entries](../../../image/en/guide/knowledge-base/overview-01.png)` once added.
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/overview-01.png" alt="Knowledge base Q&A page">
+  <figcaption>Knowledge base Q&A page</figcaption>
+</figure>
+
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/manage-01.png" alt="My knowledge bases page">
+  <figcaption>My knowledge bases page</figcaption>
+</figure>
 
 ## Two Entry Points
 
@@ -53,7 +61,7 @@ How to choose:
 | **Vector index** | Embeds segments for semantic similarity search | The foundation; prerequisite for Q&A |
 | **Graph index** | Extracts entities and relations into a knowledge graph | Optional; extraction uses an LLM and **consumes tokens** |
 
-Both can coexist; answers can be traced via citations and the citation graph (see [Knowledge Graph](graph.md)). They complement each other: vectors excel at "semantically similar", graphs at "multi-hop relations" (who is the head of A's department).
+Both can coexist; answers can be traced via citations and the citation graph (see [Knowledge Graph](graph.md)). They complement each other: vectors are best at "semantically similar" content, graphs at "multi-hop relations" (who is the head of A's department).
 
 ## Strict vs Lenient Mode
 

@@ -4,7 +4,10 @@
 
 本页带你用最短路径完成：**注册激活 → 熟悉界面 → 首次对话**。模型平台由管理员预先配置好，普通用户开箱即可使用，全程约 5 分钟。
 
-> 📷 截图待补：登录弹窗（登录 / 注册两个页签）。放图后替换为 `![登录弹窗](../../image/cn/guide/quick-start-01.png)`
+<figure>
+  <img src="../../image/cn/guide/quick-start-01.png" alt="登录弹窗">
+  <figcaption>登录弹窗</figcaption>
+</figure>
 
 ## 1. 注册与激活
 
@@ -39,15 +42,17 @@
 | 应用 | 创建与运行工作流 |
 | 工具 | 启用 MCP 扩展工具 |
 
-左下角还有三个固定入口：
+左下角还有二个固定入口：
 
 | 入口 | 功能 |
 |---|---|
 | 提示词商店 | 管理常用提示词（见[提示词商店](prompt-store.md)） |
 | 设置 | 主题、语言、额度查询、修改密码（见[额度与用量](account/usage.md)） |
-| 登录 / 退出 | 未登录时显示**登录**，已登录时在设置中退出 |
 
-> 📷 截图待补：登录后的主界面，标注全局菜单六项与左下角入口。放图后替换为 `![主界面](../../image/cn/guide/quick-start-02.png)`
+<figure>
+  <img src="../../image/cn/guide/quick-start-02.png" alt="主界面">
+  <figcaption>主界面</figcaption>
+</figure>
 
 ## 3. 首次对话
 
@@ -60,7 +65,10 @@
 4. 回车或点击发送按钮。
 5. 回答以流式方式逐步输出。期间可随时点击**停止**中断生成。
 
-> 📷 截图待补：对话界面，标注模型选择器、输入框、发送 / 停止按钮。放图后替换为 `![对话界面](../../image/cn/guide/quick-start-03.png)`
+<figure>
+  <img src="../../image/cn/guide/quick-start-03.png" alt="对话界面">
+  <figcaption>对话界面</figcaption>
+</figure>
 
 ### 试试这些进阶玩法
 

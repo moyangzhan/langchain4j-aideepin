@@ -4,7 +4,10 @@
 
 The chat window has three parts: the **character list** on the left, the **message area** in the middle, and the **input area** at the bottom. Each character keeps its own history — switching characters switches the conversation.
 
-> 📷 Screenshot TODO: chat window overview with the three areas annotated. Replace with `![Chat window](../../../image/en/guide/chat/window-01.png)` once added.
+<figure>
+  <img src="../../../image/cn/guide/chat/window-01.png" alt="Chat window">
+  <figcaption>Chat window</figcaption>
+</figure>
 
 ## Sending Messages & Streaming Answers
 
@@ -79,7 +82,7 @@ The **context** icon in the input bar controls whether history is sent (hover: "
 
 ## Memory & Citations
 
-Three buttons under each answer provide traceability:
+Three buttons under each answer let you check its sources:
 
 | Button | Content |
 |---|---|
@@ -87,10 +90,13 @@ Three buttons under each answer provide traceability:
 | Citations | Hit knowledge base segments per segmentation mode: Q&A shows the hit question and answer; parent-child shows the hit child chunk and its parent; plain shows the segment text |
 | Graph | Knowledge graph fragments referenced by the answer |
 
-> 📷 Screenshot TODO: the citations dialog under an answer (any segmentation mode). Replace with `![Citations](../../../image/en/guide/chat/window-02.png)` once added.
+<figure>
+  <img src="../../../image/cn/guide/chat/window-02.png" alt="Citations">
+  <figcaption>Citations</figcaption>
+</figure>
 
 > [!TIP]
-> Empty citations mean the answer drew on no knowledge base content (or the character links none). See [Knowledge Base Overview](../knowledge-base/overview.md).
+> Empty citations mean the answer used no knowledge base content (or the character links none). See [Knowledge Base Overview](../knowledge-base/overview.md).
 
 ## Voice Input
 

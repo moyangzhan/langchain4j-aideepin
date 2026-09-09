@@ -9,7 +9,10 @@ The gallery collects **public** AI-generated images from the whole site. Two vie
 | Public images | Drawings set public by all users | No |
 | My likes | Images you liked | Yes |
 
-> 📷 Screenshot TODO: the gallery page (public images grid). Replace with `![Gallery](../../../image/en/guide/draw/gallery-01.png)` once added.
+<figure>
+  <img src="../../../image/cn/guide/draw/gallery-01.png" alt="Gallery">
+  <figcaption>Gallery</figcaption>
+</figure>
 
 ## Browsing
 
@@ -21,7 +24,7 @@ The gallery collects **public** AI-generated images from the whole site. Two vie
 
 | Interaction | Action | Description |
 |---|---|---|
-| Like | Heart icon | Collect the work; revisit under "My likes"; click again to undo |
+| Like | Heart icon | Saves the image; find it again under "My likes"; click again to undo |
 | Comment | Comment box | Share your thoughts ("How is this image? Leave your comment~"); paginated; your comments can be deleted |
 | I'll draw one too | Detail button | Reopens drawing with that image's prompt |
 

@@ -2,9 +2,12 @@
 
 > [← User Guide](index.md) · [简体中文](../../cn/guide/quick-start.md)
 
-This page walks the shortest path: **sign up & activate → get to know the UI → first conversation**. Model platforms are pre-configured by the admin, so regular users can start right away — about 5 minutes end to end.
+This page covers three steps: **sign up & activate → get to know the UI → first conversation**. Model platforms are pre-configured by the admin, so regular users can start right away — about 5 minutes in total.
 
-> 📷 Screenshot TODO: the login dialog (Login / Register tabs). Replace with `![Login dialog](../../image/en/guide/quick-start-01.png)` once added.
+<figure>
+  <img src="../../image/cn/guide/quick-start-01.png" alt="Login dialog">
+  <figcaption>Login dialog</figcaption>
+</figure>
 
 ## 1. Sign Up & Activate
 
@@ -35,7 +38,7 @@ After logging in, the global menu sits on the far left (icons only, hover for la
 | Chat | Talk to AI characters |
 | Draw | Text to image |
 | Gallery | Browse public images and your likes |
-| Knowledge Base | Q&A grounded on knowledge bases |
+| Knowledge Base | Q&A based on knowledge bases |
 | Apps | Create and run workflows |
 | Tools | Enable MCP extensions |
 
@@ -47,7 +50,10 @@ Three fixed entries at the bottom-left:
 | Settings | Theme, language, quota, change password (see [Quota & Usage](account/usage.md)) |
 | Login / Log out | **Login** when signed out; log out from Settings when signed in |
 
-> 📷 Screenshot TODO: the home screen with the six menu items and bottom-left entries annotated. Replace with `![Home screen](../../image/en/guide/quick-start-02.png)` once added.
+<figure>
+  <img src="../../image/cn/guide/quick-start-02.png" alt="Home screen">
+  <figcaption>Home screen</figcaption>
+</figure>
 
 ## 3. First Conversation
 
@@ -60,7 +66,10 @@ Three fixed entries at the bottom-left:
 4. Press Enter or click send.
 5. The answer streams in. Click **Stop** anytime to interrupt.
 
-> 📷 Screenshot TODO: the chat window with the model selector, input box and send/stop buttons annotated. Replace with `![Chat window](../../image/en/guide/quick-start-03.png)` once added.
+<figure>
+  <img src="../../image/cn/guide/quick-start-03.png" alt="Chat window">
+  <figcaption>Chat window</figcaption>
+</figure>
 
 ### Try these next
 
@@ -69,11 +78,11 @@ Three fixed entries at the bottom-left:
 - **Upload an image**: with a vision (multimodal) model selected, upload a PNG/JPG (≤ 4MB) for recognition.
 - **Switch characters**: click **New Character** above the list, or create one from 11 **preset** categories — see [Characters & Presets](chat/character.md).
 - **Voice**: click the mic icon to record; the audio is transcribed and sent — see [Voice Input & Playback](chat/voice.md).
-- **Ground answers in your documents**: create a knowledge base — see [Knowledge Base Overview](knowledge-base/overview.md).
+- **Get answers from your own documents**: create a knowledge base — see [Knowledge Base Overview](knowledge-base/overview.md).
 
 ## 4. Next Steps
 
-- Ground answers in your own documents: read the [Knowledge Base](knowledge-base/overview.md) chapter.
+- Get answers from your own documents: read the [Knowledge Base](knowledge-base/overview.md) chapter.
 - Build automations: read [Apps & Workflows](workflow/workflow.md).
 - Integrate chat into your own program: read the [API Reference](../api/index.md).
 - Check your usage: read [Quota & Usage](account/usage.md).

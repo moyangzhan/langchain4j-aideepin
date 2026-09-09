@@ -37,7 +37,7 @@ The UI adapts automatically per model:
 ## When a Model Is Unavailable
 
 - Models with a **red dot** failed health checks: hover shows the specific reason (healthReason) or "Unavailable";
-- Pick an available model. Enablement and platform configuration are admin tasks, see [Admin Console](../admin/admin.md#model-platforms--models); integrating a brand-new platform is covered in the [Model Platform Integration Guide](../../dev/model-platform-integration.md).
+- Pick an available model. Enablement and platform configuration are admin tasks, see [Admin Console](../admin/admin.md#model-platforms-models); integrating a brand-new platform is covered in the [Model Platform Integration Guide](../../dev/model-platform-integration.md).
 
 > [!TIP]
 > Models differ a lot on the same task: prefer reasoner models for reasoning-heavy work; everyday chat is cheaper on regular text models. The free/paid flag affects how your [quota](../account/usage.md) is counted.

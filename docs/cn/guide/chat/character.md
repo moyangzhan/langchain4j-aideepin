@@ -14,7 +14,10 @@
 3. 填写角色表单（各字段说明见[角色进阶设置](character-config.md)），至少填写**名称**。
 4. 点击保存，新角色出现在角色列表顶部。
 
-> 📷 截图待补：新建角色弹窗（「新建角色 / 预设角色」两个页签）。放图后替换为 `![新建角色弹窗](../../../image/cn/guide/chat/character-01.png)`
+<figure>
+  <img src="../../../image/cn/guide/chat/character-01.png" alt="新建角色弹窗">
+  <figcaption>新建角色弹窗</figcaption>
+</figure>
 
 ## 从预设角色创建
 
@@ -29,7 +32,10 @@
 > [!TIP]
 > 带**含知识库**标签的预设角色，复制时会自动为你创建一个同名的专用知识库（提示「知识库「{kbTitle}」已创建」），开箱即具备该领域的问答能力，无需手动建库导文档。
 
-> 📷 截图待补：预设角色页签（分类列表 + 展开的角色设定 + 「使用」按钮）。放图后替换为 `![预设角色](../../../image/cn/guide/chat/character-02.png)`
+<figure>
+  <img src="../../../image/cn/guide/chat/character-02.png" alt="预设角色">
+  <figcaption>预设角色</figcaption>
+</figure>
 
 ## 编辑与删除角色
 

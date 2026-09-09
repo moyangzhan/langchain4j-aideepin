@@ -4,8 +4,6 @@
 
 角色编辑表单（新建与编辑共用）除基础信息外，还支持关联知识库、MCP 工具与语音行为。
 
-> 📷 截图待补：角色编辑表单全貌（滚动截全）。放图后替换为 `![角色编辑表单](../../../image/cn/guide/chat/character-config-01.png)`
-
 ## 基础信息
 
 | 字段 | 必填 | 说明 | 示例 |
@@ -39,7 +37,10 @@
 3. 勾选目标知识库，点击**保存**。
 4. 已关联的库以标签形式展示，标签上的 × 可移除单个库。
 
-> 📷 截图待补：知识库选择器弹窗（搜索框 + 列表勾选）。放图后替换为 `![知识库选择器](../../../image/cn/guide/chat/character-config-02.png)`
+<figure>
+  <img src="../../../image/cn/guide/chat/character-config-02.png" alt="知识库选择器">
+  <figcaption>知识库选择器</figcaption>
+</figure>
 
 > [!TIP]
 > 可同时关联多个知识库，检索时合并召回。知识库的创建与导入见[知识库](../knowledge-base/overview.md)一章。

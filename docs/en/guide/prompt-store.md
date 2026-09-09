@@ -12,7 +12,7 @@ Click the **Prompt Store** icon at the bottom of the left menu to open the dialo
 ## Managing Prompts
 
 - **Add**: enter a title and the prompt text; duplicates are rejected ("Title duplicated, please re-enter" / "Content duplicated: {msg}, please re-enter");
-- **Edit / Delete**: maintain entries;
+- **Edit / Delete**: change or remove entries;
 - **Search**: filter by keyword.
 
 ## Import & Export
@@ -20,7 +20,7 @@ Click the **Prompt Store** icon at the bottom of the left menu to open the dialo
 | Action | Description |
 |---|---|
 | Local import | Paste prompt JSON in the dialog to bulk import; malformed input reports "JSON format error, please check the JSON format" |
-| Online import | Pull entries from the online library into local |
+| Online import | Import entries from the online library into Local |
 | Export | Download your local prompts as `export_prompts.json` for backup or migration |
 
 Example of the import JSON format:

@@ -4,7 +4,15 @@
 
 进入**绘画**页面后，顶部可选择图片模型，中部为提示词编辑器（按所选模型平台切换形态），下方为**我的绘图记录**。
 
-> 📷 截图待补：绘画页总览（模型选择器 / 编辑器 / 绘图记录）。放图后替换为 `![绘画页](../../../image/cn/guide/draw/draw-01.png)`
+<figure>
+  <img src="../../../image/cn/guide/draw/draw-01.png" alt="绘画页（聊天风格）">
+  <figcaption>绘画页（聊天风格）</figcaption>
+</figure>
+
+<figure>
+  <img src="../../../image/cn/guide/draw/draw-01-01.png" alt="绘画页（画廊风格）">
+  <figcaption>绘画页（画廊风格）</figcaption>
+</figure>
 
 ## 生成流程
 
@@ -65,7 +73,10 @@
   - **我也要画一张**：带入该提示词跳转编辑器再创作；
   - **上一个 / 下一个**绘图记录导航，连续翻看。
 
-> 📷 截图待补：绘图详情页（提示词、图片、评论区）。放图后替换为 `![绘图详情](../../../image/cn/guide/draw/draw-02.png)`
+<figure>
+  <img src="../../../image/cn/guide/draw/draw-02.png" alt="绘图详情">
+  <figcaption>绘图详情</figcaption>
+</figure>
 
 ### 管理操作
 

@@ -29,13 +29,17 @@ MCP（Model Context Protocol）是一种标准化的外部工具接入协议。�
 > [!NOTE]
 > 「敏感信息」标记的参数（问号提示：**敏感信息会进行加密存储**）如 API Key、token 等，保存后加密落库，界面不再回显明文。
 
-> 📷 截图待补：MCP 配置弹窗（介绍 / 配置两个页签）。放图后替换为 `![MCP配置](../../../image/cn/guide/mcp/mcp-01.png)`
+示例：
+<figure>
+  <img src="../../../image/cn/guide/mcp/mcp-01.png" alt="MCP配置">
+  <figcaption>MCP配置</figcaption>
+</figure>
 
 ## 在对话中使用
 
 工具需要在**角色**中勾选才会被调用（问号提示原文：「选中项表示本角色可能会用到该服务中的各种工具」）：
 
-- 在[角色进阶设置](../chat/character-config.md#服务与工具mcp)的「服务与工具(MCP)」中勾选；
+- 在[角色进阶设置](../chat/character-config.md#服务与工具-mcp)的「服务与工具(MCP)」中勾选；
 - 或在对话输入栏点击**工具**标签即时勾选（弹窗标题「配置角色使用的服务与工具」）。
 
 配置好后，AI 会在需要时自动调用相应工具。

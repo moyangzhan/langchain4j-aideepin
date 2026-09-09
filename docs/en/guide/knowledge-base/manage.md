@@ -7,7 +7,10 @@ Open **Knowledge Base → Knowledge base management** — the "My knowledge base
 - The search box filters by title (Enter or click the search button);
 - The table paginates at the bottom ("{n} items in total").
 
-> 📷 Screenshot TODO: the "My knowledge bases" list page. Replace with `![My knowledge bases](../../../image/en/guide/knowledge-base/manage-01.png)` once added.
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/manage-01.png" alt="My knowledge bases">
+  <figcaption>My knowledge bases</figcaption>
+</figure>
 
 ## Creating a Knowledge Base
 
@@ -52,17 +55,20 @@ Open **Knowledge Base → Knowledge base management** — the "My knowledge base
 
 | Field | Description |
 |---|---|
-| Max retrieved | Maximum segments recalled per query — higher is more thorough but costlier |
-| Min score | Segments below this similarity are excluded — higher is stricter, less noise |
+| Max retrieved | Maximum segments recalled per query — higher is more thorough but costs more |
+| Min score | Segments below this similarity are excluded — higher is stricter and filters out more noise |
 
 ### 5. LLM Parameters
 
 | Field | Description |
 |---|---|
 | System prompt | Persona for knowledge base Q&A (e.g. "You are the company policy assistant; answer only from retrieved content") |
-| Creativity / randomness | Answer temperature: lower = conservative, higher = divergent |
+| Creativity / randomness | Answer temperature: lower = more conservative, higher = more varied |
 
-> 📷 Screenshot TODO: the five settings cards of the create form (scrolling capture). Replace with `![Create form](../../../image/en/guide/knowledge-base/manage-02.png)` once added.
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/manage-02.png" alt="Create form">
+  <figcaption>Create form</figcaption>
+</figure>
 
 ## Editing
 

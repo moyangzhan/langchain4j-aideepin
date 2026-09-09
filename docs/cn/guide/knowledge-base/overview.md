@@ -20,7 +20,15 @@
 | 4. 维护 | 片段启停、QA 维护、失败重试 | [分段管理](segment.md)、[Q&A 导入与生成](qa-import.md) |
 | 5. 使用 | 知识库问答，或将知识库关联到角色 | [知识库问答](kb-qa.md)、[角色进阶设置](../chat/character-config.md) |
 
-> 📷 截图待补：知识库问答页与「我的知识库」管理页各一张（拼图或分开）。放图后替换为 `![知识库入口](../../../image/cn/guide/knowledge-base/overview-01.png)`
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/overview-01.png" alt="知识库问答页">
+  <figcaption>知识库问答页</figcaption>
+</figure>
+
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/manage-01.png" alt="我的知识库页">
+  <figcaption>我的知识库页</figcaption>
+</figure>
 
 ## 两个入口
 

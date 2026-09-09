@@ -33,16 +33,24 @@
 2. 点击头部**导入QA对**按钮（弹窗标题「导入QA对到「{文档名}」」）；
 3. 选择 XLSX / CSV 文件提交，问答对**追加**到当前文档，已有内容不受影响。
 
-> 📷 截图待补：导入QA对弹窗（文件选择 + 模板下载）。放图后替换为 `![导入QA对](../../../image/cn/guide/knowledge-base/qa-import-01.png)`
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/qa-import-01.png" alt="导入QA对">
+  <figcaption>导入QA对</figcaption>
+</figure>
 
 ## AI 自动生成问答对
 
-由 AI 从文档正文自动提炼问答对（使用知识库设置中的[入库模型](manage.md#3-文档索引设置模型)）：
+由 AI 从文档正文自动提炼问答对（使用知识库设置中的[入库模型](manage.md#_3-文档索引设置-模型)）：
 
 1. 新建 QA 文档时勾选**「保存后由 AI 从正文自动生成问答对」**；
 2. 保存后生成任务异步执行，稍后在问答对列表查看结果。
 
 文档已有问答对时，该按钮变为**「清空当前问答对并重新生成」**：
+
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/qa-import-02.png" alt="AI自动提炼问答对">
+  <figcaption>AI自动提炼问答对</figcaption>
+</figure>
 
 > [!WARNING]
 > 重新生成会**先清空当前全部问答对**且不可恢复（需二次确认）。建议先导出备份或确认问答对可放弃后再操作。

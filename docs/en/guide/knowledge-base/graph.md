@@ -6,7 +6,7 @@ The graph index extracts **entities (vertices)** and **relations (edges)** from 
 
 ## Generating a Graph
 
-Graphs are extracted **per document**, consuming tokens of the base's [ingest model](manage.md#3-document-index-settings-model). Three entry points:
+Graphs are extracted **per document**, consuming tokens of the base's [ingest model](manage.md#_3-document-index-settings-model). Three entry points:
 
 | Entry | Where |
 |---|---|
@@ -20,16 +20,22 @@ Using the segment page:
 2. The confirmation names the model (translated): "The knowledge graph will be extracted using the base's ingest model '{model}'; this consumes that model's tokens. Start?";
 3. Status shows **extracting** (background task) and refreshes on completion.
 
-> 📷 Screenshot TODO: the graph extraction confirmation dialog. Replace with `![Graph confirm](../../../image/en/guide/knowledge-base/graph-01.png)` once added.
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/graph-01.png" alt="Graph confirm">
+  <figcaption>Graph confirm</figcaption>
+</figure>
 
 ## Viewing the Graph
 
 1. Click **View graph** from the document list or segment management;
 2. The canvas shows vertices and relations;
-3. Large graphs load in pages: "Vertices {loaded}/{total}, relations {loaded}/{total}" with a **Load more** button; **Re-layout** tidies the canvas;
-4. Anomalous states show hints ("extracting, refresh later" or "no graph data yet").
+3. Large graphs load in pages: "Vertices {loaded}/{total}, relations {loaded}/{total}" with a **Load more** button; **Re-layout** re-arranges the canvas;
+4. Other states show hints ("extracting, refresh later" or "no graph data yet").
 
-> 📷 Screenshot TODO: the document graph page (canvas + load more). Replace with `![Knowledge graph](../../../image/en/guide/knowledge-base/graph-02.png)` once added.
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/graph-02.png" alt="Knowledge graph">
+  <figcaption>Knowledge graph</figcaption>
+</figure>
 
 ## Graph Citations in Answers
 
@@ -38,14 +44,14 @@ After asking against a base with a graph index:
 1. Click the **Graph** button under the answer;
 2. The dialog shows the graph fragments referenced (entities with name/description, relations).
 
-Characters linked to the base support this too. Together with **Citations** (hit segments) this fully traces the answer — see [Chat Window · Memory & Citations](../chat/window.md#memory--citations).
+Characters linked to the base support this too. Together with **Citations** (hit segments) this fully traces the answer — see [Chat Window · Memory & Citations](../chat/window.md#memory-citations).
 
 ## Maintenance Notes
 
 > [!WARNING]
 > Graphs **do not auto-update** with body edits: after switching segmentation mode or editing the body, re-extract manually, or answers keep citing the old graph.
 
-- Disabling a segment deletes its graph footprint; re-extract after re-enabling if needed (see [Segment Management](segment.md#enablingdisabling-segments));
+- Disabling a segment deletes its graph footprint; re-extract after re-enabling if needed (see [Segment Management](segment.md#enabling-disabling-segments-all-modes));
 - Graph cost scales with document length — prioritize entity-dense material (org structures, product specs, policy clauses); narrative text is fine with vectors only.
 
 ---

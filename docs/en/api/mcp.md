@@ -2,7 +2,7 @@
 
 > [← API Reference](index.md) · [简体中文](../../cn/api/mcp.md)
 
-Fetch the MCP service list with the **user-level mcp key** (see [API Keys & Authentication](authentication.md)) — handy for wiring the same tools into your own client.
+Fetch the MCP service list with the **user-level mcp key** (see [API Keys & Authentication](authentication.md)) — useful when you want the same tools in your own client.
 
 ## All Supported Services
 

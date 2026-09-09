@@ -11,7 +11,10 @@
 3. 结束时再次点击图标，录音自动结束并**发送**——无需再点发送按钮；
 4. 录音上传后由系统的语音识别（ASR）服务转为文字，作为提问发给 AI。
 
-> 📷 截图待补：录音中的输入栏（「对话中 N 秒」状态）。放图后替换为 `![语音输入](../../../image/cn/guide/chat/voice-01.png)`
+<figure>
+  <img src="../../../image/cn/guide/chat/voice-01.png" alt="语音输入">
+  <figcaption>语音输入</figcaption>
+</figure>
 
 说明：
 

@@ -42,7 +42,7 @@ New / edit fields:
 | OpenAI API compatible | Form note: "OpenAI-API-compatible platforms need no extra code adaptation" — chat-type models integrate with zero code |
 
 > [!WARNING]
-> Deleting a platform confirms "cannot be recovered and may affect model calls…"; built-in default platforms offer no delete.
+> Deleting a platform confirms "cannot be recovered and may affect model calls…"; built-in default platforms cannot be deleted.
 
 ### Model Management
 

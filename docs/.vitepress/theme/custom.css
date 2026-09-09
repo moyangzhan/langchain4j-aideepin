@@ -1,0 +1,29 @@
+/* Screenshot figures: centered image with a small gray caption below */
+figure {
+  margin: 16px 0 20px;
+  text-align: center;
+}
+
+/* Zoom overlay and zoomed image must sit above the nav (30) and sidebar (60) */
+.medium-zoom-overlay {
+  z-index: 999;
+}
+
+.medium-zoom-image--opened {
+  z-index: 1000;
+}
+
+figure img {
+  margin: 0 auto;
+  cursor: zoom-in;
+}
+
+figure img.medium-zoom-image--opened {
+  cursor: zoom-out;
+}
+
+figure figcaption {
+  margin-top: 8px;
+  font-size: 0.875rem;
+  color: var(--vp-c-text-2);
+}

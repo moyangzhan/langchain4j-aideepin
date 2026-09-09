@@ -4,7 +4,10 @@
 
 Click **Knowledge Base** in the left menu to enter the Q&A view: the knowledge base list on the left, the Q&A area on the right. This is the entry for asking a knowledge base directly; you can also [link the base to a character](../chat/character-config.md#linked-knowledge-bases) and use it in chat (adding persona and memory on top).
 
-> 📷 Screenshot TODO: the KB Q&A page (sidebar + Q&A area). Replace with `![KB Q&A](../../../image/en/guide/knowledge-base/kb-qa-01.png)` once added.
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/kb-qa-01.png" alt="KB Q&A">
+  <figcaption>KB Q&A</figcaption>
+</figure>
 
 ## Picking a Knowledge Base
 
@@ -40,7 +43,7 @@ The **Knowledge base management** button at the bottom of the sidebar opens [My 
 > Asking tips: retrieval drives quality — phrase questions close to the document wording, one question at a time, and add qualifiers (year, product, department) when needed.
 
 > [!NOTE]
-> In **strict mode**, "[No answer]" on no hits is expected behavior (no fabrication). For free-form answers switch to lenient mode (see [Create & Configure](manage.md)).
+> In **strict mode**, "[No answer]" on no hits is expected behavior (the model will not make up an answer). For free-form answers switch to lenient mode (see [Create & Configure](manage.md)).
 
 ## Citation Tracing
 

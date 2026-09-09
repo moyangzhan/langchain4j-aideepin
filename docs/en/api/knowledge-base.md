@@ -20,7 +20,7 @@ POST /ext/v1/knowledge
 
 ### streaming (default)
 
-An SSE text stream. In strict mode, when nothing relevant is retrieved the API returns **empty content** (the web UI displays it as "[No answer]") — no model invention.
+An SSE text stream. In strict mode, when nothing relevant is retrieved the API returns **empty content** (the web UI displays it as "[No answer]") — the model does not make up an answer.
 
 ### blocking
 

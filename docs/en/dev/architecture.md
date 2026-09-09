@@ -4,7 +4,7 @@
 
 ## 1. System Overview
 
-AIDeepIn is an AI-powered productivity platform that helps enterprises and teams improve work efficiency through capabilities such as chat, knowledge bases, workflows, and image generation.
+AIDeepIn is an AI assistant platform with chat, knowledge bases (RAG), workflows and image generation.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -48,7 +48,7 @@ AIDeepIn is an AI-powered productivity platform that helps enterprises and teams
 
 ## 2. Business Modules
 
-### 2.1 Smart Chat
+### 2.1 AI Chat
 
 The core module of the system, supporting multi-turn conversations with AI.
 

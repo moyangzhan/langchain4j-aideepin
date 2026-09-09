@@ -5,7 +5,7 @@
 In AIDeepIn, **a conversation is a character**: each character has its own persona, linked resources and history. Click a character in the left list to switch; hover an entry for the **edit** pencil icon.
 
 > [!NOTE]
-> Each account can create up to 50 characters (including copies from presets). At the limit the button reports it — delete unused characters to free slots.
+> Each account can create up to 50 characters (including copies from presets). At the limit the button shows a message — delete unused characters to free up slots.
 
 ## Creating a Character
 
@@ -14,7 +14,10 @@ In AIDeepIn, **a conversation is a character**: each character has its own perso
 3. Fill in the form (field details in [Character Settings](character-config.md)); at least the **name** is required.
 4. Save — the new character appears at the top of the list.
 
-> 📷 Screenshot TODO: the new-character dialog (two tabs). Replace with `![New character dialog](../../../image/en/guide/chat/character-01.png)` once added.
+<figure>
+  <img src="../../../image/cn/guide/chat/character-01.png" alt="New character dialog">
+  <figcaption>New character dialog</figcaption>
+</figure>
 
 ## Creating from Presets
 
@@ -27,9 +30,12 @@ Presets are built-in characters grouped by scenario into 11 categories: Tech/Eng
 5. Used presets are marked **Used**; clicking **Use** again switches to the character you copied earlier — no duplicate is created.
 
 > [!TIP]
-> Presets tagged **with knowledge base** automatically create a dedicated same-named knowledge base when copied — ready-made domain Q&A without manual setup.
+> Presets tagged **with knowledge base** automatically create a dedicated same-named knowledge base when copied — you get a ready-to-use domain knowledge base without manual setup.
 
-> 📷 Screenshot TODO: the Presets tab (categories + expanded persona + Use button). Replace with `![Presets](../../../image/en/guide/chat/character-02.png)` once added.
+<figure>
+  <img src="../../../image/cn/guide/chat/character-02.png" alt="Presets">
+  <figcaption>Presets</figcaption>
+</figure>
 
 ## Editing & Deleting
 

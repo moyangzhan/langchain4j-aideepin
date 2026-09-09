@@ -39,7 +39,10 @@ Once linked, chats with this character retrieve from the knowledge bases first.
 3. Check the target bases and **Save**.
 4. Linked bases appear as tags; the × on a tag removes that base.
 
-> 📷 Screenshot TODO: the knowledge base picker dialog. Replace with `![Knowledge base picker](../../../image/en/guide/chat/character-config-02.png)` once added.
+<figure>
+  <img src="../../../image/cn/guide/chat/character-config-02.png" alt="Knowledge base picker">
+  <figcaption>Knowledge base picker</figcaption>
+</figure>
 
 > [!TIP]
 > Multiple bases can be linked and are recalled together. Creating and importing is covered in the [Knowledge Base](../knowledge-base/overview.md) chapter.
@@ -77,7 +80,7 @@ Full voice details in [Voice Input & Playback](voice.md).
 ## Save & Delete
 
 - **Save** at the bottom submits all changes;
-- **Delete** removes the character (see [Characters & Presets](character.md#editing--deleting)).
+- **Delete** removes the character (see [Characters & Presets](character.md#editing-deleting)).
 
 ---
 

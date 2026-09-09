@@ -166,7 +166,7 @@ export default defineConfig({
       themeConfig: {
         nav: buildNav('cn'),
         sidebar: buildSidebar('cn'),
-        outline: { label: '本页目录', level: [2, 3] },
+        outline: { label: '本页目录', level: [2, 4] },
         docFooter: { prev: '上一篇', next: '下一篇' },
         returnToTopLabel: '回到顶部',
         darkModeSwitchLabel: '主题',
@@ -180,7 +180,7 @@ export default defineConfig({
       themeConfig: {
         nav: buildNav('en'),
         sidebar: buildSidebar('en'),
-        outline: { label: 'On this page', level: [2, 3] },
+        outline: { label: 'On this page', level: [2, 4] },
         returnToTopLabel: 'Back to top',
       },
     },

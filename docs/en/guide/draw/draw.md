@@ -4,7 +4,15 @@
 
 On the **Draw** page: pick an image model at the top, fill in the prompt editor (which changes shape per platform), and review **my drawing history** below.
 
-> 📷 Screenshot TODO: the draw page overview (model selector / editor / history). Replace with `![Draw page](../../../image/en/guide/draw/draw-01.png)` once added.
+<figure>
+  <img src="../../../image/cn/guide/draw/draw-01.png" alt="Draw page (chat style)">
+  <figcaption>Draw page (chat style)</figcaption>
+</figure>
+
+<figure>
+  <img src="../../../image/cn/guide/draw/draw-01-01.png" alt="Draw page (gallery style)">
+  <figcaption>Draw page (gallery style)</figcaption>
+</figure>
 
 ## Generation Flow
 
@@ -21,7 +29,7 @@ On the **Draw** page: pick an image model at the top, fill in the prompt editor 
 | Parameter | Options |
 |---|---|
 | Size | auto / Square 1024x1024 / Portrait 1024x1536 / Landscape 1536x1024 |
-| Quality | auto / low / medium / high (higher = finer, slower and costlier) |
+| Quality | auto / low / medium / high (higher = finer, slower and more expensive) |
 
 ### Tongyi Wanxiang (DashScope)
 
@@ -61,18 +69,21 @@ On the **Draw** page: pick an image model at the top, fill in the prompt editor 
 - Reverse chronological, **infinite scroll**, "No more" at the end;
 - Click a record for the **detail view**: prompt and reference images (original / guidance), comments, **I'll draw one too** (reuse the prompt), **previous / next** record navigation ("No previous/next one" at the ends).
 
-> 📷 Screenshot TODO: the drawing detail view (prompt, images, comments). Replace with `![Draw detail](../../../image/en/guide/draw/draw-02.png)` once added.
+<figure>
+  <img src="../../../image/cn/guide/draw/draw-02.png" alt="Draw detail">
+  <figcaption>Draw detail</figcaption>
+</figure>
 
 ### Management
 
 | Action | Where | Description |
 |---|---|---|
-| Delete task | Record's more menu | Deletes the prompt and **all images it generated** (the confirmation lists what goes) |
+| Delete task | Record's more menu | Deletes the prompt and **all images it generated** (the confirmation lists what will be deleted) |
 | Delete one image | On the image | Removes just that image, keeping the prompt and others |
 | Public / private toggle | On the record | Public images enter the gallery ("Public access enabled"); off restores private ("External access disabled") |
 
 > [!TIP]
-> Want more exposure? Set works public and find them in the [Gallery](gallery.md) under "Public images", receiving likes and comments.
+> To share your work, set it public — it appears in the [Gallery](gallery.md) under "Public images", where others can like and comment on it.
 
 ## API
 

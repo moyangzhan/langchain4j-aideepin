@@ -12,9 +12,19 @@ Open via **Segments** in the document list. The document card sits at the top; b
 | View attachment | Preview the uploaded file |
 | Generate / view graph | "Graph not generated yet — **click to generate**" before extraction; **View graph** after (see [Knowledge Graph](graph.md)) |
 
-> 📷 Screenshot TODO: the segment management page (document card + segment table). Replace with `![Segment management](../../../image/en/guide/knowledge-base/segment-01.png)` once added.
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/segment-00.png" alt="Opening segment management from the document list">
+  <figcaption>Opening segment management from the document list</figcaption>
+</figure>
 
-## Plain Segments
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/segment-01.png" alt="Segment management page">
+  <figcaption>Segment management page</figcaption>
+</figure>
+
+The segment management page shows the list and actions matching the document's **segmentation mode** — **plain**, **Q&A** and **parent-child** are document-level properties; how to choose: [Overview · Three Segmentation Modes](overview.md#three-segmentation-modes).
+
+## Segmentation Mode 1: Plain Segmentation
 
 Columns: #, segment text (folded to 3 lines, expandable), hit count, character count, status, actions.
 
@@ -24,11 +34,11 @@ Columns: #, segment text (folded to 3 lines, expandable), hit count, character c
 | Disable / Enable | See below |
 | Delete | Remove the segment and its vectors |
 
-## Q&A Pair List
+## Segmentation Mode 2: Q&A Segmentation
 
 Header buttons: **Add Q&A pair**, **Import Q&A pairs** (file append), **AI generate / regenerate**. Row actions and formats: [Q&A Import & Generation](qa-import.md).
 
-## Parent-Child Segments
+## Segmentation Mode 3: Parent-Child Segmentation
 
 Parents are the top-level chunks, children are sub-chunks; children match precisely, the parent is returned as context.
 
@@ -43,7 +53,7 @@ Parents are the top-level chunks, children are sub-chunks; children match precis
 > [!WARNING]
 > **Re-splitting children** overwrites manually added or edited children; make sure the parent content is final first.
 
-## Enabling/Disabling Segments
+## Enabling/Disabling Segments (All Modes)
 
 Segments (and parents, pairs) can be toggled individually — a way to "take content offline temporarily". Confirmation texts differ by graph status (translated):
 
@@ -53,9 +63,9 @@ Segments (and parents, pairs) can be toggled individually — a way to "take con
 | Enable | Enabling will regenerate the segment's vectors and graph data (graph extraction consumes model quota). Enable? | Enabling will regenerate the segment's vector data. Enable? |
 
 > [!TIP]
-> Disable→enable is a costly cycle (vectors and graph are deleted then rebuilt). To take a whole document offline, use the document list's **Enabled** switch instead.
+> Disabling and re-enabling costs extra work (vectors and graph are deleted then rebuilt). To take a whole document offline, use the document list's **Enabled** switch instead.
 
-## Vector Repair & Failure Retry
+## Vector Repair & Failure Retry (All Modes)
 
 - **Missing vector**: when a segment is flagged, the confirmation reads (translated): "This item's vector does not exist in the vector store (may not match the status shown). Rebuild the vector?" — confirm to repair;
 - **Index failures**: the bottom failure panel lists recent failure reasons per dimension (vector / graph) with three retries: re-vectorize / re-graph / re-vectorize and re-graph; an empty pair list offers **AI generate** instead;

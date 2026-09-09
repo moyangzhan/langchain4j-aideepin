@@ -2,7 +2,7 @@
 
 > [← Back to contents](../index.md) · [简体中文](../../cn/api/index.md)
 
-The AIDeepIn open API (`/ext/v1`) brings the platform's AI capabilities into your own programs: **character chat, knowledge base Q&A, draw tasks, MCP service lists and workflow runs**. Everything is self-service — generate an API key in the UI and start calling, no approval needed.
+The AIDeepIn open API (`/ext/v1`) lets you use the platform's AI capabilities from your own programs: **character chat, knowledge base Q&A, draw tasks, MCP service lists and workflow runs**. Everything is self-service — generate an API key in the UI and start calling, no approval needed.
 
 ## Endpoint Overview
 

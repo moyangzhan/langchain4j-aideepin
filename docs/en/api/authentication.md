@@ -29,7 +29,7 @@ In the dialog you can generate / regenerate the key, view the mask (`ext-a3f8***
 
 ## Authentication
 
-Send the key **verbatim in the `Authorization` header, with no `Bearer` prefix**:
+Send the key **as-is in the `Authorization` header, with no `Bearer` prefix**:
 
 ```http
 Authorization: ext-xxxxxxxxxxxxxxxx

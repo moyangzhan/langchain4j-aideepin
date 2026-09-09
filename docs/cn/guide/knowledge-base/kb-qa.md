@@ -4,7 +4,10 @@
 
 点击左侧菜单**知识库**进入问答界面：左侧是知识库列表，右侧是问答区。这是直接「对知识库提问」的入口；也可以把知识库[关联到角色](../chat/character-config.md#关联知识库)后在对话中使用（后者可叠加角色设定与记忆）。
 
-> 📷 截图待补：知识库问答页（侧栏列表 + 问答区）。放图后替换为 `![知识库问答](../../../image/cn/guide/knowledge-base/kb-qa-01.png)`
+<figure>
+  <img src="../../../image/cn/guide/knowledge-base/kb-qa-01.png" alt="知识库问答">
+  <figcaption>知识库问答</figcaption>
+</figure>
 
 ## 选择知识库
 
