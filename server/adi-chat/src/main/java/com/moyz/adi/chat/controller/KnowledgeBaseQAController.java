@@ -38,7 +38,7 @@ public class KnowledgeBaseQAController {
 
     @PostMapping("/add/{kbUuid}")
     public KbQaDto add(@PathVariable String kbUuid, @RequestBody @Validated QARecordReq req) {
-        KnowledgeBase knowledgeBase = knowledgeBaseService.getOrThrow(kbUuid);
+        KnowledgeBase knowledgeBase = knowledgeBaseService.getReadableOrThrow(kbUuid);
         return knowledgeBaseQaService.add(knowledgeBase, req);
     }
 
@@ -50,6 +50,7 @@ public class KnowledgeBaseQAController {
 
     @GetMapping("/search")
     public Page<KbQaDto> list(String kbUuid, String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(10) Integer pageSize) {
+        knowledgeBaseService.checkReadPrivilege(kbUuid);
         return knowledgeBaseQaService.search(kbUuid, keyword, currentPage, pageSize);
     }
 
@@ -60,11 +61,13 @@ public class KnowledgeBaseQAController {
 
     @GetMapping("/embedding-ref/{uuid}")
     public List<RefEmbeddingDto> embeddingRef(@PathVariable String uuid) {
+        knowledgeBaseService.getReadableQaOrThrow(uuid);
         return knowledgeBaseQaRecordReferenceService.listRefEmbeddings(uuid);
     }
 
     @GetMapping("/graph-ref/{uuid}")
     public RefGraphDto graphRef(@PathVariable String uuid) {
+        knowledgeBaseService.getReadableQaOrThrow(uuid);
         return knowledgeBaseQaRefGraphService.getByQaUuid(uuid);
     }
 

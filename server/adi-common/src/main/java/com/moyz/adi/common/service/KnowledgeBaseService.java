@@ -410,6 +410,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     }
 
     public SseEmitter sseAsk(String qaRecordUuid) {
+        getReadableQaOrThrow(qaRecordUuid);
         checkRequestTimesOrThrow();
         String sseUuid = UuidUtil.createShort();
         SseEmitter sseEmitter = new SseEmitter(SSE_TIMEOUT);
@@ -842,6 +843,27 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     }
 
     /**
+     * Resolve a knowledge base only after checking whether the current user may read it.
+     * Keeping the lookup and authorization together prevents callers from accidentally
+     * resolving a private knowledge base before applying the read check.
+     */
+    public KnowledgeBase getReadableOrThrow(String kbUuid) {
+        KnowledgeBase knowledgeBase = getOrThrow(kbUuid);
+        ensureReadPrivilege(knowledgeBase);
+        return knowledgeBase;
+    }
+
+    /**
+     * Resolve a QA record and authorize access through its owning knowledge base.
+     * QA UUIDs are otherwise sufficient to reach private document references and answers.
+     */
+    public KnowledgeBaseQa getReadableQaOrThrow(String qaRecordUuid) {
+        KnowledgeBaseQa qaRecord = knowledgeBaseQaRecordService.getOrThrow(qaRecordUuid);
+        getReadableOrThrow(qaRecord.getKbUuid());
+        return qaRecord;
+    }
+
+    /**
      * Read authorization for a knowledge base's content: allow the owner, an admin,
      * or anyone when the knowledge base is public. This mirrors the (owner-only)
      * write-side checkWritePrivilege so that the read endpoints are scoped too. Denials
@@ -849,7 +871,10 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
      * users' private knowledge bases.
      */
     public void checkReadPrivilege(String kbUuid) {
-        KnowledgeBase kb = getOrThrow(kbUuid);
+        ensureReadPrivilege(getOrThrow(kbUuid));
+    }
+
+    private void ensureReadPrivilege(KnowledgeBase kb) {
         if (Boolean.TRUE.equals(kb.getIsPublic())) {
             return;
         }
