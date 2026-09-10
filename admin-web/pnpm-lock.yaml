@@ -17,6 +17,9 @@ importers:
       '@vicons/ionicons5':
         specifier: ^0.12.0
         version: 0.12.0
+      '@vicons/material':
+        specifier: ^0.12.0
+        version: 0.12.0
       '@vueup/vue-quill':
         specifier: ^1.2.0
         version: 1.2.0(vue@3.4.21(typescript@4.9.5))
@@ -1203,6 +1206,9 @@ packages:
 
   '@vicons/ionicons5@0.12.0':
     resolution: {integrity: sha512-Iy1EUVRpX0WWxeu1VIReR1zsZLMc4fqpt223czR+Rpnrwu7pt46nbnC2ycO7ItI/uqDLJxnbcMC7FujKs9IfFA==}
+
+  '@vicons/material@0.12.0':
+    resolution: {integrity: sha512-chv1CYAl8P32P3Ycwgd5+vw/OFNc2mtkKdb1Rw4T5IJmKy6GVDsoUKV3N2l208HATn7CCQphZtuPDdsm7K2kmA==}
 
   '@vitejs/plugin-vue-jsx@2.1.1':
     resolution: {integrity: sha512-JgDhxstQlwnHBvZ1BSnU5mbmyQ14/t5JhREc6YH5kWyu2QdAAOsLF6xgHoIWarj8tddaiwFrNzLbWJPudpXKYA==}
@@ -6462,6 +6468,8 @@ snapshots:
   '@vicons/carbon@0.12.0': {}
 
   '@vicons/ionicons5@0.12.0': {}
+
+  '@vicons/material@0.12.0': {}
 
   '@vitejs/plugin-vue-jsx@2.1.1(vite@3.2.10(@types/node@18.19.31)(less@4.2.0)(terser@5.30.3))(vue@3.4.21(typescript@4.9.5))':
     dependencies:

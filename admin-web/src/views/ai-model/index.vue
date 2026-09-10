@@ -170,7 +170,7 @@
   const MODEL_RESPONSE_FORMAT_TYPES = getModelResponseFormatTypes()
   const allPlatforms = getDefaultModelPlatforms()
   import { PlusOutlined } from '@vicons/antd'
-  import { HeartPulseRound as HealthOutlined } from '@vicons/material'
+  import { MonitorHeartRound as HealthOutlined } from '@vicons/material'
   import { AiModelData } from '/#/aiModel'
   import type { FormItemRule, FormRules } from 'naive-ui'
   import { useDialog } from 'naive-ui'
