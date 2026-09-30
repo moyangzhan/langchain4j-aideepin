@@ -64,7 +64,7 @@ export default {
     loginSuccess: 'Login successful, entering the system',
     loginFailed: 'Login failed',
     fillCompleteInfo: 'Please fill in all fields and complete the captcha verification',
-    goToSite: 'Go to AiDeepIn',
+    goToSite: 'Go to AIDeepIn',
     logoutConfirmTitle: 'Confirm',
     logoutConfirmContent: 'Are you sure you want to log out?',
     logoutSuccess: 'Successfully logged out',

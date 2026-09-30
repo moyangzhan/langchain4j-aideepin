@@ -64,7 +64,7 @@ export default {
     loginSuccess: '登录成功，即将进入系统',
     loginFailed: '登录失败',
     fillCompleteInfo: '请填写完整信息，并且进行验证码校验',
-    goToSite: '去aideepin',
+    goToSite: '去 AIDeepIn',
     logoutConfirmTitle: '提示',
     logoutConfirmContent: '您确定要退出登录吗',
     logoutSuccess: '成功退出登录',
