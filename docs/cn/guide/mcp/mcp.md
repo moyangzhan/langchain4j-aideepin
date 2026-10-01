@@ -27,13 +27,21 @@ MCP（Model Context Protocol）是一种标准化的外部工具接入协议。�
 5. 点击确定，提示「保存配置成功」。
 
 > [!NOTE]
-> 「敏感信息」标记的参数（问号提示：**敏感信息会进行加密存储**）如 API Key、token 等，保存后加密落库，界面不再回显明文。
+> 「敏感信息」标记的参数（问号提示：**敏感信息会进行加密存储**）如 API Key、token 等，保存后加密落库。打开设置表单时会解密并返回前端供编辑；数据库加密不代表该授权设置响应不包含明文。
 
 示例：
 <figure>
   <img src="../../../image/cn/guide/mcp/mcp-01.png" alt="MCP配置">
   <figcaption>MCP配置</figcaption>
 </figure>
+
+## 管理员配置 HTTP 参数绑定
+
+对 SSE 和 Streamable HTTP 服务，管理员为预设参数或用户参数定义选择 **HTTP 绑定**（`query` / `header`），并可填写 **请求名称**。`name` 仍是关联用户已存值的稳定标识；未设置 `bind_type` 时按 Query 处理，未设置 `bind_name` 时使用 `name`，旧记录无需迁移。STDIO 环境变量名维持原有行为。
+
+用户参数 Header 可配置 `bind_name: "Authorization"` 和 `bind_value_template: "Bearer {value}"`；`{value}` 只使用该定义对应的用户值。未设置模板时使用原值，预设 Header 直接使用配置的常量。Header 值不进入 URL；Query 名称和值做 URL 编码。显式绑定要求非空的标量值；空或未知绑定类型、无效模板、非法 Header 及大小写不敏感的重复 Header 名称会被拒绝。显式 Query 同名绑定被拒绝，旧 Query 的用户值覆盖预设值行为保留。
+
+用户仍使用原参数表单。编辑 token 后保存并重新打开核对，再确认服务已启用且由目标角色勾选。HTTP transport 请求/响应日志已关闭；这不会取消上述设置响应的解密回填行为。不要分享设置响应或未脱敏的 token。
 
 ## 在对话中使用
 

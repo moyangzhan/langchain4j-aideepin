@@ -15,9 +15,9 @@ import com.moyz.adi.common.entity.UserMcp;
 import com.moyz.adi.common.mapper.UserMcpMapper;
 import com.moyz.adi.common.util.AesUtil;
 import com.moyz.adi.common.util.MPPageUtil;
+import com.moyz.adi.common.util.McpHttpParameters;
 import com.moyz.adi.common.util.PrivilegeUtil;
 import com.moyz.adi.common.util.UuidUtil;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
@@ -122,7 +122,7 @@ public class UserMcpService extends ServiceImpl<UserMcpMapper, UserMcp> {
 
     public UserMcpDto saveOrUpdate(UserMcpUpdateReq editReq) {
         if (null == editReq.getMcpCustomizedParams() && null == editReq.getIsEnable()) {
-            log.warn("UserMcp edit request is empty, editReq: {}", editReq);
+            log.warn("UserMcp edit request is empty");
             return null;
         }
         Mcp mcp = mcpService.getOrThrow(editReq.getMcpId(), false);
@@ -131,7 +131,7 @@ public class UserMcpService extends ServiceImpl<UserMcpMapper, UserMcp> {
                 .eq(UserMcp::getUserId, ThreadContext.getCurrentUserId())
                 .eq(UserMcp::getIsDeleted, false)
                 .one();
-        List<UserMcpCustomizedParam> paramSettings = editReq.getMcpCustomizedParams();
+        List<UserMcpCustomizedParam> paramSettings = copyParams(editReq.getMcpCustomizedParams());
         if (null == userMcp) {
             userMcp = new UserMcp();
             userMcp.setUuid(UuidUtil.createShort());
@@ -155,7 +155,13 @@ public class UserMcpService extends ServiceImpl<UserMcpMapper, UserMcp> {
             if (null != editReq.getIsEnable()) {
                 updateObj.setIsEnable(editReq.getIsEnable());
             }
-            baseMapper.updateById(userMcp);
+            baseMapper.updateById(updateObj);
+            if (paramSettings != null) {
+                userMcp.setMcpCustomizedParams(paramSettings);
+            }
+            if (editReq.getIsEnable() != null) {
+                userMcp.setIsEnable(editReq.getIsEnable());
+            }
         }
         UserMcpDto dto = new UserMcpDto();
         BeanUtils.copyProperties(userMcp, dto);
@@ -183,55 +189,57 @@ public class UserMcpService extends ServiceImpl<UserMcpMapper, UserMcp> {
         // 查询MCP信息
         List<Mcp> mcpInfos = mcpService.listByIds(mcpIdToUserMcp.keySet().stream().toList(), true);
         for (Mcp mcp : mcpInfos) {
-            UserMcp userMcp = mcpIdToUserMcp.get(mcp.getId());
-            if (userMcp == null) {
+            UserMcp storedUserMcp = mcpIdToUserMcp.get(mcp.getId());
+            if (storedUserMcp == null) {
                 log.warn("No user MCP params found for MCP ID: {}", mcp.getId());
                 continue;
             }
+            UserMcp userMcp = new UserMcp();
+            BeanUtils.copyProperties(storedUserMcp, userMcp);
+            userMcp.setMcpCustomizedParams(copyParams(storedUserMcp.getMcpCustomizedParams()));
 
-            // 解密用户设置的MCP参数
-            decryptParams(userMcp.getMcpCustomizedParams(), mcp);
-
-            McpTransport transport;
-            if (AdiConstant.McpConstant.TRANSPORT_TYPE_SSE.equals(mcp.getTransportType())) {
-                String httpQueryString = createHttpQueryString(mcp, userMcp);
-                String url = buildUrlWithQuery(mcp.getSseUrl(), httpQueryString);
-                transport = new HttpMcpTransport.Builder()
-                        .sseUrl(url)
-                        .timeout(Duration.ofSeconds(mcp.getSseTimeout() > 0 ? mcp.getSseTimeout() : 30))
-                        .logRequests(true)
-                        .logResponses(true)
-                        .build();
-            } else if (AdiConstant.McpConstant.TRANSPORT_TYPE_STREAMABLE_HTTP.equals(mcp.getTransportType())) {
-                // Reuse sseUrl/sseTimeout: streamable-HTTP also needs a POST endpoint URL + timeout
-                String httpQueryString = createHttpQueryString(mcp, userMcp);
-                String url = buildUrlWithQuery(mcp.getSseUrl(), httpQueryString);
-                transport = new StreamableHttpMcpTransport.Builder()
-                        .url(url)
-                        .timeout(Duration.ofSeconds(mcp.getSseTimeout() > 0 ? mcp.getSseTimeout() : 30))
-                        .logRequests(true)
-                        .logResponses(true)
-                        .build();
-            } else {
-                Map<String, String> environment = createEnvironment(mcp, userMcp);
-                transport = new StdioMcpTransport.Builder()
-                        .command(List.of(mcp.getStdioCommand(), mcp.getStdioArg()))
-                        .environment(environment)
-                        .build();
-            }
+            McpTransport transport = null;
             try {
+                decryptParams(userMcp.getMcpCustomizedParams(), mcp);
+                if (AdiConstant.McpConstant.TRANSPORT_TYPE_SSE.equals(mcp.getTransportType())) {
+                    McpHttpParameters params = McpHttpParameters.resolve(mcp, userMcp);
+                    transport = new HttpMcpTransport.Builder()
+                            .sseUrl(params.url())
+                            .customHeaders(params.headers())
+                            .timeout(Duration.ofSeconds(mcp.getSseTimeout() > 0 ? mcp.getSseTimeout() : 30))
+                            .logRequests(false)
+                            .logResponses(false)
+                            .build();
+                } else if (AdiConstant.McpConstant.TRANSPORT_TYPE_STREAMABLE_HTTP.equals(mcp.getTransportType())) {
+                    McpHttpParameters params = McpHttpParameters.resolve(mcp, userMcp);
+                    transport = new StreamableHttpMcpTransport.Builder()
+                            .url(params.url())
+                            .customHeaders(params.headers())
+                            .timeout(Duration.ofSeconds(mcp.getSseTimeout() > 0 ? mcp.getSseTimeout() : 30))
+                            .logRequests(false)
+                            .logResponses(false)
+                            .followRedirects(false)
+                            .build();
+                } else {
+                    Map<String, String> environment = createEnvironment(mcp, userMcp);
+                    transport = new StdioMcpTransport.Builder()
+                            .command(List.of(mcp.getStdioCommand(), mcp.getStdioArg()))
+                            .environment(environment)
+                            .build();
+                }
                 McpClient mcpClient = new DefaultMcpClient.Builder()
                         .transport(transport)
                         .build();
                 result.add(mcpClient);
             } catch (Exception e) {
-                // A single MCP build failure should not abort the whole request; log and skip, continue with the rest
-                log.error("Failed to build MCP client, mcpId: {}, title: {}, transportType: {}", mcp.getId(), mcp.getTitle(), mcp.getTransportType(), e);
-                // On build failure the transport is not owned by any McpClient; close it to avoid connection/subprocess leaks
-                try {
-                    transport.close();
-                } catch (Exception closeEx) {
-                    log.warn("Failed to close MCP transport after build failure, mcpId: {}", mcp.getId(), closeEx);
+                // SDK exceptions can contain request URLs/headers. Do not log their messages or causes.
+                log.error("Failed to build MCP client, mcpId: {}, transportType: {}", mcp.getId(), mcp.getTransportType());
+                if (transport != null) {
+                    try {
+                        transport.close();
+                    } catch (Exception closeEx) {
+                        log.warn("Failed to close MCP transport after build failure, mcpId: {}", mcp.getId());
+                    }
                 }
             }
         }
@@ -259,10 +267,16 @@ public class UserMcpService extends ServiceImpl<UserMcpMapper, UserMcp> {
      * @param mcp     mcp对象
      */
     private void encryptParams(List<UserMcpCustomizedParam> setting, Mcp mcp) {
+        if (setting == null) {
+            return;
+        }
         for (UserMcpCustomizedParam userMcpCustomizedParam : setting) {
-            mcp.getCustomizedParamDefinitions().stream().filter(item -> item.getName().equals(userMcpCustomizedParam.getName()) && Boolean.TRUE.equals(item.getRequireEncrypt()))
+            (mcp.getCustomizedParamDefinitions() == null ? List.<McpCustomizedParamDefinition>of() : mcp.getCustomizedParamDefinitions()).stream().filter(item -> item.getName().equals(userMcpCustomizedParam.getName()) && Boolean.TRUE.equals(item.getRequireEncrypt()))
                     .findFirst()
                     .ifPresent(item -> {
+                        if (userMcpCustomizedParam.getValue() == null) {
+                            return;
+                        }
                         userMcpCustomizedParam.setValue(AesUtil.encrypt(String.valueOf(userMcpCustomizedParam.getValue())));
                         userMcpCustomizedParam.setEncrypted(true);
                     });
@@ -276,9 +290,12 @@ public class UserMcpService extends ServiceImpl<UserMcpMapper, UserMcp> {
      * @param mcp       mcp对象
      */
     private void decryptParams(List<UserMcpCustomizedParam> mcpParams, Mcp mcp) {
+        if (mcpParams == null) {
+            return;
+        }
         for (UserMcpCustomizedParam userMcpCustomizedParam : mcpParams) {
-            mcp.getCustomizedParamDefinitions().stream()
-                    .filter(item -> Boolean.TRUE.equals(userMcpCustomizedParam.getEncrypted()) && item.getName().equals(userMcpCustomizedParam.getName()) && Boolean.TRUE.equals(item.getRequireEncrypt()))
+            (mcp.getCustomizedParamDefinitions() == null ? List.<McpCustomizedParamDefinition>of() : mcp.getCustomizedParamDefinitions()).stream()
+                    .filter(item -> Boolean.TRUE.equals(userMcpCustomizedParam.getEncrypted()) && item.getName().equals(userMcpCustomizedParam.getName()))
                     .findFirst()
                     .ifPresent(item -> {
                         userMcpCustomizedParam.setValue(AesUtil.decrypt(String.valueOf(userMcpCustomizedParam.getValue())));
@@ -292,49 +309,21 @@ public class UserMcpService extends ServiceImpl<UserMcpMapper, UserMcp> {
             return;
         }
         dto.setMcpInfo(mcp);
-        //解密以传到前端
+        // Settings responses retain the existing plaintext editing behavior, without mutating stored objects.
+        dto.setMcpCustomizedParams(copyParams(dto.getMcpCustomizedParams()));
         decryptParams(dto.getMcpCustomizedParams(), mcp);
     }
 
-    /**
-     * 创建MCP server中以http方式传输时所需的查询参数
-     *
-     * @param mcp     MCP对象
-     * @param userMcp 用户MCP对象
-     * @return 查询参数字符串
-     */
-    private String createHttpQueryString(Mcp mcp, UserMcp userMcp) {
-        StringBuilder httpQueryParams = new StringBuilder();
-        Map<String, String> environment = createEnvironment(mcp, userMcp);
-        for (Map.Entry<String, String> entry : environment.entrySet()) {
-            String key = entry.getKey();
-            String value = entry.getValue();
-            if (value != null && !value.isEmpty()) {
-                httpQueryParams.append(key).append("=").append(value).append("&");
-            }
+    private List<UserMcpCustomizedParam> copyParams(List<UserMcpCustomizedParam> params) {
+        if (params == null) {
+            return null;
         }
-        if (httpQueryParams.isEmpty()) {
-            return ""; // 如果没有参数，则返回空字符串
-        }
-        return httpQueryParams.substring(0, httpQueryParams.length() - 1); // 去掉最后的&
+        return params.stream().map(param -> {
+            UserMcpCustomizedParam copy = new UserMcpCustomizedParam();
+            BeanUtils.copyProperties(param, copy);
+            return copy;
+        }).toList();
     }
-
-    /**
-     * 将查询参数拼接到基础URL上：有参数时按baseUrl是否已含"?"决定用"?"或"&"连接，避免拼接出缺少分隔符的非法URL
-     * Append query params to a base URL: when params exist, use "?" or "&" based on whether baseUrl already contains "?",
-     * to avoid producing an invalid URL with a missing separator.
-     *
-     * @param baseUrl    基础URL | Base URL
-     * @param queryParam 查询参数字符串，可为空 | Query string, may be empty
-     * @return 拼接后的完整URL | Full URL with query params
-     */
-    private String buildUrlWithQuery(String baseUrl, String queryParam) {
-        if (queryParam == null || queryParam.isEmpty()) {
-            return baseUrl;
-        }
-        return baseUrl + (baseUrl.contains("?") ? "&" : "?") + queryParam;
-    }
-
 
     /**
      * 创建MCP server中以stdio方式传输时所需的环境变量
@@ -345,13 +334,13 @@ public class UserMcpService extends ServiceImpl<UserMcpMapper, UserMcp> {
      */
     private Map<String, String> createEnvironment(Mcp mcp, UserMcp userMcp) {
         Map<String, String> environment = new HashMap<>();
-        for (McpCommonParam initParams : mcp.getPresetParams()) {
+        for (McpCommonParam initParams : mcp.getPresetParams() == null ? List.<McpCommonParam>of() : mcp.getPresetParams()) {
             environment.put(initParams.getName(), String.valueOf(initParams.getValue()));
         }
-        for (McpCustomizedParamDefinition uninitParam : mcp.getCustomizedParamDefinitions()) {
+        for (McpCustomizedParamDefinition uninitParam : mcp.getCustomizedParamDefinitions() == null ? List.<McpCustomizedParamDefinition>of() : mcp.getCustomizedParamDefinitions()) {
 // Uninitialized parameters defined in MCP need to use user-configured values
             // MCP中定义的未初始化参数，需要使用用户设置的值
-            UserMcpCustomizedParam userParam = userMcp.getMcpCustomizedParams().stream()
+            UserMcpCustomizedParam userParam = (userMcp.getMcpCustomizedParams() == null ? List.<UserMcpCustomizedParam>of() : userMcp.getMcpCustomizedParams()).stream()
                     .filter(param -> param.getName().equals(uninitParam.getName()))
                     .findFirst()
                     .orElse(null);

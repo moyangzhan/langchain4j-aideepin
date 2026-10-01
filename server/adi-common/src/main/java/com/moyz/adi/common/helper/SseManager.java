@@ -521,6 +521,9 @@ public class SseManager {
      * </p>
      */
     private static SseEntry getEntry(String uuid) {
+        if (uuid == null) {
+            return null; // Blocking chat has no SSE emitter.
+        }
         return SpringUtil.getBean(SseManager.class).entries.get(uuid);
     }
 

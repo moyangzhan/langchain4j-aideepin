@@ -12,4 +12,11 @@ public class McpCustomizedParamDefinition {
     private String title;
     @JsonProperty("require_encrypt")
     private Boolean requireEncrypt;
+    /** HTTP binding; null preserves the legacy query-parameter behavior. */
+    @JsonProperty("bind_type")
+    private String bindType;
+    @JsonProperty("bind_name")
+    private String bindName;
+    @JsonProperty("bind_value_template")
+    private String bindValueTemplate;
 }
