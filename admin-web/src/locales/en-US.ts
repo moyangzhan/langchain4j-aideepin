@@ -250,7 +250,7 @@ export default {
     bindName: 'Request name',
     bindNamePlaceholder: 'Default: parameter name',
     bindValueTemplate: 'Value template',
-    bindValueTemplatePlaceholder: 'Raw value if empty; e.g. Bearer {value}',
+    bindValueTemplatePlaceholder: "Raw value if empty; e.g. Bearer {'{value}'}",
     paramName: 'Parameter Name',
     paramNameTip: 'Stable parameter ID / STDIO environment name',
     paramTitle: 'Parameter Title',

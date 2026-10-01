@@ -243,7 +243,7 @@ export default {
     bindName: '请求名称',
     bindNamePlaceholder: '默认使用参数名',
     bindValueTemplate: '值模板',
-    bindValueTemplatePlaceholder: '留空使用原值，如 Bearer {value}',
+    bindValueTemplatePlaceholder: "留空使用原值，如 Bearer {'{value}'}",
     paramName: '参数名',
     paramNameTip: '稳定参数标识 / STDIO 环境变量名',
     paramTitle: '参数标题',
