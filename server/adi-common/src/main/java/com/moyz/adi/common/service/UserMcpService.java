@@ -233,7 +233,8 @@ public class UserMcpService extends ServiceImpl<UserMcpMapper, UserMcp> {
                 result.add(mcpClient);
             } catch (Exception e) {
                 // SDK exceptions can contain request URLs/headers. Do not log their messages or causes.
-                log.error("Failed to build MCP client, mcpId: {}, transportType: {}", mcp.getId(), mcp.getTransportType());
+                log.error("Failed to build MCP client, mcpId: {}, transportType: {}, error: {}",
+                        mcp.getId(), mcp.getTransportType(), e.getClass().getName());
                 if (transport != null) {
                     try {
                         transport.close();

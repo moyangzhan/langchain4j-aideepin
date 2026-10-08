@@ -3,6 +3,7 @@ package com.moyz.adi.common.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
+import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.mcp.McpAddOrEditReq;
 import com.moyz.adi.common.dto.mcp.McpCommonParam;
 import com.moyz.adi.common.dto.mcp.McpSearchReq;
@@ -146,7 +147,8 @@ public class McpService extends ServiceImpl<McpMapper, Mcp> {
     }
 
     private void validateHttpBindings(Mcp mcp) {
-        if ("sse".equals(mcp.getTransportType()) || "streamable_http".equals(mcp.getTransportType())) {
+        if (AdiConstant.McpConstant.TRANSPORT_TYPE_SSE.equals(mcp.getTransportType())
+                || AdiConstant.McpConstant.TRANSPORT_TYPE_STREAMABLE_HTTP.equals(mcp.getTransportType())) {
             McpHttpParameters.validate(mcp);
         }
     }

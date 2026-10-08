@@ -1,6 +1,7 @@
 package com.moyz.adi.common.service;
 
 import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.ThrowableProxyUtil;
 import ch.qos.logback.core.read.ListAppender;
@@ -33,6 +34,7 @@ import com.sun.net.httpserver.HttpServer;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.mcp.client.McpClient;
+import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -41,6 +43,8 @@ import org.apache.ibatis.session.SqlSession;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -282,6 +286,35 @@ class UserMcpHttpBindingTest {
         stored.put(key(10L, 100L), user);
         assertTrue(service.createMcpClients(10L, List.of(100L)).isEmpty());
         assertTrue(requests.isEmpty());
+    }
+
+    /** Inject a constructor failure to exercise secret-bearing exception messages and causes. */
+    @ParameterizedTest
+    @ValueSource(strings = {"ERROR", "DEBUG"})
+    void buildFailureLogsExceptionClassWithoutMessagesOrCauses(String level) throws Exception {
+        Logger logger = (Logger) LoggerFactory.getLogger(UserMcpService.class);
+        Level previousLevel = logger.getLevel();
+        logger.setLevel(Level.toLevel(level));
+        stored.put(key(10L, 100L), storedUser(10L, 100L, "fixture-auth-value"));
+        try (var builders = mockConstruction(DefaultMcpClient.Builder.class, (builder, ignored) -> {
+            when(builder.transport(any())).thenReturn(builder);
+            when(builder.build()).thenThrow(new IllegalStateException("fixture-url-secret",
+                    new IllegalArgumentException("fixture-header-secret")));
+        })) {
+            assertTrue(service.createMcpClients(10L, List.of(100L)).isEmpty());
+            List<ILoggingEvent> failures = logs.list.stream().filter(event ->
+                    event.getLoggerName().equals(UserMcpService.class.getName())
+                            && event.getFormattedMessage().startsWith("Failed to build MCP client")).toList();
+            assertEquals(1, failures.size());
+            ILoggingEvent failure = failures.get(0);
+            assertEquals(Level.ERROR, failure.getLevel());
+            assertTrue(failure.getFormattedMessage().contains(IllegalStateException.class.getName()));
+            assertNull(failure.getThrowableProxy());
+            assertNoSecretsInLogs("fixture-auth-value", "fixture-url-secret", "fixture-header-secret");
+            assertTrue(requests.isEmpty());
+        } finally {
+            logger.setLevel(previousLevel);
+        }
     }
 
     @Test
