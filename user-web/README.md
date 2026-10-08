@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This directory contains the user-facing web frontend for [LangChain4j-AIDeepin](../README.md).
+This directory contains the user-facing web frontend for [LangChain4j-AIDeepIn](../README.md).
 
 ## Repository Structure
 

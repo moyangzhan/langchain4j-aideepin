@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This directory contains the admin dashboard for [LangChain4j-AIDeepin](../README.md), built on [naive-ui-admin](https://github.com/jekip/naive-ui-admin).
+This directory contains the admin dashboard for [LangChain4j-AIDeepIn](../README.md), built on [naive-ui-admin](https://github.com/jekip/naive-ui-admin).
 
 Default admin account: catkeeper@aideepin.com / Password: 123456
 

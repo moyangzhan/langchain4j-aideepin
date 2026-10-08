@@ -2,7 +2,7 @@
 
 ## 简介
 
-本目录是 [LangChain4j-AIDeepin](../README.zh-CN.md) 的用户端 WEB 前端项目。
+本目录是 [LangChain4j-AIDeepIn](../README.zh-CN.md) 的用户端 WEB 前端项目。
 
 ## 仓库结构
 

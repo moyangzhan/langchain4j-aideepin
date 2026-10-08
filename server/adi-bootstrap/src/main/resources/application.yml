@@ -9,7 +9,7 @@ server:
 
 spring:
   application:
-    name: AiDeepIn
+    name: AIDeepIn
   profiles:
     active: dev
   mvc:

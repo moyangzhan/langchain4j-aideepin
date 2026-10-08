@@ -2,7 +2,7 @@
 
 ## 简介
 
-本目录是 [LangChain4j-AIDeepin](../README.zh-CN.md) 的管理后台 WEB 端，基于 [naive-ui-admin](https://github.com/jekip/naive-ui-admin)。
+本目录是 [LangChain4j-AIDeepIn](../README.zh-CN.md) 的管理后台 WEB 端，基于 [naive-ui-admin](https://github.com/jekip/naive-ui-admin)。
 
 默认管理员账号：catkeeper@aideepin.com / 密码：123456
 

@@ -2,7 +2,7 @@
 
 > 中文文档 | **[🇬🇧 English](README.md)**
 
-**LangChain4j-AIDeepin — AI 应用平台。**
+**LangChain4j-AIDeepIn — AI 应用平台。**
 
 集成 AI 对话、知识库（RAG）、工作流编排、长短期记忆、MCP 工具等能力，快速构建智能业务助手。
 
@@ -79,7 +79,7 @@
 
 ## ⭐ 支持项目
 
-如果 LangChain4j-AIDeepin 对您有帮助，欢迎：
+如果 LangChain4j-AIDeepIn 对您有帮助，欢迎：
 
 - 给仓库点个 Star
 - 推荐给身边的人

@@ -4,7 +4,7 @@
 
 ## 1. System Overview
 
-AIDeepIn is an AI assistant platform with chat, knowledge bases (RAG), workflows and image generation.
+AIDeepIn is an AI application platform integrating chat, knowledge base (RAG), workflow orchestration and image generation — ready to use out of the box, with an open API for building intelligent business assistants.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐

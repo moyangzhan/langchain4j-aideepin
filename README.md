@@ -2,7 +2,7 @@
 
 > **[🇨🇳 中文文档](README.zh-CN.md)** | English
 
-**LangChain4j-AIDeepin — AI application platform.**
+**LangChain4j-AIDeepIn — AI application platform.**
 
 Integrates AI chat, knowledge base (RAG), workflow orchestration, long/short-term memory, MCP tools, and more — for rapidly building intelligent business assistants.
 
@@ -75,7 +75,7 @@ For deployment, see [docker/README.md](docker/README.md) or each sub-project's R
 
 ## ⭐ Support the Project
 
-If you find LangChain4j-AIDeepin useful, please consider:
+If you find LangChain4j-AIDeepIn useful, please consider:
 
 - Starring the repository on GitHub
 - Recommending it to others
