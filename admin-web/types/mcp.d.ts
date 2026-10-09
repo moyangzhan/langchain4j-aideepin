@@ -1,11 +1,16 @@
-export interface PresetParam {
+export interface HttpParamBinding {
+  bind_type?: 'query' | 'header' | null
+  bind_name?: string | null
+}
+export interface PresetParam extends HttpParamBinding {
   name: string
   title: string
   value: any
   require_encrypt: boolean
   encrypted: boolean
 }
-export interface McpCustomizedParamDefinition {
+export interface McpCustomizedParamDefinition extends HttpParamBinding {
+  bind_value_template?: string | null
   name: string
   title: string
   require_encrypt: boolean

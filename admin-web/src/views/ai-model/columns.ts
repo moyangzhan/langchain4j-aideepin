@@ -44,7 +44,9 @@ export function getColumns(): BasicColumn<AiModelData>[] {
       width: 100,
       render(row) {
         if (!row.isEnable) return t('common.disable')
-        return row.healthStatus === 'UNHEALTHY' ? '🔴 ' + t('common.abnormal') : '🟢 ' + t('common.normal')
+        return row.healthStatus === 'UNHEALTHY'
+          ? '🔴 ' + t('common.abnormal')
+          : '🟢 ' + t('common.normal')
       },
     },
     {

@@ -27,12 +27,20 @@ Open the **Tools** page from the left menu; two views at the top:
 5. Confirm — "Configuration saved".
 
 > [!NOTE]
-> Parameters marked **sensitive** (tooltip: "sensitive information is stored encrypted") such as API keys are stored encrypted and never shown in plaintext.
+> Parameters marked **sensitive** (tooltip: "sensitive information is stored encrypted") such as API keys are stored encrypted in the database. Opening the settings form decrypts them for editing and returns the values to the frontend; encryption at rest does not prevent this authorized response.
 
 <figure>
   <img src="../../../image/cn/guide/mcp/mcp-01.png" alt="MCP config">
   <figcaption>MCP config</figcaption>
 </figure>
+
+## Admin HTTP parameter bindings
+
+For SSE and Streamable HTTP services, the admin selects **HTTP binding** (`query` or `header`) and an optional **Request name** for each preset or user-defined parameter. The parameter `name` remains the stable identifier for users' stored values. A missing `bind_type` defaults to Query and a missing `bind_name` defaults to `name`, so existing entries need no data migration. STDIO environment names keep their existing behavior.
+
+A user-defined Header can use `bind_value_template: "Bearer {value}"` with `bind_name: "Authorization"`; `{value}` refers only to that definition's user value. Leaving the template unset uses the raw value. A preset Header uses its configured constant. Header values do not enter the URL; Query names and values are URL-encoded. Explicitly bound parameters must have nonblank scalar values; empty/unknown binding types, invalid templates, malformed headers and duplicate Header names (case-insensitive) are rejected. Duplicate explicit Query bindings are rejected; the legacy user-over-preset Query override is retained.
+
+Users keep the same value-entry form. Save and re-open it when changing a token, then verify the service is enabled and selected for the intended character. HTTP transport request/response logging is disabled; this does not remove the settings response's documented decryption behavior. Share neither settings payloads nor unredacted tokens.
 
 ## Using in Chat
 

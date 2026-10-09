@@ -14,4 +14,9 @@ public class McpCommonParam {
     @JsonProperty("require_encrypt")
     private Boolean requireEncrypt;
     private Boolean encrypted;
+    /** HTTP binding; null preserves the legacy query-parameter behavior. */
+    @JsonProperty("bind_type")
+    private String bindType;
+    @JsonProperty("bind_name")
+    private String bindName;
 }

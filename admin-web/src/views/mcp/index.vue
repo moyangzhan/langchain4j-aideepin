@@ -149,6 +149,8 @@
                       <span>{{ t('mcp.sensitiveInfoTip') }}</span>
                     </n-tooltip>
                   </th>
+                  <th v-if="editFormParams.transportType !== 'stdio'">{{ t('mcp.bindType') }}</th>
+                  <th v-if="editFormParams.transportType !== 'stdio'">{{ t('mcp.bindName') }}</th>
                   <th>{{ t('common.action') }}</th>
                 </tr>
               </thead>
@@ -178,6 +180,20 @@
                   </td>
                   <td class="flex justify-center">
                     <n-switch v-model:value="presetParam.require_encrypt" />
+                  </td>
+                  <td v-if="editFormParams.transportType !== 'stdio'">
+                    <n-select
+                      :value="presetParam.bind_type ?? 'query'"
+                      :options="httpBindingTypes"
+                      @update:value="presetParam.bind_type = $event"
+                    />
+                  </td>
+                  <td v-if="editFormParams.transportType !== 'stdio'">
+                    <n-input
+                      :value="presetParam.bind_name ?? ''"
+                      :placeholder="t('mcp.bindNamePlaceholder')"
+                      @update:value="presetParam.bind_name = $event || null"
+                    />
                   </td>
                   <td>
                     <n-icon size="18" class="mx-2 cursor-pointer" @click="removePresetParam(idx)">
@@ -234,6 +250,11 @@
                       <span>{{ t('mcp.sensitiveInfoTip') }}</span>
                     </n-tooltip>
                   </th>
+                  <th v-if="editFormParams.transportType !== 'stdio'">{{ t('mcp.bindType') }}</th>
+                  <th v-if="editFormParams.transportType !== 'stdio'">{{ t('mcp.bindName') }}</th>
+                  <th v-if="editFormParams.transportType !== 'stdio'">
+                    {{ t('mcp.bindValueTemplate') }}
+                  </th>
                   <th>{{ t('common.action') }}</th>
                 </tr>
               </thead>
@@ -258,6 +279,27 @@
                   </td>
                   <td class="flex justify-center">
                     <n-switch v-model:value="uninitParam.require_encrypt" />
+                  </td>
+                  <td v-if="editFormParams.transportType !== 'stdio'">
+                    <n-select
+                      :value="uninitParam.bind_type ?? 'query'"
+                      :options="httpBindingTypes"
+                      @update:value="uninitParam.bind_type = $event"
+                    />
+                  </td>
+                  <td v-if="editFormParams.transportType !== 'stdio'">
+                    <n-input
+                      :value="uninitParam.bind_name ?? ''"
+                      :placeholder="t('mcp.bindNamePlaceholder')"
+                      @update:value="uninitParam.bind_name = $event || null"
+                    />
+                  </td>
+                  <td v-if="editFormParams.transportType !== 'stdio'">
+                    <n-input
+                      :value="uninitParam.bind_value_template ?? ''"
+                      :placeholder="t('mcp.bindValueTemplatePlaceholder')"
+                      @update:value="uninitParam.bind_value_template = $event || null"
+                    />
                   </td>
                   <td>
                     <n-icon
@@ -390,6 +432,11 @@
         clearable: true,
       },
     },
+  ]
+
+  const httpBindingTypes = [
+    { label: 'Query', value: 'query' },
+    { label: 'Header', value: 'header' },
   ]
 
   const formRef: any = ref(null)

@@ -3,6 +3,7 @@ package com.moyz.adi.common.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
+import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.mcp.McpAddOrEditReq;
 import com.moyz.adi.common.dto.mcp.McpCommonParam;
 import com.moyz.adi.common.dto.mcp.McpSearchReq;
@@ -10,6 +11,7 @@ import com.moyz.adi.common.entity.Mcp;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.McpMapper;
 import com.moyz.adi.common.util.AesUtil;
+import com.moyz.adi.common.util.McpHttpParameters;
 import com.moyz.adi.common.util.PrivilegeUtil;
 import com.moyz.adi.common.util.UuidUtil;
 import org.apache.commons.lang3.StringUtils;
@@ -32,6 +34,7 @@ public class McpService extends ServiceImpl<McpMapper, Mcp> {
             Mcp mcp = new Mcp();
             BeanUtils.copyProperties(addOrEditReq, mcp);
             mcp.setUuid(UuidUtil.createShort());
+            validateHttpBindings(mcp);
             encryptEnv(mcp.getPresetParams());
             this.save(mcp);
             result = mcp;
@@ -39,6 +42,7 @@ public class McpService extends ServiceImpl<McpMapper, Mcp> {
             Mcp mcp = PrivilegeUtil.checkAndGetByUuid(addOrEditReq.getUuid(), this.query(), A_MCP_SERVER_NOT_FOUND);
             Mcp updateObj = new Mcp();
             BeanUtils.copyProperties(addOrEditReq, updateObj, "id", "uuid");
+            validateHttpBindings(updateObj);
             encryptEnv(updateObj.getPresetParams());
             updateObj.setId(mcp.getId());
             this.updateById(updateObj);
@@ -55,9 +59,7 @@ public class McpService extends ServiceImpl<McpMapper, Mcp> {
                 .eq(null != req.getIsEnable(), Mcp::getIsEnable, req.getIsEnable())
                 .orderByDesc(Mcp::getUpdateTime)
                 .page(new Page<>(currentPage, pageSize));
-        for (Mcp mcp : page.getRecords()) {
-            decryptEnv(mcp, decryptEnv);
-        }
+        page.setRecords(page.getRecords().stream().map(mcp -> decryptEnv(mcp, decryptEnv)).toList());
         return page;
     }
 
@@ -66,10 +68,7 @@ public class McpService extends ServiceImpl<McpMapper, Mcp> {
                 .in(Mcp::getId, ids)
                 .eq(Mcp::getIsDeleted, false)
                 .list();
-        for (Mcp mcp : list) {
-            decryptEnv(mcp, decryptEnv);
-        }
-        return list;
+        return list.stream().map(mcp -> decryptEnv(mcp, decryptEnv)).toList();
     }
 
     /**
@@ -121,13 +120,23 @@ public class McpService extends ServiceImpl<McpMapper, Mcp> {
      * @param decryptEnv 是否需要解密环境变量
      * @return 解密后的mcp对象
      */
-    private Mcp decryptEnv(Mcp mcp, boolean decryptEnv) {
+    private Mcp decryptEnv(Mcp stored, boolean decryptEnv) {
+        Mcp mcp = new Mcp();
+        BeanUtils.copyProperties(stored, mcp);
+        if (stored.getPresetParams() != null) {
+            mcp.setPresetParams(stored.getPresetParams().stream().map(param -> {
+                McpCommonParam copy = new McpCommonParam();
+                BeanUtils.copyProperties(param, copy);
+                return copy;
+            }).toList());
+        }
         if (mcp.getPresetParams() != null && !mcp.getPresetParams().isEmpty()) {
             for (McpCommonParam e : mcp.getPresetParams()) {
                 if (decryptEnv) {
                     //已经加密的内容需要解密
                     if (Boolean.TRUE.equals(e.getEncrypted()) && e.getValue() != null) {
                         e.setValue(AesUtil.decrypt(String.valueOf(e.getValue())));
+                        e.setEncrypted(false);
                     }
                 } else {
                     e.setValue("***");
@@ -135,5 +144,12 @@ public class McpService extends ServiceImpl<McpMapper, Mcp> {
             }
         }
         return mcp;
+    }
+
+    private void validateHttpBindings(Mcp mcp) {
+        if (AdiConstant.McpConstant.TRANSPORT_TYPE_SSE.equals(mcp.getTransportType())
+                || AdiConstant.McpConstant.TRANSPORT_TYPE_STREAMABLE_HTTP.equals(mcp.getTransportType())) {
+            McpHttpParameters.validate(mcp);
+        }
     }
 }
