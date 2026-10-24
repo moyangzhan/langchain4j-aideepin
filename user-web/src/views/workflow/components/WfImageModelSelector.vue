@@ -9,13 +9,15 @@ import { emptyAiModel } from '@/utils/functions'
 
 interface Props {
   modelName: string
-  platform: string
+  /** 平台过滤,不传则列出全部图片模型 / Platform filter; omit to list all image models */
+  platform?: string
 }
 interface Emit {
   (e: 'imageModelSelected', modelName: string): void
 }
 const props = withDefaults(defineProps<Props>(), {
   modelName: () => emptyAiModel().modelName,
+  platform: '',
 })
 const emit = defineEmits<Emit>()
 const appStore = useAppStore()

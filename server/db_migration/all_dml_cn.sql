@@ -122,8 +122,6 @@ values (replace(gen_random_uuid()::text, '-', ''), 'End', '结束', '流程由�
 insert into adi_workflow_component(uuid, name, title, remark, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'Answer', '生成回答', '调用大语言模型回答问题', true);
 insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
-values (replace(gen_random_uuid()::text, '-', ''), 'OpenAiImage', 'OpenAI 画图', '调用OpenAI图片模型生成图片', 11, true);
-insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'DocumentExtractor', '文档提取', '从文档中提取信息', 4, true);
 insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'KeywordExtractor', '关键词提取',
@@ -146,7 +144,7 @@ values (replace(gen_random_uuid()::text, '-', ''), 'FaqExtractor', '常见问题
         '从内容中提取出常见问题及对应的答案，Top N为提取的数量',
         6, true);
 insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
-values (replace(gen_random_uuid()::text, '-', ''), 'Tongyiwanx', '通义万相-画图', '调用文生图模型生成图片', 12, true);
+values (replace(gen_random_uuid()::text, '-', ''), 'ImageGenerator', '图片生成', '调用图片模型生成图片', 12, true);
 insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'HumanFeedback', '人机交互',
         '中断执行中的流程并等待用户的输入，用户输入后继续执行后续流程', 10, true);

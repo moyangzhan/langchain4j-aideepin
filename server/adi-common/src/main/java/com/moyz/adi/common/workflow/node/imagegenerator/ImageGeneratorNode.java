@@ -1,4 +1,4 @@
-package com.moyz.adi.common.workflow.node.tongyiwanx;
+package com.moyz.adi.common.workflow.node.imagegenerator;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.entity.Draw;
@@ -18,16 +18,15 @@ import com.moyz.adi.common.workflow.metrics.ImageMetrics;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
-import static com.moyz.adi.common.cosntant.AdiConstant.ModelPlatform.DASHSCOPE;
 import static com.moyz.adi.common.enums.ErrorEnum.*;
 
 /**
- * 【节点】通义万相-生成图片 <br/>
+ * 【节点】图片生成 <br/>
  */
 @Slf4j
-public class TongyiwanxNode extends AbstractWfNode {
+public class ImageGeneratorNode extends AbstractWfNode {
 
-    public TongyiwanxNode(WorkflowComponent wfComponent, WorkflowNode nodeDef, WfState wfState, WfNodeState nodeState) {
+    public ImageGeneratorNode(WorkflowComponent wfComponent, WorkflowNode nodeDef, WfState wfState, WfNodeState nodeState) {
         super(wfComponent, nodeDef, wfState, nodeState);
         state.setMetrics(new ImageMetrics());
     }
@@ -38,21 +37,21 @@ public class TongyiwanxNode extends AbstractWfNode {
         if (objectConfig.isEmpty()) {
             throw new BaseException(A_WF_NODE_CONFIG_NOT_FOUND);
         }
-        TongyiwanxNodeConfig nodeConfigObj = JsonUtil.fromJson(objectConfig, TongyiwanxNodeConfig.class);
+        ImageGeneratorNodeConfig nodeConfigObj = JsonUtil.fromJson(objectConfig, ImageGeneratorNodeConfig.class);
         if (null == nodeConfigObj || StringUtils.isBlank(nodeConfigObj.getModelName())) {
-            log.warn("Tongyiwanx node configuration missing or incorrect");
+            log.warn("ImageGenerator node configuration missing or incorrect");
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
-        log.info("TongyiwanxNode config:{}", nodeConfigObj);
+        log.info("ImageGeneratorNode config:{}", nodeConfigObj);
         String prompt;
         if (StringUtils.isNotBlank(nodeConfigObj.getPrompt())) {
             prompt = WorkflowUtil.renderTemplate(nodeConfigObj.getPrompt(), state.getInputs());
         } else {
             prompt = getFirstInputText();
         }
-        log.info("TongyiwanxNode prompt:{}", prompt);
+        log.info("ImageGeneratorNode prompt:{}", prompt);
         if (StringUtils.isBlank(prompt)) {
-            log.warn("Tongyiwanx node prompt not found");
+            log.warn("ImageGenerator node prompt not found");
             throw new BaseException(A_WF_NODE_CONFIG_ERROR);
         }
         AbstractImageModelService imageModelService = ImageModelContext.getOrDefault(nodeConfigObj.getModelName());
@@ -61,7 +60,7 @@ public class TongyiwanxNode extends AbstractWfNode {
         imageMetrics.setImageModelName(nodeConfigObj.getModelName());
         imageMetrics.setImageSize(nodeConfigObj.getSize());
         if (null == imageModelService) {
-            log.error("image service not found,ai platform:{}", DASHSCOPE);
+            log.error("image service not found,model:{}", nodeConfigObj.getModelName());
             throw new BaseException(A_MODEL_NOT_FOUND);
         }
         Draw draw = new Draw();
@@ -69,6 +68,7 @@ public class TongyiwanxNode extends AbstractWfNode {
         draw.setPrompt(prompt);
         draw.setGenerateSize(nodeConfigObj.getSize());
         draw.setGenerateSeed(nodeConfigObj.getSeed());
+        draw.setGenerateQuality(nodeConfigObj.getQuality());
         draw.setAiModelName(nodeConfigObj.getModelName());
         return DrawNodeUtil.createResultContent(wfState.getUser(), draw, imageModelService);
     }

@@ -338,11 +338,12 @@ declare namespace Workflow {
     quality: string
   }
 
-  interface NodeConfigTongyiwanx implements NodeConfig {
+  interface NodeConfigImageGenerator implements NodeConfig {
     model_name: string
     prompt: string
     size: string
     seed: number
+    quality?: string
   }
 
   interface NodeConfigHumanFeedback implements NodeConfig {

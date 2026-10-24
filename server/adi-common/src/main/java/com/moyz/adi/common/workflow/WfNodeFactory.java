@@ -19,7 +19,7 @@ import com.moyz.adi.common.workflow.node.mailsender.MailSendNode;
 import com.moyz.adi.common.workflow.node.start.StartNode;
 import com.moyz.adi.common.workflow.node.switcher.SwitcherNode;
 import com.moyz.adi.common.workflow.node.template.TemplateNode;
-import com.moyz.adi.common.workflow.node.tongyiwanx.TongyiwanxNode;
+import com.moyz.adi.common.workflow.node.imagegenerator.ImageGeneratorNode;
 
 public class WfNodeFactory {
     public static AbstractWfNode create(WorkflowComponent wfComponent, WorkflowNode nodeDefinition, WfState wfState, WfNodeState nodeState) {
@@ -58,8 +58,8 @@ public class WfNodeFactory {
             case OPENAI_IMAGE:
                 wfNode = new OpenAiImageNode(wfComponent, nodeDefinition, wfState, nodeState);
                 break;
-            case TONGYI_WANX:
-                wfNode = new TongyiwanxNode(wfComponent, nodeDefinition, wfState, nodeState);
+            case IMAGE_GENERATOR:
+                wfNode = new ImageGeneratorNode(wfComponent, nodeDefinition, wfState, nodeState);
                 break;
             case HUMAN_FEEDBACK:
                 wfNode = new HumanFeedbackNode(wfComponent, nodeDefinition, wfState, nodeState);

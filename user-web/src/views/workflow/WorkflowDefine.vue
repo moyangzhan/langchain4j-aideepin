@@ -4,7 +4,7 @@ import { NButton, NLayout, NLayoutContent, NLayoutSider, NModal, NTooltip, useMe
 import type { Edge, Node, NodeChange } from '@vue-flow/core'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
-import { AgentNode, AnswerNode, ClassifierNode, DocumentExtractorNode, EndNode, FaqExtractorNode, GoogleNode, HttpRequestNode, HumanFeedbackNode, KeywordExtractorNode, KnowledgeRetrievalNode, MailSendNode, OpenAiImageNode, SpecialNode, StartNode, SwitcherNode, TemplateNode, TongyiwanxNode } from './components/nodes'
+import { AgentNode, AnswerNode, ClassifierNode, DocumentExtractorNode, EndNode, FaqExtractorNode, GoogleNode, HttpRequestNode, HumanFeedbackNode, ImageGeneratorNode, KeywordExtractorNode, KnowledgeRetrievalNode, MailSendNode, OpenAiImageNode, SpecialNode, StartNode, SwitcherNode, TemplateNode } from './components/nodes'
 import SpecialEdge from './components/edges/SpecialEdge.vue'
 import CustomEdge from './components/edges/CustomEdge.vue'
 import CustomEdge2 from './components/edges/CustomEdge2.vue'
@@ -288,8 +288,8 @@ onUnmounted(() => {
                   <template #node-openaiimage="nodeProps">
                     <OpenAiImageNode v-bind="nodeProps" :workflow="workflow" />
                   </template>
-                  <template #node-tongyiwanx="nodeProps">
-                    <TongyiwanxNode v-bind="nodeProps" :workflow="workflow" />
+                  <template #node-imagegenerator="nodeProps">
+                    <ImageGeneratorNode v-bind="nodeProps" :workflow="workflow" />
                   </template>
                   <template #node-knowledgeretrieval="nodeProps">
                     <KnowledgeRetrievalNode v-bind="nodeProps" :workflow="workflow" />

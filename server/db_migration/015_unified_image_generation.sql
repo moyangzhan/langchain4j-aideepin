@@ -7,6 +7,8 @@
 -- (for type='image' models: 'text' = text-to-image, 'image' = image-to-image;
 --  column default 'text' means text-to-image only — same semantics the retired
 --  background model already used with 'text,image').
+-- Section 6 renames the Tongyiwanx workflow component to the generic
+-- ImageGenerator node (any platform's image models).
 -- ============================================================
 
 -- 1. Soft-delete the offline background model (keep the row; AiModel queries filter is_deleted = false).
@@ -44,3 +46,26 @@ UPDATE adi_ai_model SET input_types = 'text,image',
     properties = '{"max_images": 4, "max_ref_images": 1, "is_support_seed": true, "qualities": [],
                    "sizes": [{"value":"1024x1024","label":"1024×1024"},{"value":"960x1280","label":"960×1280"},{"value":"768x1024","label":"768×1024"},{"value":"720x1440","label":"720×1440"},{"value":"720x1280","label":"720×1280"}]}'::jsonb
 WHERE name = 'Kwai-Kolors/Kolors' AND platform = 'siliconflow';
+
+-- 6. Workflow: the Tongyiwanx component becomes the generic image-generation node,
+--    retitled and renamed to ImageGenerator. Nodes reference components by id, not name,
+--    so existing definitions follow automatically; deploy SQL, server and user-web
+--    together (dispatch is by name). No-ops on fresh installs (baselines seed the new
+--    name). OpenAiImage stays enabled: is_enable also gates node lookup and execution,
+--    so disabling it would break saved workflows.
+UPDATE adi_workflow_component SET title = '图片生成', remark = '调用图片模型生成图片'
+WHERE name = 'Tongyiwanx' AND title LIKE '%万相%';
+
+UPDATE adi_workflow_component SET title = 'Image Generation', remark = 'Call image model to generate images'
+WHERE name = 'Tongyiwanx' AND title LIKE 'Wanx%';
+
+UPDATE adi_workflow_component SET name = 'ImageGenerator'
+WHERE name = 'Tongyiwanx';
+
+-- Deprecate the legacy OpenAiImage component in the admin console's component list
+-- (fresh installs don't seed it); matched per locale for idempotency.
+UPDATE adi_workflow_component SET remark = '已弃用：请改用「图片生成」节点。本节点仅为兼容存量工作流保留'
+WHERE name = 'OpenAiImage' AND remark LIKE '%调用%';
+
+UPDATE adi_workflow_component SET remark = 'Deprecated: use the "Image Generation" node instead. This node is kept only for compatibility with existing workflows'
+WHERE name = 'OpenAiImage' AND remark LIKE 'Call%';

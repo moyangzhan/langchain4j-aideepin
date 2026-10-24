@@ -35,8 +35,8 @@ export function createNewNode(
     createKnowledgeRetrieval(newWfNode)
   else if (component.name === 'OpenAiImage')
     createOpenAiImage(newWfNode)
-  else if (component.name === 'Tongyiwanx')
-    createTongyiwanx(newWfNode)
+  else if (component.name === 'ImageGenerator')
+    createImageGenerator(newWfNode)
   else if (component.name === 'Google')
     createGoogle(newWfNode)
   else if (component.name === 'HumanFeedback')
@@ -291,17 +291,21 @@ function createOpenAiImage(node: Workflow.WorkflowNode) {
   }
 }
 
-function createTongyiwanx(node: Workflow.WorkflowNode) {
+function createImageGenerator(node: Workflow.WorkflowNode) {
   const appStore = useAppStore()
-  const opts = appStore.imageModels.filter(item => item.modelPlatform === 'dashscope')
-  // 默认尺寸取首个可选模型的第一档(properties.sizes 数据驱动)
-  // Default size takes the first option of the first available model (data-driven by properties.sizes)
+  // 通用画图节点:不限定平台,取首个可用图片模型
+  // Generic draw node: any platform; take the first available image model
+  const opts = appStore.imageModels
   const firstModel = opts.length > 0 ? appStore.getImageModelByName(opts[0].modelName) : null
-  const firstSizes = (firstModel?.properties as { sizes?: { value: string }[] } | undefined)?.sizes
+  const firstProps = firstModel?.properties as ImageModelProperties | undefined
+  // 默认尺寸/质量取首个可选模型的第一档(properties 数据驱动;避免空 quality 传给 OpenAI)
+  // Default size/quality take the first option of the first available model (data-driven by
+  // properties; pre-filling quality avoids sending an empty string to OpenAI)
   node.nodeConfig = {
     model_name: opts.length > 0 ? opts[0].modelName : '',
     prompt: '',
-    size: firstSizes?.length ? firstSizes[0].value : '1024*1024',
+    size: firstProps?.sizes?.length ? firstProps.sizes[0].value : '1024*1024',
+    quality: firstProps?.qualities?.length ? firstProps.qualities[0] : '',
     seed: -1,
   }
 }
@@ -417,7 +421,7 @@ export function getIconByComponentName(name: string) {
       return 'carbon:prompt-template'
     case 'openaiimage':
       return 'solar:pallete-2-linear'
-    case 'tongyiwanx':
+    case 'imagegenerator':
       return 'solar:pallete-2-linear'
     case 'google':
       return 'ri:google-line'
@@ -458,7 +462,7 @@ export function getIconClassByComponentName(name: string) {
       return 'text-sky-800'
     case 'openaiimage':
       return 'text-fuchsia-700'
-    case 'tongyiwanx':
+    case 'imagegenerator':
       return 'text-fuchsia-700'
     case 'google':
       return 'text-emerald-900'

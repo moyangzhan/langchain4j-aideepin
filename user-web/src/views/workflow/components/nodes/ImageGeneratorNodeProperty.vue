@@ -5,7 +5,7 @@ import { QuestionCircle16Regular } from '@vicons/fluent'
 import NodePropertyInput from '../NodePropertyInput.vue'
 import WfImageModelSelector from '../WfImageModelSelector.vue'
 import ReferComment from '../ReferComment.vue'
-import { TONGYI_WANX_SIZE_OPTIONS } from '@/utils/constant'
+import { IMAGE_GENERATOR_SIZE_OPTIONS } from '@/utils/constant'
 import { useAppStore } from '@/store'
 import { t } from '@/locales'
 interface Props {
@@ -13,18 +13,34 @@ interface Props {
   wfNode: Workflow.WorkflowNode
 }
 const props = defineProps<Props>()
-const nodeConfig = props.wfNode.nodeConfig as Workflow.NodeConfigTongyiwanx
+const nodeConfig = props.wfNode.nodeConfig as Workflow.NodeConfigImageGenerator
 const appStore = useAppStore()
 
+// 表单项随所选模型的 properties 声明联动(与用户端统一画图表单同一套驱动规则)
+// Form fields follow the selected model's properties declarations (same driving rules as the unified draw form)
+const modelProps = computed(() => {
+  const model = appStore.getImageModelByName(nodeConfig.model_name)
+  return model?.properties as ImageModelProperties | undefined
+})
 // 尺寸选项随所选模型的 properties.sizes 联动,未配置时回退默认档位
 // Size options follow the selected model's properties.sizes; falls back to defaults if unset
 const sizeOptions = computed(() => {
-  const model = appStore.getImageModelByName(nodeConfig.model_name)
-  const modelProperties = model?.properties as { sizes?: { value: string, label: string }[] } | undefined
-  return modelProperties?.sizes?.length
-    ? modelProperties.sizes.map(item => ({ label: item.label, value: item.value }))
-    : TONGYI_WANX_SIZE_OPTIONS
+  return modelProps.value?.sizes?.length
+    ? modelProps.value.sizes.map(item => ({ label: item.label, value: item.value }))
+    : IMAGE_GENERATOR_SIZE_OPTIONS
 })
+// 质量档位:仅声明了 qualities 的模型展示(如 gpt-image-2)
+// Quality options: shown only for models declaring qualities (e.g. gpt-image-2)
+const qualityOptions = computed(() => {
+  return (modelProps.value?.qualities || []).map(item => ({ label: item, value: item }))
+})
+watch(qualityOptions, (opts) => {
+  if (opts.length && !opts.some(item => item.value === nodeConfig.quality))
+    nodeConfig.quality = opts[0].value
+}, { immediate: true })
+// 随机种子:仅声明了 is_support_seed 的模型展示
+// Seed: shown only for models declaring is_support_seed
+const supportsSeed = computed(() => modelProps.value?.is_support_seed ?? false)
 // 模型切换后当前尺寸不在可选值时,重置为第一个合法值
 // After switching models, reset to the first valid size if the current one is no longer allowed
 watch(sizeOptions, (opts) => {
@@ -47,7 +63,7 @@ function selected(modelName: string) {
       </div>
       <div>
         <WfImageModelSelector
-          :model-name="nodeConfig.model_name" platform="dashscope"
+          :model-name="nodeConfig.model_name"
           @image-model-selected="selected"
         />
       </div>
@@ -77,7 +93,15 @@ function selected(modelName: string) {
         <NSelect v-model:value="nodeConfig.size" :options="sizeOptions" />
       </div>
     </div>
-    <div class="mt-6">
+    <div v-if="qualityOptions.length" class="mt-6">
+      <div class="text-xl mb-1">
+        {{ t('workflow.imageQuality') }}
+      </div>
+      <div>
+        <NSelect v-model:value="nodeConfig.quality" :options="qualityOptions" />
+      </div>
+    </div>
+    <div v-if="supportsSeed" class="mt-6">
       <div class="text-xl mb-1">
         {{ t('workflow.randomSeed') }}
       </div>

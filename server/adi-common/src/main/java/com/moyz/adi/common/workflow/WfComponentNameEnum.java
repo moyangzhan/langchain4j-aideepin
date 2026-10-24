@@ -14,7 +14,7 @@ public enum WfComponentNameEnum {
 
     OPENAI_IMAGE("OpenAiImage"),
 
-    TONGYI_WANX("Tongyiwanx"),
+    IMAGE_GENERATOR("ImageGenerator"),
 
     DOCUMENT_EXTRACTOR("DocumentExtractor"),
 

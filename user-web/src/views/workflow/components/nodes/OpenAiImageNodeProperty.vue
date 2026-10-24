@@ -15,6 +15,9 @@ const nodeConfig = props.wfNode.nodeConfig as Workflow.NodeConfigOpenAiImage
 
 <template>
   <div class="flex flex-col w-full">
+    <div class="text-sm text-gray-400 mb-2">
+      {{ t('workflow.legacyImageNodeTip') }}
+    </div>
     <NodePropertyInput :workflow="workflow" :wf-node="wfNode" />
     <div class="mt-6">
       <div class="text-xl mb-1">

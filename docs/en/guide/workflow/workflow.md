@@ -93,13 +93,11 @@ Pauses for user input; "pre-input hint" is shown while paused.
 
 Autonomous node: pick a role; prompt (empty = previous node's output); capability switches **RAG / MCP tools / web search** ("The model does not support web search" beside the switch when unsupported).
 
-#### OpenAI image
+#### Image generation
 
-Prompt (empty = previous output), size, quality.
+Model picker (image models from all platforms), prompt (empty = previous output), size (follows the selected model's configuration), quality and seed (shown per the selected model's capabilities, + "Random generate"); text-to-image only, no reference images.
 
-#### Wanxiang image
-
-Model picker, prompt (empty = previous output), size (follows the selected model's configuration), seed (+ "Random generate"); text-to-image only, no reference images.
+> This node covers what the early "OpenAI image" node offered and is recommended for new workflows; the "OpenAI image" node remains available on upgraded deployments (not seeded on fresh ones) and saved workflows are unaffected.
 
 #### Document extraction
 

@@ -122,8 +122,6 @@ values (replace(gen_random_uuid()::text, '-', ''), 'End', 'End', 'Workflow ends 
 insert into adi_workflow_component(uuid, name, title, remark, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'Answer', 'Generate Answer', 'Call LLM to answer questions', true);
 insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
-values (replace(gen_random_uuid()::text, '-', ''), 'OpenAiImage', 'OpenAI Image Generation', 'Call OpenAI image model to generate images', 11, true);
-insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'DocumentExtractor', 'Document Extractor', 'Extract information from documents', 4, true);
 insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'KeywordExtractor', 'Keyword Extractor',
@@ -146,7 +144,7 @@ values (replace(gen_random_uuid()::text, '-', ''), 'FaqExtractor', 'FAQ Extracto
         'Extract frequently asked questions and their answers from content. Top N specifies the number to extract',
         6, true);
 insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
-values (replace(gen_random_uuid()::text, '-', ''), 'Tongyiwanx', 'Wanx Image Generation', 'Call text-to-image model to generate images', 12, true);
+values (replace(gen_random_uuid()::text, '-', ''), 'ImageGenerator', 'Image Generation', 'Call image model to generate images', 12, true);
 insert into adi_workflow_component(uuid, name, title, remark, display_order, is_enable)
 values (replace(gen_random_uuid()::text, '-', ''), 'HumanFeedback', 'Human Feedback',
         'Pause the running workflow and wait for user input, then continue executing the subsequent workflow after user input', 10, true);
