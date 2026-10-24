@@ -12,8 +12,9 @@ import { useBasicLayout } from '@/hooks/useBasicLayout'
 import { calcImageUrls, emptyDraw } from '@/utils/functions'
 import { t } from '@/locales'
 import api from '@/api'
+import { SvgIcon } from '@/components/common'
 const emit = defineEmits<Emit>()
-const { scrollRef, scrollToBottom, scrollTo } = useScroll()
+const { scrollRef, isAtBottom, checkAtBottom, scrollToBottom, scrollTo } = useScroll()
 const { isMobile } = useBasicLayout()
 const galleryStore = useGalleryStore()
 const drawStore = useDrawStore()
@@ -30,6 +31,7 @@ interface Emit {
   (e: 'loadMore', callback: Function): void
 }
 async function handleScroll(event: any) {
+  checkAtBottom()
   // 聊天模式时拉到最上面时加载新数据，画廊模式拉到最下面加载新数据
   const scrollTop = event.target.scrollTop
   if (
@@ -65,7 +67,7 @@ function handleDeleted() {
 }
 function handleDelDraw(item: Chat.Draw) {
   dialog.warning({
-    title: `${t('draw.deleteDrawConfirm')}${item.prompt.substring(0, 11)}]?`,
+    title: `${t('draw.deleteDrawConfirm')}[${item.prompt.substring(0, 11)}]?`,
     content: t('draw.deleteDrawContent'),
     positiveText: t('common.yes'),
     negativeText: t('common.no'),
@@ -97,7 +99,8 @@ defineExpose({ gotoBottom })
 </script>
 
 <template>
-  <div ref="scrollRef" class="h-full overflow-y-auto" @scroll="handleScroll">
+  <div class="relative h-full">
+    <div ref="scrollRef" class="h-full overflow-y-auto" @scroll="handleScroll">
     <div class="w-full max-w-screen-xl m-auto dark:bg-[#101014]" :class="[isMobile ? 'p-2' : 'p-4']">
       <LoginTip v-if="!authStore.token" />
       <template v-else-if="myDraws.length === 0">
@@ -111,9 +114,17 @@ defineExpose({ gotoBottom })
           <template v-for="draw of myDraws" :key="draw.uuid">
             <!-- 增加显示绘图统计数据，如starCount,isPublic -->
             <Message
-              v-if="draw.interactingMethod === 1" :draw="draw" :inversion="true" type="text"
+              v-if="draw.interactingMethod === 1 && !(draw.dynamicParams?.ref_image_urls?.length)" :draw="draw" :inversion="true" type="text"
               @set-public="handleSetPublic" @delete="handleDelDraw(draw)"
             />
+            <!-- 图生图:展示用户上传的参考图 / Image-to-image: show uploaded reference images -->
+            <Message
+              v-else-if="draw.interactingMethod === 1" :draw="draw"
+              :image-urls="draw.dynamicParams.ref_image_urls" :inversion="true"
+              type="text-image" @delete="handleDelDraw(draw)" @set-public="handleSetPublic"
+              @open-detail="openDraw(draw)"
+            />
+            <!-- 背景生成历史记录(功能已下线,仅存量数据展示) / Legacy background-generation records (feature retired, historical data only) -->
             <Message
               v-if="draw.interactingMethod === 4" :draw="draw"
               :image-urls="[draw.dynamicParams.base_image_url, draw.dynamicParams.ref_image_url]" :inversion="true"
@@ -133,5 +144,30 @@ defineExpose({ gotoBottom })
     <NModal v-model:show="showDetailModal" preset="card" style="width: 95%" :bordered="true">
       <DrawDetail from-page-type="mineInChat" :draw-uuid="selectedDraw.uuid" @draw-deleted="handleDeleted" @hide="showDetailModal = false" />
     </NModal>
+    </div>
+    <!-- 回到底部快捷按钮(与聊天页同款;不在列表底部时显示) / Scroll-to-bottom shortcut (same as the chat page; shown when not at the bottom) -->
+    <Transition name="scroll-to-bottom">
+      <button
+        v-if="!isAtBottom && myDraws.length > 0"
+        type="button"
+        class="absolute bottom-4 right-4 z-10 flex items-center justify-center w-8 h-8 rounded-full border border-neutral-200 bg-white/90 shadow-md transition-colors hover:bg-white dark:border-neutral-700 dark:bg-neutral-800/90 dark:hover:bg-neutral-800"
+        :aria-label="t('chat.scrollToBottom')"
+        @click="scrollToBottom(true)"
+      >
+        <SvgIcon icon="ri:arrow-down-s-line" class="text-lg" />
+      </button>
+    </Transition>
   </div>
 </template>
+
+<style scoped>
+.scroll-to-bottom-enter-active,
+.scroll-to-bottom-leave-active {
+  transition: all 0.2s ease;
+}
+.scroll-to-bottom-enter-from,
+.scroll-to-bottom-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+</style>

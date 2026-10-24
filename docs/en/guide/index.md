@@ -15,7 +15,7 @@ The AIDeepIn user manual: everything from sign-up to knowledge bases and workflo
 
 ## Drawing & Gallery
 
-1. [Drawing](draw/draw.md): text-to-image tasks, per-platform editor parameters, publishing and deletion
+1. [Drawing](draw/draw.md): text-to-image and image-to-image tasks, per-platform editor parameters, publishing and deletion
 2. [Gallery](draw/gallery.md): browsing public images, comments and likes
 
 ## Knowledge Base

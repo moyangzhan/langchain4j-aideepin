@@ -1,4 +1,4 @@
-package com.moyz.adi.common.languagemodel.wanx;
+package com.moyz.adi.common.languagemodel;
 
 import com.alibaba.dashscope.aigc.imagegeneration.ImageGeneration;
 import com.alibaba.dashscope.aigc.imagegeneration.ImageGenerationMessage;
@@ -13,14 +13,16 @@ import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
- * wan2.7-image 文生图模型封装,基于 DashScope 新一代 image-generation 接口(multimodal messages 结构)。
+ * DashScope 图片模型封装(wan2.7-image / qwen-image-3.0),基于新一代 image-generation 接口(multimodal messages 结构)。
  * <p>
- * 与旧 {@link AdiWanxImageModel}(走 image-synthesis 端点)不同,本类调用同步 image-generation 端点,
- * 且新接口已移除 negative_prompt,故不暴露该参数。
+ * 文生图与图生图同模型同端点:不传参考图为文生图;构造时传入 refImageDataUrls(base64 data URI)
+ * 即为图生图,参考图由服务端直传,不依赖文件公网可访问。新接口已移除 negative_prompt,故不暴露该参数。
  */
 @Slf4j
 public class AdiImageGenerationModel implements ImageModel {
@@ -29,9 +31,14 @@ public class AdiImageGenerationModel implements ImageModel {
     private final String modelName;
     private final String size;
     private final Integer seed;
+    /**
+     * 图生图参考图(base64 data URI),null 或空表示文生图
+     */
+    private final List<String> refImageDataUrls;
     private final ImageGeneration imageGeneration;
 
-    public AdiImageGenerationModel(String apiKey, String modelName, String size, Integer seed, String baseUrl) {
+    public AdiImageGenerationModel(String apiKey, String modelName, String size, Integer seed,
+                                   List<String> refImageDataUrls, String baseUrl) {
         if (Utils.isNullOrBlank(apiKey)) {
             throw new IllegalArgumentException(
                     "DashScope api key must be defined. It can be generated here: https://dashscope.console.aliyun.com/apiKey");
@@ -40,7 +47,8 @@ public class AdiImageGenerationModel implements ImageModel {
         this.modelName = Utils.isNullOrBlank(modelName) ? "wan2.7-image" : modelName;
         this.size = size;
         this.seed = seed;
-        // 支持自定义 endpoint(私有部署/代理),与旧 AdiWanxImageModel 行为一致
+        this.refImageDataUrls = refImageDataUrls;
+        // 支持自定义 endpoint(私有部署/代理),与旧实现行为一致
         this.imageGeneration = Utils.isNullOrBlank(baseUrl)
                 ? new ImageGeneration()
                 : new ImageGeneration("http", baseUrl);
@@ -57,20 +65,28 @@ public class AdiImageGenerationModel implements ImageModel {
     }
 
     /**
-     * 图像编辑(图生图)本次未实现 —— 用户选择"只做文生图平替"。
+     * 图生图经构造参数 refImageDataUrls 传入,不走本方法。
      * <p>
-     * Image editing is not implemented in this iteration (text-to-image parity only).
+     * Image-to-image is carried by the constructor arg refImageDataUrls, not by this method.
      */
     @Override
     public Response<Image> edit(Image image, String prompt) {
         throw new UnsupportedOperationException(
-                "Image editing is not supported yet for wan2.7-image (text-to-image parity only)");
+                "Use builder refImageDataUrls for image-to-image generation");
     }
 
     private List<Image> generateImages(String prompt, int n) {
+        // 参考图项在前、提示词项在后,与 DashScope 多模态消息约定一致
+        List<Map<String, Object>> contentItems = new ArrayList<>();
+        if (null != refImageDataUrls) {
+            for (String dataUrl : refImageDataUrls) {
+                contentItems.add(Collections.singletonMap("image", (Object) dataUrl));
+            }
+        }
+        contentItems.add(Collections.singletonMap("text", (Object) prompt));
         ImageGenerationMessage message = ImageGenerationMessage.builder()
                 .role("user")
-                .content(Collections.singletonList(Collections.singletonMap("text", prompt)))
+                .content(contentItems)
                 .build();
 
         var builder = ImageGenerationParam.builder()
@@ -90,18 +106,18 @@ public class AdiImageGenerationModel implements ImageModel {
             ImageGenerationResult result = imageGeneration.call(builder.build());
             List<Image> images = ImageUtil.imagesFrom(result);
             if (images.isEmpty()) {
-                log.error("wan2.7-image returned no image, output:{}", result.getOutput());
-                throw new IllegalStateException("wan2.7-image returned no image");
+                log.error("{} returned no image, output:{}", modelName, result.getOutput());
+                throw new IllegalStateException(modelName + " returned no image");
             }
             return images;
         } catch (NoApiKeyException e) {
-            // apiKey 缺失转为参数异常,与旧 AdiWanxImageModel 一致
+            // apiKey 缺失转为参数异常,与旧实现一致
             throw new IllegalArgumentException(e);
         } catch (UploadFileException e) {
-            // wan2.7 纯文生图不传图,理论上不触发
+            // 参考图走 content 内 base64 data URI,不经 SDK 文件上传通道,理论上不触发
             throw new RuntimeException(e);
         }
-        // ApiException(RuntimeException) 不在此捕获,自动传播给 DashScopeWanxService.parseError 解析
+        // ApiException(RuntimeException) 不在此捕获,自动传播给 DashScopeImageService.parseError 解析
     }
 
     public static AdiImageGenerationModelBuilder builder() {
@@ -113,6 +129,7 @@ public class AdiImageGenerationModel implements ImageModel {
         private String modelName;
         private String size;
         private Integer seed;
+        private List<String> refImageDataUrls;
         private String baseUrl;
 
         public AdiImageGenerationModelBuilder apiKey(String apiKey) {
@@ -135,13 +152,18 @@ public class AdiImageGenerationModel implements ImageModel {
             return this;
         }
 
+        public AdiImageGenerationModelBuilder refImageDataUrls(List<String> refImageDataUrls) {
+            this.refImageDataUrls = refImageDataUrls;
+            return this;
+        }
+
         public AdiImageGenerationModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
         public AdiImageGenerationModel build() {
-            return new AdiImageGenerationModel(apiKey, modelName, size, seed, baseUrl);
+            return new AdiImageGenerationModel(apiKey, modelName, size, seed, refImageDataUrls, baseUrl);
         }
     }
 }

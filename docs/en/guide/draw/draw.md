@@ -16,58 +16,39 @@ On the **Draw** page: pick an image model at the top, fill in the prompt editor 
 
 ## Generation Flow
 
-1. Pick a model in the image model selector — **each platform has its own editor**; switching models switches the editor;
+1. Pick a model in the image model selector — all platforms share one editor; the parameter section follows the selected model's configuration;
 2. Describe the image in the prompt box (Chinese or English);
 3. Adjust editor parameters as needed (size, count, seed — see below);
 4. Click generate; the task is submitted asynchronously;
 5. Images appear in **my drawing history** when done — you can leave the page while it runs.
 
-## Per-Platform Editor Parameters
+## Editor Parameters
 
-### OpenAI (gpt-image)
+All platforms share one editor; the parameter section shows up per the selected model's configuration. Click the arrow at the section's bottom-right corner to collapse/expand it (collapsed, only the prompt box remains, leaving more room for the image list above):
 
-| Parameter | Options |
-|---|---|
-| Size | auto / Square 1024x1024 / Portrait 1024x1536 / Landscape 1536x1024 |
-| Quality | auto / low / medium / high (higher = finer, slower and more expensive) |
-
-### Tongyi Wanxiang (DashScope)
-
-**Text-to-image**:
-
-| Parameter | Description |
-|---|---|
-| Size | Determined by the selected model's configuration |
-| Number | Images per run (slider 1–4) |
-| Seed | Fixed seed reproduces results; "Random generate" differs each time |
-
-**Background generation** — generates a new background for a subject image. The in-app usage notes read (translated):
-
-> Subject image: the image whose background will be generated; required
-> Guidance image: the image for AI to reference
-> Prompt: description of the background
-> Provide at least one of guidance image and prompt
-
-| Parameter | Required | In-app hint (translated) |
+| Parameter | Shown when | Description |
 |---|---|---|
-| Subject | yes | Tooltip: "An image with a transparent background (RGBA, 4 channels)"; upload area: "PNG image, long edge no more than 2048 pixels" |
-| Guidance image | no | Tooltip: "Common formats: jpg, png, webp. The guidance image can be RGB or RGBA with transparency; for RGBA, areas with Alpha = 0 do not participate in generation — suitable for guidance images with a subject." |
-| Prompt | no | Background description (at least one of guidance image / prompt, otherwise "Please upload a guidance image or fill in the prompt") |
+| Size | the model declares size options | Determined by the selected model's configuration |
+| Number | the model supports multiple images | Slider for images per run |
+| Quality | the model declares quality options | auto / low / medium / high (higher = finer, slower and more expensive) |
+| Seed | the model supports seed | Fixed seed reproduces results; -1 means random |
+| Reference images | the model declares image input | See "Image-to-image (reference images)" below |
 
-> [!WARNING]
-> Background generation depends on **public accessibility** of the images: the model fetches the subject and guidance images over the public internet — with Alibaba Cloud OSS storage, images must be public-read; with local storage, the uploaded images must be publicly reachable (unavailable in local development). OSS is enabled in the admin console → System settings → Storage location.
+**Image-to-image (reference images)**: with reference images uploaded, the model edits them according to the prompt; without them it is plain text-to-image. The upload limit comes from the model's configuration (Wan2.7-Image: 9, Qwen-Image-3.0: 3, GPT-Image-2: 4, Kolors: 1); jpg/png/webp are accepted. Reference images are relayed by the server, so both local file storage and OSS work — no public accessibility required.
 
-### SiliconFlow
+### Supported image models (enable them in the admin console → Model Management)
 
-| Parameter | Description |
-|---|---|
-| Size | Read dynamically from model properties |
-| Seed | -1 means random |
+| Model | Platform | Positioning |
+|---|---|---|
+| Wan2.7-Image | DashScope | All-round generation & editing flagship: full-chain editing (storyboards, interactive editing); up to 4K for T2I, 2K for editing |
+| Qwen-Image-3.0 | DashScope | Design productivity: complex layouts, image-in-image, high-fidelity text rendering (10px text, 12 languages) for posters/web/UI |
+| GPT-Image-2 | OpenAI | Text-to-image and image editing; offers quality options |
+| Kolors | SiliconFlow | Free model; text-to-image and image-to-image (a single reference image) |
 
 ## My Drawing History
 
 - Reverse chronological, **infinite scroll**, "No more" at the end;
-- Click a record for the **detail view**: prompt and reference images (original / guidance), comments, **I'll draw one too** (reuse the prompt), **previous / next** record navigation ("No previous/next one" at the ends).
+- Click a record for the **detail view**: prompt and reference images (shown for image-to-image records; early "background generation" records show the original/guidance images), comments, **I'll draw one too** (reuse the prompt), **previous / next** record navigation ("No previous/next one" at the ends).
 
 <figure>
   <img src="../../../image/cn/guide/draw/draw-02.png" alt="Draw detail">

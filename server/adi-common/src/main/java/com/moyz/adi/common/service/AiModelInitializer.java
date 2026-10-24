@@ -109,7 +109,7 @@ public class AiModelInitializer {
     private synchronized void initImageModelServiceList(Map<String, ModelPlatform> nameToPlatform) {
 
         initImageModelService(AdiConstant.ModelPlatform.OPENAI, model -> new OpenAiImageService(model, nameToPlatform.get(AdiConstant.ModelPlatform.OPENAI)).setProxyAddress(proxyAddress));
-        initImageModelService(AdiConstant.ModelPlatform.DASHSCOPE, model -> new DashScopeWanxService(model, nameToPlatform.get(AdiConstant.ModelPlatform.DASHSCOPE)));
+        initImageModelService(AdiConstant.ModelPlatform.DASHSCOPE, model -> new DashScopeImageService(model, nameToPlatform.get(AdiConstant.ModelPlatform.DASHSCOPE)));
         initImageModelService(AdiConstant.ModelPlatform.SILICONFLOW, model -> new SiliconflowImageModelService(model, nameToPlatform.get(AdiConstant.ModelPlatform.SILICONFLOW)));
 
         //search engine

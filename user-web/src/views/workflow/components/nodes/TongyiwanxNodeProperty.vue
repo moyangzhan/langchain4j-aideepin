@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { computed, watch } from 'vue'
 import { NButton, NIcon, NInput, NInputNumber, NSelect, NTooltip } from 'naive-ui'
 import { QuestionCircle16Regular } from '@vicons/fluent'
 import NodePropertyInput from '../NodePropertyInput.vue'
 import WfImageModelSelector from '../WfImageModelSelector.vue'
 import ReferComment from '../ReferComment.vue'
 import { TONGYI_WANX_SIZE_OPTIONS } from '@/utils/constant'
+import { useAppStore } from '@/store'
 import { t } from '@/locales'
 interface Props {
   workflow: Workflow.WorkflowInfo
@@ -12,6 +14,23 @@ interface Props {
 }
 const props = defineProps<Props>()
 const nodeConfig = props.wfNode.nodeConfig as Workflow.NodeConfigTongyiwanx
+const appStore = useAppStore()
+
+// 尺寸选项随所选模型的 properties.sizes 联动,未配置时回退默认档位
+// Size options follow the selected model's properties.sizes; falls back to defaults if unset
+const sizeOptions = computed(() => {
+  const model = appStore.getImageModelByName(nodeConfig.model_name)
+  const modelProperties = model?.properties as { sizes?: { value: string, label: string }[] } | undefined
+  return modelProperties?.sizes?.length
+    ? modelProperties.sizes.map(item => ({ label: item.label, value: item.value }))
+    : TONGYI_WANX_SIZE_OPTIONS
+})
+// 模型切换后当前尺寸不在可选值时,重置为第一个合法值
+// After switching models, reset to the first valid size if the current one is no longer allowed
+watch(sizeOptions, (opts) => {
+  if (opts.length && !opts.some(item => item.value === nodeConfig.size))
+    nodeConfig.size = opts[0].value
+}, { immediate: true })
 
 function selected(modelName: string) {
   console.log('nodeConfig.modelName', nodeConfig.model_name, modelName)
@@ -28,7 +47,7 @@ function selected(modelName: string) {
       </div>
       <div>
         <WfImageModelSelector
-          :model-name="nodeConfig.model_name" platform="dashscope" :exclulde-model-names="['wanx-background-generation-v2']"
+          :model-name="nodeConfig.model_name" platform="dashscope"
           @image-model-selected="selected"
         />
       </div>
@@ -55,7 +74,7 @@ function selected(modelName: string) {
         {{ t('workflow.imageSize') }}
       </div>
       <div>
-        <NSelect v-model:value="nodeConfig.size" :options="TONGYI_WANX_SIZE_OPTIONS" />
+        <NSelect v-model:value="nodeConfig.size" :options="sizeOptions" />
       </div>
     </div>
     <div class="mt-6">

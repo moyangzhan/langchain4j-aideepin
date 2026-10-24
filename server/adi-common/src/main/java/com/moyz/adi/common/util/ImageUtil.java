@@ -1,8 +1,6 @@
 package com.moyz.adi.common.util;
 
 import com.alibaba.dashscope.aigc.imagegeneration.ImageGenerationResult;
-import com.alibaba.dashscope.aigc.imagesynthesis.ImageSynthesisOutput;
-import com.alibaba.dashscope.aigc.imagesynthesis.ImageSynthesisResult;
 import com.alibaba.dashscope.exception.NoApiKeyException;
 import com.alibaba.dashscope.utils.OSSUtils;
 import com.moyz.adi.common.service.FileService;
@@ -30,6 +28,23 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class ImageUtil {
+
+    /**
+     * 按文件扩展名推断图片 MIME 类型。
+     * 图片上传入口已限制扩展名白名单,未识别的扩展名按 image/png 兜底。
+     * <p>
+     * Guess the image MIME type by file extension; falls back to image/png.
+     */
+    public static String mimeTypeByExt(String ext) {
+        String normalized = null == ext ? "" : ext.toLowerCase();
+        return switch (normalized) {
+            case "jpg", "jpeg" -> "image/jpeg";
+            case "webp" -> "image/webp";
+            case "gif" -> "image/gif";
+            case "bmp" -> "image/bmp";
+            default -> "image/png";
+        };
+    }
 
     public static boolean isNotArgb(String imagePath) {
         try {
@@ -157,17 +172,6 @@ public class ImageUtil {
         // 保存缩略图
         File output = new File(outputFile);
         ImageIO.write(outputImage, "JPEG", output);
-    }
-
-    public static List<dev.langchain4j.data.image.Image> imagesFrom(ImageSynthesisResult result) {
-        return Optional.of(result)
-                .map(ImageSynthesisResult::getOutput)
-                .map(ImageSynthesisOutput::getResults)
-                .orElse(Collections.emptyList())
-                .stream()
-                .map(resultMap -> resultMap.get("url"))
-                .map(url -> dev.langchain4j.data.image.Image.builder().url(url).build())
-                .collect(Collectors.toList());
     }
 
     /**

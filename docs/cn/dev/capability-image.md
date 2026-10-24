@@ -37,8 +37,8 @@ public static class ModelPlatform {
 
 实际开发复杂度取决于目标平台 API 的差异程度：
 
-- **langchain4j 已内置的平台**（如 OpenAI）：直接使用 `OpenAiImageModel`，实现非常简单（参考 `OpenAiImageService`，约 22 行）
-- **需要自定义适配的平台**：需要编写自定义的 `ImageModel` 实现来对接平台 API，再在 Service 中使用（参考 `DashScopeWanxService`，约 74 行，需处理背景生成等特殊模式）
+- **langchain4j 已内置的平台**（如 OpenAI）：直接使用 `OpenAiImageModel`，实现非常简单（参考 `OpenAiImageService`；文生图与图生图分派：无参考图走内置模型，有参考图走自研 `OpenAiImageEditModel` 调 `/images/edits`）
+- **需要自定义适配的平台**：需要编写自定义的 `ImageModel` 实现来对接平台 API，再在 Service 中使用（参考 `DashScopeImageService`；文生图与图生图同端点，参考图以 base64 data URI 经 `AdiImageGenerationModel` 直传）
 
 ## 步骤 2：注册到 AiModelInitializer
 
@@ -60,21 +60,15 @@ private synchronized void initImageModelServiceList(Map<String, ModelPlatform> n
 
 **文件**: `langchain4j-aideepin-web/src/views/draw/`
 
-前端按平台划分了独立的生成组件，需要为新平台创建对应的组件。
+前端使用单一通用表单组件 `GenerateImageForm.vue`，表单项（尺寸/数量/质量/种子/参考图）全部由模型 `properties` 配置驱动，新平台接入通常无需新建前端组件。
 
 ### 前端组件结构
 
 ```
 src/views/draw/components/
-  ├── gpt-image/
-  │   └── GptImageEditor.vue    — OpenAI 图像编辑器
-  ├── wanx/
-  │   ├── index.vue              — DashScope 万相入口
-  │   ├── GenerateImage.vue      — 图片生成
-  │   └── GenerateBackground.vue — 背景生成
-  ├── siliconflow/
-  │   ├── index.vue              — SiliconFlow 入口
-  │   └── GenerateImage.vue      — 图片生成
+  ├── GenerateImageForm.vue      — 通用生成表单（所有平台共用，表单项随模型 properties 动态渲染）
+  ├── RefImageUpload.vue         — 图生图参考图上传（input_types 含 image 的模型展示）
+  ├── ParamsPanel.vue            — 参数区收起/展开（悬浮箭头）
   ├── CommonDraws.vue            — 通用绘图操作
   ├── Header.vue                 — 页面头（含模型选择器）
   └── SearchInput.vue            — 提示词输入框
@@ -82,28 +76,17 @@ src/views/draw/components/
 
 ### 需要开发的内容
 
-1. **创建平台组件目录**：在 `src/views/draw/components/` 下新建 `newai/` 目录，创建 `index.vue` 和 `GenerateImage.vue`
+**前端通常无需开发**：所有平台共用 `GenerateImageForm.vue` 通用表单，表单项（尺寸/数量/质量/种子/参考图）全部由模型的 `adi_ai_model.properties` 声明驱动渲染。新平台接入只需在管理后台配置模型并填写以下声明（五个字段统一声明齐全，空数组/false/1 表示对应表单项不展示）：
 
-2. **实现生成组件**：参考现有组件（如 `siliconflow/GenerateImage.vue`），实现以下逻辑：
-   - 调用 `api.imageGenerate()` 接口，传入 `modelName`、`prompt`、`size`、`number` 等参数
-   - 调用 `checkProcess(uuid)` 轮询生成结果
-   - 将结果推入 `drawStore`
+| properties 字段 | 作用 | 取空值时 |
+|------|------|---------|
+| `sizes` | 尺寸档位（`[{value,label}]`） | 空数组时回退默认档位 |
+| `max_images` | 单次生成张数上限（>1 时展示数量滑杆） | 1（不展示滑杆） |
+| `qualities` | 质量档位（如 `["auto","low","medium","high"]`） | 不展示质量项 |
+| `is_support_seed` | 是否展示随机种子 | `false` 不展示种子项 |
+| `max_ref_images` | 图生图参考图数量上限（配合 `input_types` 含 `image` 声明） | 1 |
 
-3. **注册平台组件**：在 `src/views/draw/index.vue` 中引入新组件，根据选中的图像模型平台动态渲染对应组件
-
-### 各平台参数差异
-
-| 参数 | OpenAI | DashScope 万相 | SiliconFlow |
-|------|--------|---------------|-------------|
-| 图片尺寸 | auto/1024x1024/1024x1536/1536x1024 | 固定选项 | 从模型 `properties.image_sizes` 动态读取 |
-| 图片质量 | auto/low/medium/high | — | — |
-| 生成数量 | 1 | 1-4 | 1 |
-| 随机种子 | — | -1（随机） | -1（随机） |
-| 负向提示词 | — | — | — |
-
-### 图像模型数据要求
-
-前端通过 `appStore.selectedImageModel` 获取当前选中的图像模型信息，该数据来源于 `adi_ai_model` 表。如果新平台需要前端动态读取配置（如 SiliconFlow 从 `properties.image_sizes` 读取尺寸选项），需要在 `adi_ai_model.properties` 中配置对应字段。
+参考图上传由 `input_types` 含 `image` 自动展示，无需前端改动。
 
 ---
 

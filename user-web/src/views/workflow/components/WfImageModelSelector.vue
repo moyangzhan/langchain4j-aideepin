@@ -10,7 +10,6 @@ import { emptyAiModel } from '@/utils/functions'
 interface Props {
   modelName: string
   platform: string
-  excluldeModelNames?: string[]
 }
 interface Emit {
   (e: 'imageModelSelected', modelName: string): void
@@ -22,12 +21,7 @@ const emit = defineEmits<Emit>()
 const appStore = useAppStore()
 let options = appStore.imageModels
 if (props.platform) {
-  options = options.filter((item) => {
-    if (props.excluldeModelNames && props.excluldeModelNames.includes(item.modelName))
-      return false
-
-    return item.modelPlatform === props.platform
-  })
+  options = options.filter(item => item.modelPlatform === props.platform)
 }
 function renderLabel(option: SelectOption): VNodeChild {
   if (option.type === 'group')

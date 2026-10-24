@@ -3,17 +3,14 @@ import { computed, nextTick, onActivated, ref, watch } from 'vue'
 import { useLoadingBar, useMessage } from 'naive-ui'
 import DisplayStyleInChat from './components/DisplayStyleInChat.vue'
 import DisplayStyleInGallery from './components/DisplayStyleInGallery.vue'
-import GptImageEditor from './components/gpt-image/GptImageEditor.vue'
-import Wanx from './components/wanx/index.vue'
-import Siliconflow from './components/siliconflow/index.vue'
+import GenerateImageForm from './components/GenerateImageForm.vue'
 import Header from './components/Header.vue'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
-import { useAppStore, useAuthStore, useDrawStore } from '@/store'
+import { useAuthStore, useDrawStore } from '@/store'
 import api from '@/api'
 import { debounce } from '@/utils/functions/debounce'
 import { t } from '@/locales'
 import { changeFileUrlToUuid } from '@/utils/functions'
-const appStore = useAppStore()
 const ms = useMessage()
 const loaddingBar = useLoadingBar()
 const { isMobile } = useBasicLayout()
@@ -72,7 +69,7 @@ async function handleDelOneImage(uuid: string, fileUrl: string) {
 }
 
 const footerClass = computed(() => {
-  let classes = ['p-4']
+  let classes: string[] = ['px-4', 'pb-2']
   if (isMobile.value)
     classes = ['sticky', 'left-0', 'bottom-0', 'right-0', 'p-2', 'pr-3', 'overflow-hidden']
   return classes
@@ -124,9 +121,7 @@ onActivated(async () => {
     </main>
     <footer :class="footerClass">
       <div class="w-full max-w-screen-xl m-auto">
-        <GptImageEditor v-show="appStore.selectedImageModel.modelPlatform === 'openai'" @submitted="submitted" />
-        <Wanx v-show="appStore.selectedImageModel.modelPlatform === 'dashscope'" @submitted="submitted" />
-        <Siliconflow v-show="appStore.selectedImageModel.modelPlatform === 'siliconflow'" @submitted="submitted" />
+        <GenerateImageForm @submitted="submitted" />
       </div>
     </footer>
   </div>

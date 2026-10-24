@@ -54,7 +54,7 @@ defineExpose({ gotoTop, gotoBottom })
 
 <template>
   <div class="h-full overflow-y-auto">
-    <CommonDraws ref="commonDrawsRef" :draws="draws" :login-btn-enable="true" @click-draw="openDraw" @load-more="loadMore" />
+    <CommonDraws ref="commonDrawsRef" :draws="draws" :login-btn-enable="true" scroll-shortcut="top" @click-draw="openDraw" @load-more="loadMore" />
     <NModal v-model:show="showDetailModal" preset="card" style="width:95%" :bordered="true">
       <DrawDetail from-page-type="mineInGallery" :draw-uuid="selectedDraw.uuid" @draw-deleted="handleDelDraw" @hide="showDetailModal = false" />
     </NModal>

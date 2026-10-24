@@ -43,7 +43,7 @@ interface Emit {
 }
 function handleDelDraw(uuid: string, prompt: string) {
   dialog.warning({
-    title: `${t('draw.deleteDrawConfirm')}${prompt.substring(0, 11)}]?`,
+    title: `${t('draw.deleteDrawConfirm')}[${prompt.substring(0, 11)}]?`,
     content: t('draw.deleteDrawContent'),
     positiveText: t('common.yes'),
     negativeText: t('common.no'),

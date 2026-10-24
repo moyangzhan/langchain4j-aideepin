@@ -95,11 +95,11 @@ Autonomous node: pick a role; prompt (empty = previous node's output); capabilit
 
 #### OpenAI image
 
-Prompt (empty = previous output), size, quality, seed (+ "Random generate").
+Prompt (empty = previous output), size, quality.
 
 #### Wanxiang image
 
-Same as [OpenAI image](#openai-image) (DashScope text-to-image).
+Model picker, prompt (empty = previous output), size (follows the selected model's configuration), seed (+ "Random generate"); text-to-image only, no reference images.
 
 #### Document extraction
 

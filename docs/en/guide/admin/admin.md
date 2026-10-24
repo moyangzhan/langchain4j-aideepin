@@ -56,10 +56,10 @@ Key form fields:
 |---|---|
 | Type (required) | Text / image / embedding / rerank / TTS / ASR |
 | Platform (required) | Dropdown from platform configuration |
-| Input types (required, multi) | Text / image / audio / video |
+| Input types (required, multi) | Text / image / audio / video; on image models text = text-to-image and image = image-to-image (checking image shows the reference-image upload in the user-side draw editor) |
 | Output formats (required, multi) | Text / JSON |
 | Is reasoner / thinking closable / supports web search | Drives the [user-side toggles](../model/model.md#capability-differences) |
-| Properties | JSON editor, e.g. TTS voices `{"voices":[...]}`, image sizes |
+| Properties | JSON editor, e.g. TTS voices `{"voices":[...]}`; image models can set `sizes`, `max_images` (per-run count), `qualities` (empty = unsupported), `is_support_seed`, `max_ref_images` (reference-image limit, 1 by default) — the user-side draw form renders its fields from these declarations |
 | Context window, max input/output tokens | Numbers |
 
 Row actions: **edit, enable/disable, set free / set paid, delete**.

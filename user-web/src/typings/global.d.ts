@@ -32,6 +32,24 @@ interface AuthState {
   showLoginModal: boolean
 }
 
+/**
+ * Uniform properties shape for image models (adi_ai_model.properties of type='image' rows).
+ * Every image model declares all five keys (empty/false means the field is unsupported and the form field is hidden).
+ * 图片模型 properties 统一结构:所有图片模型固定五键(空数组/false 表示不支持,对应表单项隐藏)
+ */
+interface ImageModelProperties {
+  /** 尺寸档位 / Size options */
+  sizes: { value: string, label: string }[]
+  /** 单次生成张数上限(>1 时展示数量滑杆) / Per-run image count cap (slider shown when > 1) */
+  max_images: number
+  /** 图生图参考图数量上限 / Reference-image upload limit */
+  max_ref_images: number
+  /** 是否展示随机种子 / Whether the seed field is shown */
+  is_support_seed: boolean
+  /** 质量档位(空数组 = 不支持) / Quality options (empty = unsupported) */
+  qualities: string[]
+}
+
 interface AiModelInfo {
 
   //from api

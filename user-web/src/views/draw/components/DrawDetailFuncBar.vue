@@ -34,6 +34,12 @@ function handleDelDraw(uuid: string, prompt: string) {
 function handleSetPublic(uuid: string, isPublic: boolean) {
   emit('setPublic', uuid, isPublic)
 }
+// 图生图记录的参考图 url 列表(dynamic_params.ref_image_urls)
+// Reference image urls of an image-to-image record (dynamic_params.ref_image_urls)
+function getRefImageUrls(draw: Chat.Draw) {
+  const urls = draw.dynamicParams?.ref_image_urls
+  return Array.isArray(urls) ? urls : []
+}
 async function handleStar(uuid: string) {
   if (!authStore.token) {
     authStore.setLoginView(true)
@@ -112,6 +118,20 @@ async function handleStar(uuid: string) {
             v-if="draw.dynamicParams.ref_image_url"
             :src="`${getRealFileUrl(draw.dynamicParams.ref_image_url)}?token=${authStore.token}`" :fallback-src="NoPic"
             object-fit="cover" :title="t('draw.guideImage')" width="100"
+          />
+        </NImageGroup>
+      </NFlex>
+    </template>
+    <!-- 图生图:展示参考图 / Image-to-image: show reference images -->
+    <template v-else-if="draw.interactingMethod === 1 && getRefImageUrls(draw).length > 0">
+      <NFlex>{{ t('draw.referenceImage') }}</NFlex>
+      <NFlex>
+        <NImageGroup>
+          <NImage
+            v-for="(url, index) in getRefImageUrls(draw)"
+            :key="index"
+            :src="`${getRealFileUrl(url)}?token=${authStore.token}`"
+            :fallback-src="NoPic" object-fit="cover" :title="t('draw.refImage')" width="100"
           />
         </NImageGroup>
       </NFlex>

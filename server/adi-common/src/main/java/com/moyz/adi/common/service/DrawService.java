@@ -151,6 +151,14 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         if (null != createImageDto.getDynamicParams() && !createImageDto.getDynamicParams().isEmpty()) {
             draw.setDynamicParams(createImageDto.getDynamicParams());
         }
+        // I2I admission: reference images may only be submitted to models declaring image input
+        // (input_types contains image) and within the model's limit (guards against direct API calls bypassing the UI)
+        List<String> refImageUuids = draw.getRefImageUuids();
+        if (!refImageUuids.isEmpty()
+                && (!Arrays.asList(aiModel.getInputTypes().split(",")).contains("image")
+                || refImageUuids.size() > aiModel.getMaxRefImages())) {
+            throw new BaseException(A_PARAMS_ERROR);
+        }
         getBaseMapper().insert(draw);
         Draw obj = this.lambdaQuery().eq(Draw::getUuid, uuid).one();
         self.createFromRemote(obj, user);

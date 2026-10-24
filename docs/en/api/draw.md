@@ -49,7 +49,7 @@ Only tasks owned by the key's owner are visible; otherwise `A_DRAW_NOT_FOUND`.
 | `imageUuids` / `imageUrls` | Generated image IDs and URLs |
 | `duration` | Elapsed time |
 | `dynamicParams` | Model dynamic parameters |
-| `originalImageUuid/Url`, `maskImageUuid/Url` | Original / guidance images (background generation etc.) |
+| `originalImageUuid/Url`, `maskImageUuid/Url` | Original / mask images (legacy reserved fields, not populated by current features) |
 | `userUuid` / `userName` / `createTime` | Ownership and time |
 
 ## Example

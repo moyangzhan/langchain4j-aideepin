@@ -37,8 +37,8 @@ The base class `AbstractImageModelService` implements the complete image generat
 
 The actual development complexity depends on how different the target platform's API is:
 
-- **Platforms already supported by langchain4j** (e.g. OpenAI): Use `OpenAiImageModel` directly — very simple (see `OpenAiImageService`, ~22 lines)
-- **Platforms requiring custom adaptation**: You need to write a custom `ImageModel` implementation to interface with the platform API, then use it in the Service (see `DashScopeWanxService`, ~74 lines, handling special modes like background generation)
+- **Platforms already supported by langchain4j** (e.g. OpenAI): Use `OpenAiImageModel` directly — very simple (see `OpenAiImageService`; it dispatches t2i vs i2i: without reference images it uses the built-in model, with them the custom `OpenAiImageEditModel` calling `/images/edits`)
+- **Platforms requiring custom adaptation**: You need to write a custom `ImageModel` implementation to interface with the platform API, then use it in the Service (see `DashScopeImageService`; t2i and i2i share one endpoint, reference images are relayed as base64 data URIs via `AdiImageGenerationModel`)
 
 ## Step 2: Register in AiModelInitializer
 
@@ -60,21 +60,15 @@ private synchronized void initImageModelServiceList(Map<String, ModelPlatform> n
 
 **File**: `langchain4j-aideepin-web/src/views/draw/`
 
-The frontend has platform-specific generation components. You need to create a corresponding component for the new platform.
+The frontend uses a single unified form component `GenerateImageForm.vue`; form fields (size/count/quality/seed/reference images) are all driven by the model's `properties`, so new platforms usually need no new frontend component.
 
 ### Frontend Component Structure
 
 ```
 src/views/draw/components/
-  ├── gpt-image/
-  │   └── GptImageEditor.vue    — OpenAI image editor
-  ├── wanx/
-  │   ├── index.vue              — DashScope Wanx entry
-  │   ├── GenerateImage.vue      — Image generation
-  │   └── GenerateBackground.vue — Background generation
-  ├── siliconflow/
-  │   ├── index.vue              — SiliconFlow entry
-  │   └── GenerateImage.vue      — Image generation
+  ├── GenerateImageForm.vue      — Unified generation form (shared by all platforms; fields rendered per model properties)
+  ├── RefImageUpload.vue         — Reference-image upload for i2i (shown for models whose input_types include image)
+  ├── ParamsPanel.vue            — Parameter section collapse/expand (floating arrow)
   ├── CommonDraws.vue            — Common draw operations
   ├── Header.vue                 — Page header (with model selector)
   └── SearchInput.vue            — Prompt input
@@ -82,28 +76,17 @@ src/views/draw/components/
 
 ### What to Develop
 
-1. **Create platform component directory**: Create `newai/` under `src/views/draw/components/` with `index.vue` and `GenerateImage.vue`
+**Usually no frontend work**: all platforms share the unified `GenerateImageForm.vue`, whose fields (size/count/quality/seed/reference images) render from the model's `adi_ai_model.properties` declarations. Integrating a new platform only requires configuring the model in the admin console with (all five keys are declared uniformly; empty/false/1 hides the corresponding form field):
 
-2. **Implement generation component**: Reference existing components (e.g. `siliconflow/GenerateImage.vue`), implement the following:
-   - Call `api.imageGenerate()` with `modelName`, `prompt`, `size`, `number`, etc.
-   - Call `checkProcess(uuid)` to poll for generation results
-   - Push results into `drawStore`
+| properties key | Purpose | When empty |
+|------|------|---------|
+| `sizes` | Size options (`[{value,label}]`) | Empty array falls back to defaults |
+| `max_images` | Per-run image count cap (slider shown when > 1) | 1 (no slider) |
+| `qualities` | Quality options (e.g. `["auto","low","medium","high"]`) | No quality field |
+| `is_support_seed` | Whether the seed field is shown | `false` hides the seed field |
+| `max_ref_images` | Reference-image limit (paired with `image` in `input_types`) | 1 |
 
-3. **Register platform component**: Import the new component in `src/views/draw/index.vue` and render it based on the selected image model platform
-
-### Parameter Differences by Platform
-
-| Parameter | OpenAI | DashScope Wanx | SiliconFlow |
-|-----------|--------|---------------|-------------|
-| Image Size | auto/1024x1024/1024x1536/1536x1024 | Fixed options | Dynamically read from model `properties.image_sizes` |
-| Image Quality | auto/low/medium/high | — | — |
-| Generation Count | 1 | 1-4 | 1 |
-| Random Seed | — | -1 (random) | -1 (random) |
-| Negative Prompt | — | — | — |
-
-### Image Model Data Requirements
-
-The frontend reads the currently selected image model via `appStore.selectedImageModel`, which comes from the `adi_ai_model` table. If the new platform needs the frontend to dynamically read configuration (e.g. SiliconFlow reads size options from `properties.image_sizes`), configure the corresponding fields in `adi_ai_model.properties`.
+The reference-image upload appears automatically for models whose `input_types` include `image` — no frontend change needed.
 
 ---
 

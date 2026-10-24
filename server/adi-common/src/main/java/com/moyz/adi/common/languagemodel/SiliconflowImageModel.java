@@ -16,6 +16,7 @@ import dev.langchain4j.model.output.Response;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -76,6 +77,13 @@ public class SiliconflowImageModel implements ImageModel {
      */
     private final Long seed;
 
+    /**
+     * 图生图输入图片(base64 data URI),null 为纯文生图
+     * <p>
+     * Image-to-image input (base64 data URI); null for text-to-image
+     */
+    private final String refImageDataUrl;
+
     private HttpClientBuilder httpClientBuilder;
 
     @Override
@@ -105,14 +113,17 @@ public class SiliconflowImageModel implements ImageModel {
     }
 
     private List<Image> internalGenerate(String prompt, int n) {
-        SiliconflowImageGenerateReq request = SiliconflowImageGenerateReq.builder()
+        SiliconflowImageGenerateReq.SiliconflowImageGenerateReqBuilder requestBuilder = SiliconflowImageGenerateReq.builder()
                 .prompt(prompt)
                 .model(modelName)
                 .batchSize(n)
                 .imageSize(imageSize)
                 .negativePrompt(negativePrompt)
-                .seed(seed)
-                .build();
+                .seed(seed);
+        if (StringUtils.isNotBlank(refImageDataUrl)) {
+            requestBuilder.image(refImageDataUrl);
+        }
+        SiliconflowImageGenerateReq request = requestBuilder.build();
         Map<String, String> defaultHeaders = new HashMap<>();
         defaultHeaders.put("Authorization", "Bearer " + apiKey);
         HttpRequest httpRequest = HttpRequest.builder()

@@ -109,8 +109,8 @@ VALUES ('gpt-5.4-mini', 'gpt-5.4-mini', 'text', 'openai', 400000, 272000, 128000
         false);
 
 
-INSERT INTO adi_ai_model (name, title, type, platform, properties, is_enable)
-VALUES ('gpt-image-2', 'GPT-Image-2', 'image', 'openai', '{"max_images": 10}', false);
+INSERT INTO adi_ai_model (name, title, type, platform, input_types, properties, is_enable)
+VALUES ('gpt-image-2', 'GPT-Image-2', 'image', 'openai', 'text,image', '{"max_images": 10, "max_ref_images": 4, "is_support_seed": false, "qualities": ["auto","low","medium","high"], "sizes": [{"value":"auto","label":"Auto"},{"value":"1024x1024","label":"1024×1024"},{"value":"1024x1536","label":"1024×1536"},{"value":"1536x1024","label":"1536×1024"}]}', false);
 -- OpenAI 语音识别 (ASR)
 INSERT INTO adi_ai_model (name, title, type, platform, input_types, is_enable)
 VALUES ('gpt-4o-mini-transcribe', 'OpenAI-ASR', 'asr', 'openai', 'audio', false);
@@ -152,12 +152,16 @@ VALUES ('qwen-turbo', 'Qwen-Turbo', 'text', 'dashscope', 131072, 98304, 16384, '
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens, input_types,
                           is_enable)
 VALUES ('qwen2-vl-7b-instruct', 'Qwen-Vision', 'vision', 'dashscope', 32768, 16384, 16384, 'text,image', false);
--- 通义万相-文生图 wan2.7-image
-INSERT INTO adi_ai_model (name, title, type, platform, properties, is_enable)
-VALUES ('wan2.7-image', 'Qwen-Image', 'image', 'dashscope', '{"max_images": 4, "sizes": [{"value":"1K","label":"1K · 1024×1024"},{"value":"2K","label":"2K · 2048×2048"}]}', false);
--- 通义万相-切换背景
-INSERT INTO adi_ai_model (name, title, type, platform, input_types, is_enable)
-VALUES ('wanx-background-generation-v2', 'Qwen-Background', 'image', 'dashscope', 'text,image', false);
+-- 通义万相-文生图/图生图 wan2.7-image
+INSERT INTO adi_ai_model (name, title, type, platform, input_types, properties, remark, is_enable)
+VALUES ('wan2.7-image', 'Wan2.7-Image', 'image', 'dashscope', 'text,image', '{"max_images": 4, "max_ref_images": 9, "is_support_seed": true, "qualities": [], "sizes": [{"value":"1K","label":"1K · 1024×1024"},{"value":"2K","label":"2K · 2048×2048"}]}',
+        '通义万相旗舰图像模型，侧重全链路图像编辑：支持文生图、图生组图、图像编辑与多图参考生成（最多 9 张参考图）、交互式编辑；文生图最高 4K，编辑场景最高 2K。适合通用图片生成与多图参考编辑场景。/ Wan flagship image model focused on full-chain editing: text-to-image, storyboard generation, editing with up to 9 reference images, and interactive editing; up to 4K for T2I and 2K for editing. Best suited for general-purpose generation and multi-reference editing.',
+        false);
+-- 千问-图像生成与编辑 qwen-image-3.0（侧重设计生产力场景）
+INSERT INTO adi_ai_model (name, title, type, platform, input_types, properties, remark, is_enable)
+VALUES ('qwen-image-3.0', 'Qwen-Image-3.0', 'image', 'dashscope', 'text,image', '{"max_images": 4, "max_ref_images": 3, "is_support_seed": true, "qualities": [], "sizes": [{"value":"1024*1024","label":"1024×1024"},{"value":"1280*960","label":"1280×960"},{"value":"1664*928","label":"1664×928"},{"value":"928*1664","label":"928×1664"}]}',
+        '千问图像生成与编辑模型，侧重设计生产力：复杂版面、图中图、密集信息排版、高保真文字渲染（10px 小字、12 国语言），适合海报、网页、UI 等设计场景；图生图最多 3 张参考图。/ Qwen image generation and editing model oriented to design productivity: complex layouts, image-in-image, dense typography, and high-fidelity text rendering (10px text, 12 languages); ideal for posters, web pages, and UI design. Supports up to 3 reference images for editing.',
+        false);
 -- 通义千问-向量（可选模型名：text-embedding-v1,text-embedding-v2,text-embedding-v3）
 INSERT INTO adi_ai_model (name, title, type, platform, max_input_tokens, properties, is_enable)
 VALUES ('text-embedding-v1', 'Qwen-Embedding-V1', 'embedding', 'dashscope', 2048, '{
@@ -578,16 +582,19 @@ VALUES ('THUDM/GLM-4.1V-9B-Thinking', 'SiliconFlow-Vision', 'vision', 'siliconfl
         'GLM-4.1V-9B-Thinking 是由智谱 AI 和清华大学 KEG 实验室联合发布的一款开源视觉语言模型（VLM），专为处理复杂的多模态认知任务而设计。该模型基于 GLM-4-9B-0414 基础模型，通过引入“思维链”（Chain-of-Thought）推理机制和采用强化学习策略，显著提升了其跨模态的推理能力和稳定性。作为一个 9B 参数规模的轻量级模型，它在部署效率和性能之间取得了平衡，在 28 项权威评测基准中，有 18 项的表现持平甚至超越了 72B 参数规模的 Qwen-2.5-VL-72B。该模型不仅在图文理解、数学科学推理、视频理解等任务上表现卓越，还支持高达 4K 分辨率的图像和任意宽高比输入',
         true, false);
 
-INSERT INTO adi_ai_model (name, title, type, platform, properties, remark, is_free, is_enable)
-VALUES ('Kwai-Kolors/Kolors', 'SiliconFlow-Image', 'image', 'siliconflow', '{
-  "image_sizes": [
-    "1024x1024",
-    "960x1280",
-    "768x1024",
-    "720x1440",
-    "720x1280"
-  ],
-  "max_images": 4
+INSERT INTO adi_ai_model (name, title, type, platform, input_types, properties, remark, is_free, is_enable)
+VALUES ('Kwai-Kolors/Kolors', 'SiliconFlow-Image', 'image', 'siliconflow', 'text,image', '{
+  "max_images": 4,
+  "max_ref_images": 1,
+  "is_support_seed": true,
+  "qualities": [],
+  "sizes": [
+    {"value": "1024x1024", "label": "1024×1024"},
+    {"value": "960x1280", "label": "960×1280"},
+    {"value": "768x1024", "label": "768×1024"},
+    {"value": "720x1440", "label": "720×1440"},
+    {"value": "720x1280", "label": "720×1280"}
+  ]
 }',
         'Kolors 是由快手 Kolors 团队开发的基于潜在扩散的大规模文本到图像生成模型。该模型通过数十亿文本-图像对的训练，在视觉质量、复杂语义准确性以及中英文字符渲染方面展现出显著优势。它不仅支持中英文输入，在理解和生成中文特定内容方面也表现出色。',
         true, false);

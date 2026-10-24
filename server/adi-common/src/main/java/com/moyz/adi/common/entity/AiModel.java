@@ -131,4 +131,25 @@ public class AiModel extends BaseEntity {
         }
         return result;
     }
+
+    /**
+     * 从 properties.max_ref_images 中获取图生图参考图数量上限。
+     * 如果未配置，默认返回 1。
+     * <p>
+     * Max reference images for image-to-image; 1 by default.
+     */
+    public int getMaxRefImages() {
+        if (properties == null || properties.isEmpty()) {
+            return 1;
+        }
+        JsonNode maxRefImages = properties.get("max_ref_images");
+        if (maxRefImages == null || maxRefImages.isNull()) {
+            return 1;
+        }
+        try {
+            return maxRefImages.asInt(1);
+        } catch (Exception e) {
+            return 1;
+        }
+    }
 }

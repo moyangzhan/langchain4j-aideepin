@@ -22,12 +22,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_AI_IMAGE_NO_AUTH;
@@ -222,6 +230,50 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
             throw new BaseException(ErrorEnum.A_AI_IMAGE_NOT_FOUND);
         }
         return adiFile;
+    }
+
+    /**
+     * 读取文件内容字节:本地存储直接读盘;OSS 存储从其可访问 URL 下载。
+     * 供图生图等需要把文件内容提交给模型服务的场景使用。
+     * <p>
+     * Read file bytes: local storage reads from disk; OSS storage downloads from its accessible URL.
+     */
+    public byte[] readFileBytes(String uuid) {
+        AdiFile adiFile = this.lambdaQuery()
+                .eq(AdiFile::getUuid, uuid)
+                .oneOpt().orElse(null);
+        if (null == adiFile) {
+            throw new BaseException(A_FILE_NOT_EXIST);
+        }
+        return readFileBytes(adiFile);
+    }
+
+    public byte[] readFileBytes(AdiFile adiFile) {
+        if (Objects.equals(AdiConstant.STORAGE_LOCATION_VALUE_LOCAL, adiFile.getStorageLocation())) {
+            try {
+                return Files.readAllBytes(Paths.get(adiFile.getPath()));
+            } catch (IOException e) {
+                log.error("Read local file error, path:{}", adiFile.getPath(), e);
+                throw new BaseException(A_FILE_NOT_EXIST);
+            }
+        }
+        String url = FileOperatorContext.getFileUrl(adiFile);
+        try {
+            HttpClient httpClient = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder(URI.create(url)).GET().build();
+            HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            if (response.statusCode() != 200) {
+                log.error("Download file from url fail, status:{}, url:{}", response.statusCode(), url);
+                throw new BaseException(A_FILE_NOT_EXIST);
+            }
+            return response.body();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new BaseException(A_FILE_NOT_EXIST);
+        } catch (IOException e) {
+            log.error("Download file from url error, url:{}", url, e);
+            throw new BaseException(A_FILE_NOT_EXIST);
+        }
     }
 
     public String getTmpImagesPath(String uuid) {

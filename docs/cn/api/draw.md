@@ -49,7 +49,7 @@ GET /ext/v1/draw/{uuid}
 | `imageUuids` / `imageUrls` | 生成图片的 ID 与访问地址 |
 | `duration` | 耗时 |
 | `dynamicParams` | 模型动态参数 |
-| `originalImageUuid/Url`、`maskImageUuid/Url` | 原图 / 引导图（背景生成等场景） |
+| `originalImageUuid/Url`、`maskImageUuid/Url` | 原图 / 蒙版图（历史预留字段，当前无功能写入） |
 | `userUuid` / `userName` / `createTime` | 归属与时间 |
 
 ## 示例

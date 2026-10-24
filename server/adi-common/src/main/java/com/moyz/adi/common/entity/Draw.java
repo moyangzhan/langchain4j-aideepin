@@ -7,7 +7,12 @@ import com.moyz.adi.common.base.JsonNodeTypeHandler;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.type.JdbcType;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
@@ -84,4 +89,26 @@ public class Draw extends BaseEntity {
     @Schema(title = "生成耗时（毫秒） | Generation duration in ms")
     @TableField("duration")
     private Integer duration;
+
+    /**
+     * 从 dynamic_params.ref_image_uuids 中提取图生图参考图文件 uuid 列表。
+     * <p>
+     * Reference image file uuids (image-to-image) carried in dynamic_params.
+     */
+    public List<String> getRefImageUuids() {
+        if (null == dynamicParams || dynamicParams.isEmpty()) {
+            return Collections.emptyList();
+        }
+        JsonNode uuids = dynamicParams.get("ref_image_uuids");
+        if (null == uuids || !uuids.isArray() || uuids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> result = new ArrayList<>();
+        for (JsonNode item : uuids) {
+            if (null != item && !item.isNull() && StringUtils.isNotBlank(item.asText())) {
+                result.add(item.asText());
+            }
+        }
+        return result;
+    }
 }

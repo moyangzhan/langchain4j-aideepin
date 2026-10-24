@@ -293,16 +293,15 @@ function createOpenAiImage(node: Workflow.WorkflowNode) {
 
 function createTongyiwanx(node: Workflow.WorkflowNode) {
   const appStore = useAppStore()
-  const opts = appStore.imageModels.filter((item) => {
-    if (item.modelName.includes('wanx-background'))
-      return false
-
-    return item.modelPlatform === 'dashscope'
-  })
+  const opts = appStore.imageModels.filter(item => item.modelPlatform === 'dashscope')
+  // 默认尺寸取首个可选模型的第一档(properties.sizes 数据驱动)
+  // Default size takes the first option of the first available model (data-driven by properties.sizes)
+  const firstModel = opts.length > 0 ? appStore.getImageModelByName(opts[0].modelName) : null
+  const firstSizes = (firstModel?.properties as { sizes?: { value: string }[] } | undefined)?.sizes
   node.nodeConfig = {
     model_name: opts.length > 0 ? opts[0].modelName : '',
     prompt: '',
-    size: '1024*1024',
+    size: firstSizes?.length ? firstSizes[0].value : '1024*1024',
     seed: -1,
   }
 }
