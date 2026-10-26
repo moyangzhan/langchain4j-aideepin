@@ -39,7 +39,6 @@ watch(
   },
   { immediate: true, deep: true },
 )
-const innerHeight = window.innerHeight < 800 ? 800 : window.innerHeight
 onMounted(() => {
   console.log('props.wfNode.title', props.wfNode.title)
   nodeTitle.value = props.wfNode.title
@@ -47,10 +46,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="absolute right-0 top-20 bg-white rounded-lg shadow-xl">
+  <div v-if="!hidePropertyPanel && wfNode" class="absolute right-0 top-20 bottom-3 flex flex-col bg-white rounded-lg shadow-xl">
     <!-- 右侧属性面板 -->
-    <div v-if="!hidePropertyPanel && wfNode" class="px-3 pt-5 h-full" style="width:600px">
-      <div class="w-full flex flex-col border-b divide-gray-400 pb-3 mb-5">
+    <div class="px-3 pt-5 h-full flex flex-col min-h-0" style="width:600px">
+      <div class="w-full flex flex-col border-b divide-gray-400 pb-3 mb-5 shrink-0">
         <div class="text-3xl flex items-center h-10 mb-2">
           <SvgIcon
             class="mt-1 mr-2" :class="getIconClassByComponentName(wfNode.wfComponent.name)"
@@ -68,7 +67,7 @@ onMounted(() => {
           {{ t('workflow.componentFunction') }}{{ wfNode.wfComponent.remark }}
         </div>
       </div>
-      <div class="overflow-y-auto" :style="`height:${innerHeight - 250}px`">
+      <div class="overflow-y-auto flex-1 min-h-0">
         <StartNodeProperty
           v-if="wfNode.wfComponent.name === 'Start'" :key="wfNode.uuid" :workflow="workflow"
           :wf-node="wfNode"

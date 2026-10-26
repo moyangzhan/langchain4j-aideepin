@@ -122,7 +122,7 @@ function extApiKey() {
         >
           <div class="text-xl flex items-center space-x-2">
             <NTag v-if="showViewType === 'instanceList'" round :bordered="false" :style="{ cursor: 'pointer' }">
-              {{ t('workflow.workflowLabel') }}
+              {{ t('workflow.flowDefine') }}
               <template #avatar>
                 <SvgIcon class="text-xl" icon="carbon:flow" />
               </template>

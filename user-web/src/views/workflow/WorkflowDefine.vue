@@ -249,7 +249,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="chat-box flex flex-col w-full h-full">
+  <div class="chat-box flex flex-col w-full flex-1 min-h-0">
     <main class="flex-1 overflow-hidden">
       <div ref="scrollRef" class="h-full overflow-hidden overflow-y-auto">
         <div class="flex h-full">
