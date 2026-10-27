@@ -34,7 +34,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <langchain4j.version>1.14.1</langchain4j.version>
         <tmp-langchain4j.version>1.14.1-beta24</tmp-langchain4j.version>
-        <langgraph4j.version>1.8.15</langgraph4j.version>
+        <langgraph4j.version>1.8.27</langgraph4j.version>
     </properties>
 
     <dependencyManagement>

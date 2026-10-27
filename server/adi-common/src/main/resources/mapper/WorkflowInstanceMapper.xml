@@ -9,4 +9,72 @@
           and a.user_id = #{userId}
           and b.uuid = #{wfUuid}
     </select>
+
+    <!-- Load the runtime row INCLUDING the checkpoint blob;
+         the entity keeps checkpoint out of default SELECTs via select=false, so the resume path must query it explicitly.
+         含 checkpoint blob 的整行读取——resume 重建路径专用（默认 SELECT 不拉 blob）。 -->
+    <select id="selectWithCheckpoint" resultType="com.moyz.adi.common.entity.WorkflowRuntime">
+        select id, uuid, user_id, workflow_id, status, status_remark, input_tokens, output_tokens, duration, create_time, checkpoint
+        from adi_workflow_runtime
+        where uuid = #{uuid}
+          and is_deleted = false
+        limit 1
+    </select>
+
+    <!-- Resume concurrency gate: conditional WAITING_INPUT -> DOING in one UPDATE.
+         The winner proceeds; duplicate submits (double click / stale tab / multi tab) are rejected atomically.
+         resume 并发闸门：WAITING_INPUT→DOING 条件更新，重复提交被原子拒绝。 -->
+    <update id="casWaitingInputToRunning">
+        update adi_workflow_runtime
+        set status = 2
+        where uuid = #{uuid}
+          and status = 5
+          and is_deleted = false
+    </update>
+
+    <!-- Write output + terminal snapshot + checkpoint in ONE update.
+         Writer-based SQL bypasses MyBatis-Plus' skip-null entity semantics so a null checkpoint explicitly CLEARS the column (terminal)
+         and a blob is set atomically with WAITING_INPUT — the invariant "waiting_input row always carries a recoverable checkpoint / terminal row carries none".
+         "output" must be quoted: OUTPUT is a JSqlParser reserved word and BlockAttackInnerInterceptor parses every statement before execution.
+         单条 UPDATE 写 output+快照+checkpoint：null 即显式清列，避开 MP 实体更新跳过 null 的语义。
+         output 须加引号——OUTPUT 是 JSqlParser 保留字，BlockAttackInnerInterceptor 执行前会解析全部语句。 -->
+    <update id="updateOutputWithCheckpoint">
+        update adi_workflow_runtime
+        set "output" = #{output,typeHandler=com.moyz.adi.common.base.JsonNodeTypeHandler},
+            status = #{status},
+            input_tokens = #{inputTokens},
+            output_tokens = #{outputTokens},
+            duration = #{duration},
+            checkpoint = #{checkpoint}
+        where id = #{id}
+          and is_deleted = false
+    </update>
+
+    <!-- Terminal status update, always CLEARING the checkpoint column
+         (see updateOutputWithCheckpoint for why the explicit clear needs writer-based SQL).
+         终态更新，恒清 checkpoint 列。 -->
+    <update id="updateStatusWithCheckpoint">
+        update adi_workflow_runtime
+        set status = #{status},
+            status_remark = #{statusRemark},
+            input_tokens = #{inputTokens},
+            output_tokens = #{outputTokens},
+            duration = #{duration},
+            checkpoint = null
+        where id = #{id}
+          and is_deleted = false
+    </update>
+
+    <!-- Timeout expiry: fail runtimes stuck in WAITING_INPUT past the threshold and clear their checkpoint.
+         update_time is the interruption moment (the WAITING_INPUT write).
+         超时回收：WAITING_INPUT 超阈值的运行置失败并清空快照（update_time=中断时刻）。 -->
+    <update id="expireWaitingInput">
+        update adi_workflow_runtime
+        set status = 4,
+            status_remark = #{remark},
+            checkpoint = null
+        where status = 5
+          and is_deleted = false
+          and update_time &lt; #{threshold}
+    </update>
 </mapper>

@@ -176,7 +176,7 @@ public class SseManager {
         //Check: concurrent SSE count
         String activeKey = MessageFormat.format(RedisKeyConstant.USER_ACTIVE_SSE_COUNT, user.getId());
         stringRedisTemplate.opsForSet().add(activeKey, sseUuid);
-        //每次添加都刷新 TTL = 6min（略大于 SseEmitter 5min timeout），防止 crash 导致集合永不清理
+        //Refresh the 6min TTL on every add (slightly above the 5min emitter timeout) so a crash never strands entries
         stringRedisTemplate.expire(activeKey, 6, TimeUnit.MINUTES);
         Long size = stringRedisTemplate.opsForSet().size(activeKey);
         boolean isApi = ThreadContext.isExtApiRequest();
@@ -362,6 +362,34 @@ public class SseManager {
         doSendErrorAndComplete(userId, sseUuid, sseEmitter, errorMsg);
     }
 
+    /**
+     * 关闭 SSE 流而不发送任何终态事件
+     * <p>
+     * Close the SSE stream WITHOUT emitting a terminal event.
+     * For non-terminal round ends (e.g. workflow waiting for user input): the business event ({@code NODE_WAIT_FEEDBACK}) already carries the semantics,
+     * while {@code [DONE]}/{@code [ERROR]} would tell the client the run finished / failed.
+     * Terminal paths must use sendComplete / sendErrorAndComplete so the client receives {@code [DONE]}/{@code [ERROR]}.
+     * Closing also frees the Redis concurrency slot — with MAX_WEB_CONCURRENT the next round's stream can only be established after this returns.
+     * </p>
+     *
+     * @param sseUuid SSE 请求标识 / SSE request identifier
+     */
+    public void closeStream(String sseUuid) {
+        SseEntry entry = entries.get(sseUuid);
+        if (entry == null) {
+            log.warn("closeStream: SseEmitter not found or already completed, sseUuid:{}", sseUuid);
+            return;
+        }
+        try {
+            entry.emitter().complete();
+        } catch (Exception e) {
+            log.warn("closeStream error, sseUuid:{}", sseUuid, e);
+        } finally {
+            //Free the concurrency slot even if complete throws
+            unregister(sseUuid);
+        }
+    }
+
     // ==================== 静态方法（接受 uuid，通过 SpringUtil 获取 manager） ====================
 
     public static void parseAndSendPartialMsg(String uuid, String content) {
@@ -416,7 +444,7 @@ public class SseManager {
      * </p>
      */
     private static SseEmitter.SseEventBuilder multiLineEvent(String name, String content) {
-        // 规范换行 CRLF/CR -> LF，避免 \r\n 被当成两个换行 | Normalize CRLF/CR to LF
+        //Normalize CRLF/CR to LF so \r\n is not treated as two line breaks
         String normalized = content.replace("\r\n", "\n").replace("\r", "\n");
         String[] lines = normalized.split("\n", -1);
         SseEmitter.SseEventBuilder builder = SseEmitter.event();
@@ -494,7 +522,7 @@ public class SseManager {
             outputTokenCount = output != null ? output : 0;
         }
         log.info("StreamingChatModel token cost,uuid:{},inputTokenCount:{},outputTokenCount:{}", uuid, inputTokenCount, outputTokenCount);
-        //只在 tokenUsage 不为 null 时才缓存，避免 NPE | Only cache when tokenUsage is non-null to avoid NPE
+        //Cache only when tokenUsage is non-null to avoid NPE
         if (response.metadata() != null && response.metadata().tokenUsage() != null) {
             LLMTokenUtil.cacheTokenUsage(SpringUtil.getBean(StringRedisTemplate.class), uuid, response.metadata().tokenUsage());
         }
@@ -540,8 +568,7 @@ public class SseManager {
         }
         SseEntry entry = entries.get(sseUuid);
         if (entry == null) {
-            // Emitter not yet registered (e.g. rejected by checkOrComplete before startSse).
-            // Send error directly so the frontend still gets a response.
+            //Emitter may be unregistered (rejected before startSse); send directly so the client still gets a response
             try {
                 sseEmitter.send(SseEmitter.event().name(AdiConstant.SSEEventName.ERROR).data(Objects.toString(errorMsg, "")));
                 sseEmitter.complete();

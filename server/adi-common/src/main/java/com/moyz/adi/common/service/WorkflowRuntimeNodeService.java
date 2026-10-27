@@ -43,6 +43,26 @@ public class WorkflowRuntimeNodeService extends ServiceImpl<WorkflowRuntimeNodeM
         return result;
     }
 
+    /**
+     * Same rows as {@link #listByWfRuntimeId} but without the ThreadContext ownership filter —
+     * the resume continuation runs on an @Async thread where ThreadContext is absent,
+     * and the runtime's ownership was already enforced on the request thread (getForResume).
+     * Ordered by id so the replayed completedNodes list keeps execution order.
+     * resume 重建专用：@Async 线程无 ThreadContext，属主已在请求线程校验过；按 id 升序保持执行顺序。
+     */
+    public List<WfRuntimeNodeDto> listByRuntimeIdForResume(long runtimeId) {
+        List<WorkflowRuntimeNode> workflowNodeList = ChainWrappers.lambdaQueryChain(baseMapper)
+                .eq(WorkflowRuntimeNode::getWorkflowRuntimeId, runtimeId)
+                .eq(WorkflowRuntimeNode::getIsDeleted, false)
+                .orderByAsc(WorkflowRuntimeNode::getId)
+                .list();
+        List<WfRuntimeNodeDto> result = MPPageUtil.convertToList(workflowNodeList, WfRuntimeNodeDto.class);
+        for (WfRuntimeNodeDto dto : result) {
+            fillInputOutput(dto);
+        }
+        return result;
+    }
+
     public WfRuntimeNodeDto createByState(User user, long wfNodeId, long wfRuntimeId, WfNodeState state) {
         WorkflowRuntimeNode runtimeNode = new WorkflowRuntimeNode();
         runtimeNode.setUuid(state.getUuid());
@@ -98,9 +118,7 @@ public class WorkflowRuntimeNodeService extends ServiceImpl<WorkflowRuntimeNodeM
         }
         updateOne.setStatus(state.getProcessStatus());
         updateOne.setStatusRemark(state.getProcessStatusRemark());
-        //更新可观测指标 | Update observability metrics: persist metadata whenever available,
-        // regardless of whether durationMs is > 0, so token / model info is never silently dropped
-        // for sub-millisecond or cache-hit edge cases.
+        //Persist metrics whenever present; a durationMs-only guard would drop sub-millisecond or cache-hit token info
         if (state.getMetrics() != null) {
             updateOne.setDuration(NumberUtil.saturatedCastToInt(state.getMetrics().getDurationMs()));
             updateOne.setMetadata(state.getMetrics());

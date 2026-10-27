@@ -1,6 +1,7 @@
 package com.moyz.adi.chat.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.workflow.WfRuntimeNodeDto;
 import com.moyz.adi.common.dto.workflow.WfRuntimeResp;
 import com.moyz.adi.common.dto.workflow.WorkflowResumeReq;
@@ -10,8 +11,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.Resource;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
@@ -26,10 +29,10 @@ public class WorkflowRuntimeController {
     @Resource
     private WorkflowStarter workflowStarter;
 
-    @Operation(summary = "接收用户输入以继续执行剩余流程 | Receive User Input to Resume Workflow")
-    @PostMapping(value = "/resume/{runtimeUuid}")
-    public void resume(@PathVariable String runtimeUuid, @RequestBody WorkflowResumeReq resumeReq) {
-        workflowStarter.resumeFlow(runtimeUuid, resumeReq.getFeedbackContent());
+    @Operation(summary = "接收用户输入以继续执行剩余流程(新 SSE 流返回) | Receive User Input to Resume Workflow (new SSE stream)")
+    @PostMapping(value = "/resume/{runtimeUuid}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter resume(@PathVariable String runtimeUuid, @RequestBody WorkflowResumeReq resumeReq) {
+        return workflowStarter.resume(ThreadContext.getCurrentUser(), runtimeUuid, resumeReq.getFeedbackContent());
     }
 
     @GetMapping("/page")

@@ -46,6 +46,11 @@ AIDeepIn is an AI application platform integrating chat, knowledge base (RAG), w
 └─────────────────────┴─────────────────────┴─────────────────────────────────┘
 ```
 
+### 1.1 Deployment Topologies
+
+- **Single instance (default)**: works out of the box; file storage uses the instance's local disk (`local.*` config, default `/data/aideepin`).
+- **Multiple instances (horizontal scaling)**: the application tier is stateless, so instances can sit behind a load balancer; **file storage must be switched to Aliyun OSS** (`FileOperatorContext` supports local-disk/OSS switching), otherwise the per-instance local disks are mutually invisible.
+
 ## 2. Business Modules
 
 ### 2.1 AI Chat

@@ -79,6 +79,120 @@ async function resetInputs() {
   })
 }
 
+// Shared stream-event handlers for the initial run and every resume round (the resume stream replays the same event vocabulary)
+function buildRunStreamHandlers(nodeUuidToRuntimeNodeUuid: Map<string, string>): {
+  thinkingDataReceived: (chunk: string) => void
+  messageReceived: (chunk: string, eventName: string) => void
+  doneCallback: (chunk: string) => void
+  errorCallback: (error: string) => void
+} {
+  return {
+    thinkingDataReceived: (chunk) => {
+      // 处理思考数据
+      console.log('Thinking data received:', chunk)
+    },
+    messageReceived: (chunk, event) => {
+      const eventName = event || ''
+      try {
+        if (eventName.includes('[NODE_RUN_')) {
+          const nodeUuid = eventName.replace('[NODE_RUN_', '').replace(']', '')
+          console.log(`${nodeUuid}开始运行`)
+          const runtimeNode = JSON.parse(chunk) as Workflow.WfRuntimeNode
+          nodeUuidToRuntimeNodeUuid.set(nodeUuid, runtimeNode.uuid)
+          wfStore.appendRuntimeNode(
+            wfRuntimeUuid.value,
+            runtimeNode,
+          )
+          runtimeNodes.push(runtimeNode)
+        } else if (eventName.includes('[NODE_CHUNK_')) {
+          const nodeUuid = eventName.replace('[NODE_CHUNK_', '').replace(']', '')
+          const runtimeNodeUuid = nodeUuidToRuntimeNodeUuid.get(nodeUuid) || ''
+          wfStore.appendChunkToRuntimeNode(
+            wfRuntimeUuid.value,
+            runtimeNodeUuid,
+            chunk,
+          )
+        } else if (eventName.includes('[NODE_INPUT_')) {
+          const nodeUuid = eventName.replace('[NODE_INPUT_', '').replace(']', '')
+          const runtimeNodeUuid = nodeUuidToRuntimeNodeUuid.get(nodeUuid) || ''
+          wfStore.appendInputToRuntimeNode(
+            wfRuntimeUuid.value,
+            runtimeNodeUuid,
+            chunk,
+          )
+        } else if (eventName.includes('[NODE_OUTPUT_')) {
+          const nodeUuid = eventName.replace('[NODE_OUTPUT_', '').replace(']', '')
+          const runtimeNodeUuid = nodeUuidToRuntimeNodeUuid.get(nodeUuid) || ''
+          wfStore.appendOutputToRuntimeNode(
+            wfRuntimeUuid.value,
+            runtimeNodeUuid,
+            chunk,
+          )
+        } else if (eventName.includes('[NODE_WAIT_FEEDBACK_BY_')) {
+          humanFeedback.value = true
+          humanFeedbackTip.value = chunk || ''
+          //New round: clear the previous submission and re-enable the box (submitting stayed true)
+          humanFeedbackContent.value = ''
+          submitting.value = false
+          ms.info(humanFeedbackTip.value)
+        } else if (eventName.includes('[NODE_METRICS_')) {
+          const nodeUuid = eventName.replace('[NODE_METRICS_', '').replace(']', '')
+          const runtimeNodeUuid = nodeUuidToRuntimeNodeUuid.get(nodeUuid) || ''
+          const metrics = JSON.parse(chunk) as Workflow.AnyNodeMetrics
+          wfStore.updateRuntimeNodeMetrics(wfRuntimeUuid.value, runtimeNodeUuid, metrics)
+        } else if (eventName.includes('[RUNTIME_METRICS]')) {
+          const metrics = JSON.parse(chunk) as Workflow.RuntimeMetrics
+          wfStore.updateRuntimeMetrics(wfRuntimeUuid.value, metrics)
+        }
+      } catch (error) {
+        console.error(error)
+      }
+    },
+    doneCallback: (chunk) => {
+      nextTick(() => {
+        submitting.value = false
+        humanFeedback.value = false
+        humanFeedbackTip.value = ''
+        humanFeedbackContent.value = ''
+        resetInputs()
+        wfStore.updateSuccess(currWfUuid, wfRuntimeUuid.value, chunk)
+        runtimeErrorMsg.value = ''
+        ms.success(t('workflow.runSuccess'))
+        emit('runDone')
+      })
+    },
+    errorCallback: (error) => {
+      //A [WF_RESUME_*] prefix marks a soft rejection: duplicate = light hint, expired = terminal with a localized message
+      if (error?.includes('[WF_RESUME_DUPLICATE]')) {
+        ms.warning(t('workflow.resumeDuplicateSubmit'))
+        return
+      }
+      if (error?.includes('[WF_RESUME_EXPIRED]')) {
+        submitting.value = false
+        humanFeedback.value = false
+        humanFeedbackTip.value = ''
+        humanFeedbackContent.value = ''
+        resetInputs()
+        const expiredMsg = t('workflow.resumeTimeout')
+        ms.error(expiredMsg)
+        wfStore.updateErrorMsg(currWfUuid, wfRuntimeUuid.value, expiredMsg)
+        runtimeErrorMsg.value = expiredMsg
+        emit('runError', expiredMsg)
+        return
+      }
+      submitting.value = false
+      humanFeedback.value = false
+      humanFeedbackTip.value = ''
+      humanFeedbackContent.value = ''
+      resetInputs()
+      ms.error(`${t('common.systemTip')}${error}`)
+      wfStore.updateErrorMsg(currWfUuid, wfRuntimeUuid.value, error)
+      runtimeErrorMsg.value = error || ''
+      emit('runError', error)
+    },
+  }
+}
+
 async function run() {
   if (!authStore.checkLoginOrShow())
     return
@@ -140,82 +254,7 @@ async function run() {
           [wfRuntime],
         )
       },
-      thinkingDataReceived: (chunk) => {
-        // 处理思考数据
-        console.log('Thinking data received:', chunk)
-      },
-      messageReceived: (chunk, event) => {
-        const eventName = event || ''
-        try {
-          if (eventName.includes('[NODE_RUN_')) {
-            const nodeUuid = eventName.replace('[NODE_RUN_', '').replace(']', '')
-            console.log(`${nodeUuid}开始运行`)
-            const runtimeNode = JSON.parse(chunk) as Workflow.WfRuntimeNode
-            nodeUuidToRuntimeNodeUuid.set(nodeUuid, runtimeNode.uuid)
-            wfStore.appendRuntimeNode(
-              wfRuntimeUuid.value,
-              runtimeNode,
-            )
-            runtimeNodes.push(runtimeNode)
-          } else if (eventName.includes('[NODE_CHUNK_')) {
-            const nodeUuid = eventName.replace('[NODE_CHUNK_', '').replace(']', '')
-            const runtimeNodeUuid = nodeUuidToRuntimeNodeUuid.get(nodeUuid) || ''
-            wfStore.appendChunkToRuntimeNode(
-              wfRuntimeUuid.value,
-              runtimeNodeUuid,
-              chunk,
-            )
-          } else if (eventName.includes('[NODE_INPUT_')) {
-            const nodeUuid = eventName.replace('[NODE_INPUT_', '').replace(']', '')
-            const runtimeNodeUuid = nodeUuidToRuntimeNodeUuid.get(nodeUuid) || ''
-            wfStore.appendInputToRuntimeNode(
-              wfRuntimeUuid.value,
-              runtimeNodeUuid,
-              chunk,
-            )
-          } else if (eventName.includes('[NODE_OUTPUT_')) {
-            const nodeUuid = eventName.replace('[NODE_OUTPUT_', '').replace(']', '')
-            const runtimeNodeUuid = nodeUuidToRuntimeNodeUuid.get(nodeUuid) || ''
-            wfStore.appendOutputToRuntimeNode(
-              wfRuntimeUuid.value,
-              runtimeNodeUuid,
-              chunk,
-            )
-          } else if (eventName.includes('[NODE_WAIT_FEEDBACK_BY_')) {
-            humanFeedback.value = true
-            humanFeedbackTip.value = chunk || ''
-            ms.info(humanFeedbackTip.value)
-          } else if (eventName.includes('[NODE_METRICS_')) {
-            const nodeUuid = eventName.replace('[NODE_METRICS_', '').replace(']', '')
-            const runtimeNodeUuid = nodeUuidToRuntimeNodeUuid.get(nodeUuid) || ''
-            const metrics = JSON.parse(chunk) as Workflow.AnyNodeMetrics
-            wfStore.updateRuntimeNodeMetrics(wfRuntimeUuid.value, runtimeNodeUuid, metrics)
-          } else if (eventName.includes('[RUNTIME_METRICS]')) {
-            const metrics = JSON.parse(chunk) as Workflow.RuntimeMetrics
-            wfStore.updateRuntimeMetrics(wfRuntimeUuid.value, metrics)
-          }
-        } catch (error) {
-          console.error(error)
-        }
-      },
-      doneCallback: (chunk) => {
-        nextTick(() => {
-          submitting.value = false
-          resetInputs()
-          wfStore.updateSuccess(currWfUuid, wfRuntimeUuid.value, chunk)
-          runtimeErrorMsg.value = ''
-          ms.success(t('workflow.runSuccess'))
-          emit('runDone')
-        })
-      },
-      errorCallback: (error) => {
-        submitting.value = false
-        resetInputs()
-        ms.error(`${t('common.systemTip')}${error}`)
-        wfStore.updateErrorMsg(currWfUuid, wfRuntimeUuid.value, error)
-        runtimeErrorMsg.value = error || ''
-        emit('runError', error)
-      },
+      ...buildRunStreamHandlers(nodeUuidToRuntimeNodeUuid),
     })
   } catch (error: any) {
     const errorMessage = error?.message ?? t('common.wrong')
@@ -225,19 +264,30 @@ async function run() {
 }
 
 async function resume() {
+  //No submitting guard here: it stays true during the feedback wait; duplicates are rejected by the backend CAS
   submitting.value = true
+  showCurrentExecution.value = true
+  tabObj.value.tab = `${tabObj.value.defaultTab} ↓`
+  controller = new AbortController()
+  //The box stays read-only showing the submitted content until the next round or a terminal callback
+  const nodeUuidToRuntimeNodeUuid = new Map<string, string>()
   try {
-    await api.workflowRuntimeResume({
-      runtimeUuid: wfRuntimeUuid.value,
-      feedbackContent: humanFeedbackContent.value,
-    },
-    )
-  } catch (e) {
-    ms.error(`${t('common.systemTip')}${e}`)
-  } finally {
-    humanFeedback.value = false
-    humanFeedbackTip.value = ''
-    humanFeedbackContent.value = ''
+    await api.workflowRuntimeResumeSse({
+      options: {
+        runtimeUuid: wfRuntimeUuid.value,
+        feedbackContent: humanFeedbackContent.value,
+      },
+      signal: controller.signal,
+      startCallback: () => {
+        //The resume stream never emits [START] (the runtime state is already known)
+      },
+      ...buildRunStreamHandlers(nodeUuidToRuntimeNodeUuid),
+    })
+  }
+  catch (error: any) {
+    const errorMessage = error?.message ?? t('common.wrong')
+    ms.error(errorMessage)
+    submitting.value = false
   }
 }
 
@@ -362,18 +412,23 @@ onUnmounted(() => {
       <!-- 流程执行过程中用户的输入 -->
       <template v-if="humanFeedback">
         <div class="flex flex-col p-2 w-full space-y-2">
-          <div class="flex bg-gray-100 px-2 py-1 rounded-md">
+          <!-- 暂停提示与输入提示只在可编辑时显示；执行中为只读态，仅展示已提交内容 -->
+          <!-- Paused/input tips show only while editable; during execution the box is read-only -->
+          <div v-if="!submitting" class="flex bg-gray-100 px-2 py-1 rounded-md">
             <div class="text-base text-red-500">
               {{ t('workflow.flowPausedWaitingInput') }}
             </div>
           </div>
           <div class="flex flex-col w-full">
-            <div v-if="humanFeedbackTip" class="text-sm leading-8">
+            <div v-if="humanFeedbackTip && !submitting" class="text-sm leading-8">
               {{ t('workflow.inputTip') }}{{ humanFeedbackTip }}
             </div>
-            <NInput v-model:value="humanFeedbackContent" type="textarea" :autosize="{ minRows: 2, maxRows: 5 }" />
+            <NInput
+              v-model:value="humanFeedbackContent" type="textarea" :autosize="{ minRows: 2, maxRows: 5 }"
+              :disabled="submitting"
+            />
           </div>
-          <div class="flex justify-end">
+          <div v-if="!submitting" class="flex justify-end">
             <NButton type="primary" @click="resume">
               {{ t('common.submit') }}
             </NButton>

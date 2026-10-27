@@ -6,6 +6,7 @@ import com.moyz.adi.common.util.UuidUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.stereotype.Component;
@@ -42,7 +43,7 @@ public class DistributeLockAspect {
         boolean lockAndContinue = checkAndLock(key, clientId, expireInSeconds, continueIfAcquireFail);
         if (!lockAndContinue) {
             log.warn("This request is ignored");
-            return false;
+            return lockFailReturnValue(joinPoint);
         }
         try {
             return joinPoint.proceed();
@@ -50,6 +51,29 @@ public class DistributeLockAspect {
             boolean unlockResult = redisTemplateUtil.unlock(key, clientId);
             log.info("unlock:{},key:{},clientId:{}", unlockResult, key, clientId);
         }
+    }
+
+    /**
+     * 锁失败时的占位返回值，按目标方法返回类型匹配：void/Void 与对象类型返回 null，boolean 返回 false；
+     * 其余原始类型无法用 null 占位（调用方拆箱即 NPE），明确报错。
+     * <p>
+     * Lock-fail placeholder matching the target's return type so the aspect is safe on void methods (scheduled jobs):
+     * void/Void and object types get null, boolean gets false.
+     * Other primitives cannot be null — returning null would surface as an unboxing NPE at the caller, so fail fast with a clear message instead.
+     * </p>
+     */
+    private Object lockFailReturnValue(ProceedingJoinPoint joinPoint) {
+        if (joinPoint.getSignature() instanceof MethodSignature signature) {
+            Class<?> returnType = signature.getMethod().getReturnType();
+            if (boolean.class == returnType) {
+                return false;
+            }
+            if (returnType.isPrimitive()) {
+                throw new UnsupportedOperationException(
+                        "@DistributeLock does not support primitive return types other than boolean: " + returnType.getName());
+            }
+        }
+        return null;
     }
 
     /**

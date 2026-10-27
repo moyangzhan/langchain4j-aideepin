@@ -491,6 +491,11 @@ public class AdiConstant {
         public static final String DEFAULT_OUTPUT_PARAM_NAME = "output";
         public static final String DEFAULT_ERROR_OUTPUT_PARAM_NAME = "error_msg";
         public static final String HUMAN_FEEDBACK_KEY = "human_feedback";
+        /**
+         * 超时回收写入 status_remark 的固定标记；resume 拒绝时据此区分"超时回收"与普通失败。
+         * Stable marker the expiry job writes into status_remark; resume rejections read it to tell an expired run from an ordinary failure.
+         */
+        public static final String WAITING_INPUT_TIMEOUT_MARK = "waiting user input timeout";
         public static final int NODE_PROCESS_STATUS_READY = 1;
         public static final int NODE_PROCESS_STATUS_DOING = 2;
         public static final int NODE_PROCESS_STATUS_SUCCESS = 3;

@@ -148,4 +148,17 @@ public class RedisKeyConstant {
     public static final String WORKFLOW_COMPONENT_KEY = "workflow:component";
 
     public static final String WORKFLOW_COPY_DOING = "workflow:copy:doing:{0}";
+
+    /**
+     * 定时任务分布式锁（多实例防重复执行）| Distributed locks for scheduled jobs
+     * (dedupe across instances; lock holder runs, others skip this firing)
+     */
+    public static final String LOCK_JOBS_HEALTH_CHECK = "lock:jobs:health-check";
+
+
+    public static final String LOCK_JOBS_KB_STATISTIC = "lock:jobs:kb-statistic";
+
+    public static final String LOCK_JOBS_INDEX_POLL = "lock:jobs:index-poll";
+
+    public static final String LOCK_JOBS_WF_EXPIRE = "lock:jobs:wf-expire";
 }

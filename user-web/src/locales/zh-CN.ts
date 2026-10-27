@@ -547,6 +547,8 @@ export default {
     save: '保存',
     runDetail: '执行详情',
     runSuccess: '执行成功',
+    resumeDuplicateSubmit: '该运行已在执行中，重复提交已忽略',
+    resumeTimeout: '等待输入已超时，运行已自动结束',
     startFailed: '启动失败',
     flowRunDetail: '流程执行详情',
     pleaseUploadFile: '请上传文件',

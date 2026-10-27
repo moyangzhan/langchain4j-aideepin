@@ -547,6 +547,8 @@ export default {
     save: 'Save',
     runDetail: 'Execution Detail',
     runSuccess: 'Execution successful',
+    resumeDuplicateSubmit: 'The run is already executing; duplicate submit ignored',
+    resumeTimeout: 'Waiting for input timed out; the run was closed automatically',
     startFailed: 'Start failed',
     flowRunDetail: 'Flow Execution Detail',
     pleaseUploadFile: 'Please upload a file',

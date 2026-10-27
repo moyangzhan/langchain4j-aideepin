@@ -2,7 +2,9 @@ package com.moyz.adi.common.service;
 
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
+import com.moyz.adi.common.annotation.DistributeLock;
 import com.moyz.adi.common.cosntant.AdiConstant;
+import com.moyz.adi.common.cosntant.RedisKeyConstant;
 import com.moyz.adi.common.dto.IndexFailureDto;
 import com.moyz.adi.common.entity.DocumentSegment;
 import com.moyz.adi.common.entity.IndexTask;
@@ -291,6 +293,7 @@ public class IndexTaskService {
      * (process alive but stuck). Recover first, force-fail second — when both hit, treat as
      * crash (auto rerun over manual retry). Re-trigger consumption if anything was done.
      */
+    @DistributeLock(redisKey = RedisKeyConstant.LOCK_JOBS_INDEX_POLL, expireInSeconds = 300, continueIfAcquireFail = false)
     @Scheduled(fixedDelay = 60_000)
     public void pollStale() {
         try {

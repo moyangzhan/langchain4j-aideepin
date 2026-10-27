@@ -22,6 +22,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.bsc.async.AsyncGenerator;
 import org.bsc.langgraph4j.*;
+import org.bsc.langgraph4j.checkpoint.Checkpoint;
 import org.bsc.langgraph4j.checkpoint.MemorySaver;
 import org.bsc.langgraph4j.langchain4j.generators.StreamingChatGenerator;
 import org.bsc.langgraph4j.serializer.std.ObjectStreamStateSerializer;
@@ -32,6 +33,8 @@ import com.moyz.adi.common.helper.SseManager;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.WorkflowConstant.*;
@@ -52,6 +55,12 @@ public class WorkflowEngine {
     private final SseManager sseManager;
     private final WorkflowRuntimeService workflowRuntimeService;
     private final WorkflowRuntimeNodeService workflowRuntimeNodeService;
+    /**
+     * In-execution saver: MemorySaver for a fresh run, PreloadedSaver for a resumed one.
+     * Kept as a field so the interruption branch can read the latest checkpoint for the runtime row.
+     * 执行期 saver（首轮 MemorySaver / 续跑 PreloadedSaver），中断分支从中取最新快照落库。
+     */
+    private MemorySaver saver;
 
     private final ObjectStreamStateSerializer<WfNodeState> stateSerializer = new ObjectStreamStateSerializer<>(WfNodeState::new);
     private final Map<String, List<StateGraph<WfNodeState>>> stateGraphNodes = new HashMap<>();
@@ -64,11 +73,10 @@ public class WorkflowEngine {
     private WfState wfState;
     private WfRuntimeResp wfRuntimeResp;
     /**
-     * Wall-clock start of this run (epoch millis), captured once on entry. Used to compute total
-     * runtime duration at terminal status — sum-of-node durations would inflate when parallel
-     * branches execute concurrently.
+     * 运行实例的创建时间（epoch 毫秒），duration 计算的起点。
+     * The runtime row's create time (epoch millis); the anchor for computing the run's duration.
      */
-    private long runStartedMillis;
+    private long runtimeCreateTime;
 
     public WorkflowEngine(
             Workflow workflow,
@@ -90,7 +98,6 @@ public class WorkflowEngine {
     public void run(User user, List<ObjectNode> userInputs, String sseUuid) {
         this.user = user;
         this.sseUuid = sseUuid;
-        this.runStartedMillis = System.currentTimeMillis();
         log.info("WorkflowEngine run,userId:{},workflowUuid:{},userInputs:{}", user.getId(), workflow.getUuid(), userInputs);
         if (!this.workflow.getIsEnable()) {
             sseManager.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage(ErrorEnum.A_WF_DISABLED.getInfo()));
@@ -99,37 +106,21 @@ public class WorkflowEngine {
 
         Long workflowId = this.workflow.getId();
         this.wfRuntimeResp = workflowRuntimeService.create(user, workflowId);
+        this.runtimeCreateTime = toEpochMillis(wfRuntimeResp.getCreateTime());
         this.sseManager.startSse(user, sseUuid, JsonUtil.toJson(wfRuntimeResp));
 
         String runtimeUuid = this.wfRuntimeResp.getUuid();
         try {
-            Pair<WorkflowNode, Set<WorkflowNode>> startAndEnds = findStartAndEndNode();
-            WorkflowNode startNode = startAndEnds.getLeft();
+            WorkflowNode startNode = findStartAndEndNode().getLeft();
             List<NodeIOData> wfInputs = getAndCheckUserInput(userInputs, startNode);
-            //工作流运行实例状态
             this.wfState = new WfState(user, wfInputs, runtimeUuid);
             workflowRuntimeService.updateInput(this.wfRuntimeResp.getId(), wfState);
-            CompileNode rootCompileNode = new CompileNode();
-            rootCompileNode.setId(startNode.getUuid());
 
-            //构建整棵树（检测节点重复访问防止无限循环）
-            Map<String, Integer> nodeVisitCount = new HashMap<>();
-            buildCompileNode(rootCompileNode, startNode, nodeVisitCount);
-
-//Main state graph
-            //主状态图
-            StateGraph<WfNodeState> mainStateGraph = new StateGraph<>(stateSerializer);
-            this.wfState.addEdge(START, startNode.getUuid());
-            //构建包括所有节点的状态图
-            buildStateGraph(null, mainStateGraph, rootCompileNode);
-
-            MemorySaver saver = new MemorySaver();
-            CompileConfig compileConfig = CompileConfig.builder()
-                    .checkpointSaver(saver)
-                    .interruptBefore(wfState.getInterruptNodes().toArray(String[]::new))
-                    .build();
-            app = mainStateGraph.compile(compileConfig);
+            this.saver = new MemorySaver();
+            compileApp(startNode, this.saver);
+            //Pin the thread id to the runtime uuid so concurrent runs never collide on one checkpoint key
             RunnableConfig invokeConfig = RunnableConfig.builder()
+                    .threadId(runtimeUuid)
                     .build();
             exe(invokeConfig, false);
         } catch (Throwable e) {
@@ -137,53 +128,153 @@ public class WorkflowEngine {
         }
     }
 
+    /**
+     * LocalDateTime 转 epoch 毫秒，null 兜底当前时间 | Epoch millis; a null falls back to now.
+     */
+    static long toEpochMillis(LocalDateTime time) {
+        return null == time ? System.currentTimeMillis() : time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+    }
+
     private void exe(RunnableConfig invokeConfig, boolean resume) {
-//Do not use langgraph4j state update methods, no need to pass input
-        //不使用langgraph4j state的update相关方法，无需传入input
+        //stream(null) resumes from the checkpoint; an empty map starts a fresh run
         AsyncGenerator<NodeOutput<WfNodeState>> outputs = app.stream(resume ? null : Map.of(), invokeConfig);
         streamingResult(wfState, outputs, sseUuid);
 
         StateSnapshot<WfNodeState> stateSnapshot = app.getState(invokeConfig);
         String nextNode = stateSnapshot.config().nextNode().orElse("");
-        //还有下个节点，表示进入中断状态，等待用户输入后继续执行
+        //A non-END next node means an interruption waiting for user feedback
         if (StringUtils.isNotBlank(nextNode) && !nextNode.equalsIgnoreCase(END)) {
             String intTip = WorkflowUtil.getHumanFeedbackTip(nextNode, wfNodes);
-            SseManager.parseAndSendPartialMsg(sseUuid, "[NODE_WAIT_FEEDBACK_BY_" + nextNode + "]", intTip);
-            InterruptedFlow.put(wfState.getUuid(), this);
-            //更新状态
+            //Ordering: persist -> signal -> close
             wfState.setProcessStatus(WORKFLOW_PROCESS_STATUS_WAITING_INPUT);
-            WorkflowRuntime interruptedRuntime = workflowRuntimeService.updateOutput(wfRuntimeResp.getId(), wfState, runStartedMillis, computeTokenSummary());
-            pushRuntimeMetrics(interruptedRuntime);
+            byte[] checkpointBlob = snapshotCheckpoint(invokeConfig);
+            WorkflowRuntime interruptedRuntime = workflowRuntimeService.updateOutputWithCheckpoint(wfRuntimeResp.getId(), wfState, runtimeCreateTime, computeTokenSummary(), checkpointBlob);
+            //A dead connection must not escalate to FAIL; WAITING_INPUT is already persisted
+            try {
+                SseManager.parseAndSendPartialMsg(sseUuid, "[NODE_WAIT_FEEDBACK_BY_" + nextNode + "]", intTip);
+                pushRuntimeMetrics(interruptedRuntime);
+            } catch (Exception e) {
+                log.warn("Send waiting-feedback events failed (client gone?), runtime:{}", wfState.getUuid(), e);
+            }
+            //Close without [DONE] (run-success in the client contract); this frees the SSE slot for the resume stream
+            sseManager.closeStream(sseUuid);
         } else {
-            WorkflowRuntime updatedRuntime = workflowRuntimeService.updateOutput(wfRuntimeResp.getId(), wfState, runStartedMillis, computeTokenSummary());
-            // Push the terminal metrics snapshot before completing the stream
+            WorkflowRuntime updatedRuntime = workflowRuntimeService.updateOutputWithCheckpoint(wfRuntimeResp.getId(), wfState, runtimeCreateTime, computeTokenSummary(), null);
             pushRuntimeMetrics(updatedRuntime);
-            // updatedRuntime is null only if the runtime row was concurrently deleted; fall back
-            // to the in-memory wfState output so the client still gets a complete event.
+            //Null only if the row was concurrently deleted; fall back to the in-memory output
             ObjectNode output = updatedRuntime != null ? updatedRuntime.getOutput() : null;
             sseManager.sendComplete(user.getId(), sseUuid, JsonUtil.toJson(output != null ? output : JsonUtil.createObjectNode()));
-            InterruptedFlow.remove(wfState.getUuid());
         }
     }
 
     /**
-     * 中断流程等待用户输入时，会进行暂停状态，用户输入后调用本方法执行流程剩余部分
+     * 从持久化 checkpoint 重建引擎并续跑剩余流程，输出走 resume 请求自带的新流
+     * <p>
+     * Rebuild the engine from the persisted checkpoint and continue the remaining flow; output goes to the resume request's own NEW SSE stream.
+     * Any instance can serve a resume — the graph is rebuilt deterministically from the CURRENT workflow definition
+     * (an edit during the wait window that breaks node identity fails the resume cleanly),
+     * the business skeleton (completedNodes wiring + token metrics) is replayed from runtime_node rows,
+     * and graph position / routing keys come from the checkpoint blob.
+     * </p>
      *
-     * @param userInput 用户输入
+     * @param user            当前用户 | current user
+     * @param runtime         等待输入的运行行（含 id/uuid/createTime） | the waiting runtime row
+     * @param checkpointBlob  序列化快照 | serialized checkpoint blob
+     * @param runtimeNodeDtos 已完成节点行（回放数据源，按执行顺序） | completed node rows (execution order)
+     * @param userInput       用户反馈 | user feedback
+     * @param sseUuid         resume 请求的流标识 | the resume request's stream id
      */
-    public void resume(String userInput) {
-        RunnableConfig invokeConfig = RunnableConfig.builder().build();
+    public void resume(User user, WorkflowRuntime runtime, byte[] checkpointBlob, List<WfRuntimeNodeDto> runtimeNodeDtos, String userInput, String sseUuid) {
+        this.user = user;
+        this.sseUuid = sseUuid;
+        this.runtimeCreateTime = toEpochMillis(runtime.getCreateTime());
+        WfRuntimeResp resp = new WfRuntimeResp();
+        resp.setId(runtime.getId());
+        resp.setUuid(runtime.getUuid());
+        this.wfRuntimeResp = resp;
+        String runtimeUuid = runtime.getUuid();
         try {
+            this.wfState = new WfState(user, new ArrayList<>(), runtimeUuid);
+            replayCompletedNodes(runtimeNodeDtos);
+
+            WorkflowNode startNode = findStartAndEndNode().getLeft();
+            Checkpoint checkpoint = WorkflowCheckpointCodec.fromBlob(checkpointBlob);
+            RunnableConfig invokeConfig = RunnableConfig.builder()
+                    .threadId(runtimeUuid)
+                    .build();
+            PreloadedSaver preloadedSaver = new PreloadedSaver(invokeConfig, checkpoint);
+            this.saver = preloadedSaver;
+            compileApp(startNode, preloadedSaver);
+            //No [START] on the resume stream; the client already holds the runtime state and would duplicate the run entry
             app.updateState(invokeConfig, Map.of(HUMAN_FEEDBACK_KEY, userInput), null);
             exe(invokeConfig, true);
         } catch (Throwable e) {
             errorWhenExe(e instanceof Exception ? (Exception) e : new RuntimeException(e));
-        } finally {
-            //有可能多次接收人机交互，待整个流程完全执行后才能删除
-            if (wfState.getProcessStatus() != WORKFLOW_PROCESS_STATUS_WAITING_INPUT) {
-                InterruptedFlow.remove(wfState.getUuid());
-            }
         }
+    }
+
+    /**
+     * 从 runtime_node 行回放已完成节点：inputs/outputs（节点接线数据源）与 metrics（token 聚合）。
+     * 图位置来自 checkpoint，不在此处。找不到定义行（等待期间工作流被编辑）则跳过该节点并告警
+     * ——下游引用取不到值时各自降级为 warn，属已接受边界。
+     * <p>
+     * Replay completed nodes from runtime_node rows: inputs/outputs (node wiring source) and metrics (token aggregation).
+     * Graph position comes from the checkpoint. A row whose definition is gone (workflow edited during the wait) is skipped with a warning.
+     * </p>
+     */
+    private void replayCompletedNodes(List<WfRuntimeNodeDto> runtimeNodeDtos) {
+        for (WfRuntimeNodeDto dto : runtimeNodeDtos) {
+            WorkflowNode wfNode = wfNodes.stream().filter(n -> n.getId().equals(dto.getNodeId())).findFirst().orElse(null);
+            if (null == wfNode) {
+                log.warn("Replay: workflow node row not found, runtimeNodeUuid:{},nodeId:{}", dto.getUuid(), dto.getNodeId());
+                continue;
+            }
+            WorkflowComponent wfComponent = components.stream().filter(c -> c.getId().equals(wfNode.getWorkflowComponentId())).findFirst().orElse(null);
+            if (null == wfComponent) {
+                log.warn("Replay: component not found, node uuid:{}", wfNode.getUuid());
+                continue;
+            }
+            WfNodeState nodeState = new WfNodeState();
+            nodeState.setUuid(dto.getUuid());
+            nodeState.setProcessStatus(NODE_PROCESS_STATUS_SUCCESS);
+            nodeState.setInputs(replayIO(dto.getInput()));
+            nodeState.setOutputs(replayIO(dto.getOutput()));
+            nodeState.setMetrics(null != dto.getMetadata() ? dto.getMetadata() : new NodeExecutionMetrics());
+            wfState.getCompletedNodes().add(WfNodeFactory.create(wfComponent, wfNode, wfState, nodeState));
+            wfState.getRuntimeNodes().add(dto);
+        }
+    }
+
+    /**
+     * 持久化的 {参数名: content} JSON 还原为 NodeIOData 列表，复用 WfNodeIODataUtil 的分型分发。
+     * Restore persisted {name: content} JSON into a NodeIOData list, reusing the typed dispatch.
+     */
+    private List<NodeIOData> replayIO(ObjectNode persisted) {
+        List<NodeIOData> result = new ArrayList<>();
+        if (null == persisted) {
+            return result;
+        }
+        persisted.fields().forEachRemaining(entry -> {
+            ObjectNode shaped = JsonUtil.createObjectNode();
+            shaped.put("name", entry.getKey());
+            shaped.set("content", entry.getValue());
+            try {
+                result.add(WfNodeIODataUtil.createNodeIOData(shaped));
+            } catch (Exception e) {
+                log.warn("Replay: skip unparsable io entry, name:{}", entry.getKey());
+            }
+        });
+        return result;
+    }
+
+    /**
+     * 从执行期 saver 取最新 checkpoint 序列化为 runtime 行 blob。
+     * Serialize the latest checkpoint from the in-execution saver for the runtime row.
+     */
+    private byte[] snapshotCheckpoint(RunnableConfig invokeConfig) {
+        Checkpoint checkpoint = saver.get(invokeConfig)
+                .orElseThrow(() -> new IllegalStateException("Checkpoint not found at interruption, runtime:" + wfState.getUuid()));
+        return WorkflowCheckpointCodec.toBlob(checkpoint);
     }
 
     /**
@@ -192,9 +283,7 @@ public class WorkflowEngine {
      */
     public Map<String, Object> blockingRun(User user, List<ObjectNode> userInputs) {
         this.user = user;
-        this.runStartedMillis = System.currentTimeMillis();
-        // Create a dummy sseUuid with a dummy emitter and immediately mark it completed,
-        // so all SSE send operations in runNode silently skip (COMPLETED_SSE cache check)
+        //Dummy emitter marked completed so SSE sends in runNode silently skip
         this.sseUuid = "blocking-" + com.moyz.adi.common.util.UuidUtil.createShort();
         SseEmitter dummyEmitter = new SseEmitter(0L);
         SpringUtil.getBean(com.moyz.adi.common.helper.SseManager.class).register(this.sseUuid, dummyEmitter);
@@ -206,53 +295,37 @@ public class WorkflowEngine {
 
         Long workflowId = this.workflow.getId();
         this.wfRuntimeResp = workflowRuntimeService.create(user, workflowId);
+        this.runtimeCreateTime = toEpochMillis(wfRuntimeResp.getCreateTime());
 
         String runtimeUuid = this.wfRuntimeResp.getUuid();
         try {
-            Pair<WorkflowNode, Set<WorkflowNode>> startAndEnds = findStartAndEndNode();
-            WorkflowNode startNode = startAndEnds.getLeft();
+            WorkflowNode startNode = findStartAndEndNode().getLeft();
             List<NodeIOData> wfInputs = getAndCheckUserInput(userInputs, startNode);
             this.wfState = new WfState(user, wfInputs, runtimeUuid);
+            workflowRuntimeService.updateInput(this.wfRuntimeResp.getId(), wfState);
+
+            this.saver = new MemorySaver();
+            compileApp(startNode, this.saver);
+            //Reject human feedback AFTER compilation (interruptNodes is populated by buildStateGraph)
             if (!wfState.getInterruptNodes().isEmpty()) {
                 throw new BaseException(ErrorEnum.A_PARAMS_ERROR);
             }
-            workflowRuntimeService.updateInput(this.wfRuntimeResp.getId(), wfState);
-
-            CompileNode rootCompileNode = new CompileNode();
-            rootCompileNode.setId(startNode.getUuid());
-
-            Map<String, Integer> nodeVisitCount = new HashMap<>();
-            buildCompileNode(rootCompileNode, startNode, nodeVisitCount);
-
-            StateGraph<WfNodeState> mainStateGraph = new StateGraph<>(stateSerializer);
-            this.wfState.addEdge(START, startNode.getUuid());
-            buildStateGraph(null, mainStateGraph, rootCompileNode);
-
-            MemorySaver saver = new MemorySaver();
-            CompileConfig compileConfig = CompileConfig.builder()
-                    .checkpointSaver(saver)
-                    .build();
-            app = mainStateGraph.compile(compileConfig);
-            RunnableConfig invokeConfig = RunnableConfig.builder().build();
-
-            // Synchronous invoke instead of streaming
+            RunnableConfig invokeConfig = RunnableConfig.builder().threadId(runtimeUuid).build();
             app.invoke(Map.of(), invokeConfig);
 
-            //Consume any streaming generators to ensure mapResult callbacks fire (e.g. token recording)
-            //消费流式生成器以确保 mapResult 回调被触发（如 token 记录）
+            //Drain streaming generators so mapResult callbacks fire (token recording)
             for (StreamingChatGenerator<AgentState> generator : wfState.getNodeToStreamingGenerator().values()) {
                 for (Object ignored : generator) {
-                    // drain the generator to trigger mapResult
                 }
             }
 
-            // Collect output from the last completed node (end node or final node)
+            //Output comes from the last completed node
             List<AbstractWfNode> completedNodes = wfState.getCompletedNodes();
             if (!completedNodes.isEmpty()) {
                 wfState.setOutput(completedNodes.get(completedNodes.size() - 1).getState().getOutputs());
             }
 
-            WorkflowRuntime updatedRuntime = workflowRuntimeService.updateOutput(wfRuntimeResp.getId(), wfState, runStartedMillis, computeTokenSummary());
+            WorkflowRuntime updatedRuntime = workflowRuntimeService.updateOutput(wfRuntimeResp.getId(), wfState, runtimeCreateTime, computeTokenSummary());
 
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("task_id", runtimeUuid);
@@ -264,7 +337,7 @@ public class WorkflowEngine {
         } catch (Throwable e) {
             log.error("blockingRun execution exception, workflowUuid:{}", workflow.getUuid(), e);
             String errorMsg = e.getMessage();
-            workflowRuntimeService.updateStatus(wfRuntimeResp.getId(), WORKFLOW_PROCESS_STATUS_FAIL, errorMsg, runStartedMillis, computeTokenSummary());
+            workflowRuntimeService.updateStatus(wfRuntimeResp.getId(), WORKFLOW_PROCESS_STATUS_FAIL, errorMsg, runtimeCreateTime, computeTokenSummary());
 
             Map<String, Object> errorResult = new LinkedHashMap<>();
             errorResult.put("message", errorMsg);
@@ -272,16 +345,50 @@ public class WorkflowEngine {
         }
     }
 
+    /**
+     * 构建+编译主状态图：从 startNode 展开编译树（检测节点重复访问防止无限循环），
+     * 注册全部节点/边，再以给定 saver（首轮 MemorySaver / 续跑 PreloadedSaver）与 interruptBefore 编译为可执行图，赋给 {@link #app}。
+     * run / resume / blockingRun 三入口共用。
+     * <p>
+     * Build and compile the main state graph shared by run / resume / blockingRun:
+     * expand the compile tree from startNode (with revisit detection against infinite loops), register all nodes/edges,
+     * then compile with the given saver (MemorySaver for a fresh run, PreloadedSaver for a resumed one) and interruptBefore into {@link #app}.
+     * </p>
+     *
+     * @param startNode 起始节点 | the start node
+     * @param saver     执行期检查点保存器 | in-execution checkpoint saver
+     */
+    private void compileApp(WorkflowNode startNode, MemorySaver saver) throws GraphStateException {
+        CompileNode rootCompileNode = new CompileNode();
+        rootCompileNode.setId(startNode.getUuid());
+
+        Map<String, Integer> nodeVisitCount = new HashMap<>();
+        buildCompileNode(rootCompileNode, startNode, nodeVisitCount);
+
+        StateGraph<WfNodeState> mainStateGraph = new StateGraph<>(stateSerializer);
+        this.wfState.addEdge(START, startNode.getUuid());
+        buildStateGraph(null, mainStateGraph, rootCompileNode);
+
+        CompileConfig compileConfig = CompileConfig.builder()
+                .checkpointSaver(saver)
+                .interruptBefore(wfState.getInterruptNodes().toArray(String[]::new))
+                .build();
+        app = mainStateGraph.compile(compileConfig);
+    }
+
     private void errorWhenExe(Exception e) {
         log.error("error", e);
         String errorMsg = e.getMessage();
+        //A null message (bare NPE) would break the contains() below; fall back to the exception class name
+        if (null == errorMsg) {
+            errorMsg = e.getClass().getSimpleName();
+        }
         if (errorMsg.contains("parallel node doesn't support conditional branch")) {
             errorMsg = "Parallel nodes cannot contain conditional branches";
         }
-        // Persist terminal snapshot (incl. already-consumed tokens) as best-effort; the SSE error
-        // MUST always reach the client even if persistence fails (DB unavailable, row gone, etc.).
+        //Best-effort terminal persist (clears the checkpoint); the SSE error must still reach the client
         try {
-            WorkflowRuntime failedRuntime = workflowRuntimeService.updateStatus(wfRuntimeResp.getId(), WORKFLOW_PROCESS_STATUS_FAIL, errorMsg, runStartedMillis, computeTokenSummary());
+            WorkflowRuntime failedRuntime = workflowRuntimeService.updateStatusWithCheckpoint(wfRuntimeResp.getId(), WORKFLOW_PROCESS_STATUS_FAIL, errorMsg, runtimeCreateTime, computeTokenSummary());
             pushRuntimeMetrics(failedRuntime);
         } catch (Throwable persistenceEx) {
             log.error("Failed to persist runtime failure status, sending SSE error anyway", persistenceEx);
@@ -289,11 +396,6 @@ public class WorkflowEngine {
         sseManager.sendErrorAndComplete(user.getId(), sseUuid, errorMsg);
     }
 
-    /**
-     * Push the runtime's terminal metrics snapshot to the client via SSE, so the run list can
-     * render stats for the just-finished run without a page refresh. No-op when no metrics have
-     * been persisted yet.
-     */
     /**
      * Aggregate input/output token totals from completed nodes' in-memory metrics, avoiding a DB
      * round-trip. Only LLM-typed nodes (llm, agent) contribute; other node types are skipped.
@@ -339,7 +441,6 @@ public class WorkflowEngine {
         try {
             WorkflowComponent wfComponent = components.stream().filter(item -> item.getId().equals(wfNode.getWorkflowComponentId())).findFirst().orElseThrow();
             AbstractWfNode abstractWfNode = WfNodeFactory.create(wfComponent, wfNode, wfState, nodeState);
-            //节点实例
             WfRuntimeNodeDto runtimeNodeDto = workflowRuntimeNodeService.createByState(user, wfNode.getId(), wfRuntimeResp.getId(), nodeState);
             wfState.getRuntimeNodes().add(runtimeNodeDto);
 
@@ -353,15 +454,14 @@ public class WorkflowEngine {
             }, (is) -> {
                 workflowRuntimeNodeService.updateOutput(runtimeNodeDto.getId(), nodeState);
 
-                //并行节点内部的节点执行结束后，需要主动向客户端发送输出结果
+                //Nodes inside parallel branches must push outputs to the client explicitly
                 String nodeUuid = wfNode.getUuid();
                 List<NodeIOData> nodeOutputs = nodeState.getOutputs();
                 for (NodeIOData output : nodeOutputs) {
                     log.info("callback node:{},output:{}", nodeUuid, output.getContent());
                     SseManager.parseAndSendPartialMsg(sseUuid, "[NODE_OUTPUT_" + nodeUuid + "]", JsonUtil.toJson(output));
                 }
-                //推送可观测指标（流式节点由 streamingResult 统一推送，因为 token 数据在流完成后才可用）
-                //Push observability metrics (streaming nodes are handled by streamingResult since token data is only available after stream completes)
+                //Push metrics here; streaming nodes are handled by streamingResult (tokens only available after completion)
                 if (nodeState.getMetrics() != null && nodeState.getMetrics().getDurationMs() > 0
                         && !wfState.getNodeToStreamingGenerator().containsKey(nodeUuid)) {
                     SseManager.parseAndSendPartialMsg(sseUuid, AdiConstant.SSEEventName.NODE_METRICS_PREFIX + nodeUuid + "]", JsonUtil.toJson(nodeState.getMetrics()));
@@ -375,8 +475,7 @@ public class WorkflowEngine {
             throw new BaseException(ErrorEnum.B_WF_RUN_ERROR);
         }
         resultMap.put("name", wfNode.getTitle());
-//langgraph4j state data is not stored, only metadata is stored
-        //langgraph4j state中的data不做数据存储，只存储元数据
+        //Store metadata only, never langgraph4j state data
         StreamingChatGenerator<AgentState> generator = wfState.getNodeToStreamingGenerator().get(wfNode.getUuid());
         if (null != generator) {
             resultMap.put("_streaming_messages", generator);
@@ -405,8 +504,7 @@ public class WorkflowEngine {
                     if (null != runtimeNodeDto) {
                         workflowRuntimeNodeService.updateOutput(runtimeNodeDto.getId(), abstractWfNode.getState());
                         wfState.setOutput(abstractWfNode.getState().getOutputs());
-                        //流式节点完成时推送可观测指标（token 数据此时才可用）
-                        //Push observability metrics when streaming node completes (token data available only now)
+                        //Push metrics when a streaming node completes (tokens only available now)
                         if (abstractWfNode.getState().getMetrics() != null && abstractWfNode.getState().getMetrics().getDurationMs() > 0) {
                             SseManager.parseAndSendPartialMsg(sseUuid, AdiConstant.SSEEventName.NODE_METRICS_PREFIX + out.node() + "]", JsonUtil.toJson(abstractWfNode.getState().getMetrics()));
                         }
@@ -596,8 +694,7 @@ public class WorkflowEngine {
                 addNodeToStateGraph(stateGraph, stateGraphNodeUuid);
             }
 
-//ConditionalEdge creation is handled separately
-            //ConditionalEdge 的创建另外处理
+            //Conditional edges are created separately
             if (Boolean.FALSE.equals(upstreamCompileNode.getConditional())) {
                 addEdgeToStateGraph(stateGraph, upstreamCompileNode.getId(), stateGraphNodeUuid);
             }
@@ -609,7 +706,7 @@ public class WorkflowEngine {
             for (CompileNode nextNode : nextNodes) {
                 buildStateGraph(compileNode, stateGraph, nextNode);
             }
-            //节点是"条件分支"或"分类"的情况下不支持并行执行，所以直接使用条件ConditionalEdge
+            //Conditional/classification nodes do not run in parallel; link them with conditional edges
             if (conditional) {
                 List<String> targets = nextNodes.stream().map(CompileNode::getId).toList();
                 Map<String, String> mappings = new HashMap<>();
@@ -658,8 +755,7 @@ public class WorkflowEngine {
                 .toList();
     }
 
-//Determine if node belongs to subgraph
-    //判断节点是否属于子图
+    //Determine if the node points to a parallel branch
     private boolean pointToParallelBranch(String nodeUuid) {
         int edgeCount = 0;
         for (WorkflowEdge edge : this.wfEdges) {
@@ -689,7 +785,6 @@ public class WorkflowEngine {
         stateGraph.addNode(stateGraphNodeUuid, node_async((state) -> runNode(wfNode, state)));
         stateGraphList.add(stateGraph);
 
-        //记录人机交互节点
         WorkflowComponent wfComponent = components.stream().filter(item -> item.getId().equals(wfNode.getWorkflowComponentId())).findFirst().orElseThrow();
         if (HUMAN_FEEDBACK.getName().equals(wfComponent.getName())) {
             this.wfState.addInterruptNode(stateGraphNodeUuid);

@@ -825,16 +825,17 @@ function workflowRun(params: {
   commonSseProcess(`/api/workflow/run/${params.options.uuid}`, params)
 }
 
-function workflowRuntimeResume<T = any>(params: {
-  runtimeUuid: string
-  feedbackContent: string
+function workflowRuntimeResumeSse(params: {
+  options: { runtimeUuid: string, feedbackContent: string }
+  signal?: AbortSignal
+  startCallback: (chunk: string) => void
+  messageReceived: (chunk: string, eventName: string) => void
+  thinkingDataReceived: (chunk: string) => void
+  doneCallback: (chunk: string) => void
+  errorCallback: (error: string) => void
 }) {
-  return post<T>({
-    url: `/workflow/runtime/resume/${params.runtimeUuid}`,
-    data: {
-      ...params,
-    },
-  })
+  //The resume request carries its own SSE stream; the interrupted original was closed without a terminal event
+  commonSseProcess(`/api/workflow/runtime/resume/${params.options.runtimeUuid}`, params)
 }
 
 function workflowComponents<T = any>() {
@@ -1039,7 +1040,7 @@ export default {
   workflowRuntimesClear,
   workflowOperators,
   workflowRuntimeDelete,
-  workflowRuntimeResume,
+  workflowRuntimeResumeSse,
   mcpSearch,
   userMcpList,
   userMcpSaveOrUpdate,
