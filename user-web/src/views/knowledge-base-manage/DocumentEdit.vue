@@ -4,6 +4,7 @@ import { NAlert, NBreadcrumb, NBreadcrumbItem, NButton, NCard, NCheckbox, NInput
 import type { UploadFileInfo } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 import { knowledgeBaseEmptyInfo, knowledgeBaseEmptyItem } from '@/utils/functions'
+import { SPLIT_STRATEGY } from '@/utils/constant'
 import { t } from '@/locales'
 import api from '@/api'
 
@@ -33,6 +34,16 @@ const segmentModeOptions = [
 // Remember the segment mode loaded from the server to detect a user switch on existing docs
 const originalSegmentMode = ref<string>('')
 const segmentModeChanged = computed(() => isEdit.value && !!originalSegmentMode.value && tmpItem.segmentMode !== originalSegmentMode.value)
+
+// 当前模式生效的分段配置（只读展示）：分段参数全部来自库级设置 curKb，本页零新请求
+// Effective segmentation config of the selected mode (read-only display), all from the KB-level curKb
+const segmentSize = computed(() => curKb.ingestMaxSegmentSize ?? 0)
+const splitStrategyText = computed(() => {
+  const value = curKb.ingestSplitStrategy
+  const label = SPLIT_STRATEGY.find(option => option.value === value)?.label ?? value ?? ''
+  const customSeparator = value === 'custom' ? curKb.ingestCustomSeparator : ''
+  return customSeparator ? `${label} ${customSeparator}` : label
+})
 
 // A new Q&A document may carry a pair file (xlsx/csv) submitted with the form in one
 // multipart request: parsed, imported and vectorized synchronously on save
@@ -158,6 +169,18 @@ onMounted(async () => {
             <div>{{ t('knowledgeBase.segmentModeTextTip') }}</div>
             <div>{{ t('knowledgeBase.segmentModeQaTip') }}</div>
             <div>{{ t('knowledgeBase.segmentModeParentChildTip') }}</div>
+          </div>
+          <!-- 当前模式生效的库级分段配置（按模式语义区分文案） -->
+          <div style="font-size: 12px; opacity: 0.7">
+            <div v-if="tmpItem.segmentMode === 'text'">
+              {{ t('knowledgeBase.segmentConfigText', { size: segmentSize, strategy: splitStrategyText }) }}
+            </div>
+            <div v-else-if="tmpItem.segmentMode === 'parent_child'">
+              {{ t('knowledgeBase.segmentConfigParentChild', { size: segmentSize, strategy: splitStrategyText }) }}
+            </div>
+            <div v-else-if="tmpItem.segmentMode === 'qa'">
+              {{ t('knowledgeBase.segmentConfigQa', { size: segmentSize }) }}
+            </div>
           </div>
           <NAlert
             v-if="segmentModeChanged || tmpItem.segmentMode === 'qa'"

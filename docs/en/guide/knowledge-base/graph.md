@@ -6,12 +6,11 @@ The graph index extracts **entities (vertices)** and **relations (edges)** from 
 
 ## Generating a Graph
 
-Graphs are extracted **per document**, consuming tokens of the base's [ingest model](manage.md#_3-document-index-settings-model). Three entry points:
+Graphs are extracted **per document**, consuming tokens of the base's [ingest model](manage.md#3-indexing-model-settings). Two entry points:
 
 | Entry | Where |
 |---|---|
 | Check "Graph" | The [index dialog](document.md#indexing) when importing |
-| **Graph** button | Document list actions (disabled until extracted) |
 | "Click to generate graph" | The [segment management](segment.md) page's document card |
 
 Using the segment page:
@@ -27,7 +26,7 @@ Using the segment page:
 
 ## Viewing the Graph
 
-1. Click **View graph** from the document list or segment management;
+1. Click **View graph** from the segment management page;
 2. The canvas shows vertices and relations;
 3. Large graphs load in pages: "Vertices {loaded}/{total}, relations {loaded}/{total}" with a **Load more** button; **Re-layout** re-arranges the canvas;
 4. Other states show hints ("extracting, refresh later" or "no graph data yet").

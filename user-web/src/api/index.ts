@@ -505,6 +505,12 @@ function knowledgeBaseIndexingCheck<T = any>() {
   })
 }
 
+function knowledgeBaseRebuild<T = any>(kbUuid: string, indexType: string) {
+  return post<T>({
+    url: `/knowledge-base/rebuild/${kbUuid}?indexType=${indexType}`,
+  })
+}
+
 function knowledgeBaseItemSearch<T>(currentPage: number, pageSize: number, kbUuid: string, keyword?: string) {
   const search = keyword === undefined ? '' : `keyword=${keyword}&`
   return get<T>({
@@ -560,6 +566,15 @@ function knowledgeBaseItemDelete<T = any>(uuid: string) {
   })
 }
 
+function knowledgeBaseItemDeleteBatch<T = any>(uuids: string[]) {
+  return post<T>({
+    url: '/document/del-batch',
+    data: {
+      uuids,
+    },
+  })
+}
+
 function knowledgeBaseItemToggleStatus<T = any>(uuid: string, isEnabled: boolean) {
   return post<T>({
     url: '/document/toggle-status',
@@ -570,6 +585,12 @@ function knowledgeBaseItemToggleStatus<T = any>(uuid: string, isEnabled: boolean
 function knowledgeBaseItemRetryIndex<T = any>(uuid: string) {
   return post<T>({
     url: `/document/retryIndex/${uuid}`,
+  })
+}
+
+function documentRebuild<T = any>(uuid: string, indexType: string) {
+  return post<T>({
+    url: `/document/rebuild/${uuid}?indexType=${indexType}`,
   })
 }
 
@@ -826,7 +847,7 @@ function workflowRun(params: {
 }
 
 function workflowRuntimeResumeSse(params: {
-  options: { runtimeUuid: string, feedbackContent: string }
+  options: { runtimeUuid: string; feedbackContent: string }
   signal?: AbortSignal
   startCallback: (chunk: string) => void
   messageReceived: (chunk: string, eventName: string) => void
@@ -834,7 +855,7 @@ function workflowRuntimeResumeSse(params: {
   doneCallback: (chunk: string) => void
   errorCallback: (error: string) => void
 }) {
-  //The resume request carries its own SSE stream; the interrupted original was closed without a terminal event
+  // The resume request carries its own SSE stream; the interrupted original was closed without a terminal event
   commonSseProcess(`/api/workflow/runtime/resume/${params.options.runtimeUuid}`, params)
 }
 
@@ -991,6 +1012,7 @@ export default {
   knowledgeBaseItemSaveOrUpdateWithFile,
   knowledgeBaseItemSearch,
   knowledgeBaseItemDelete,
+  knowledgeBaseItemDeleteBatch,
   knowledgeBaseItemToggleStatus,
   knowledgeBaseItemRetryIndex,
   documentIndexFailures,
@@ -1002,6 +1024,8 @@ export default {
   knowledgeBaseItemInfo,
   knowledgeBaseItemsIndexing,
   knowledgeBaseIndexingCheck,
+  knowledgeBaseRebuild,
+  documentRebuild,
   documentSegmentList,
   documentSegmentSaveOrUpdate,
   documentSegmentQuestionSaveOrUpdate,

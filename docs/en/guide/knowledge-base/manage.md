@@ -19,7 +19,7 @@ Open **Knowledge Base → Knowledge base management** — the "My knowledge base
 3. Save and return to the list.
 
 > [!TIP]
-> For a first base, only the **title** is required — start importing with defaults; splitting and retrieval settings can be changed later (splitting changes trigger a rebuild, see below).
+> For a first base, only the **title** is required — start importing with defaults; segmentation and retrieval settings can be changed later (segmentation changes take effect for subsequent indexing only; see below for rebuilding existing documents).
 
 ### 1. Basics
 
@@ -28,25 +28,30 @@ Open **Knowledge Base → Knowledge base management** — the "My knowledge base
 | Title | yes | Name of the knowledge base |
 | Description | no | Purpose, visible to others when public |
 | Public | no, default private | Public: visible and usable by everyone; private: creator only |
-| Strict mode | no, default lenient | In-app hint (translated): "Strict mode: strictly match the knowledge base; if there is no search result, return 'no answer' directly. Lenient mode: if there is no search result, pass the user's question to the LLM to continue." See [Overview](overview.md#strict-vs-lenient-mode) |
+| Strict mode | no, default lenient | Strict: returns "no answer" directly when nothing relevant is retrieved, never invents one; Lenient: hands the question to the LLM for a free-form answer when nothing is retrieved. See [Overview](overview.md#strict-vs-lenient-mode) |
 
-### 2. Document Index Settings (Vector)
+### 2. Document Segmentation Settings
+
+These parameters are **knowledge-base-level**; they apply to the segmentation of every document in the base (the document edit page shows the effective segmentation config read-only, per the document's segmentation mode).
 
 | Field | Description |
 |---|---|
-| Split overlap | Characters shared by adjacent segments (marked "applies to new indexing after change") — keeps boundary information intact |
-| Split strategy | Recursive / by paragraph / by line / by sentence / custom separator (required when custom, e.g. `\n\n`, `\n`) |
-| Max tokens per segment | Upper bound of a segment |
+| Segment overlap | Content shared by adjacent segments (marked "applies to new indexing after change") — keeps boundary information intact; validated on save to be **smaller than the max segment size** (the effective backend cap is half of it) |
+| Segmentation strategy | Recursive / by paragraph / by line / by sentence / custom separator (required when custom, e.g. `\n\n`, `\n`) |
+| Max segment size (tokens) | Upper bound of a segment, range 100–10000; longer content keeps splitting; **Q&A generation also splits the source text at this size** |
 | Token estimator | OpenAI / Qwen / Huggingface counting conventions — match your embedding model family |
+
+> [!NOTE]
+> Saving a change to these parameters **takes effect for subsequent indexing only** (newly uploaded documents and later re-splits follow the new parameters) and **never affects existing segments**; generated Q&A pairs pick up the new parameters only when regenerated.
+> Rebuild Vectors only recomputes vectors and never re-splits segments (see [Import Documents · Full Rebuild](document.md#full-rebuild)); to re-split one document with the new parameters, edit that document (change its content or switch its mode).
+> How the segmentation settings combine with the document-level segment mode: [Overview · Segmentation Settings vs Segment Mode](overview.md#segmentation-settings-vs-segment-mode).
 
 > [!TIP]
 > "By paragraph" suits well-structured documents; "recursive" is the general default; tables and logs suit "by line" or a custom separator.
 
-### 3. Document Index Settings (Model)
+### 3. Indexing Model Settings
 
-**Model**: the in-app hint (translated) reads —
-
-> The model used for graph extraction and QA generation; if empty, the first available model is used.
+**Model**: the model shared by graph extraction and Q&A-pair generation; if empty, the first available model is used.
 
 > [!WARNING]
 > Graph extraction and QA generation **both consume this model's tokens**. Pick a cost-effective model; leaving it empty falls back to the first available model.
@@ -77,11 +82,11 @@ Click **Edit** in the actions column. Note the consequences:
 | Change | Effect |
 |---|---|
 | Retrieval settings, LLM parameters | Immediate, no rebuild |
-| Splitting parameters (overlap / strategy / max tokens…) | Save prompts "Changing split parameters will automatically rebuild the vector indexes of all documents in this knowledge base. Save?" — confirming triggers an **automatic rebuild** of all indexes (can take a while for large bases) |
+| Segmentation parameters (overlap / strategy / max tokens…) | Takes effect for **subsequent indexing only** — existing segments are untouched; re-split a single document by editing it (see [Full Rebuild](document.md#full-rebuild)) |
 
 ## API
 
-The **API** action generates this base's API key and endpoint docs — see [API Reference · Knowledge Base Q&A](../../api/knowledge-base.md).
+The **API** action (actions column, or the top-right of the knowledge base detail page) generates this base's API key and endpoint docs — see [API Reference · Knowledge Base Q&A](../../api/knowledge-base.md).
 
 ## Deleting
 

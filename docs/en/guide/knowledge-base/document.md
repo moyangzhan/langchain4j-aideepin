@@ -19,13 +19,13 @@ From "My knowledge bases" click the title or **Docs** to open the knowledge base
 
 | Mode | In-app hint (translated) |
 |---|---|
-| Plain | Plain: for continuous content (articles, manuals); chunks per the split parameters, each chunk vectorized and recalled directly |
+| Plain | Plain: for continuous content (articles, manuals); splits per the base's segmentation settings and each segment is vectorized and recalled directly |
 | Q&A | Q&A: for FAQ-style content organized as pairs; questions are vectorized and recalled, answers returned as-is |
 | Parent-child | Parent-child: for long documents; children match precisely and the hit returns the parent as full context |
 
    - **Q&A** accepts XLSX / XLS / CSV only (with **template download**); each file becomes one standalone Q&A document named after the file — format details in [Q&A Import & Generation](qa-import.md);
    - **Parent-child** shows **child max tokens**, hint (translated): "The parent is split into children of this size; children match precisely and the hit returns the parent as full context; range 50–4000, default 200; changes take effect on re-vectorization";
-   - **Plain** follows the base's split settings, no extra parameters.
+   - **Plain** follows the base's segmentation settings, no extra parameters (the document edit page shows the effective segmentation config read-only).
 3. Drag files into the upload area (or click to browse).
 
 | Limit | Value |
@@ -65,20 +65,34 @@ Uploading only creates documents and segments — **they become retrievable once
 
 Un-graphed documents can be indexed later from the [segment management](segment.md) page's document card.
 
+## Full Rebuild
+
+**Rebuild Vectors** recomputes the vectors of all existing targets from their current segments — **segment content and Q&A pairs are not changed** (Q&A documents re-embed their questions) — useful after switching the embedding model, when vector status drifts, or for batch repair; **Rebuild Graph** deletes the old graph and re-extracts. Semantically identical to the vector/graph rerun of "Index selected"; the difference is scope — full rebuild applies to the whole base or one document in a single click. Two levels of entry, each split into the vector and graph dimensions:
+
+| Entry | Where | Action |
+|---|---|---|
+| **Rebuild Vectors** / **Rebuild Graph** (base-level) | Knowledge base detail page title bar | Applies to **every document** (documents without segments yet are split with the current segmentation settings, then vectorized) |
+| **Rebuild Vectors** / **Rebuild Graph** (document-level) | [Segment management](segment.md) page document card | Applies to that document only |
+
+> [!WARNING]
+> Vector rebuilds consume embedding quota and graph rebuilds consume the indexing model quota; large bases take a while (segment content is untouched). Changing the knowledge base's segmentation parameters **never affects existing segments** — parameters apply to subsequent indexing only; to re-split one document with new parameters, edit that document (save a content change, switch its segment mode or child chunk size).
+
 ## Document List Columns
 
 | Column | Description |
 |---|---|
 | Segmentation mode | Plain / Q&A / parent-child tag |
-| Vector status | Pending / processing / vectorized / failed (with time) |
-| Graph status | Whether the graph has been extracted |
+| Vector status | Not started / processing / success / failed; click Success/Failed for the completion time / failure reason |
+| Graph status | Not started / processing / success / failed; click Success/Failed for the completion time / failure reason |
 | Attachment | The uploaded file; click to preview |
 | Characters | Body length — the first indicator of healthy parsing |
 | Vector hits / graph hits | How often this document's segments were recalled — long-standing 0 means content doesn't match questions |
 | Enabled | Toggle. Off = excluded from retrieval (consequences in [Segment Management](segment.md#enabling-disabling-segments-all-modes)) |
 | Created / updated | Recent changes |
 
-Actions: **Segments** (segment management), **Graph** (view; disabled with "Not graphed yet" until extracted), **Edit**, **Delete**.
+Actions: **Details** (document detail page with segment management and graph entry), **Edit**, **Delete**.
+
+After checking multiple rows, the toolbar **Delete (N items)** removes the selected documents in bulk (segments, vectors and graphs included — irrecoverable; disabled with nothing checked), grouped with **Index selected** as selection-based bulk actions; the per-row **Delete** remains for quick single deletes. To view or generate a document's graph, use the document card on the [segment management](segment.md) page.
 
 ## Editing a Document
 

@@ -224,6 +224,28 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
     }
 
     /**
+     * 文档级全量重建：入队指定维度的索引任务，不改动分段内容。
+     * embedding=按现有分段重新向量化（无分段的文档补切；问答文档重嵌其问题）；graphical=图谱重抽（任务自带先清后抽）。
+     */
+    public boolean rebuildDoc(String docUuid, String indexType) {
+        checkWritePrivilege(docUuid);
+        KbDocument doc = getEnable(docUuid);
+        if (doc == null) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
+        if (EmbeddingStatusEnum.DOING == doc.getEmbeddingStatus()
+                || GraphicalStatusEnum.DOING == doc.getGraphicalStatus()
+                || indexTaskService.hasRunningByDoc(docUuid)) {
+            throw new BaseException(A_DOC_INDEX_DOING);
+        }
+        if (!DOC_INDEX_TYPE_EMBEDDING.equals(indexType) && !DOC_INDEX_TYPE_GRAPHICAL.equals(indexType)) {
+            throw new BaseException(A_PARAMS_ERROR);
+        }
+        indexTaskService.enqueueDocument(doc.getKbUuid(), docUuid, indexType, ThreadContext.getCurrentUser());
+        return true;
+    }
+
+    /**
      * 替换式 QA 重新生成的清理前置：版本推进（在途任务经检查点自作废）+ 段行/问题/子块
      * 软删 + 向量清理。仅在调用方确认无在跑任务后调用——清理需立即生效，不能像模式切换
      * 那样移交在途任务的取消善后（否则段行非空的窗口会让生成入口误判跳过）。
@@ -243,29 +265,6 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
                 .eq(KbDocument::getUuid, docUuid)
                 .setSql("index_version = index_version + 1")
                 .update();
-    }
-
-    /**
-     * KB 切段参数变更后失效该库下所有可切段文档的段行与向量（qa 文档除外——其段行来自问答数据流），
-     * 下次重新向量化按新参数切段重建。
-     */
-    public void invalidateSegmentsByKb(String kbUuid) {
-        List<KbDocument> docs = ChainWrappers.lambdaQueryChain(baseMapper)
-                .eq(KbDocument::getKbUuid, kbUuid)
-                .eq(KbDocument::getIsDeleted, false)
-                .list();
-        for (KbDocument doc : docs) {
-            if (SegmentIndexService.effectiveMode(doc) == SegmentModeEnum.QA) {
-                continue;
-            }
-            bumpIndexVersion(doc.getUuid());
-            if (!indexTaskService.hasRunningByDoc(doc.getUuid())) {
-                iKnowledgeEmbeddingService.deleteByItemUuid(doc.getUuid());
-                documentSegmentService.deleteByDocUuid(doc.getUuid());
-            }
-            markEmbeddingPending(doc.getUuid());
-            indexTaskService.enqueueDocument(doc.getKbUuid(), doc.getUuid(), DOC_INDEX_TYPE_EMBEDDING, ThreadContext.getCurrentUser());
-        }
     }
 
     /**
@@ -329,6 +328,15 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
             }
         }
         return true;
+    }
+
+    /**
+     * 批量软删：逐个走单删管线（权限、级联软删、任务取消、向量与图谱足迹清理）；任一失败即抛出中断，已删的保持生效。
+     */
+    public void softDeleteBatch(List<String> uuids) {
+        for (String uuid : uuids) {
+            softDelete(uuid);
+        }
     }
 
     public boolean softDelete(String uuid) {

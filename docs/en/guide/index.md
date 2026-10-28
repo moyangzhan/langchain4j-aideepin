@@ -21,7 +21,7 @@ The AIDeepIn user manual: everything from sign-up to knowledge bases and workflo
 ## Knowledge Base
 
 1. [Overview](knowledge-base/overview.md): core concepts, three segmentation modes, vector and graph indexing
-2. [Create & Configure](knowledge-base/manage.md): the five settings groups, splitting and retrieval options
+2. [Create & Configure](knowledge-base/manage.md): the five settings groups, segmentation and retrieval options
 3. [Import Documents](knowledge-base/document.md): form/file import, vectorization and graph indexing
 4. [Q&A Import & Generation](knowledge-base/qa-import.md): template import, AI generation, manual maintenance
 5. [Segment Management](knowledge-base/segment.md): enabling/disabling segments, parent-child segments, vector repair and retries

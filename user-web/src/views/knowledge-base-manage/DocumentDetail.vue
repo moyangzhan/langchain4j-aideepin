@@ -65,6 +65,14 @@ const editState = reactive<{
 })
 const submitting = ref(false)
 
+const segmentModeLabel = computed(() => {
+  if (segmentMode.value === 'qa')
+    return t('knowledgeBase.segmentModeQa')
+  if (segmentMode.value === 'parent_child')
+    return t('knowledgeBase.segmentModeParentChild')
+  return t('knowledgeBase.segmentModeText')
+})
+
 const embeddingStatusLabel = computed(() => {
   switch (curDoc.embeddingStatus) {
     case 'DOING':
@@ -99,9 +107,9 @@ const failureRows = computed(() => {
   const rows: { label: string; reason: string }[] = []
   const findByType = (type: string) => indexFailures.value.find(f => f.taskType === type)
   if (curDoc.embeddingStatus === 'FAIL')
-    rows.push({ label: t('knowledgeBase.vectorize'), reason: findByType('embedding')?.failReason || curDoc.failReason || t('knowledgeBase.statusFailed') })
+    rows.push({ label: t('knowledgeBase.vectorize'), reason: findByType('embedding')?.userMsg || findByType('embedding')?.failReason || curDoc.failReason || t('knowledgeBase.statusFailed') })
   if (curDoc.graphicalStatus === 'FAIL')
-    rows.push({ label: t('knowledgeBase.graphLabel'), reason: findByType('graphical')?.failReason || curDoc.failReason || t('knowledgeBase.statusFailed') })
+    rows.push({ label: t('knowledgeBase.graphLabel'), reason: findByType('graphical')?.userMsg || findByType('graphical')?.failReason || curDoc.failReason || t('knowledgeBase.statusFailed') })
   return rows
 })
 
@@ -363,12 +371,52 @@ async function graphitize() {
 function confirmGraphitize() {
   if (indexInProgress.value)
     return
-  dialog.warning({
+  const d = dialog.warning({
     title: t('knowledgeBase.clickToGraphitize'),
     content: t('knowledgeBase.graphitizeConfirm', { model: curKb.ingestModelName || '-' }),
     positiveText: t('common.confirm'),
     negativeText: t('common.cancel'),
-    onPositiveClick: () => graphitize(),
+    onPositiveClick: async () => {
+      // 同 confirmRebuild：置 loading 防连点重复提交
+      d.loading = true
+      try {
+        await graphitize()
+      } finally {
+        d.loading = false
+      }
+    },
+  })
+}
+
+// 文档级重建：embedding=按现有分段重嵌（问答文档重嵌问题）；graphical=重抽图谱
+// Doc-level rebuild: embedding re-embeds existing segments (QA docs re-embed questions); graphical re-extracts
+function confirmRebuild(indexType: 'embedding' | 'graphical') {
+  if (indexInProgress.value)
+    return
+  const d = dialog.warning({
+    title: t(indexType === 'embedding' ? 'knowledgeBase.rebuildEmbedding' : 'knowledgeBase.rebuildGraphical'),
+    content: indexType === 'embedding'
+      ? t('knowledgeBase.rebuildEmbeddingDocConfirm', { title: curDoc.title })
+      : () => h('span', null, [
+          t('knowledgeBase.rebuildGraphicalDocConfirmPrefix', { title: curDoc.title, model: curKb.ingestModelName || '-' }),
+          h('strong', null, t('knowledgeBase.rebuildGraphicalDocConfirmToken')),
+          t('knowledgeBase.rebuildGraphicalDocConfirmSuffix'),
+        ]),
+    positiveText: t('common.confirm'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: async () => {
+      // 返回 Promise 时 naive-ui 会等请求结束才关弹窗，期间按钮可被连点：置 loading 防重复提交
+      d.loading = true
+      try {
+        await api.documentRebuild(curDocUuid.value, indexType)
+        ms.success(t('knowledgeBase.indexTaskRunning'))
+        await loadDocInfo(curDocUuid.value)
+      } catch (error: any) {
+        ms.error(error.message ?? 'error')
+      } finally {
+        d.loading = false
+      }
+    },
   })
 }
 
@@ -748,6 +796,7 @@ onActivated(() => {
         {{ curDoc.brief }}
       </div>
       <div class="flex flex-wrap gap-x-6 gap-y-1 mt-2" style="font-size: 12px; opacity: 0.7;">
+        <span>{{ t('knowledgeBase.segmentMode') }}: {{ segmentModeLabel }}</span>
         <span>{{ t('knowledgeBase.vectorize') }}: {{ embeddingStatusLabel }}</span>
         <span>{{ t('knowledgeBase.wordCount') }}: {{ curDoc.wordCount }}</span>
         <span>{{ t('knowledgeBase.embeddingHitCount') }}: {{ curDoc.embeddingHitCount }}</span>
@@ -774,6 +823,15 @@ onActivated(() => {
         </span>
         <NButton v-else text type="primary" size="tiny" @click="goGraph">
           {{ t('knowledgeBase.openGraph') }}
+        </NButton>
+        <NButton text type="warning" size="tiny" @click="goEditDocument">
+          {{ t('common.edit') }}
+        </NButton>
+        <NButton text type="warning" size="tiny" :disabled="indexInProgress" @click="confirmRebuild('embedding')">
+          {{ t('knowledgeBase.rebuildEmbedding') }}
+        </NButton>
+        <NButton text type="warning" size="tiny" :disabled="indexInProgress" @click="confirmRebuild('graphical')">
+          {{ t('knowledgeBase.rebuildGraphical') }}
         </NButton>
       </div>
     </NCard>

@@ -23,6 +23,11 @@ public class IndexFailureDto {
     private String failReason;
 
     /**
+     * 面向用户的失败提示；存量行由读取侧按同一规则从 fail_reason 兜底转换
+     */
+    private String userMsg;
+
+    /**
      * 失败落定时间（任务行 update_time）
      */
     private LocalDateTime updateTime;

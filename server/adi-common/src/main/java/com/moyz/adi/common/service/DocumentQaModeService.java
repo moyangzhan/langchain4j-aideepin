@@ -17,8 +17,6 @@ import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.helper.LLMContext;
 import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
-import com.moyz.adi.common.rag.DocumentSplitterFactory;
-import com.moyz.adi.common.rag.TokenEstimatorFactory;
 import com.moyz.adi.common.service.UserDayCostService;
 import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.util.UuidUtil;
@@ -91,8 +89,6 @@ public class DocumentQaModeService {
             + " in the format: [{\"question\":\"...\",\"answer\":\"...\"}]\n"
             + "Generate at most 5 pairs.\n"
             + "Text:\n{input_text}";
-
-    private static final int GENERATE_CHUNK_SIZE = 1500;
 
     @Resource
     private DocumentSegmentService documentSegmentService;
@@ -398,12 +394,8 @@ public class DocumentQaModeService {
                     .temperature(kb.getQueryLlmTemperature())
                     .build());
 
-            DocumentSplitter splitter = DocumentSplitterFactory.create(
-                    kb.getIngestSplitStrategy(),
-                    GENERATE_CHUNK_SIZE,
-                    kb.getIngestMaxOverlap(),
-                    kb.getIngestCustomSeparator(),
-                    TokenEstimatorFactory.create(kb.getIngestTokenEstimator()));
+            // QA generation follows the KB-level max segment size; the factory normalizes overlap against it
+            DocumentSplitter splitter = segmentIndexService.createSplitter(kb, kb.getIngestMaxSegmentSize());
             Metadata metadata = new Metadata();
             metadata.put(AdiConstant.MetadataKey.KB_UUID, kb.getUuid());
             metadata.put(AdiConstant.MetadataKey.KB_ITEM_UUID, doc.getUuid());

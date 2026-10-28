@@ -21,7 +21,7 @@ AIDeepIn 用户使用手册：从注册激活到知识库、工作流的完整�
 ## 知识库
 
 1. [知识库概览](knowledge-base/overview.md)：核心概念、三种分段模式、向量与图谱索引
-2. [创建与设置知识库](knowledge-base/manage.md)：建库五组参数、切段与召回设置
+2. [创建与设置知识库](knowledge-base/manage.md)：建库五组参数、分段与召回设置
 3. [导入文档](knowledge-base/document.md)：按表单 / 按文件导入、向量化与图谱化索引
 4. [Q&A 导入与生成](knowledge-base/qa-import.md)：模板导入问答对、AI 自动生成、手动维护
 5. [分段管理](knowledge-base/segment.md)：片段启停、父子分段、向量修复与失败重试

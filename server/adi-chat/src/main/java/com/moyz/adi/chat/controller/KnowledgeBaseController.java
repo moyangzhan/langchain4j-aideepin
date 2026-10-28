@@ -147,6 +147,18 @@ public class KnowledgeBaseController {
     }
 
     /**
+     * Rebuild the indexes of every document in the knowledge base
+     * 库级全量重建：indexType=embedding 按现有分段重算向量（问答文档重嵌其问题）；graphical 重抽全库图谱
+     *
+     * @param uuid 知识库uuid / Knowledge base UUID
+     * @return 成功或失败
+     */
+    @PostMapping("/rebuild/{uuid}")
+    public boolean rebuild(@PathVariable String uuid, @RequestParam String indexType) {
+        return knowledgeBaseService.rebuild(uuid, indexType);
+    }
+
+    /**
 * Batch index knowledge points
      * 批量索引知识点
      *

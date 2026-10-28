@@ -59,6 +59,12 @@ public class IndexTask implements Serializable {
     private String failReason;
 
     /**
+     * 面向用户的失败提示（locale 无关编码，读取时按用户语言渲染）；fail_reason 保留原始异常供排查
+     */
+    @TableField("user_msg")
+    private String userMsg;
+
+    /**
      * 协作式停止标志：新版本入队时对本键更旧的 running 行置 true（不动 status，
      * 同 doc 串行闸门保持关闭直到执行器在检查点自行中止）；claim 与失败复活时重置。
      */

@@ -135,6 +135,7 @@ declare namespace KnowledgeBase {
     /** embedding | graphical */
     taskType: string
     failReason: string
+    userMsg?: string
     updateTime: string
   }
   interface QaRecordListResp {

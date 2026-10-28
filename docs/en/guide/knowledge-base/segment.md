@@ -2,15 +2,17 @@
 
 > [← User Guide](../index.md) · [简体中文](../../../cn/guide/knowledge-base/segment.md)
 
-Open via **Segments** in the document list. The document card sits at the top; below it one of three lists depending on the segmentation mode.
+Open via **Details** in the document list. The document card sits at the top; below it one of three lists depending on the segmentation mode.
 
 **Document card**: summary, vector status, character count, vector hits and times, plus three entries:
 
 | Entry | Description |
 |---|---|
-| View body | Read-only view, jumps to edit |
+| View body | Read-only dialog for a quick look without leaving the page |
+| Edit | Jumps straight to the document edit page (body editing and its linked semantics live there) |
 | View attachment | Preview the uploaded file |
 | Generate / view graph | "Graph not generated yet — **click to generate**" before extraction; **View graph** after (see [Knowledge Graph](graph.md)) |
+| Rebuild Vectors / Rebuild Graph | Recompute vectors from existing segments (segment and Q&A-pair content untouched) / re-extract the graph — see [Import Documents · Full Rebuild](document.md#full-rebuild) |
 
 <figure>
   <img src="../../../image/cn/guide/knowledge-base/segment-00.png" alt="Opening segment management from the document list">
@@ -22,7 +24,7 @@ Open via **Segments** in the document list. The document card sits at the top; b
   <figcaption>Segment management page</figcaption>
 </figure>
 
-The segment management page shows the list and actions matching the document's **segmentation mode** — **plain**, **Q&A** and **parent-child** are document-level properties; how to choose: [Overview · Three Segmentation Modes](overview.md#three-segmentation-modes).
+The segment management page shows the list and actions matching the document's **segmentation mode** — **plain**, **Q&A** and **parent-child** are document-level properties (segmentation parameters all come from the knowledge base's segmentation settings; the two-level relation: [Overview · Segmentation Settings vs Segment Mode](overview.md#segmentation-settings-vs-segment-mode)); how to choose: [Overview · Three Segmentation Modes](overview.md#three-segmentation-modes).
 
 ## Segmentation Mode 1: Plain Segmentation
 
@@ -68,6 +70,7 @@ Segments (and parents, pairs) can be toggled individually — a way to "take con
 ## Vector Repair & Failure Retry (All Modes)
 
 - **Missing vector**: when a segment is flagged, the confirmation reads (translated): "This item's vector does not exist in the vector store (may not match the status shown). Rebuild the vector?" — confirm to repair;
+- **Full rebuild** (document-card buttons): same semantics as failure retries (existing segments are reused), but always available instead of failure-only (see [Import Documents · Full Rebuild](document.md#full-rebuild));
 - **Index failures**: the bottom failure panel lists recent failure reasons per dimension (vector / graph) with three retries: re-vectorize / re-graph / re-vectorize and re-graph; an empty pair list offers **AI generate** instead;
 - While retrying, "Indexing: {dims}" shows and the page polls every 3 seconds.
 

@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { NBreadcrumb, NBreadcrumbItem, NButton, NCard, NIcon, NInput, NInputNumber, NRadio, NRadioGroup, NSelect, NSpin, NTooltip, useDialog, useMessage } from 'naive-ui'
+import { NBreadcrumb, NBreadcrumbItem, NButton, NCard, NIcon, NInput, NInputNumber, NRadio, NRadioGroup, NSelect, NSpin, NTooltip, useMessage } from 'naive-ui'
 import { QuestionCircle16Regular } from '@vicons/fluent'
 import { CreateOutline } from '@vicons/ionicons5'
 import { useRoute, useRouter } from 'vue-router'
@@ -13,7 +13,6 @@ import api from '@/api'
 const route = useRoute()
 const router = useRouter()
 const ms = useMessage()
-const dialog = useDialog()
 const appStore = useAppStore()
 const kbStore = useKbStore()
 
@@ -30,21 +29,13 @@ const itemBoxClass = 'space-y-1'
 // Scroll height: only the breadcrumb and footer buttons stay fixed; the rest of the viewport scrolls
 const settingsMaxHeight = ref<number>(500)
 
-// 编辑打开时的切段参数快照：保存前检测变更，触发“将自动重建全库索引”确认
-let kbEditOrigin: Partial<KnowledgeBase.Info> | null = null
-
 const pageTitle = computed(() => isEdit.value ? t('knowledgeBase.editKbTitle', { title: originalTitle.value }) : t('knowledgeBase.addKbTitle'))
 
 // 控制 input 按钮
 const inputStatus = computed(() => tmpKb.title.trim().length < 1 && !submitting.value)
 
-const SPLIT_PARAM_KEYS = ['ingestMaxSegmentSize', 'ingestMaxOverlap', 'ingestSplitStrategy', 'ingestCustomSeparator', 'ingestTokenEstimator'] as const
-
-function splitParamsChanged() {
-  if (!kbEditOrigin)
-    return false
-  return SPLIT_PARAM_KEYS.some(key => (tmpKb as any)[key] !== (kbEditOrigin as any)[key])
-}
+// overlap 上限随每段大小联动：前端拦 size-1、后端工厂再收紧到 size/2，段大小清空时按 1000 兜底
+const overlapMax = computed(() => Math.max((tmpKb.ingestMaxSegmentSize ?? 1000) - 1, 0))
 
 function applyModelDefaults() {
   if (!tmpKb.ingestModelId) {
@@ -76,14 +67,10 @@ async function saveOrUpdateKb() {
     ms.warning(t('knowledgeBase.customSeparatorRequired'))
     return
   }
-  if (splitParamsChanged()) {
-    dialog.warning({
-      title: t('common.tip'),
-      content: t('knowledgeBase.splitParamsReindexConfirm'),
-      positiveText: t('common.confirm'),
-      negativeText: t('common.cancel'),
-      onPositiveClick: () => doSaveKb(),
-    })
+  // The dynamic input max already blocks normal input; this backstops manually typed values that escaped clamping and legacy stored values
+  const size = tmpKb.ingestMaxSegmentSize ?? 0
+  if (size > 0 && (tmpKb.ingestMaxOverlap ?? 0) >= size) {
+    ms.warning(t('knowledgeBase.overlapTooLarge'))
     return
   }
   await doSaveKb()
@@ -113,7 +100,6 @@ onMounted(async () => {
     const resp = await api.knowledgeBaseInfo<KnowledgeBase.Info>(kbUuid!)
     Object.assign(tmpKb, resp.data)
     originalTitle.value = tmpKb.title
-    kbEditOrigin = { ...resp.data }
     applyModelDefaults()
   } catch (error: any) {
     ms.error(error.message ?? 'error')
@@ -198,9 +184,12 @@ onMounted(async () => {
         </NCard>
         <NCard style="margin-top: 12px" :title="t('knowledgeBase.docIndexSettingVector')" hoverable>
           <div class="flex flex-col space-y-2">
+            <span style="font-size: 12px; opacity: 0.65;">
+              {{ t('knowledgeBase.segmentScopeTip') }}
+            </span>
             <div :class="itemBoxClass">
               <div>{{ t('knowledgeBase.docOverlapCount') }}</div>
-              <NInputNumber v-model:value="tmpKb.ingestMaxOverlap" />
+              <NInputNumber v-model:value="tmpKb.ingestMaxOverlap" :min="0" :max="overlapMax" />
             </div>
             <div :class="itemBoxClass">
               <div>{{ t('knowledgeBase.splitStrategy') }}</div>
@@ -211,8 +200,18 @@ onMounted(async () => {
               <NInput v-model:value="tmpKb.ingestCustomSeparator" :placeholder="t('knowledgeBase.customSeparatorPlaceholder')" />
             </div>
             <div :class="itemBoxClass">
-              <div>{{ t('knowledgeBase.maxSegmentSize') }}</div>
-              <NInputNumber v-model:value="tmpKb.ingestMaxSegmentSize" :min="100" />
+              <div>
+                {{ t('knowledgeBase.maxSegmentSize') }}
+                <NTooltip trigger="hover">
+                  <template #trigger>
+                    <NIcon style="padding-top: 0.1rem">
+                      <QuestionCircle16Regular />
+                    </NIcon>
+                  </template>
+                  <div>{{ t('knowledgeBase.maxSegmentSizeTip') }}</div>
+                </NTooltip>
+              </div>
+              <NInputNumber v-model:value="tmpKb.ingestMaxSegmentSize" :min="100" :max="10000" />
             </div>
             <div :class="itemBoxClass">
               <div>{{ t('knowledgeBase.tokenCounter') }}</div>

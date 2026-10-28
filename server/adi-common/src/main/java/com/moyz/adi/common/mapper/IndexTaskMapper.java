@@ -54,7 +54,8 @@ public interface IndexTaskMapper extends BaseMapper<IndexTask> {
      * host row either when its own task row was already taken over.
      */
     int finishOne(@Param("id") Long id, @Param("executorEpoch") String executorEpoch,
-                  @Param("status") String status, @Param("failReason") String failReason);
+                  @Param("status") String status, @Param("failReason") String failReason,
+                  @Param("userMsg") String userMsg);
 
     /**
      * Runtime heartbeat. Returns 0 = the row is no longer running under this executor's epoch

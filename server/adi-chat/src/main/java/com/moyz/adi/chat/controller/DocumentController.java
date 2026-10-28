@@ -6,6 +6,7 @@ import com.moyz.adi.common.dto.IndexFailureDto;
 import com.moyz.adi.common.dto.KbDocumentAttachmentDto;
 import com.moyz.adi.common.dto.KbDocumentDto;
 import com.moyz.adi.common.dto.KbDocumentEditReq;
+import com.moyz.adi.common.dto.KbDocumentDelBatchReq;
 import com.moyz.adi.common.dto.KbDocumentToggleStatusReq;
 import com.moyz.adi.common.entity.KbDocument;
 import com.moyz.adi.common.enums.SegmentModeEnum;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 
 import static com.moyz.adi.common.enums.ErrorEnum.A_DATA_NOT_FOUND;
@@ -90,6 +92,15 @@ public class DocumentController {
         return kbDocumentService.softDelete(uuid);
     }
 
+    /**
+     * 批量软删文档：逐个走单删管线，任一失败即中断（已删的保持生效）
+     */
+    @PostMapping("/del-batch")
+    public boolean delBatch(@RequestBody @Valid KbDocumentDelBatchReq req) {
+        kbDocumentService.softDeleteBatch(Arrays.asList(req.getUuids()));
+        return true;
+    }
+
     @PostMapping("/toggle-status")
     public boolean toggleStatus(@RequestBody @Valid KbDocumentToggleStatusReq req) {
         return kbDocumentService.toggleStatus(req.getUuid(), req.getIsEnabled());
@@ -101,6 +112,14 @@ public class DocumentController {
     @PostMapping("/retryIndex/{uuid}")
     public boolean retryIndex(@PathVariable String uuid) {
         return kbDocumentService.retryIndex(uuid);
+    }
+
+    /**
+     * 文档级全量重建：indexType=embedding 按现有分段重算向量（问答文档重嵌其问题）；graphical 重抽图谱
+     */
+    @PostMapping("/rebuild/{uuid}")
+    public boolean rebuild(@PathVariable String uuid, @RequestParam String indexType) {
+        return kbDocumentService.rebuildDoc(uuid, indexType);
     }
 
     /**

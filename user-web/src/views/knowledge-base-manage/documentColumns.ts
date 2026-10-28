@@ -1,13 +1,13 @@
 import type { DataTableColumns } from 'naive-ui'
 import { h } from 'vue'
 import type { VNode } from 'vue'
-import { NButton, NEllipsis, NSwitch, NTag, NTooltip } from 'naive-ui'
+import { NButton, NEllipsis, NSwitch, NTag } from 'naive-ui'
 import { RouterLink } from 'vue-router'
 import { t } from '@/locales'
 
 interface DocumentColumnCallbacks {
+  showIndexStatus: (row: KnowledgeBase.Document, taskType: 'embedding' | 'graphical') => void
   viewSegments: (row: KnowledgeBase.Document) => void
-  showGraph: (row: KnowledgeBase.Document) => void
   showFileContent: (row: KnowledgeBase.Document) => void
   editItem: (row: KnowledgeBase.Document) => void
   deleteKbItem: (row: KnowledgeBase.Document) => void
@@ -59,20 +59,33 @@ export const createColumns = (callbacks: DocumentColumnCallbacks): DataTableColu
     {
       title: t('knowledgeBase.vectorize'),
       key: 'embeddingStatus',
-      width: 150,
+      width: 100,
       render(row) {
         const renderElements: VNode[] = []
         if (row.embeddingStatus === 'NONE') {
           renderElements.push(createText(t('knowledgeBase.statusPending')))
         } else if (row.embeddingStatus === 'DOING') {
           renderElements.push(createText(t('knowledgeBase.statusProcessing')))
-          renderElements.push(createText(row.embeddingStatusChangeTime))
         } else if (row.embeddingStatus === 'DONE') {
-          renderElements.push(createText(t('knowledgeBase.statusVectorized')))
-          renderElements.push(createText(row.embeddingStatusChangeTime))
+          renderElements.push(h(
+            NButton,
+            {
+              text: true,
+              type: 'success',
+              onClick: () => callbacks.showIndexStatus(row, 'embedding'),
+            },
+            { default: () => t('knowledgeBase.statusVectorized') },
+          ))
         } else if (row.embeddingStatus === 'FAIL') {
-          renderElements.push(createText(t('knowledgeBase.statusFailed')))
-          renderElements.push(createText(row.embeddingStatusChangeTime))
+          renderElements.push(h(
+            NButton,
+            {
+              text: true,
+              type: 'error',
+              onClick: () => callbacks.showIndexStatus(row, 'embedding'),
+            },
+            { default: () => t('knowledgeBase.statusFailed') },
+          ))
         }
         return h('div', { class: 'flex flex-col' }, {
           default: () => renderElements,
@@ -82,20 +95,33 @@ export const createColumns = (callbacks: DocumentColumnCallbacks): DataTableColu
     {
       title: t('knowledgeBase.graphLabel'),
       key: 'graphicalStatus',
-      width: 150,
+      width: 100,
       render(row) {
         const renderElements: VNode[] = []
         if (row.graphicalStatus === 'NONE') {
           renderElements.push(createText(t('knowledgeBase.statusPending')))
         } else if (row.graphicalStatus === 'DOING') {
           renderElements.push(createText(t('knowledgeBase.statusProcessing')))
-          renderElements.push(createText(row.graphicalStatusChangeTime))
         } else if (row.graphicalStatus === 'DONE') {
-          renderElements.push(createText(t('knowledgeBase.statusGraphitized')))
-          renderElements.push(createText(row.graphicalStatusChangeTime))
+          renderElements.push(h(
+            NButton,
+            {
+              text: true,
+              type: 'success',
+              onClick: () => callbacks.showIndexStatus(row, 'graphical'),
+            },
+            { default: () => t('knowledgeBase.statusGraphitized') },
+          ))
         } else if (row.graphicalStatus === 'FAIL') {
-          renderElements.push(createText(t('knowledgeBase.statusFailed')))
-          renderElements.push(createText(row.graphicalStatusChangeTime))
+          renderElements.push(h(
+            NButton,
+            {
+              text: true,
+              type: 'error',
+              onClick: () => callbacks.showIndexStatus(row, 'graphical'),
+            },
+            { default: () => t('knowledgeBase.statusFailed') },
+          ))
         }
         return h('div', { class: 'flex flex-col' }, {
           default: () => renderElements,
@@ -173,12 +199,13 @@ export const createColumns = (callbacks: DocumentColumnCallbacks): DataTableColu
       width: 120,
       align: 'center',
       render(row) {
-        return h('div', { class: 'flex items-center flex-col gap-2' }, {
+        return h('div', { class: 'flex flex-col gap-2' }, {
           default: () => [
             h('div', { class: 'flex gap-1' }, [
               h(
                 NButton,
                 {
+                  style: { width: '100%' },
                   tertiary: true,
                   size: 'small',
                   type: 'info',
@@ -186,9 +213,8 @@ export const createColumns = (callbacks: DocumentColumnCallbacks): DataTableColu
                 },
                 { default: () => t('knowledgeBase.viewSegments') },
               ),
-              createGraphActionButton(callbacks.showGraph, row),
             ]),
-            h('div', { class: 'flex gap-1' }, [
+            h('div', { class: 'flex justify-center gap-1' }, [
               h(
                 NButton,
                 {
@@ -234,35 +260,10 @@ function segmentModeTagType(segmentMode?: string) {
   return 'default'
 }
 
-// Graph button: disabled with a tooltip when not graphitized (NONE); DOING shows the partial
-// graph, FAIL may still hold partial data
-function createGraphActionButton(showGraphFn: (row: KnowledgeBase.Document) => void, row: KnowledgeBase.Document) {
-  const notGraphitized = row.graphicalStatus === 'NONE'
-  const button = h(
-    NButton,
-    {
-      tertiary: true,
-      size: 'small',
-      type: 'info',
-      disabled: notGraphitized,
-      onClick: () => showGraphFn(row),
-    },
-    { default: () => t('knowledgeBase.viewGraph') },
-  )
-  if (!notGraphitized)
-    return button
-  // Native disabled buttons swallow mouse events, so the tooltip wraps the button
-  return h(NTooltip, { trigger: 'hover' }, {
-    trigger: () => h('span', { class: 'inline-flex' }, [button]),
-    default: () => t('knowledgeBase.notGraphitized'),
-  })
-}
-
 function createText(txt: string) {
   return h(
     'div',
     {
-      style: 'font-size: 10px',
       class: 'mt-1',
     },
     { default: () => txt },

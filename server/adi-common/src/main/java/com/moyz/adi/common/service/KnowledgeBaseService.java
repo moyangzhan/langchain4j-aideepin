@@ -142,23 +142,31 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             baseMapper.insert(knowledgeBase);
         } else {
             checkWritePrivilege(kbEditReq.getId(), null);
-            KnowledgeBase old = baseMapper.selectById(kbEditReq.getId());
             knowledgeBase.setId(kbEditReq.getId());
             baseMapper.updateById(knowledgeBase);
-            // "变更即失效"：切段参数变更即失效该库全部可切段文档的段行，下次重新向量化按新参数重切
-            if (old != null && splitParamsChanged(old, kbEditReq)) {
-                kbDocumentService.invalidateSegmentsByKb(old.getUuid());
-            }
+            // 分段参数保存后仅对后续索引生效：不自动重建存量（重建是显式操作，见 rebuild）
         }
         return knowledgeBase;
     }
 
-    private boolean splitParamsChanged(KnowledgeBase old, KbEditReq req) {
-        return !Objects.equals(old.getIngestMaxSegmentSize(), req.getIngestMaxSegmentSize())
-                || !Objects.equals(old.getIngestMaxOverlap(), req.getIngestMaxOverlap())
-                || !Objects.equals(old.getIngestSplitStrategy(), req.getIngestSplitStrategy())
-                || !Objects.equals(old.getIngestCustomSeparator(), req.getIngestCustomSeparator())
-                || !Objects.equals(old.getIngestTokenEstimator(), req.getIngestTokenEstimator());
+    /**
+     * 库级全量重建：全库文档逐个入队指定维度的索引任务（不改动任何分段内容）。
+     * embedding=按现有分段重新向量化（执行侧复用段行，仅无分段的文档按当前分段设置补切；问答文档重嵌其问题）；
+     * graphical=图谱重抽（任务自带先清后抽）。
+     */
+    public boolean rebuild(String kbUuid, String indexType) {
+        checkWritePrivilege(null, kbUuid);
+        getOrThrow(kbUuid);
+        if (!AdiConstant.DOC_INDEX_TYPE_EMBEDDING.equals(indexType) && !AdiConstant.DOC_INDEX_TYPE_GRAPHICAL.equals(indexType)) {
+            throw new BaseException(A_PARAMS_ERROR);
+        }
+        User user = ThreadContext.getCurrentUser();
+        LambdaQueryWrapper<KbDocument> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(KbDocument::getIsDeleted, false);
+        wrapper.eq(KbDocument::getKbUuid, kbUuid);
+        BizPager.oneByOneWithAnchor(wrapper, kbDocumentService, KbDocument::getId,
+                kbItem -> indexTaskService.enqueueDocument(kbUuid, kbItem.getUuid(), indexType, user));
+        return true;
     }
 
     /**

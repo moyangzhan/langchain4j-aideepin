@@ -23,6 +23,7 @@
         DO UPDATE SET status = 'pending',
                       user_id = excluded.user_id,
                       fail_reason = '',
+                      user_msg = '',
                       stop_flag = false,
                       update_time = now()
         WHERE adi_index_task.status &lt;&gt; 'running'
@@ -102,6 +103,7 @@
         UPDATE adi_index_task
         SET status = #{status},
             fail_reason = #{failReason},
+            user_msg = #{userMsg},
             update_time = now()
         WHERE id = #{id} AND status = 'running' AND executor_epoch = #{executorEpoch}
     </update>

@@ -8,6 +8,8 @@ import com.moyz.adi.common.cosntant.RedisKeyConstant;
 import com.moyz.adi.common.dto.IndexFailureDto;
 import com.moyz.adi.common.entity.DocumentSegment;
 import com.moyz.adi.common.entity.IndexTask;
+import com.moyz.adi.common.util.FailReasonConverter;
+import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.entity.KbDocument;
 import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.entity.User;
@@ -246,12 +248,30 @@ public class IndexTaskService {
                         t -> IndexFailureDto.builder()
                                 .taskType(t.getTaskType())
                                 .failReason(t.getFailReason())
+                                // user_msg 列存 locale 无关编码；这里在请求线程按用户 locale 渲染。
+                                // 列为空串（存量行/复跑重置）时现场按同一规则编码，绝不把裸堆栈给用户
+                                .userMsg(renderUserMsg(StringUtils.isNotBlank(t.getUserMsg()) ? t.getUserMsg() : FailReasonConverter.toCode(t.getFailReason())))
                                 .updateTime(t.getUpdateTime())
                                 .build(),
                         (a, b) -> a))
                 .values()
                 .stream()
                 .toList();
+    }
+
+    /**
+     * 把 user_msg 列的编码串渲染为当前用户 locale 的文本：CODE|参数 走 i18n bundle，RAW| 原样展示。
+     */
+    private String renderUserMsg(String code) {
+        int sep = code.indexOf('|');
+        if (sep < 0) {
+            return SpringUtil.getMessage(code);
+        }
+        String key = code.substring(0, sep);
+        if ("RAW".equals(key)) {
+            return code.substring(sep + 1);
+        }
+        return SpringUtil.getMessage(key, code.substring(sep + 1));
     }
 
     /**
@@ -319,11 +339,11 @@ public class IndexTaskService {
         ScheduledFuture<?> heartbeat = startHeartbeat(task);
         try {
             boolean skipped = route(task);
-            indexTaskMapper.finishOne(task.getId(), task.getExecutorEpoch(), STATUS_DONE, skipped ? "skipped: superseded by newer version" : "");
+            indexTaskMapper.finishOne(task.getId(), task.getExecutorEpoch(), STATUS_DONE, skipped ? "skipped: superseded by newer version" : "", "");
         } catch (IndexTaskCancelledException e) {
             log.info("Index task cancelled, docUuid:{}, reason:{}", task.getDocUuid(), e.getMessage());
             onCancelled(task);
-            indexTaskMapper.finishOne(task.getId(), task.getExecutorEpoch(), STATUS_DONE, "skipped: superseded by newer version");
+            indexTaskMapper.finishOne(task.getId(), task.getExecutorEpoch(), STATUS_DONE, "skipped: superseded by newer version", "");
         } catch (Exception e) {
             log.error("Index task failed, docUuid:{}, targetType:{}, taskType:{}",
                     task.getDocUuid(), task.getTargetType(), task.getTaskType(), e);
@@ -334,7 +354,8 @@ public class IndexTaskService {
             // finishOne returns 0 when the row was already taken over (stale-reset, force-failed
             // or re-claimed under a new epoch): a zombie must not finalize the host row either —
             // that belongs to the rerun/breaker
-            if (indexTaskMapper.finishOne(task.getId(), task.getExecutorEpoch(), STATUS_FAILED, StringUtils.abbreviate(reason, 500)) > 0) {
+            if (indexTaskMapper.finishOne(task.getId(), task.getExecutorEpoch(), STATUS_FAILED, StringUtils.abbreviate(reason, 500),
+                    FailReasonConverter.toCode(reason)) > 0) {
                 markHostFailed(task, reason);
             }
         } finally {

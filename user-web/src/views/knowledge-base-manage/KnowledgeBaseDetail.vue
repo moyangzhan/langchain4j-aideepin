@@ -1,11 +1,12 @@
 <script setup lang='ts'>
-import { computed, nextTick, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { computed, h, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { NAlert, NBreadcrumb, NBreadcrumbItem, NButton, NCard, NCheckbox, NCheckboxGroup, NDataTable, NFlex, NIcon, NInput, NInputNumber, NModal, NP, NSelect, NSpace, NTag, NText, NUpload, NUploadDragger, useDialog, useMessage } from 'naive-ui'
 import { ArchiveOutline } from '@vicons/ionicons5'
 import { useRoute, useRouter } from 'vue-router'
 import type { UploadFileInfo, UploadInst } from 'naive-ui'
 import { createColumns } from './documentColumns'
 import FilePreviewModal from './components/FilePreviewModal.vue'
+import { ApiKeyModal } from '@/components/common'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
 import { useAuthStore } from '@/store'
 import { knowledgeBaseEmptyInfo, knowledgeBaseEmptyItem } from '@/utils/functions'
@@ -69,6 +70,7 @@ const token = ref<string>(authStore.token)
 const checkedItemRowKeys = ref<string[]>([])
 const checkedItems = ref<KnowledgeBase.Document[]>([])
 const curKnowledgeBase: KnowledgeBase.Info = reactive<KnowledgeBase.Info>(knowledgeBaseEmptyInfo())
+const showApiKeyModal = ref(false)
 
 // 文件预览
 const filePreview = reactive({
@@ -102,8 +104,34 @@ const viewSegments = (row: KnowledgeBase.Document) => {
   router.push({ name: 'DocumentDetail', params: { kbUuid: curKbUuid, docUuid: row.uuid } })
 }
 
-const showGraph = (row: KnowledgeBase.Document) => {
-  router.push({ name: 'DocumentGraph', params: { kbUuid: curKbUuid, docUuid: row.uuid } })
+async function showIndexStatus(row: KnowledgeBase.Document, taskType: 'embedding' | 'graphical') {
+  const isEmbedding = taskType === 'embedding'
+  const status = isEmbedding ? row.embeddingStatus : row.graphicalStatus
+  const changeTime = isEmbedding ? row.embeddingStatusChangeTime : row.graphicalStatusChangeTime
+  if (status === 'DONE') {
+    dialog.info({
+      title: t(isEmbedding ? 'knowledgeBase.vectorize' : 'knowledgeBase.graphLabel'),
+      content: t('knowledgeBase.statusFinishTime', { time: changeTime || '-' }),
+      positiveText: t('common.confirm'),
+    })
+    return
+  }
+  try {
+    const resp = await api.documentIndexFailures<KnowledgeBase.IndexFailure[]>(row.uuid)
+    const failure = (resp.data || []).find(f => f.taskType === taskType)
+    dialog.warning({
+      title: t(isEmbedding ? 'knowledgeBase.embeddingFailReasonTitle' : 'knowledgeBase.graphFailReasonTitle'),
+      content: failure
+        ? () => h('div', { class: 'flex flex-col gap-1' }, [
+            h('div', null, `${t('knowledgeBase.failTimeLabel')}：${failure.updateTime}`),
+            h('div', null, `${t('knowledgeBase.failContentLabel')}：${failure.userMsg || failure.failReason}`),
+          ])
+        : t('knowledgeBase.indexFailReasonEmpty'),
+      positiveText: t('common.confirm'),
+    })
+  } catch (error: any) {
+    ms.error(error.message ?? 'error')
+  }
 }
 
 const editItem = (row: KnowledgeBase.Document) => {
@@ -114,8 +142,6 @@ function rowKey(row: KnowledgeBase.Document) {
   return row.uuid
 }
 
-// 序号列宽度按总条数位数自适应；下限按 3 位数计算——旧下限 40px 扣除单元格内边距后
-// 连两位数都放不下会换行
 // Serial-number column width auto-fits to the digit count of total rows, with a floor
 // wide enough for 3 digits (the old 40px floor made two-digit numbers wrap)
 const serialColWidth = computed(() => {
@@ -123,7 +149,7 @@ const serialColWidth = computed(() => {
   return digits * 10 + 28
 })
 const columns = computed(() => {
-  const cols = createColumns({ viewSegments, showGraph, showFileContent, editItem, deleteKbItem, toggleStatus })
+  const cols = createColumns({ showIndexStatus, viewSegments, showFileContent, editItem, deleteKbItem, toggleStatus })
   cols.splice(1, 0, {
     title: '#',
     key: 'serialNumber',
@@ -136,6 +162,37 @@ const columns = computed(() => {
 
 function changeIndexModal() {
   showIndexModal.value = true
+}
+
+// 库级重建：embedding=按现有分段重嵌（问答文档重嵌问题）；graphical=重抽图谱
+// KB-level rebuild: embedding re-embeds existing segments (QA docs re-embed questions); graphical re-extracts
+function confirmRebuild(indexType: 'embedding' | 'graphical') {
+  const d = dialog.warning({
+    title: t(indexType === 'embedding' ? 'knowledgeBase.rebuildEmbedding' : 'knowledgeBase.rebuildGraphical'),
+    content: indexType === 'embedding'
+      ? t('knowledgeBase.rebuildEmbeddingKbConfirm', { title: curKnowledgeBase.title })
+      : () => h('span', null, [
+          t('knowledgeBase.rebuildGraphicalKbConfirmPrefix', { title: curKnowledgeBase.title, model: curKnowledgeBase.ingestModelName || '-' }),
+          h('strong', null, t('knowledgeBase.rebuildGraphicalKbConfirmToken')),
+          t('knowledgeBase.rebuildGraphicalKbConfirmSuffix'),
+        ]),
+    positiveText: t('common.confirm'),
+    negativeText: t('common.cancel'),
+    onPositiveClick: async () => {
+      // 返回 Promise 时 naive-ui 会等请求结束才关弹窗，期间按钮可被连点：置 loading 防重复提交
+      d.loading = true
+      try {
+        await api.knowledgeBaseRebuild(curKbUuid, indexType)
+        ms.success(t('knowledgeBase.indexTaskRunning'))
+        indexingCheck()
+        search(1)
+      } catch (error: any) {
+        ms.error(error.message ?? 'error')
+      } finally {
+        d.loading = false
+      }
+    },
+  })
 }
 
 /**
@@ -331,11 +388,40 @@ function deleteKbItem(row: KnowledgeBase.Document) {
     content: t('common.deleteNotRecover'),
     positiveText: t('common.yes'),
     negativeText: t('common.no'),
-    onPositiveClick: () => {
-      api.knowledgeBaseItemDelete(row.uuid)
-      nextTick(() => {
+    onPositiveClick: async () => {
+      try {
+        await api.knowledgeBaseItemDelete(row.uuid)
+        checkedItemRowKeys.value = checkedItemRowKeys.value.filter(uuid => uuid !== row.uuid)
         itemList.value = itemList.value.filter(item => item.uuid !== row.uuid)
-      })
+      } catch (error: any) {
+        ms.error(error.message ?? 'error')
+      }
+    },
+  })
+}
+
+function confirmBatchDelete() {
+  if (checkedItemRowKeys.value.length === 0)
+    return
+  const d = dialog.warning({
+    title: t('knowledgeBase.deleteConfirmTitle'),
+    content: t('knowledgeBase.batchDeleteConfirm', { count: checkedItemRowKeys.value.length }),
+    positiveText: t('common.yes'),
+    negativeText: t('common.no'),
+    onPositiveClick: async () => {
+      const selected = [...checkedItemRowKeys.value]
+      // 同 confirmRebuild：置 loading 防连点重复提交
+      d.loading = true
+      try {
+        await api.knowledgeBaseItemDeleteBatch(selected)
+        checkedItemRowKeys.value = []
+        ms.success(t('common.deleteSuccess'))
+      } catch (error: any) {
+        ms.error(error.message ?? 'error')
+      } finally {
+        d.loading = false
+        search(paginationReactive.page)
+      }
     },
   })
 }
@@ -417,8 +503,17 @@ watch(
     >
       <template #header-extra>
         <NFlex align="center" :size="8">
+          <NButton tertiary size="small" type="info" @click="showApiKeyModal = true">
+            {{ t('extApi.apiAccess') }}
+          </NButton>
           <NButton tertiary size="small" type="info" @click="router.push({ name: 'KnowledgeBaseEdit', params: { kbUuid: curKbUuid } })">
             {{ t('common.edit') }}
+          </NButton>
+          <NButton tertiary size="small" type="warning" @click="confirmRebuild('embedding')">
+            {{ t('knowledgeBase.rebuildEmbedding') }}
+          </NButton>
+          <NButton tertiary size="small" type="warning" @click="confirmRebuild('graphical')">
+            {{ t('knowledgeBase.rebuildGraphical') }}
           </NButton>
         </NFlex>
       </template>
@@ -435,6 +530,12 @@ watch(
           </NButton>
           <NButton type="primary" size="small" @click="changeIndexModal()">
             {{ t('knowledgeBase.indexSelected') }}
+            <template v-if="checkedItemRowKeys.length > 0">
+              ({{ checkedItemRowKeys.length }}{{ t('knowledgeBase.item') }})
+            </template>
+          </NButton>
+          <NButton type="error" size="small" ghost :disabled="checkedItemRowKeys.length === 0" @click="confirmBatchDelete">
+            {{ t('common.delete') }}
             <template v-if="checkedItemRowKeys.length > 0">
               ({{ checkedItemRowKeys.length }}{{ t('knowledgeBase.item') }})
             </template>
@@ -548,4 +649,5 @@ watch(
     </NFlex>
   </NModal>
   <FilePreviewModal v-model:show="filePreview.show" :file-url="filePreview.url" :file-name="filePreview.name" />
+  <ApiKeyModal v-model:show="showApiKeyModal" type="knowledge" :uuid="curKbUuid" :title="curKnowledgeBase.title" />
 </template>

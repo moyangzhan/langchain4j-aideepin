@@ -14,7 +14,7 @@ Create knowledge base → Import documents (pick segmentation mode) → Index (v
 
 | Step | What | See |
 |---|---|---|
-| 1. Create | Retrieval and splitting settings | [Create & Configure](manage.md) |
+| 1. Create | Retrieval and segmentation settings | [Create & Configure](manage.md) |
 | 2. Import | Form entry or file upload, choose segmentation mode | [Import Documents](document.md) |
 | 3. Index | Vectorization (required) and graph extraction (optional) | [Import Documents](document.md#indexing) |
 | 4. Maintain | Segment enable/disable, QA maintenance, retries | [Segment Management](segment.md), [Q&A Import & Generation](qa-import.md) |
@@ -37,11 +37,11 @@ Create knowledge base → Import documents (pick segmentation mode) → Index (v
 
 ## Three Segmentation Modes
 
-The segmentation mode decides how documents are chunked and retrieved. It is a **document-level property** — chosen when importing or editing a document; one knowledge base can mix modes.
+The segmentation mode decides how documents are segmented and retrieved. It is a **document-level property** — chosen when importing or editing a document; one knowledge base can mix modes.
 
 | Mode | Best for | Retrieval |
 |---|---|---|
-| **Plain segmentation** | Continuous text: manuals, articles | Auto-chunks per the base's splitting strategy; semantic similarity recall |
+| **Plain segmentation** | Continuous text: manuals, articles | Auto-segmented per the base's segmentation strategy; semantic similarity recall |
 | **Q&A** | Paired content: FAQs, support scripts | Question-answer pairs; hitting any question recalls the answer |
 | **Parent-child** | Long, hierarchical documents | Small chunks (children) match precisely; the hit returns its **parent** (larger context) to the model |
 
@@ -53,6 +53,19 @@ How to choose:
 
 > [!NOTE]
 > Q&A mode only imports XLSX / XLS / CSV files; parent-child mode has its own child max-token setting (default 200).
+
+### Segmentation Settings vs Segment Mode
+
+Segmentation parameters and the segment mode live on two orthogonal levels; the pipeline is "**cut segments first with the base-level segmentation settings, then organize the segments per the document-level mode**":
+
+1. **Segmentation settings (knowledge-base-level)** — the [Document Segmentation Settings](manage.md#2-document-segmentation-settings) configured on the base (segmentation strategy, max tokens per segment, segment overlap, custom separator, token estimator) decide **where the cut points are**; they apply to every document in the base;
+2. **Segment mode (document-level)** — each document chooses **how to organize the segments**:
+   - **Plain segmentation**: each segment is vectorized and retrieved directly;
+   - **Parent-child**: the segment serves as the **parent**; smaller **child chunks** (at the document's child chunk size) are split inside the parent, only children are vectorized, and a hit returns its parent;
+   - **Q&A**: pairs are generated from the body text by AI (questions vectorized, answers returned as-is), with the generation window split at the base-level max tokens per segment. Importing pair files (XLSX/CSV) skips splitting entirely — the only exception.
+
+> [!TIP]
+> Naming convention: the top-level split output is always a **segment** (plain segment / parent / answer segment); only parent-child mode splits further into **child chunks** — which is why the child max-token setting exists only on parent-child documents. The document edit page shows the effective segmentation config read-only per the selected mode (plain = segment size and strategy; parent-child = parent size and strategy; Q&A = the generation window size) — all sourced from the knowledge base's segmentation settings.
 
 ## Two Index Types
 

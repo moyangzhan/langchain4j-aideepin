@@ -1306,6 +1306,7 @@ create table adi_index_task
     index_version  int                       not null,
     status         varchar(20)               not null,
     fail_reason    varchar(500) default '' not null,
+    user_msg       varchar(500) default '' not null,
     stop_flag      boolean     default false not null,
     executor_epoch varchar(32) default ''    not null,
     start_time     timestamp,
@@ -1329,6 +1330,7 @@ comment on column adi_index_task.task_type is 'embedding | graphical';
 comment on column adi_index_task.index_version is 'Snapshot of the target business table''s index_version at enqueue time: adi_document.index_version for document tasks, adi_document_segment.index_version for segment tasks. Part of the merge key: a newer version is always a fresh row; a running row can never swallow it';
 comment on column adi_index_task.status is 'pending | running | done | failed. A newer-version enqueue supersedes same-key older pending rows to failed; failed is revived in place by a same-version re-enqueue (manual retry); done rows stay as run history';
 comment on column adi_index_task.fail_reason is 'Truncated failure reason when status = failed (exception message, supersede notice, or the max-duration breaker notice); empty otherwise';
+comment on column adi_index_task.user_msg is 'Locale-independent failure code with optional params (CODE|arg, e.g. INDEX_FAIL_MODEL_CALL|model-name or RAW|first-line-snippet), rendered per user locale at read time via the i18n bundles; empty = not converted yet, read side converts on the fly';
 comment on column adi_index_task.stop_flag is 'Cooperative stop signal: set by a newer-version enqueue on this key''s older RUNNING row (status is NOT changed - the same-doc serialization gate stays closed until the executor aborts at its next checkpoint); reset to false on claim and on failed-row revive';
 comment on column adi_index_task.executor_epoch is 'Execution epoch generated at claim: heartbeat / finalize / stop checks match on (id, epoch), so a zombie executor (its row was stale-reset and re-claimed under a new epoch) cannot finalize a row now owned by another executor';
 comment on column adi_index_task.start_time is 'Claim time of the latest attempt (NULL while never run); update_time at done/failed is the finish time - the pair gives execution duration for history analysis';

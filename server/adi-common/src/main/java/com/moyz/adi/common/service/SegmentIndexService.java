@@ -180,6 +180,8 @@ public class SegmentIndexService {
     private void splitParentChild(KnowledgeBase kb, KbDocument doc) {
         Document document = new DefaultDocument(doc.getRemark(), baseMetadata(kb, doc));
         DocumentSplitter parentSplitter = createSplitter(kb, kb.getIngestMaxSegmentSize());
+        // one child splitter per run: per-parent creation would re-compile the separator pattern and re-warn on clamping for every parent
+        DocumentSplitter childSplitter = createSplitter(kb, childMaxChunkSize(doc));
         List<DocumentSegmentChildChunk> children = new ArrayList<>();
         int parentPosition = 0;
         for (TextSegment parentText : parentSplitter.split(document)) {
@@ -189,7 +191,7 @@ public class SegmentIndexService {
             // Save one by one to backfill the parent segment id for child-chunk references
             DocumentSegment parent = newSegmentRow(kb, doc, parentPosition++, parentText.text());
             documentSegmentService.save(parent);
-            children.addAll(splitChildChunkRows(kb, doc, parent.getId(), parentText.text()));
+            children.addAll(splitChildChunkRows(kb, doc, parent.getId(), parentText.text(), childSplitter));
         }
         childChunkService.saveBatch(children);
     }
@@ -199,7 +201,11 @@ public class SegmentIndexService {
      * child chunk size.
      */
     public List<DocumentSegmentChildChunk> splitChildChunkRows(KnowledgeBase kb, KbDocument doc, Long parentSegmentId, String parentContent) {
-        DocumentSplitter childSplitter = createSplitter(kb, childMaxChunkSize(doc));
+        return splitChildChunkRows(kb, doc, parentSegmentId, parentContent, createSplitter(kb, childMaxChunkSize(doc)));
+    }
+
+    private List<DocumentSegmentChildChunk> splitChildChunkRows(KnowledgeBase kb, KbDocument doc, Long parentSegmentId,
+                                                                String parentContent, DocumentSplitter childSplitter) {
         List<DocumentSegmentChildChunk> rows = new ArrayList<>();
         int position = 0;
         for (TextSegment childText : childSplitter.split(new DefaultDocument(parentContent, baseMetadata(kb, doc)))) {
@@ -382,7 +388,7 @@ public class SegmentIndexService {
         llmCallRecordService.saveAsync(record);
     }
 
-    private DocumentSplitter createSplitter(KnowledgeBase kb, Integer maxSegmentSize) {
+    public DocumentSplitter createSplitter(KnowledgeBase kb, Integer maxSegmentSize) {
         int size = maxSegmentSize == null || maxSegmentSize < 1 ? 1000 : maxSegmentSize;
         return DocumentSplitterFactory.create(
                 kb.getIngestSplitStrategy(),

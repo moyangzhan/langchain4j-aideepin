@@ -40,7 +40,7 @@ File format (in-app hint, translated):
 
 ## AI-Generated Pairs
 
-The AI distills pairs from the document body (using the base's [ingest model](manage.md#_3-document-index-settings-model)):
+The AI distills pairs from the document body (using the base's [ingest model](manage.md#3-indexing-model-settings)):
 
 1. Check **"Auto-generate Q&A pairs from the body after saving"** when creating;
 2. Generation runs asynchronously; check the pair list shortly after.
