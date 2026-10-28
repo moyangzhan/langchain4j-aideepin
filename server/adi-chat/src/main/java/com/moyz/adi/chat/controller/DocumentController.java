@@ -56,18 +56,6 @@ public class DocumentController {
         return kbDocumentService.saveOrUpdate(itemEditReq);
     }
 
-    /**
-     * Save the form together with an optional Q&A file (multipart: form fields + file part):
-     * the file is parsed and validated first, then the document is created/updated, the pairs
-     * imported and vectorized synchronously; mutually exclusive with post-save AI generation
-     * (the generate flag is ignored when a file is present)
-     */
-    @PostMapping("/saveOrUpdateWithFile")
-    public KbDocument saveOrUpdateWithFile(@Valid KbDocumentEditReq itemEditReq,
-                                           @RequestParam(value = "file", required = false) MultipartFile file) {
-        return kbDocumentService.saveOrUpdateWithQaFile(itemEditReq, file);
-    }
-
     @GetMapping("/search")
     public Page<KbDocumentDto> search(String kbUuid, String keyword, @NotNull @Min(1) Integer currentPage, @NotNull @Min(1) @Max(100) Integer pageSize) {
         knowledgeBaseService.checkReadPrivilege(kbUuid);

@@ -77,6 +77,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/knowledge-base-manage/DocumentEdit.vue'),
   },
   {
+    path: '/kb-manage/:kbUuid/document/upload',
+    name: 'DocumentUpload',
+    component: () => import('@/views/knowledge-base-manage/DocumentUpload.vue'),
+  },
+  {
     path: '/kb-manage/:kbUuid/document/:docUuid',
     name: 'DocumentEdit',
     component: () => import('@/views/knowledge-base-manage/DocumentEdit.vue'),

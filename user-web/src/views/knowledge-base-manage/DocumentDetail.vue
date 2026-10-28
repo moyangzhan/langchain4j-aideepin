@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import ParentChildSegmentList from './components/ParentChildSegmentList.vue'
 import QaSegmentList from './components/QaSegmentList.vue'
 import FilePreviewModal from './components/FilePreviewModal.vue'
+import QaImportFormatAlert from './components/QaImportFormatAlert.vue'
 import ExpandableText from './components/ExpandableText.vue'
 import { createStatusColumn, isSegmentRebuilding } from './components/segment-status'
 import { useAuthStore } from '@/store'
@@ -972,7 +973,7 @@ onActivated(() => {
 
     <NModal v-model:show="showQaImportModal" style="width: 60%;" preset="card" :title="t('knowledgeBase.importQaTo', { name: curDoc.title })">
       <NSpace vertical>
-        <NP>{{ t('knowledgeBase.importQaTip') }}</NP>
+        <QaImportFormatAlert />
         <NUpload
           v-model:file-list="qaImportFileList"
           :max="1" accept=".xlsx,.xls,.csv" directory-dnd
