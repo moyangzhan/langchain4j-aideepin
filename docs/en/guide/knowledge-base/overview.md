@@ -52,20 +52,20 @@ How to choose:
 - Long documents needing both precise hits and full context → **parent-child** (e.g. a manual: child hits a spec item, parent returns the section).
 
 > [!NOTE]
-> Q&A mode only imports XLSX / XLS / CSV files; parent-child mode has its own child max-token setting (default 200).
+> Q&A mode only imports XLSX / XLS / CSV files; parent-child mode has its own child chunk max-length setting (default 200).
 
 ### Segmentation Settings vs Segment Mode
 
 Segmentation parameters and the segment mode live on two orthogonal levels; the pipeline is "**cut segments first with the base-level segmentation settings, then organize the segments per the document-level mode**":
 
-1. **Segmentation settings (knowledge-base-level)** — the [Document Segmentation Settings](manage.md#2-document-segmentation-settings) configured on the base (segmentation strategy, max tokens per segment, segment overlap, custom separator, token estimator) decide **where the cut points are**; they apply to every document in the base;
+1. **Segmentation settings (knowledge-base-level)** — the [Document Segmentation Settings](manage.md#2-document-segmentation-settings) configured on the base (segmentation strategy, max segment length, segment overlap length, custom separator, token estimator) decide **where the cut points are**; they apply to every document in the base;
 2. **Segment mode (document-level)** — each document chooses **how to organize the segments**:
    - **Plain segmentation**: each segment is vectorized and retrieved directly;
    - **Parent-child**: the segment serves as the **parent**; smaller **child chunks** (at the document's child chunk size) are split inside the parent, only children are vectorized, and a hit returns its parent;
-   - **Q&A**: pairs are generated from the body text by AI (questions vectorized, answers returned as-is), with the generation window split at the base-level max tokens per segment. Importing pair files (XLSX/CSV) skips splitting entirely — the only exception.
+   - **Q&A**: pairs are generated from the body text by AI (questions vectorized, answers returned as-is), with the generation window split at the base-level max segment length. Importing pair files (XLSX/CSV) skips splitting entirely — the only exception.
 
 > [!TIP]
-> Naming convention: the top-level split output is always a **segment** (plain segment / parent / answer segment); only parent-child mode splits further into **child chunks** — which is why the child max-token setting exists only on parent-child documents. The document edit page shows the effective segmentation config read-only per the selected mode (plain = segment size and strategy; parent-child = parent size and strategy; Q&A = the generation window size) — all sourced from the knowledge base's segmentation settings.
+> Naming convention: the top-level split output is always a **segment** (plain segment / parent / answer segment); only parent-child mode splits further into **child chunks** — which is why the child chunk max-length setting exists only on parent-child documents. The "Segmentation config" block on the document edit page lists the effective chunking params per mode (paragraph / parent / QA segment max length, segment overlap length, chunking strategy or custom separator; parent-child adds the child chunk max length) — all sourced from the knowledge base's segmentation settings (an "inherited from knowledge base settings" note beside the block title; the settings words link there).
 
 ## Two Index Types
 

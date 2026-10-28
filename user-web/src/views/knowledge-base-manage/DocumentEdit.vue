@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { NAlert, NBreadcrumb, NBreadcrumbItem, NButton, NCard, NCheckbox, NInput, NInputNumber, NSelect, NSpace, NSpin, NUpload, useDialog, useMessage } from 'naive-ui'
 import type { UploadFileInfo } from 'naive-ui'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { knowledgeBaseEmptyInfo, knowledgeBaseEmptyItem } from '@/utils/functions'
 import { SPLIT_STRATEGY } from '@/utils/constant'
 import { t } from '@/locales'
@@ -38,11 +38,26 @@ const segmentModeChanged = computed(() => isEdit.value && !!originalSegmentMode.
 // 当前模式生效的分段配置（只读展示）：分段参数全部来自库级设置 curKb，本页零新请求
 // Effective segmentation config of the selected mode (read-only display), all from the KB-level curKb
 const segmentSize = computed(() => curKb.ingestMaxSegmentSize ?? 0)
-const splitStrategyText = computed(() => {
+// 纯策略名（如「按段落」）；custom 时策略行让位给「自定义分隔符」独立行
+const splitStrategyLabel = computed(() => {
   const value = curKb.ingestSplitStrategy
-  const label = SPLIT_STRATEGY.find(option => option.value === value)?.label ?? value ?? ''
-  const customSeparator = value === 'custom' ? curKb.ingestCustomSeparator : ''
-  return customSeparator ? `${label} ${customSeparator}` : label
+  return SPLIT_STRATEGY.find(option => option.value === value)?.label ?? value ?? ''
+})
+
+// 按模式组装分段配置行（长度 / 重叠 / 策略或分隔符全部继承自知识库设置，来源见标题旁链接）
+const segmentConfigRows = computed(() => {
+  const tokenLabel = tmpItem.segmentMode === 'parent_child'
+    ? t('knowledgeBase.parentChunkMaxLabel')
+    : tmpItem.segmentMode === 'qa' ? t('knowledgeBase.qaChunkMaxLabel') : t('knowledgeBase.textChunkMaxLabel')
+  const overlapRow = { label: t('knowledgeBase.configOverlapLabel'), value: `${curKb.ingestMaxOverlap ?? 0}` }
+  const strategyRow = curKb.ingestSplitStrategy === 'custom'
+    ? { label: t('knowledgeBase.customSeparator'), value: curKb.ingestCustomSeparator }
+    : { label: t('knowledgeBase.configStrategyLabel'), value: splitStrategyLabel.value }
+  return [
+    { label: tokenLabel, value: `${segmentSize.value}` },
+    overlapRow,
+    strategyRow,
+  ]
 })
 
 // A new Q&A document may carry a pair file (xlsx/csv) submitted with the form in one
@@ -161,41 +176,47 @@ onMounted(async () => {
     <NCard style="margin-top: 12px" :title="pageTitle" hoverable>
       <NSpin :show="loading">
         <NSpace vertical>
-          {{ t('store.title') }}
+          <span style="font-weight: 600;">{{ t('store.title') }}</span>
           <NInput v-model:value="tmpItem.title" maxlength="100" show-count />
-          {{ t('knowledgeBase.segmentMode') }}
+          <span style="font-weight: 600;">{{ t('knowledgeBase.segmentMode') }}</span>
           <NSelect :value="tmpItem.segmentMode" :options="segmentModeOptions" :on-update:value="onSegmentModeChange" />
           <div style="font-size: 12px; opacity: 0.7" class="flex flex-col">
             <div>{{ t('knowledgeBase.segmentModeTextTip') }}</div>
             <div>{{ t('knowledgeBase.segmentModeQaTip') }}</div>
             <div>{{ t('knowledgeBase.segmentModeParentChildTip') }}</div>
           </div>
-          <!-- 当前模式生效的库级分段配置（按模式语义区分文案） -->
-          <div style="font-size: 12px; opacity: 0.7">
-            <div v-if="tmpItem.segmentMode === 'text'">
-              {{ t('knowledgeBase.segmentConfigText', { size: segmentSize, strategy: splitStrategyText }) }}
+          <!-- 切换模式的破坏性后果：常显、warning 黄加粗，紧跟模式说明 -->
+          <div style="font-size: 12px; font-weight: 600; color: #f0a020;">
+            {{ t('knowledgeBase.segmentModeTip') }}
+          </div>
+          <!-- 分段配置：字段级标签（与「摘要」等同级）；额外上间距与模式说明流断开，内容行轻缩进强调从属 -->
+          <div style="margin-top: 8px;" class="flex items-center gap-2">
+            <span style="font-weight: 600;">{{ t('knowledgeBase.segmentConfigLabel') }}</span>
+            <!-- 继承属性是整块的属性：标注在标题旁；仅「知识库设置」四字为链接直达编辑页 -->
+            <span style="font-size: 12px; opacity: 0.7;">
+              {{ t('knowledgeBase.configFromKbPrefix') }}<RouterLink class="hljs-link" :to="{ name: 'KnowledgeBaseEdit', params: { kbUuid } }">{{ t('knowledgeBase.kbSettingsLink') }}</RouterLink>{{ t('knowledgeBase.configFromKbSuffix') }}
+            </span>
+          </div>
+          <div class="flex flex-col" style="font-size: 12px; gap: 2px; padding-left: 4px;">
+            <div v-for="row in segmentConfigRows" :key="row.label">
+              <span>{{ row.label }}: {{ row.value }}</span>
             </div>
-            <div v-else-if="tmpItem.segmentMode === 'parent_child'">
-              {{ t('knowledgeBase.segmentConfigParentChild', { size: segmentSize, strategy: splitStrategyText }) }}
+            <div v-if="tmpItem.segmentMode === 'parent_child'" class="flex items-center gap-2">
+              <span>{{ t('knowledgeBase.childChunkMaxLabel') }}:</span>
+              <NInputNumber v-model:value="tmpItem.childMaxChunkSize" :min="50" :max="4000" size="small" style="width: 140px" />
             </div>
-            <div v-else-if="tmpItem.segmentMode === 'qa'">
-              {{ t('knowledgeBase.segmentConfigQa', { size: segmentSize }) }}
-            </div>
+            <span v-if="tmpItem.segmentMode === 'qa'" style="opacity: 0.7;">{{ t('knowledgeBase.qaNoChunkRow') }}</span>
           </div>
           <NAlert
-            v-if="segmentModeChanged || tmpItem.segmentMode === 'qa'"
-            type="warning"
-            :show-icon="true"
+            v-if="tmpItem.segmentMode === 'qa'"
+            type="info"
+            :show-icon="false"
             style="font-size: 12px"
           >
-            <div v-if="segmentModeChanged">
-              {{ t('knowledgeBase.segmentModeTip') }}
-            </div>
-            <div v-if="tmpItem.segmentMode === 'qa' && !tmpItem.autoGenerateQa">
+            <div v-if="!tmpItem.autoGenerateQa">
               {{ t('knowledgeBase.segmentModeSwitchQaWarning') }}
             </div>
             <NCheckbox
-              v-if="tmpItem.segmentMode === 'qa'"
               v-model:checked="tmpItem.autoGenerateQa"
               :disabled="hasQaFile"
               style="margin-top: 4px"
@@ -205,7 +226,7 @@ onMounted(async () => {
           </NAlert>
           <!-- New Q&A doc: optional pair-file import, mutually exclusive with AI generation -->
           <template v-if="tmpItem.segmentMode === 'qa' && !isEdit">
-            {{ t('knowledgeBase.importQa') }}
+            <span style="font-weight: 600;">{{ t('knowledgeBase.importQa') }}</span>
             <NUpload v-model:file-list="qaFileList" :max="1" accept=".xlsx,.xls,.csv" :default-upload="false">
               <NButton size="small" ghost type="primary">
                 {{ t('knowledgeBase.selectQaFile') }}
@@ -215,17 +236,10 @@ onMounted(async () => {
               {{ t('knowledgeBase.importQaFileFormTip') }}
             </span>
           </template>
-          <template v-if="tmpItem.segmentMode === 'parent_child'">
-            {{ t('knowledgeBase.childMaxChunkSize') }}
-            <NInputNumber v-model:value="tmpItem.childMaxChunkSize" :min="50" :max="4000" />
-            <span style="font-size: 12px; opacity: 0.65;">
-              {{ t('knowledgeBase.childMaxChunkSizeTip') }}
-            </span>
-          </template>
-          {{ t('knowledgeBase.brief') }}
+          <span style="font-weight: 600;">{{ t('knowledgeBase.brief') }}</span>
           <NInput v-model:value="tmpItem.brief" type="textarea" show-count :autosize="{ minRows: 2, maxRows: 3 }" />
           <!-- 正文与分段模式无关：remark 是文档本身的内容，qa 模式仅作为生成来源，编辑不影响已有问答对 -->
-          {{ t('knowledgeBase.rawContent') }}
+          <span style="font-weight: 600;">{{ t('knowledgeBase.rawContent') }}</span>
           <NInput
             v-model:value="tmpItem.remark"
             class="content-textarea"

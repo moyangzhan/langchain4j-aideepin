@@ -36,9 +36,9 @@ These parameters are **knowledge-base-level**; they apply to the segmentation of
 
 | Field | Description |
 |---|---|
-| Segment overlap | Content shared by adjacent segments (marked "applies to new indexing after change") — keeps boundary information intact; validated on save to be **smaller than the max segment size** (the effective backend cap is half of it) |
+| Segment overlap length | Content shared by adjacent segments (marked "applies to new indexing after change") — keeps boundary information intact; validated on save to be **smaller than the max segment length** (the effective backend cap is half of it) |
 | Segmentation strategy | Recursive / by paragraph / by line / by sentence / custom separator (required when custom, e.g. `\n\n`, `\n`) |
-| Max segment size (tokens) | Upper bound of a segment, range 100–10000; longer content keeps splitting; **Q&A generation also splits the source text at this size** |
+| Max segment length | Upper bound of a segment, range 100–10000; longer content keeps splitting; **Q&A generation also splits the source text at this size** |
 | Token estimator | OpenAI / Qwen / Huggingface counting conventions — match your embedding model family |
 
 > [!NOTE]
@@ -82,7 +82,7 @@ Click **Edit** in the actions column. Note the consequences:
 | Change | Effect |
 |---|---|
 | Retrieval settings, LLM parameters | Immediate, no rebuild |
-| Segmentation parameters (overlap / strategy / max tokens…) | Takes effect for **subsequent indexing only** — existing segments are untouched; re-split a single document by editing it (see [Full Rebuild](document.md#full-rebuild)) |
+| Segmentation parameters (overlap / strategy / max length…) | Takes effect for **subsequent indexing only** — existing segments are untouched; re-split a single document by editing it (see [Full Rebuild](document.md#full-rebuild)) |
 
 ## API
 

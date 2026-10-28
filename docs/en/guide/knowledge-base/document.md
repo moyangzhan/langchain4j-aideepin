@@ -24,7 +24,7 @@ From "My knowledge bases" click the title or **Docs** to open the knowledge base
 | Parent-child | Parent-child: for long documents; children match precisely and the hit returns the parent as full context |
 
    - **Q&A** accepts XLSX / XLS / CSV only (with **template download**); each file becomes one standalone Q&A document named after the file — format details in [Q&A Import & Generation](qa-import.md);
-   - **Parent-child** shows **child max tokens**, hint (translated): "The parent is split into children of this size; children match precisely and the hit returns the parent as full context; range 50–4000, default 200; changes take effect on re-vectorization";
+   - **Parent-child** shows **child chunk max length**, hint (translated): "The parent is split into children of this size; children match precisely and the hit returns the parent as full context; range 50–4000, default 200; changes take effect on re-vectorization";
    - **Plain** follows the base's segmentation settings, no extra parameters (the document edit page shows the effective segmentation config read-only).
 3. Drag files into the upload area (or click to browse).
 
@@ -101,8 +101,8 @@ Via **Edit** in the actions column (or when adding by form):
 | Field | Description |
 |---|---|
 | Title / summary / body | The body feeds segmentation and indexing |
-| Segmentation mode | Switching warns: "Switching will discard the document's existing segments and vector indexes and rebuild with the new mode; **the graph is not rebuilt automatically and must be re-extracted manually**" |
-| Child max tokens | Parent-child mode only |
+| Segmentation mode | A bold always-on note under the mode hints: switching discards existing segments and vectors and rebuilds in the new mode; **the graph is not rebuilt automatically and must be re-extracted manually** |
+| Segmentation config | Lists the effective chunking params per mode: paragraph / parent / QA segment max length, segment overlap length, chunking strategy (custom separator shown when custom); parent-child mode edits **child chunk max length** here; Q&A mode notes that questions and answers need no length setting; a "(inherited from knowledge base settings)" note beside the block title; only the "knowledge base settings" words link to the edit page |
 
 - Q&A-mode extras (AI generation, QA file import): see [Q&A Import & Generation](qa-import.md);
 - Saving body edits re-vectorizes affected segments automatically.
