@@ -9,7 +9,7 @@ import org.apache.ibatis.type.JdbcType;
 @Data
 @TableName("adi_knowledge_base_qa")
 @Schema(title = "知识库问答记录实体 | Knowledge Base QA Record Entity", description = "知识库问答记录表 | Knowledge Base QA Record Table")
-public class KnowledgeBaseQa extends BaseEntity {
+public class KnowledgeBaseChat extends BaseEntity {
 
     @Schema(title = "uuid")
     @TableField(value = "uuid", jdbcType = JdbcType.VARCHAR)

@@ -9,7 +9,7 @@ import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.cosntant.RedisKeyConstant;
 import com.moyz.adi.common.dto.KbEditReq;
 import com.moyz.adi.common.dto.KbInfoResp;
-import com.moyz.adi.common.dto.KbQaDto;
+import com.moyz.adi.common.dto.KbChatDto;
 import com.moyz.adi.common.dto.KbSearchReq;
 import com.moyz.adi.common.dto.RefGraphDto;
 import com.moyz.adi.common.entity.*;
@@ -84,7 +84,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     private IndexTaskService indexTaskService;
 
     @Resource
-    private KnowledgeBaseQaService knowledgeBaseQaRecordService;
+    private KnowledgeBaseChatService knowledgeBaseChatService;
 
     @Resource
     private KnowledgeBaseStarService knowledgeBaseStarRecordService;
@@ -417,8 +417,8 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 .update();
     }
 
-    public SseEmitter sseAsk(String qaRecordUuid) {
-        getReadableQaOrThrow(qaRecordUuid);
+    public SseEmitter sseChat(String chatRecordUuid) {
+        getReadableChatOrThrow(chatRecordUuid);
         checkRequestTimesOrThrow();
         String sseUuid = UuidUtil.createShort();
         SseEmitter sseEmitter = new SseEmitter(SSE_TIMEOUT);
@@ -427,7 +427,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             return sseEmitter;
         }
         sseManager.startSse(user, sseUuid, sseEmitter, null);
-        self.retrieveAndPushToLLM(user, sseUuid, qaRecordUuid);
+        self.retrieveAndPushToLLM(user, sseUuid, chatRecordUuid);
         return sseEmitter;
     }
 
@@ -436,23 +436,23 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
      *
      * @param user          current user
      * @param knowledgeBase knowledge base entity
-     * @param qaDto         QA record DTO
+     * @param chatDto         QA record DTO
      * @return JSON response with answer
      */
-    public Map<String, Object> blockingAsk(User user, KnowledgeBase knowledgeBase, KbQaDto qaDto) {
+    public Map<String, Object> blockingAsk(User user, KnowledgeBase knowledgeBase, KbChatDto chatDto) {
         TokenEstimatorThreadLocal.setTokenEstimator(knowledgeBase.getIngestTokenEstimator());
         try {
-            return doBlockingAsk(user, knowledgeBase, qaDto);
+            return doBlockingAsk(user, knowledgeBase, chatDto);
         } finally {
             TokenEstimatorThreadLocal.clearTokenEstimator();
         }
     }
 
-    private Map<String, Object> doBlockingAsk(User user, KnowledgeBase knowledgeBase, KbQaDto qaDto) {
+    private Map<String, Object> doBlockingAsk(User user, KnowledgeBase knowledgeBase, KbChatDto chatDto) {
         checkRequestTimesOrThrow();
-        KnowledgeBaseQa qaRecord = knowledgeBaseQaRecordService.getOrThrow(qaDto.getUuid());
-        AiModel aiModel = qaRecord.getAiModelId() > 0
-                ? aiModelService.getByIdOrThrow(qaRecord.getAiModelId())
+        KnowledgeBaseChat chatRecord = knowledgeBaseChatService.getOrThrow(chatDto.getUuid());
+        AiModel aiModel = chatRecord.getAiModelId() > 0
+                ? aiModelService.getByIdOrThrow(chatRecord.getAiModelId())
                 : LLMContext.getAiModel(null, null);
 
         int maxInputTokens = aiModel.getMaxInputTokens();
@@ -460,7 +460,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         if (maxResults < 1) {
             String memoryId = knowledgeBase.getUuid() + "_" + user.getUuid();
             int reservedTokens = computeReservedTokens(memoryId, knowledgeBase.getQuerySystemMessage());
-            maxResults = EmbeddingRag.getRetrieveMaxResults(qaRecord.getQuestion(), maxInputTokens, reservedTokens);
+            maxResults = EmbeddingRag.getRetrieveMaxResults(chatRecord.getQuestion(), maxInputTokens, reservedTokens);
         }
 
         // Retrieve from knowledge base
@@ -478,11 +478,11 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                             .build());
             RetrieverCreateParam createParam = RetrieverCreateParam.builder()
                     .chatModel(chatModel)
-                    .filter(new IsEqualTo(AdiConstant.MetadataKey.KB_UUID, qaRecord.getKbUuid()))
+                    .filter(new IsEqualTo(AdiConstant.MetadataKey.KB_UUID, chatRecord.getKbUuid()))
                     .maxResults(maxResults)
                     .minScore(knowledgeBase.getRetrieveMinScore())
                     .breakIfSearchMissed(knowledgeBase.getIsStrict())
-                    .excludedItemUuids(new HashSet<>(kbDocumentService.listDisabledItemUuids(qaRecord.getKbUuid())))
+                    .excludedItemUuids(new HashSet<>(kbDocumentService.listDisabledItemUuids(chatRecord.getKbUuid())))
                     .build();
             CompositeRag compositeRag = new CompositeRag(AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE);
             List<RetrieverWrapper> retrieverWrappers = compositeRag.createRetriever(createParam);
@@ -497,7 +497,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         }
 
         // Build prompt
-        String prompt = PromptUtil.createPrompt(qaRecord.getQuestion(), "", knowledgeContext, "");
+        String prompt = PromptUtil.createPrompt(chatRecord.getQuestion(), "", knowledgeContext, "");
 
         // Call LLM in blocking mode
         String uuid = UuidUtil.createShort();
@@ -524,11 +524,11 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         int llmDuration = NumberUtil.saturatedCastToInt(System.currentTimeMillis() - llmStartTime);
 
         // Update QA record
-        KnowledgeBaseQa updateRecord = new KnowledgeBaseQa();
-        updateRecord.setId(qaRecord.getId());
+        KnowledgeBaseChat updateRecord = new KnowledgeBaseChat();
+        updateRecord.setId(chatRecord.getId());
         updateRecord.setPrompt(prompt);
         updateRecord.setAnswer(chatResponse.aiMessage().text());
-        knowledgeBaseQaRecordService.updateById(updateRecord);
+        knowledgeBaseChatService.updateById(updateRecord);
 
         // Aggregate token usage across all LLM calls in this request (a single chat() may
         // recurse through multiple tool calls, each cached under the same uuid in Redis).
@@ -543,7 +543,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             LLMCallRecord callRecord = new LLMCallRecord();
             callRecord.setUuid(UuidUtil.createShort());
             callRecord.setSourceType(LLMCallRecordSourceType.KNOWLEDGE_BASE_QA.getValue());
-            callRecord.setSourceId(qaRecord.getId());
+            callRecord.setSourceId(chatRecord.getId());
             callRecord.setUserId(user.getId());
             callRecord.setModelPlatform(aiModel.getPlatform());
             callRecord.setModelName(aiModel.getName());
@@ -633,14 +633,14 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
      *
      * @param user         当前提问的用户
      * @param sseUuid      SSE 请求标识 / SSE request identifier
-     * @param qaRecordUuid 知识库uuid
+     * @param chatRecordUuid 知识库uuid
      */
     @Async
-    public void retrieveAndPushToLLM(User user, String sseUuid, String qaRecordUuid) {
-        log.info("retrieveAndPushToLLM,qaRecordUuid:{},userId:{}", qaRecordUuid, user.getId());
-        KnowledgeBaseQa qaRecord = knowledgeBaseQaRecordService.getOrThrow(qaRecordUuid);
-        KnowledgeBase knowledgeBase = getOrThrow(qaRecord.getKbUuid());
-        AiModel aiModel = aiModelService.getByIdOrThrow(qaRecord.getAiModelId());
+    public void retrieveAndPushToLLM(User user, String sseUuid, String chatRecordUuid) {
+        log.info("retrieveAndPushToLLM,chatRecordUuid:{},userId:{}", chatRecordUuid, user.getId());
+        KnowledgeBaseChat chatRecord = knowledgeBaseChatService.getOrThrow(chatRecordUuid);
+        KnowledgeBase knowledgeBase = getOrThrow(chatRecord.getKbUuid());
+        AiModel aiModel = aiModelService.getByIdOrThrow(chatRecord.getAiModelId());
 
         TokenEstimatorThreadLocal.setTokenEstimator(knowledgeBase.getIngestTokenEstimator());
 
@@ -650,18 +650,18 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 //maxResults < 1 means the system auto-calculates based on model maxInputTokens
             //maxResults < 1 表示由系统根据设置的模型maxInputTokens自动计算大小
             if (maxResults < 1) {
-                String memoryId = qaRecord.getKbUuid() + "_" + user.getUuid();
+                String memoryId = chatRecord.getKbUuid() + "_" + user.getUuid();
                 int reservedTokens = computeReservedTokens(memoryId, knowledgeBase.getQuerySystemMessage());
-                maxResults = EmbeddingRag.getRetrieveMaxResults(qaRecord.getQuestion(), maxInputTokens, reservedTokens);
+                maxResults = EmbeddingRag.getRetrieveMaxResults(chatRecord.getQuestion(), maxInputTokens, reservedTokens);
             }
 
             SseAskParam sseAskParam = new SseAskParam();
-            sseAskParam.setUuid(qaRecord.getUuid());
+            sseAskParam.setUuid(chatRecord.getUuid());
             sseAskParam.setHttpRequestParams(
                     ChatModelRequest.builder()
-                            .memoryId(qaRecord.getKbUuid() + "_" + user.getUuid())
+                            .memoryId(chatRecord.getKbUuid() + "_" + user.getUuid())
                             .systemMessage(knowledgeBase.getQuerySystemMessage())
-                            .userMessage(qaRecord.getQuestion())
+                            .userMessage(chatRecord.getQuestion())
                             .build()
             );
             sseAskParam.setModelProperties(
@@ -683,10 +683,10 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                     sseManager.call(sseAskParam, (response, questionMeta, answerMeta) -> {
                                 answerMeta.setDuration(NumberUtil.saturatedCastToInt(System.currentTimeMillis() - llmStartTime));
                                 sseManager.sendComplete(user.getId(), sseUuid, questionMeta, answerMeta, null);
-                                updateQaRecord(
-                                        UpdateQaParam.builder()
+                                updateChatRecord(
+                                        UpdateChatParam.builder()
                                                 .user(user)
-                                                .qaRecord(qaRecord)
+                                                .chatRecord(chatRecord)
                                                 .retrievers(null)
                                                 .sseAskParam(sseAskParam)
                                                 .response(response.getContent())
@@ -704,11 +704,11 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                                 .build());
                 RetrieverCreateParam createParam = RetrieverCreateParam.builder()
                         .chatModel(chatModel)
-                        .filter(new IsEqualTo(AdiConstant.MetadataKey.KB_UUID, qaRecord.getKbUuid()))
+                        .filter(new IsEqualTo(AdiConstant.MetadataKey.KB_UUID, chatRecord.getKbUuid()))
                         .maxResults(maxResults)
                         .minScore(knowledgeBase.getRetrieveMinScore())
                         .breakIfSearchMissed(knowledgeBase.getIsStrict())
-                        .excludedItemUuids(new HashSet<>(kbDocumentService.listDisabledItemUuids(qaRecord.getKbUuid())))
+                        .excludedItemUuids(new HashSet<>(kbDocumentService.listDisabledItemUuids(chatRecord.getKbUuid())))
                         .build();
                 CompositeRag compositeRag = new CompositeRag(KNOWLEDGE_BASE);
                 List<RetrieverWrapper> retrieverWrappers = compositeRag.createRetriever(createParam);
@@ -717,10 +717,10 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 compositeRag.ragChat(retrievers, sseAskParam, (response, promptMeta, answerMeta) -> {
                             answerMeta.setDuration(NumberUtil.saturatedCastToInt(System.currentTimeMillis() - llmStartTime));
                             sseManager.sendComplete(user.getId(), sseAskParam.getSseUuid(), promptMeta, answerMeta, null);
-                            updateQaRecord(
-                                    UpdateQaParam.builder()
+                            updateChatRecord(
+                                    UpdateChatParam.builder()
                                             .user(user)
-                                            .qaRecord(qaRecord)
+                                            .chatRecord(chatRecord)
                                             .retrievers(retrievers)
                                             .sseAskParam(sseAskParam)
                                             .response(response)
@@ -758,38 +758,38 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         return tokens;
     }
 
-    private void updateQaRecord(UpdateQaParam updateQaParam) {
+    private void updateChatRecord(UpdateChatParam updateChatParam) {
 
-        Pair<Integer, Integer> inputOutputTokenCost = LLMTokenUtil.calAllTokenCostByUuid(stringRedisTemplate, updateQaParam.getSseAskParam().getUuid());
+        Pair<Integer, Integer> inputOutputTokenCost = LLMTokenUtil.calAllTokenCostByUuid(stringRedisTemplate, updateChatParam.getSseAskParam().getUuid());
 
-        KnowledgeBaseQa qaRecord = updateQaParam.getQaRecord();
-        User user = updateQaParam.getUser();
+        KnowledgeBaseChat chatRecord = updateChatParam.getChatRecord();
+        User user = updateChatParam.getUser();
 
-        KnowledgeBaseQa updateRecord = new KnowledgeBaseQa();
-        updateRecord.setId(qaRecord.getId());
-        updateRecord.setPrompt(updateQaParam.getSseAskParam().getHttpRequestParams().getUserMessage());
-        updateRecord.setAnswer(updateQaParam.getResponse());
-        knowledgeBaseQaRecordService.updateById(updateRecord);
+        KnowledgeBaseChat updateRecord = new KnowledgeBaseChat();
+        updateRecord.setId(chatRecord.getId());
+        updateRecord.setPrompt(updateChatParam.getSseAskParam().getHttpRequestParams().getUserMessage());
+        updateRecord.setAnswer(updateChatParam.getResponse());
+        knowledgeBaseChatService.updateById(updateRecord);
 
         //Save LLM call record
         LLMCallRecord callRecord = new LLMCallRecord();
         callRecord.setUuid(UuidUtil.createShort());
         callRecord.setSourceType(LLMCallRecordSourceType.KNOWLEDGE_BASE_QA.getValue());
-        callRecord.setSourceId(qaRecord.getId());
+        callRecord.setSourceId(chatRecord.getId());
         callRecord.setUserId(user.getId());
-        callRecord.setModelPlatform(updateQaParam.getSseAskParam().getModelPlatform());
-        callRecord.setModelName(updateQaParam.getSseAskParam().getModelName());
+        callRecord.setModelPlatform(updateChatParam.getSseAskParam().getModelPlatform());
+        callRecord.setModelName(updateChatParam.getSseAskParam().getModelName());
         callRecord.setInputTokens(inputOutputTokenCost.getLeft());
         callRecord.setOutputTokens(inputOutputTokenCost.getRight());
-        callRecord.setDuration(updateQaParam.getDuration());
+        callRecord.setDuration(updateChatParam.getDuration());
         llmCallRecordService.saveAsync(callRecord);
 
-        createRef(updateQaParam.getRetrievers(), user, qaRecord.getId());
+        createRef(updateChatParam.getRetrievers(), user, chatRecord.getId());
         //用户本次请求消耗的token数指的是整个RAG过程中消耗的token数量，其中可能涉及到多次LLM请求
         int allToken = inputOutputTokenCost.getLeft() + inputOutputTokenCost.getRight();
         log.info("User {} total token consumption for this request: {}", user.getName(), allToken);
         if (allToken > 0) {
-            userDayCostService.appendCostToUser(user, allToken, updateQaParam.isTokenFree());
+            userDayCostService.appendCostToUser(user, allToken, updateChatParam.isTokenFree());
         }
     }
 
@@ -798,9 +798,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
      *
      * @param retrievers 召回器
      * @param user       用户
-     * @param qaId       问答id
+     * @param chatId       问答id
      */
-    private void createRef(List<ContentRetriever> retrievers, User user, Long qaId) {
+    private void createRef(List<ContentRetriever> retrievers, User user, Long chatId) {
         if (CollectionUtils.isEmpty(retrievers)) {
             return;
         }
@@ -809,7 +809,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         for (ContentRetriever retriever : retrievers) {
             if (retriever instanceof AdiEmbeddingStoreContentRetriever embeddingRetriever) {
                 Map<String, Double> embeddingToScore = embeddingRetriever.getRetrievedEmbeddingToScore();
-                knowledgeBaseQaRecordService.createEmbeddingRefs(user, qaId, embeddingToScore);
+                knowledgeBaseChatService.createEmbeddingRefs(user, chatId, embeddingToScore);
                 // Increment segment-level hit count (text segment / question / child chunk, with propagation to answers/parents)
                 List<String> embeddingIds = new ArrayList<>(embeddingToScore.keySet());
                 documentSegmentService.incrementHitCounts(embeddingIds);
@@ -817,7 +817,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 embeddingHitItemUuids.addAll(documentSegmentService.selectDocUuidsByEmbeddingIds(embeddingIds));
             } else if (retriever instanceof GraphStoreContentRetriever graphRetriever) {
                 RefGraphDto graphDto = graphRetriever.getGraphRef();
-                knowledgeBaseQaRecordService.createGraphRefs(user, qaId, graphDto);
+                knowledgeBaseChatService.createGraphRefs(user, chatId, graphDto);
                 // Collect document UUIDs from graph vertices metadata (may be comma-separated)
                 if (graphDto.getVertices() != null) {
                     for (GraphVertex vertex : graphDto.getVertices()) {
@@ -865,10 +865,10 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
      * Resolve a QA record and authorize access through its owning knowledge base.
      * QA UUIDs are otherwise sufficient to reach private document references and answers.
      */
-    public KnowledgeBaseQa getReadableQaOrThrow(String qaRecordUuid) {
-        KnowledgeBaseQa qaRecord = knowledgeBaseQaRecordService.getOrThrow(qaRecordUuid);
-        getReadableOrThrow(qaRecord.getKbUuid());
-        return qaRecord;
+    public KnowledgeBaseChat getReadableChatOrThrow(String chatRecordUuid) {
+        KnowledgeBaseChat chatRecord = knowledgeBaseChatService.getOrThrow(chatRecordUuid);
+        getReadableOrThrow(chatRecord.getKbUuid());
+        return chatRecord;
     }
 
     /**

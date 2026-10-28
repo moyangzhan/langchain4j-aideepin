@@ -2,7 +2,7 @@ package com.moyz.adi.common.service;
 
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.entity.KnowledgeBase;
-import com.moyz.adi.common.entity.KnowledgeBaseQa;
+import com.moyz.adi.common.entity.KnowledgeBaseChat;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
@@ -27,20 +27,20 @@ class KnowledgeBaseServiceAuthorizationTest {
 
     private KnowledgeBaseService knowledgeBaseService;
     private KnowledgeBaseMapper knowledgeBaseMapper;
-    private KnowledgeBaseQaService knowledgeBaseQaService;
+    private KnowledgeBaseChatService knowledgeBaseChatService;
 
     @BeforeEach
     void setUp() {
         knowledgeBaseService = new KnowledgeBaseService();
         knowledgeBaseMapper = mock(KnowledgeBaseMapper.class);
-        knowledgeBaseQaService = mock(KnowledgeBaseQaService.class);
+        knowledgeBaseChatService = mock(KnowledgeBaseChatService.class);
         ApplicationContext applicationContext = mock(ApplicationContext.class);
         MessageSource messageSource = mock(MessageSource.class);
         when(applicationContext.getBean(MessageSource.class)).thenReturn(messageSource);
         when(messageSource.getMessage(any(String.class), any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
         ReflectionTestUtils.setField(SpringUtil.class, "applicationContext", applicationContext);
         ReflectionTestUtils.setField(knowledgeBaseService, "baseMapper", knowledgeBaseMapper);
-        ReflectionTestUtils.setField(knowledgeBaseService, "knowledgeBaseQaRecordService", knowledgeBaseQaService);
+        ReflectionTestUtils.setField(knowledgeBaseService, "knowledgeBaseChatService", knowledgeBaseChatService);
     }
 
     @AfterEach
@@ -84,14 +84,14 @@ class KnowledgeBaseServiceAuthorizationTest {
 
     @Test
     void qaReadChecksTheOwningKnowledgeBase() {
-        KnowledgeBaseQa qaRecord = new KnowledgeBaseQa();
-        qaRecord.setKbUuid("private-kb");
-        when(knowledgeBaseQaService.getOrThrow("qa-record")).thenReturn(qaRecord);
+        KnowledgeBaseChat chatRecord = new KnowledgeBaseChat();
+        chatRecord.setKbUuid("private-kb");
+        when(knowledgeBaseChatService.getOrThrow("qa-record")).thenReturn(chatRecord);
         when(knowledgeBaseMapper.selectOne(any())).thenReturn(knowledgeBase(11L, 42L, false));
         ThreadContext.setCurrentUser(user(7L, false));
 
         BaseException exception = assertThrows(BaseException.class,
-                () -> knowledgeBaseService.getReadableQaOrThrow("qa-record"));
+                () -> knowledgeBaseService.getReadableChatOrThrow("qa-record"));
 
         assertEquals(ErrorEnum.A_DATA_NOT_FOUND.getCode(), exception.getCode());
     }

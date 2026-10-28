@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.moyz.adi.common.mapper.KnowledgeBaseQaRecordReferenceMapper">
-    <select id="listByQaUuid" resultType="com.moyz.adi.common.entity.KnowledgeBaseQaRefEmbedding">
+<mapper namespace="com.moyz.adi.common.mapper.KnowledgeBaseChatRefEmbeddingMapper">
+    <select id="listByChatUuid" resultType="com.moyz.adi.common.entity.KnowledgeBaseChatRefEmbedding">
         select *
         from adi_knowledge_base_qa_ref_embedding a
         inner join adi_knowledge_base_qa b on a.qa_record_id = b.id
-        where b.uuid = #{qaUuid}
+        where b.uuid = #{chatUuid}
     </select>
 
 </mapper>

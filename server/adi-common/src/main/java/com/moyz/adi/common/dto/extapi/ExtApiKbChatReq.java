@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class ExtApiKbQaReq {
+public class ExtApiKbChatReq {
     @NotBlank(message = "query is required")
     private String query;
     private String model;

@@ -1,15 +1,15 @@
 package com.moyz.adi.chat.controller.externalapi.v1;
 
 import com.moyz.adi.common.base.ThreadContext;
-import com.moyz.adi.common.dto.KbQaDto;
-import com.moyz.adi.common.dto.QARecordReq;
-import com.moyz.adi.common.dto.extapi.ExtApiKbQaReq;
+import com.moyz.adi.common.dto.KbChatDto;
+import com.moyz.adi.common.dto.KbChatReq;
+import com.moyz.adi.common.dto.extapi.ExtApiKbChatReq;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.service.AiModelService;
-import com.moyz.adi.common.service.KnowledgeBaseQaService;
+import com.moyz.adi.common.service.KnowledgeBaseChatService;
 import com.moyz.adi.common.service.KnowledgeBaseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,36 +30,36 @@ public class ExtKnowledgeBaseController {
     private KnowledgeBaseService knowledgeBaseService;
 
     @Resource
-    private KnowledgeBaseQaService knowledgeBaseQaService;
+    private KnowledgeBaseChatService knowledgeBaseChatService;
 
     @Resource
     private AiModelService aiModelService;
 
     @Operation(summary = "Knowledge base Q&A")
     @PostMapping
-    public Object knowledgeBaseQa(@RequestBody @Validated ExtApiKbQaReq req) {
+    public Object knowledgeBaseChat(@RequestBody @Validated ExtApiKbChatReq req) {
         User user = ThreadContext.getCurrentUser();
         String kbUuid = ThreadContext.getExtApiEntityUuid();
 
         KnowledgeBase knowledgeBase = knowledgeBaseService.getOrThrow(kbUuid);
 
-        QARecordReq qaRecordReq = new QARecordReq();
-        qaRecordReq.setQuestion(req.getQuery());
+        KbChatReq chatRecordReq = new KbChatReq();
+        chatRecordReq.setQuestion(req.getQuery());
 
         if (StringUtils.isNotBlank(req.getModel())) {
             AiModel aiModel = aiModelService.getByName(req.getModel());
             if (null == aiModel || !aiModel.getIsEnable()) {
                 throw new BaseException(A_MODEL_NOT_AVAILABLE);
             }
-            qaRecordReq.setModelName(req.getModel());
+            chatRecordReq.setModelName(req.getModel());
         }
 
-        KbQaDto qaDto = knowledgeBaseQaService.add(knowledgeBase, qaRecordReq);
+        KbChatDto chatDto = knowledgeBaseChatService.add(knowledgeBase, chatRecordReq);
 
         if ("blocking".equalsIgnoreCase(req.getResponseMode())) {
-            return knowledgeBaseService.blockingAsk(user, knowledgeBase, qaDto);
+            return knowledgeBaseService.blockingAsk(user, knowledgeBase, chatDto);
         }
 
-        return knowledgeBaseService.sseAsk(qaDto.getUuid());
+        return knowledgeBaseService.sseChat(chatDto.getUuid());
     }
 }
