@@ -938,7 +938,7 @@ create trigger trigger_kb_star_update_time
     for each row
 execute procedure update_modified_column();
 
-create table adi_knowledge_base_qa
+create table adi_knowledge_base_message
 (
     id              bigserial primary key,
     uuid            varchar(32)   default ''                not null,
@@ -955,38 +955,38 @@ create table adi_knowledge_base_qa
     is_deleted      boolean       default false             not null
 );
 
-comment on table adi_knowledge_base_qa is 'Knowledge Base - Question Records';
-comment on column adi_knowledge_base_qa.kb_id is 'adi_knowledge_base ID';
-comment on column adi_knowledge_base_qa.kb_uuid is 'adi_knowledge_base UUID';
-comment on column adi_knowledge_base_qa.question is 'User''s original question';
-comment on column adi_knowledge_base_qa.prompt is 'Prompt provided to LLM';
-comment on column adi_knowledge_base_qa.answer is 'Answer';
-comment on column adi_knowledge_base_qa.source_file_ids is 'Source file IDs, separated by commas';
-comment on column adi_knowledge_base_qa.user_id is 'User ID of the questioner';
-comment on column adi_knowledge_base_qa.create_time is 'Creation time';
-comment on column adi_knowledge_base_qa.update_time is 'Last update time';
-comment on column adi_knowledge_base_qa.is_deleted is 'Whether the record is soft-deleted';
+comment on table adi_knowledge_base_message is 'Knowledge Base - Messages';
+comment on column adi_knowledge_base_message.kb_id is 'adi_knowledge_base ID';
+comment on column adi_knowledge_base_message.kb_uuid is 'adi_knowledge_base UUID';
+comment on column adi_knowledge_base_message.question is 'User''s original question';
+comment on column adi_knowledge_base_message.prompt is 'Prompt provided to LLM';
+comment on column adi_knowledge_base_message.answer is 'Answer';
+comment on column adi_knowledge_base_message.source_file_ids is 'Source file IDs, separated by commas';
+comment on column adi_knowledge_base_message.user_id is 'User ID of the questioner';
+comment on column adi_knowledge_base_message.create_time is 'Creation time';
+comment on column adi_knowledge_base_message.update_time is 'Last update time';
+comment on column adi_knowledge_base_message.is_deleted is 'Whether the record is soft-deleted';
 
-create trigger trigger_kb_qa_update_time
+create trigger trigger_kb_message_update_time
     before update
-    on adi_knowledge_base_qa
+    on adi_knowledge_base_message
     for each row
 execute procedure update_modified_column();
 
-create table adi_knowledge_base_qa_ref_embedding
+create table adi_knowledge_base_message_ref_embedding
 (
     id           bigserial primary key,
-    qa_record_id bigint        default 0  not null,
+    message_id bigint        default 0  not null,
     embedding_id varchar(36)   default '' not null,
     score        numeric(3, 2) default 0  not null,
     user_id      bigint        default 0  not null
 );
 
-comment on table adi_knowledge_base_qa_ref_embedding is 'Knowledge Base - Question Records - Embedding References';
-comment on column adi_knowledge_base_qa_ref_embedding.qa_record_id is 'adi_knowledge_base_qa ID';
-comment on column adi_knowledge_base_qa_ref_embedding.embedding_id is 'adi_knowledge_base_embedding UUID';
-comment on column adi_knowledge_base_qa_ref_embedding.score is 'Similarity score';
-comment on column adi_knowledge_base_qa_ref_embedding.user_id is 'User ID';
+comment on table adi_knowledge_base_message_ref_embedding is 'Knowledge Base - Messages - Embedding References';
+comment on column adi_knowledge_base_message_ref_embedding.message_id is 'adi_knowledge_base_message ID';
+comment on column adi_knowledge_base_message_ref_embedding.embedding_id is 'adi_knowledge_base_embedding UUID';
+comment on column adi_knowledge_base_message_ref_embedding.score is 'Similarity score';
+comment on column adi_knowledge_base_message_ref_embedding.user_id is 'User ID';
 
 -- Graph RAG
 create table adi_knowledge_base_graph_segment
@@ -1018,20 +1018,20 @@ create trigger trigger_kb_graph_segment_update_time
     for each row
 execute procedure update_modified_column();
 
-create table adi_knowledge_base_qa_ref_graph
+create table adi_knowledge_base_message_ref_graph
 (
     id                     bigserial primary key,
-    qa_record_id           bigint default 0  not null,
+    message_id           bigint default 0  not null,
     entities_from_question text   default '' not null, -- formerly graph_from_llm
     graph_from_store       text   default '' not null,
     user_id                bigint default 0  not null
 );
 
-comment on table adi_knowledge_base_qa_ref_graph is 'Knowledge Base - Question Records - Graph References';
-comment on column adi_knowledge_base_qa_ref_graph.qa_record_id is 'adi_knowledge_base_qa ID';
-comment on column adi_knowledge_base_qa_ref_graph.entities_from_question is 'Graph parsed by LLM: vertexName1,vertexName2';
-comment on column adi_knowledge_base_qa_ref_graph.graph_from_store is 'Graph retrieved from graph database: {vertices:[{id:"111",name:"vertexName1"},{id:"222",name:"vertexName2"}],edges:[{id:"333",name:"edgeName1",start:"111",end:"222"}]';
-comment on column adi_knowledge_base_qa_ref_graph.user_id is 'adi_user ID';
+comment on table adi_knowledge_base_message_ref_graph is 'Knowledge Base - Messages - Graph References';
+comment on column adi_knowledge_base_message_ref_graph.message_id is 'adi_knowledge_base_message ID';
+comment on column adi_knowledge_base_message_ref_graph.entities_from_question is 'Graph parsed by LLM: vertexName1,vertexName2';
+comment on column adi_knowledge_base_message_ref_graph.graph_from_store is 'Graph retrieved from graph database: {vertices:[{id:"111",name:"vertexName1"},{id:"222",name:"vertexName2"}],edges:[{id:"333",name:"edgeName1",start:"111",end:"222"}]';
+comment on column adi_knowledge_base_message_ref_graph.user_id is 'adi_user ID';
 
 -- ============================================================
 -- Workflow: workflow definitions, components, runtime

@@ -1,9 +1,11 @@
 package com.moyz.adi.chat.controller;
 
+import com.moyz.adi.common.dto.AskReq;
 import com.moyz.adi.common.dto.CharacterAddReq;
 import com.moyz.adi.common.dto.CharacterDto;
 import com.moyz.adi.common.dto.CharacterEditReq;
 import com.moyz.adi.common.dto.CharacterMsgListResp;
+import com.moyz.adi.common.service.CharacterChatService;
 import com.moyz.adi.common.service.CharacterService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -13,8 +15,10 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import org.hibernate.validator.constraints.Length;
+import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
@@ -31,6 +35,15 @@ public class CharacterController {
 
     @Resource
     private CharacterService characterService;
+
+    @Resource
+    private CharacterChatService characterChatService;
+
+    @Operation(summary = "发送消息给指定角色 | Send Message to Character")
+    @PostMapping(value = "/chat/process", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter ask(@RequestBody @Validated AskReq askReq) {
+        return characterChatService.sseAsk(askReq);
+    }
 
     @Operation(summary = "获取当前用户所有的角色 | List All Characters")
     @GetMapping("/list")

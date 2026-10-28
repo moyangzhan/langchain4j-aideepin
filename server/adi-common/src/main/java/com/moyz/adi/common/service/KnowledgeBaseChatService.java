@@ -11,7 +11,7 @@ import com.moyz.adi.common.dto.RefGraphDto;
 import com.moyz.adi.common.entity.*;
 import com.moyz.adi.common.enums.LLMCallRecordSourceType;
 import com.moyz.adi.common.exception.BaseException;
-import com.moyz.adi.common.mapper.KnowledgeBaseChatMapper;
+import com.moyz.adi.common.mapper.KnowledgeBaseMessageMapper;
 import com.moyz.adi.common.util.EntityRefreshUtil;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.util.MPPageUtil;
@@ -32,13 +32,13 @@ import static com.moyz.adi.common.util.LocalCache.MODEL_ID_TO_OBJ;
 
 @Slf4j
 @Service
-public class KnowledgeBaseChatService extends ServiceImpl<KnowledgeBaseChatMapper, KnowledgeBaseChat> {
+public class KnowledgeBaseChatService extends ServiceImpl<KnowledgeBaseMessageMapper, KnowledgeBaseMessage> {
 
     @Resource
-    private KnowledgeBaseChatRefEmbeddingService knowledgeBaseChatRefEmbeddingService;
+    private KnowledgeBaseMessageRefEmbeddingService knowledgeBaseMessageRefEmbeddingService;
 
     @Resource
-    private KnowledgeBaseChatRefGraphService knowledgeBaseChatRefGraphService;
+    private KnowledgeBaseMessageRefGraphService knowledgeBaseMessageRefGraphService;
 
     @Resource
     private AiModelService aiModelService;
@@ -47,7 +47,7 @@ public class KnowledgeBaseChatService extends ServiceImpl<KnowledgeBaseChatMappe
     private LLMCallRecordService llmCallRecordService;
 
     public KbChatDto add(KnowledgeBase knowledgeBase, KbChatReq req) {
-        KnowledgeBaseChat newRecord = new KnowledgeBaseChat();
+        KnowledgeBaseMessage newRecord = new KnowledgeBaseMessage();
         newRecord.setAiModelId(aiModelService.getIdByName(req.getModelName()));
         newRecord.setQuestion(req.getQuestion());
         newRecord.setKbId(knowledgeBase.getId());
@@ -58,7 +58,7 @@ public class KnowledgeBaseChatService extends ServiceImpl<KnowledgeBaseChatMappe
 
         // Re-read the row so database-managed columns (create_time / update_time / is_deleted)
         // are populated before copying into the DTO.
-        KnowledgeBaseChat fresh = EntityRefreshUtil.refresh(baseMapper, newRecord);
+        KnowledgeBaseMessage fresh = EntityRefreshUtil.refresh(baseMapper, newRecord);
 
         KbChatDto result = new KbChatDto();
         BeanUtils.copyProperties(fresh, result);
@@ -66,20 +66,20 @@ public class KnowledgeBaseChatService extends ServiceImpl<KnowledgeBaseChatMappe
     }
 
     public Page<KbChatDto> search(String kbUuid, String keyword, Integer currentPage, Integer pageSize) {
-        LambdaQueryWrapper<KnowledgeBaseChat> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(KnowledgeBaseChat::getKbUuid, kbUuid);
-        wrapper.eq(KnowledgeBaseChat::getIsDeleted, false);
+        LambdaQueryWrapper<KnowledgeBaseMessage> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(KnowledgeBaseMessage::getKbUuid, kbUuid);
+        wrapper.eq(KnowledgeBaseMessage::getIsDeleted, false);
         if (Boolean.FALSE.equals(ThreadContext.getCurrentUser().getIsAdmin())) {
-            wrapper.eq(KnowledgeBaseChat::getUserId, ThreadContext.getCurrentUserId());
+            wrapper.eq(KnowledgeBaseMessage::getUserId, ThreadContext.getCurrentUserId());
         }
         if (StringUtils.isNotBlank(keyword)) {
-            wrapper.like(KnowledgeBaseChat::getQuestion, keyword);
+            wrapper.like(KnowledgeBaseMessage::getQuestion, keyword);
         }
-        wrapper.orderByDesc(KnowledgeBaseChat::getUpdateTime);
-        Page<KnowledgeBaseChat> page = baseMapper.selectPage(new Page<>(currentPage, pageSize), wrapper);
+        wrapper.orderByDesc(KnowledgeBaseMessage::getUpdateTime);
+        Page<KnowledgeBaseMessage> page = baseMapper.selectPage(new Page<>(currentPage, pageSize), wrapper);
 
         // Batch query LLM call records for token and duration
-        List<Long> chatIds = page.getRecords().stream().map(KnowledgeBaseChat::getId).toList();
+        List<Long> chatIds = page.getRecords().stream().map(KnowledgeBaseMessage::getId).toList();
         Map<Long, LLMCallRecord> idToCallRecord = Map.of();
         if (!chatIds.isEmpty()) {
             idToCallRecord = llmCallRecordService.listBySource(
@@ -115,12 +115,12 @@ public class KnowledgeBaseChatService extends ServiceImpl<KnowledgeBaseChatMappe
         log.info("Updating vector reference, userId:{}, chatRecordId:{}, embeddingToScore.size:{}", user.getId(), chatRecordId, embeddingToScore.size());
         for (Map.Entry<String, Double> entry : embeddingToScore.entrySet()) {
             String embeddingId = entry.getKey();
-            KnowledgeBaseChatRefEmbedding recordReference = new KnowledgeBaseChatRefEmbedding();
+            KnowledgeBaseMessageRefEmbedding recordReference = new KnowledgeBaseMessageRefEmbedding();
             recordReference.setChatRecordId(chatRecordId);
             recordReference.setEmbeddingId(embeddingId);
             recordReference.setScore(embeddingToScore.get(embeddingId));
             recordReference.setUserId(user.getId());
-            knowledgeBaseChatRefEmbeddingService.save(recordReference);
+            knowledgeBaseMessageRefEmbeddingService.save(recordReference);
         }
     }
 
@@ -137,18 +137,18 @@ public class KnowledgeBaseChatService extends ServiceImpl<KnowledgeBaseChatMappe
         Map<String, Object> graphFromStore = new HashMap<>();
         graphFromStore.put("vertices", graphDto.getVertices());
         graphFromStore.put("edges", graphDto.getEdges());
-        KnowledgeBaseChatRefGraph refGraph = new KnowledgeBaseChatRefGraph();
+        KnowledgeBaseMessageRefGraph refGraph = new KnowledgeBaseMessageRefGraph();
         refGraph.setChatRecordId(chatRecordId);
         refGraph.setUserId(user.getId());
         refGraph.setEntitiesFromQuestion(entities);
         refGraph.setGraphFromStore(JsonUtil.toJson(graphFromStore));
-        knowledgeBaseChatRefGraphService.save(refGraph);
+        knowledgeBaseMessageRefGraphService.save(refGraph);
     }
 
-    public KnowledgeBaseChat getOrThrow(String uuid) {
-        KnowledgeBaseChat exist = ChainWrappers.lambdaQueryChain(baseMapper)
-                .eq(KnowledgeBaseChat::getUuid, uuid)
-                .eq(KnowledgeBaseChat::getIsDeleted, false)
+    public KnowledgeBaseMessage getOrThrow(String uuid) {
+        KnowledgeBaseMessage exist = ChainWrappers.lambdaQueryChain(baseMapper)
+                .eq(KnowledgeBaseMessage::getUuid, uuid)
+                .eq(KnowledgeBaseMessage::getIsDeleted, false)
                 .one();
         if (null == exist) {
             throw new BaseException(A_DATA_NOT_FOUND);
@@ -158,27 +158,27 @@ public class KnowledgeBaseChatService extends ServiceImpl<KnowledgeBaseChatMappe
 
     public void clearByCurrentUser() {
         ChainWrappers.lambdaUpdateChain(baseMapper)
-                .eq(KnowledgeBaseChat::getUserId, ThreadContext.getCurrentUserId())
-                .set(KnowledgeBaseChat::getIsDeleted, true)
+                .eq(KnowledgeBaseMessage::getUserId, ThreadContext.getCurrentUserId())
+                .set(KnowledgeBaseMessage::getIsDeleted, true)
                 .update();
     }
 
     public boolean softDelete(String uuid) {
         if (Boolean.TRUE.equals(ThreadContext.getCurrentUser().getIsAdmin())) {
             return ChainWrappers.lambdaUpdateChain(baseMapper)
-                    .eq(KnowledgeBaseChat::getUuid, uuid)
-                    .set(KnowledgeBaseChat::getIsDeleted, true)
+                    .eq(KnowledgeBaseMessage::getUuid, uuid)
+                    .set(KnowledgeBaseMessage::getIsDeleted, true)
                     .update();
         }
-        KnowledgeBaseChat exist = ChainWrappers.lambdaQueryChain(baseMapper)
-                .eq(KnowledgeBaseChat::getUuid, uuid)
+        KnowledgeBaseMessage exist = ChainWrappers.lambdaQueryChain(baseMapper)
+                .eq(KnowledgeBaseMessage::getUuid, uuid)
                 .one();
         if (null == exist) {
             throw new BaseException(A_DATA_NOT_FOUND);
         }
         return ChainWrappers.lambdaUpdateChain(baseMapper)
-                .eq(KnowledgeBaseChat::getId, exist.getId())
-                .set(KnowledgeBaseChat::getIsDeleted, true)
+                .eq(KnowledgeBaseMessage::getId, exist.getId())
+                .set(KnowledgeBaseMessage::getIsDeleted, true)
                 .update();
     }
 }

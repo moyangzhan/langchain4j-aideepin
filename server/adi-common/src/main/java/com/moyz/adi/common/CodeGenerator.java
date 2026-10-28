@@ -35,7 +35,7 @@ public class CodeGenerator {
                             .pathInfo(Collections.singletonMap(OutputFile.xml, "D://mybatisplus-generatorcode")); // 设置mapperXml生成路径
                 })
                 .strategyConfig(builder -> {
-                    builder.addInclude("adi_knowledge_base_qa_record") // 设置需要生成的表名
+                    builder.addInclude("adi_knowledge_base_message") // 设置需要生成的表名
                             .addTablePrefix("adi_");
                     builder.mapperBuilder().enableBaseResultMap().enableMapperAnnotation().build();
                 })

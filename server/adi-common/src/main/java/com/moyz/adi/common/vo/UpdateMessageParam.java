@@ -1,6 +1,6 @@
 package com.moyz.adi.common.vo;
 
-import com.moyz.adi.common.entity.KnowledgeBaseChat;
+import com.moyz.adi.common.entity.KnowledgeBaseMessage;
 import com.moyz.adi.common.entity.User;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import jakarta.annotation.Nullable;
@@ -11,9 +11,9 @@ import java.util.List;
 
 @Data
 @Builder
-public class UpdateChatParam {
+public class UpdateMessageParam {
     private User user;
-    private KnowledgeBaseChat chatRecord;
+    private KnowledgeBaseMessage chatRecord;
     private SseAskParam sseAskParam;
     @Nullable
     private List<ContentRetriever> retrievers;

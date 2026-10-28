@@ -37,7 +37,7 @@ public class ExtKnowledgeBaseController {
 
     @Operation(summary = "Knowledge base Q&A")
     @PostMapping
-    public Object knowledgeBaseChat(@RequestBody @Validated ExtApiKbChatReq req) {
+    public Object knowledgeBaseMessage(@RequestBody @Validated ExtApiKbChatReq req) {
         User user = ThreadContext.getCurrentUser();
         String kbUuid = ThreadContext.getExtApiEntityUuid();
 

@@ -450,7 +450,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
 
     private Map<String, Object> doBlockingAsk(User user, KnowledgeBase knowledgeBase, KbChatDto chatDto) {
         checkRequestTimesOrThrow();
-        KnowledgeBaseChat chatRecord = knowledgeBaseChatService.getOrThrow(chatDto.getUuid());
+        KnowledgeBaseMessage chatRecord = knowledgeBaseChatService.getOrThrow(chatDto.getUuid());
         AiModel aiModel = chatRecord.getAiModelId() > 0
                 ? aiModelService.getByIdOrThrow(chatRecord.getAiModelId())
                 : LLMContext.getAiModel(null, null);
@@ -524,7 +524,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         int llmDuration = NumberUtil.saturatedCastToInt(System.currentTimeMillis() - llmStartTime);
 
         // Update QA record
-        KnowledgeBaseChat updateRecord = new KnowledgeBaseChat();
+        KnowledgeBaseMessage updateRecord = new KnowledgeBaseMessage();
         updateRecord.setId(chatRecord.getId());
         updateRecord.setPrompt(prompt);
         updateRecord.setAnswer(chatResponse.aiMessage().text());
@@ -638,7 +638,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
     @Async
     public void retrieveAndPushToLLM(User user, String sseUuid, String chatRecordUuid) {
         log.info("retrieveAndPushToLLM,chatRecordUuid:{},userId:{}", chatRecordUuid, user.getId());
-        KnowledgeBaseChat chatRecord = knowledgeBaseChatService.getOrThrow(chatRecordUuid);
+        KnowledgeBaseMessage chatRecord = knowledgeBaseChatService.getOrThrow(chatRecordUuid);
         KnowledgeBase knowledgeBase = getOrThrow(chatRecord.getKbUuid());
         AiModel aiModel = aiModelService.getByIdOrThrow(chatRecord.getAiModelId());
 
@@ -684,7 +684,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                                 answerMeta.setDuration(NumberUtil.saturatedCastToInt(System.currentTimeMillis() - llmStartTime));
                                 sseManager.sendComplete(user.getId(), sseUuid, questionMeta, answerMeta, null);
                                 updateChatRecord(
-                                        UpdateChatParam.builder()
+                                        UpdateMessageParam.builder()
                                                 .user(user)
                                                 .chatRecord(chatRecord)
                                                 .retrievers(null)
@@ -718,7 +718,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                             answerMeta.setDuration(NumberUtil.saturatedCastToInt(System.currentTimeMillis() - llmStartTime));
                             sseManager.sendComplete(user.getId(), sseAskParam.getSseUuid(), promptMeta, answerMeta, null);
                             updateChatRecord(
-                                    UpdateChatParam.builder()
+                                    UpdateMessageParam.builder()
                                             .user(user)
                                             .chatRecord(chatRecord)
                                             .retrievers(retrievers)
@@ -758,14 +758,14 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         return tokens;
     }
 
-    private void updateChatRecord(UpdateChatParam updateChatParam) {
+    private void updateChatRecord(UpdateMessageParam updateChatParam) {
 
         Pair<Integer, Integer> inputOutputTokenCost = LLMTokenUtil.calAllTokenCostByUuid(stringRedisTemplate, updateChatParam.getSseAskParam().getUuid());
 
-        KnowledgeBaseChat chatRecord = updateChatParam.getChatRecord();
+        KnowledgeBaseMessage chatRecord = updateChatParam.getChatRecord();
         User user = updateChatParam.getUser();
 
-        KnowledgeBaseChat updateRecord = new KnowledgeBaseChat();
+        KnowledgeBaseMessage updateRecord = new KnowledgeBaseMessage();
         updateRecord.setId(chatRecord.getId());
         updateRecord.setPrompt(updateChatParam.getSseAskParam().getHttpRequestParams().getUserMessage());
         updateRecord.setAnswer(updateChatParam.getResponse());
@@ -865,8 +865,8 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
      * Resolve a QA record and authorize access through its owning knowledge base.
      * QA UUIDs are otherwise sufficient to reach private document references and answers.
      */
-    public KnowledgeBaseChat getReadableChatOrThrow(String chatRecordUuid) {
-        KnowledgeBaseChat chatRecord = knowledgeBaseChatService.getOrThrow(chatRecordUuid);
+    public KnowledgeBaseMessage getReadableChatOrThrow(String chatRecordUuid) {
+        KnowledgeBaseMessage chatRecord = knowledgeBaseChatService.getOrThrow(chatRecordUuid);
         getReadableOrThrow(chatRecord.getKbUuid());
         return chatRecord;
     }

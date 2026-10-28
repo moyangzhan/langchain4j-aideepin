@@ -8,6 +8,7 @@
 
 - 已安装 Docker 和 Docker Compose
 - 已安装并初始化 PostgreSQL 数据库（见 [server/README](../server/README.zh-CN.md)）
+- 具备开发经验：升级需手工执行 SQL 迁移，并在同一窗口内按序替换服务端与前端（见 [db_migration/README](../server/db_migration/README.zh-CN.md)）
 
 ### 使用
 

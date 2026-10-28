@@ -8,6 +8,7 @@ Start all services (backend, Redis, user web, admin web, nginx) with a single co
 
 - Docker & Docker Compose installed
 - PostgreSQL database initialized (see [server/README](../server/README.md))
+- Development experience: upgrades require running SQL migrations manually and replacing the backend and frontend in order within the same window (see [db_migration/README](../server/db_migration/README.md))
 
 ### Usage
 

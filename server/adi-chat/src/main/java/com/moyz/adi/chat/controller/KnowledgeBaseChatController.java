@@ -3,8 +3,8 @@ package com.moyz.adi.chat.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.moyz.adi.common.dto.*;
 import com.moyz.adi.common.entity.KnowledgeBase;
-import com.moyz.adi.common.service.KnowledgeBaseChatRefEmbeddingService;
-import com.moyz.adi.common.service.KnowledgeBaseChatRefGraphService;
+import com.moyz.adi.common.service.KnowledgeBaseMessageRefEmbeddingService;
+import com.moyz.adi.common.service.KnowledgeBaseMessageRefGraphService;
 import com.moyz.adi.common.service.KnowledgeBaseChatService;
 import com.moyz.adi.common.service.KnowledgeBaseService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,10 +31,10 @@ public class KnowledgeBaseChatController {
     private KnowledgeBaseChatService knowledgeBaseChatService;
 
     @Resource
-    private KnowledgeBaseChatRefEmbeddingService knowledgeBaseChatRefEmbeddingService;
+    private KnowledgeBaseMessageRefEmbeddingService knowledgeBaseMessageRefEmbeddingService;
 
     @Resource
-    private KnowledgeBaseChatRefGraphService knowledgeBaseChatRefGraphService;
+    private KnowledgeBaseMessageRefGraphService knowledgeBaseMessageRefGraphService;
 
     @PostMapping("/add/{kbUuid}")
     public KbChatDto add(@PathVariable String kbUuid, @RequestBody @Validated KbChatReq req) {
@@ -62,13 +62,13 @@ public class KnowledgeBaseChatController {
     @GetMapping("/embedding-ref/{uuid}")
     public List<RefEmbeddingDto> embeddingRef(@PathVariable String uuid) {
         knowledgeBaseService.getReadableChatOrThrow(uuid);
-        return knowledgeBaseChatRefEmbeddingService.listRefEmbeddings(uuid);
+        return knowledgeBaseMessageRefEmbeddingService.listRefEmbeddings(uuid);
     }
 
     @GetMapping("/graph-ref/{uuid}")
     public RefGraphDto graphRef(@PathVariable String uuid) {
         knowledgeBaseService.getReadableChatOrThrow(uuid);
-        return knowledgeBaseChatRefGraphService.getByChatUuid(uuid);
+        return knowledgeBaseMessageRefGraphService.getByChatUuid(uuid);
     }
 
     @PostMapping("/clear")

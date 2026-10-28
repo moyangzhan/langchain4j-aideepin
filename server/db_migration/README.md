@@ -49,9 +49,11 @@ File naming convention:
 
 **Upgrade (from an earlier version):**
 
-Execute the migration scripts in sequence (do NOT run the `all_*` files):
-* `001_3.21.0.sql`
-* `002_update_deprecated_models.sql`
-* `003_add_user_locale.sql`
+Upgrading this project is intended for deployers with development experience. Make sure you can:
+
+* Work on the server via the command line and execute SQL (psql or a client tool)
+* Treat the upgrade as an atomic operation: complete the "incremental migration SQL → backend → frontend" replacement within the same window
+
+Starting from the number that corresponds to your current version, execute all incremental migration scripts (`NNN_*.sql`) in numeric order; do NOT run the `all_*` files.
 
 > **Note**: The default SCHEMA in DDL is `public`. Modify it if needed.

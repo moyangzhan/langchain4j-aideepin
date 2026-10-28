@@ -16,3 +16,24 @@ alter table adi_index_task
     add column if not exists user_msg varchar(500) default '';
 
 comment on column adi_index_task.user_msg is 'Locale-independent failure code with optional params (CODE|arg), rendered per user locale at read time; empty string = not converted yet (legacy rows / reruns), read side converts on the fly';
+
+-- Rename knowledge-base QA tables/columns to the message naming, aligning with the
+-- adi_character_message* family: chat = interaction layer (controllers/services/URLs),
+-- message = data layer (entities/tables). qa_record_id becomes message_id, matching
+-- adi_character_message_ref_*.message_id. The update-time trigger keeps its legacy
+-- name when a table is renamed, so it is recreated under the new name.
+-- No indexes exist on these tables.
+
+alter table adi_knowledge_base_qa rename to adi_knowledge_base_message;
+alter table adi_knowledge_base_qa_ref_embedding rename to adi_knowledge_base_message_ref_embedding;
+alter table adi_knowledge_base_qa_ref_graph rename to adi_knowledge_base_message_ref_graph;
+
+drop trigger trigger_kb_qa_update_time on adi_knowledge_base_message;
+create trigger trigger_kb_message_update_time
+    before update
+    on adi_knowledge_base_message
+    for each row
+execute procedure update_modified_column();
+
+alter table adi_knowledge_base_message_ref_embedding rename column qa_record_id to message_id;
+alter table adi_knowledge_base_message_ref_graph rename column qa_record_id to message_id;

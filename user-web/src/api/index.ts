@@ -185,7 +185,7 @@ function sseProcess(params: {
   doneCallback: (chunk: string) => void
   errorCallback: (error: string) => void
 }) {
-  commonSseProcess('/api/chat/process', params)
+  commonSseProcess('/api/character/chat/process', params)
 }
 
 function login<T>(email: string, password: string, captchaId: string, captchaCode: string) {

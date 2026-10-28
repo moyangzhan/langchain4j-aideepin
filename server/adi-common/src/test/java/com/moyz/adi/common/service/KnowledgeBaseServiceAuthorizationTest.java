@@ -2,7 +2,7 @@ package com.moyz.adi.common.service;
 
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.entity.KnowledgeBase;
-import com.moyz.adi.common.entity.KnowledgeBaseChat;
+import com.moyz.adi.common.entity.KnowledgeBaseMessage;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
@@ -84,7 +84,7 @@ class KnowledgeBaseServiceAuthorizationTest {
 
     @Test
     void qaReadChecksTheOwningKnowledgeBase() {
-        KnowledgeBaseChat chatRecord = new KnowledgeBaseChat();
+        KnowledgeBaseMessage chatRecord = new KnowledgeBaseMessage();
         chatRecord.setKbUuid("private-kb");
         when(knowledgeBaseChatService.getOrThrow("qa-record")).thenReturn(chatRecord);
         when(knowledgeBaseMapper.selectOne(any())).thenReturn(knowledgeBase(11L, 42L, false));

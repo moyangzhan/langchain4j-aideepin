@@ -10,9 +10,9 @@ import lombok.Data;
 import java.io.Serializable;
 
 @Data
-@TableName("adi_knowledge_base_qa_ref_embedding")
+@TableName("adi_knowledge_base_message_ref_embedding")
 @Schema(title = "知识库问答记录-引用实体 | Knowledge Base QA Record Embedding Reference Entity", description = "知识库问答记录-引用列表 | Knowledge Base QA Record Reference List")
-public class KnowledgeBaseChatRefEmbedding implements Serializable {
+public class KnowledgeBaseMessageRefEmbedding implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -20,7 +20,7 @@ public class KnowledgeBaseChatRefEmbedding implements Serializable {
     private Long id;
 
     @Schema(title = "问答记录ID | QA Record ID")
-    @TableField("qa_record_id")
+    @TableField("message_id")
     private Long chatRecordId;
 
     @Schema(title = "向量id | Embedding ID")
