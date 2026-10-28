@@ -46,7 +46,7 @@ public class GraphStoreContentRetriever implements ContentRetriever {
 
     private final Set<String> excludedItemUuids;
 
-    private final RefGraphDto kbAskRefGraphDto = RefGraphDto.builder().vertices(Collections.emptyList()).edges(Collections.emptyList()).entitiesFromQuestion(Collections.emptyList()).build();
+    private final RefGraphDto kbChatRefGraphDto = RefGraphDto.builder().vertices(Collections.emptyList()).edges(Collections.emptyList()).entitiesFromQuestion(Collections.emptyList()).build();
 
     @Builder
     private GraphStoreContentRetriever(String displayName,
@@ -142,9 +142,9 @@ public class GraphStoreContentRetriever implements ContentRetriever {
             allEdges.add(triple.getMiddle());
         }
         allVertices.putAll(vertices.stream().collect(toMap(GraphVertex::getId, Function.identity())));
-        kbAskRefGraphDto.setEntitiesFromQuestion(entityNames);
-        kbAskRefGraphDto.setVertices(allVertices.values().stream().toList());
-        kbAskRefGraphDto.setEdges(allEdges);
+        kbChatRefGraphDto.setEntitiesFromQuestion(entityNames);
+        kbChatRefGraphDto.setVertices(allVertices.values().stream().toList());
+        kbChatRefGraphDto.setEdges(allEdges);
 
         List<Content> vertexContents = vertices.stream().map(GraphVertex::getDescription).map(Content::from).collect(toList());
         List<Content> edgeContents = edgeWithVerticeList.stream().map(Triple::getMiddle).map(GraphEdge::getDescription).map(Content::from).toList();
@@ -153,7 +153,7 @@ public class GraphStoreContentRetriever implements ContentRetriever {
     }
 
     public RefGraphDto getGraphRef() {
-        return kbAskRefGraphDto;
+        return kbChatRefGraphDto;
     }
 
     /**

@@ -12,7 +12,7 @@ import java.io.Serializable;
 @Data
 @TableName("adi_knowledge_base_qa_ref_graph")
 @Schema(title = "知识库问答记录-图谱引用 | Knowledge Base QA Record Graph Reference", description = "知识库问答记录-图谱引用列表 | Knowledge Base QA Record Graph Reference List")
-public class KnowledgeBaseAskRefGraph implements Serializable {
+public class KnowledgeBaseChatRefGraph implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -21,7 +21,7 @@ public class KnowledgeBaseAskRefGraph implements Serializable {
 
     @Schema(title = "问答记录ID | QA Record ID")
     @TableField("qa_record_id")
-    private Long askRecordId;
+    private Long chatRecordId;
 
     @Schema(title = "从用户问题中解析出来的实体 | Entities Parsed from User Question")
     @TableField("entities_from_question")

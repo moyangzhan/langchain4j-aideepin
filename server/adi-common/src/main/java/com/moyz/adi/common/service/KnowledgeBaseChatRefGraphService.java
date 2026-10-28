@@ -3,8 +3,8 @@ package com.moyz.adi.common.service;
 import com.alibaba.dashscope.utils.JsonUtils;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.moyz.adi.common.dto.RefGraphDto;
-import com.moyz.adi.common.entity.KnowledgeBaseAskRefGraph;
-import com.moyz.adi.common.mapper.KnowledgeBaseAskRefGraphMapper;
+import com.moyz.adi.common.entity.KnowledgeBaseChatRefGraph;
+import com.moyz.adi.common.mapper.KnowledgeBaseChatRefGraphMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -15,10 +15,10 @@ import java.util.List;
 
 @Slf4j
 @Service
-public class KnowledgeBaseAskRefGraphService extends ServiceImpl<KnowledgeBaseAskRefGraphMapper, KnowledgeBaseAskRefGraph> {
+public class KnowledgeBaseChatRefGraphService extends ServiceImpl<KnowledgeBaseChatRefGraphMapper, KnowledgeBaseChatRefGraph> {
 
-    public RefGraphDto getByAskUuid(String askRecordUuid) {
-        List<KnowledgeBaseAskRefGraph> list = this.getBaseMapper().listByAskUuid(askRecordUuid);
+    public RefGraphDto getByChatUuid(String chatRecordUuid) {
+        List<KnowledgeBaseChatRefGraph> list = this.getBaseMapper().listByChatUuid(chatRecordUuid);
         if (list.isEmpty()) {
             return RefGraphDto
                     .builder()
@@ -27,7 +27,7 @@ public class KnowledgeBaseAskRefGraphService extends ServiceImpl<KnowledgeBaseAs
                     .entitiesFromQuestion(Collections.emptyList())
                     .build();
         }
-        KnowledgeBaseAskRefGraph refGraph = list.get(0);
+        KnowledgeBaseChatRefGraph refGraph = list.get(0);
 
         RefGraphDto result = new RefGraphDto();
         String graphStr = refGraph.getGraphFromStore();

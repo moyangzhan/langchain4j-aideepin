@@ -703,13 +703,13 @@ function knowledgeBaseGraph<T = any>(kbItemUuid: string, limit: number, afterVer
 
 function knowledgeBaseEmbeddingRef<T = any>(recordUuid: string) {
   return get<T>({
-    url: `/knowledge-base/qa/embedding-ref/${recordUuid}`,
+    url: `/knowledge-base/chat/embedding-ref/${recordUuid}`,
   })
 }
 
 function knowledgeBaseGraphRef<T = any>(recordUuid: string) {
   return get<T>({
-    url: `/knowledge-base/qa/graph-ref/${recordUuid}`,
+    url: `/knowledge-base/chat/graph-ref/${recordUuid}`,
   })
 }
 
@@ -722,31 +722,31 @@ function knowledgeBaseQaSseAsk(params: {
   doneCallback: (chunk: string) => void
   errorCallback: (error: string) => void
 }) {
-  commonSseProcess(`/api/knowledge-base/qa/process/${params.options.qaRecordUuid}`, params)
+  commonSseProcess(`/api/knowledge-base/chat/process/${params.options.qaRecordUuid}`, params)
 }
 
 function knowledgeBaseQaRecordSearch<T = any>(kbUuid: string, keyword: string, currentPage: number, pageSize: number) {
   return get<T>({
-    url: `/knowledge-base/qa/search?kbUuid=${kbUuid}&keyword=${keyword}&currentPage=${currentPage}&pageSize=${pageSize}`,
+    url: `/knowledge-base/chat/search?kbUuid=${kbUuid}&keyword=${keyword}&currentPage=${currentPage}&pageSize=${pageSize}`,
   })
 }
 
 function knowledgeBaseQaRecordAdd<T = any>(uuid: string, QaContent: { question: string; modelName: string }) {
   return post<T>({
-    url: `/knowledge-base/qa/add/${uuid}`,
+    url: `/knowledge-base/chat/add/${uuid}`,
     data: QaContent,
   })
 }
 
 function knowledgeBaseQaRecordDel<T = any>(uuid: string) {
   return post<T>({
-    url: `/knowledge-base/qa/del/${uuid}`,
+    url: `/knowledge-base/chat/del/${uuid}`,
   })
 }
 
 function knowledgeBaseQaRecordClear<T = any>() {
   return post<T>({
-    url: '/knowledge-base/qa/clear',
+    url: '/knowledge-base/chat/clear',
   })
 }
 

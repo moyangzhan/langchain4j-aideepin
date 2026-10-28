@@ -7,7 +7,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-public class KbAskDto {
+public class KbChatDto {
     @Schema(title = "uuid")
     private String uuid;
 

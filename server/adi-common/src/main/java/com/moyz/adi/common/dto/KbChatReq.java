@@ -6,7 +6,7 @@ import org.springframework.validation.annotation.Validated;
 
 @Validated
 @Data
-public class KbAskReq {
+public class KbChatReq {
 
     @NotBlank
     private String question;
