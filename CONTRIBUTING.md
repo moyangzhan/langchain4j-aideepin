@@ -94,6 +94,14 @@ Overall, keep your code style consistent with the existing codebase.
 - Check: `pnpm lint`
 - Auto-fix: `pnpm lint:fix`
 
+### Database Migrations
+
+Schema changes ship as numbered SQL scripts (`server/db_migration/NNN_*.sql`, incrementing); the project uses no automatic migration tooling — upgrades are run manually by deployers (see the [deployment docs](docs/en/deployment/upgrade.md)).
+
+- New schema or data changes: add a new script with the next number;
+- **Migration files shipped in a release are frozen**: once released, a script is never modified — follow-up changes (including fixes to released scripts) go into a new numbered script; unreleased scripts may still be edited directly;
+- Keep the full baselines (`all_ddl.sql`, `all_dml*.sql`) in sync with the incremental scripts (they serve fresh installs).
+
 ### PR Process
 
 1. Fork this repository

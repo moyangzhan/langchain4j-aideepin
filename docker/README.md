@@ -4,6 +4,8 @@
 
 Start all services (backend, Redis, user web, admin web, nginx) with a single command.
 
+For the full deployment walkthrough (database initialization, per-service Docker deployment, bare-metal deployment, upgrades), see the [Deployment section](https://moyangzhan.github.io/langchain4j-aideepin/en/deployment/) of the docs site; this page is a command quick reference.
+
 ### Prerequisites
 
 - Docker & Docker Compose installed
@@ -80,7 +82,7 @@ Edit `.env` to configure:
 | ADI_NEO4J_PASSWORD | Neo4j password (optional) | your-neo4j-password |
 | ADI_NEO4J_DATABASE | Neo4j database name (optional) | neo4j |
 
-### Standalone Deployment
+### Per-service Deployment
 
 If you need to deploy services to different servers (e.g., admin web on intranet, user web on public network), each sub-project has its own docker compose:
 

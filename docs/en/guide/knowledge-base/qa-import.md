@@ -2,7 +2,7 @@
 
 > [← User Guide](../index.md) · [简体中文](../../../cn/guide/knowledge-base/qa-import.md)
 
-Q&A-mode documents use question-answer pairs as the retrieval unit: hitting any question recalls its answer — ideal for FAQs and support scripts. Pairs come from three sources, combinable:
+Q&A-mode documents use question-answer pairs as the retrieval unit: one answer can be associated with multiple questions, and hitting any of them recalls that answer — **multiple questions, one answer** — ideal for FAQs and support scripts. Pairs come from three sources, combinable:
 
 | Source | Best for | Accuracy |
 |---|---|---|

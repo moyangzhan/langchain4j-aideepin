@@ -56,4 +56,6 @@ Upgrading this project is intended for deployers with development experience. Ma
 
 Starting from the number that corresponds to your current version, execute all incremental migration scripts (`NNN_*.sql`) in numeric order; do NOT run the `all_*` files.
 
+For the complete upgrade procedure (backup, stopping services, migrations, and backend/frontend replacement), see [Deployment: Upgrade](../../docs/en/deployment/upgrade.md).
+
 > **Note**: The default SCHEMA in DDL is `public`. Modify it if needed.

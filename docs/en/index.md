@@ -1,6 +1,6 @@
 # AIDeepIn Documentation
 
-AIDeepIn is an AI application platform offering out-of-the-box AI chat, image generation and knowledge base (RAG) Q&A, as well as workflow orchestration and an open API for building your own intelligent business assistants. The documentation has three sections:
+AIDeepIn is an AI application platform offering out-of-the-box AI chat, image generation and knowledge base (RAG) Q&A, as well as workflow orchestration and an open API for building your own intelligent business assistants. The documentation has four sections:
 
 ## User Guide
 
@@ -13,6 +13,10 @@ AIDeepIn is an AI application platform offering out-of-the-box AI chat, image ge
 ## Developer Docs
 
 [Developer Docs](dev/index.md) — For developers and operators: system architecture and model platform integration guides (chat / image / TTS / ASR).
+
+## Deployment
+
+[Deployment](deployment/index.md) — For deployers and upgraders: all-in-one Docker Compose deployment, per-service Docker deployment, bare-metal deployment, upgrades.
 
 ---
 

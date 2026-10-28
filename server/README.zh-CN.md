@@ -104,6 +104,8 @@ java -jar adi-bootstrap-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev
 
 ## 生产环境部署
 
+完整部署与升级指南见[文档站部署板块](https://moyangzhan.github.io/langchain4j-aideepin/cn/deployment/)。
+
 ### 初始化数据库
 
 与[开发环境](#初始化数据库)相同。
@@ -129,7 +131,7 @@ mvn clean package -Dmaven.test.skip=true
 cd adi-bootstrap/target
 nohup java -jar -Xms768m -Xmx1024m -XX:+HeapDumpOnOutOfMemoryError \
   adi-bootstrap-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod \
-  /dev/null 2>&1 &
+  > /dev/null 2>&1 &
 ```
 
 #### 方式二：Docker

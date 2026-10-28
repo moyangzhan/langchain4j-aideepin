@@ -4,6 +4,8 @@
 
 一条命令启动所有服务（后端、Redis、用户端、管理端、Nginx）。
 
+完整的部署讲解（数据库初始化、Docker 独立部署、裸机部署、升级）见[文档站部署板块](https://moyangzhan.github.io/langchain4j-aideepin/cn/deployment/)；本页为命令速查。
+
 ### 前置条件
 
 - 已安装 Docker 和 Docker Compose
@@ -80,7 +82,7 @@ docker compose down
 | ADI_NEO4J_PASSWORD | Neo4j 密码（可选） | your-neo4j-password |
 | ADI_NEO4J_DATABASE | Neo4j 数据库名（可选） | neo4j |
 
-### 独立部署
+### Docker 独立部署
 
 如果需要将各服务部署到不同服务器，可以使用各子项目独立的 docker compose 配置：
 

@@ -23,10 +23,9 @@ Demo: [http://www.aideepin.com](http://www.aideepin.com/)
 | User Guide | [docs/en/guide](docs/en/guide/index.md) | [Site](https://moyangzhan.github.io/langchain4j-aideepin/en/guide/) |
 | API Reference | [docs/en/api](docs/en/api/index.md) | [Site](https://moyangzhan.github.io/langchain4j-aideepin/en/api/) |
 | Developer Docs | [docs/en/dev](docs/en/dev/index.md) | [Site](https://moyangzhan.github.io/langchain4j-aideepin/en/dev/) |
+| Deployment & Upgrade | [docs/en/deployment](docs/en/deployment/index.md) | [Site](https://moyangzhan.github.io/langchain4j-aideepin/en/deployment/) |
 
 The rendered site is auto-built and published by GitHub Actions when `docs/**` changes on `main`. To run it locally: `pnpm install && pnpm run docs:dev`.
-
-For deployment, see [docker/README.md](docker/README.md) or each sub-project's README.
 
 ## Features
 

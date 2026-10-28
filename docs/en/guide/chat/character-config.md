@@ -80,7 +80,7 @@ Full voice details in [Voice Input & Playback](voice.md).
 ## Save & Delete
 
 - **Save** at the bottom submits all changes;
-- **Delete** removes the character (see [Characters & Presets](character.md#editing-deleting)).
+- **Delete** removes the character (see [Characters & Presets](character.md#editing--deleting)).
 
 ---
 

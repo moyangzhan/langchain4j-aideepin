@@ -46,7 +46,7 @@ Users keep the same value-entry form. Save and re-open it when changing a token,
 
 Tools must be checked on a **character** to be callable (tooltip, translated: "Checked items mean this character may use the tools in those services"):
 
-- Check them under **Services & Tools (MCP)** in [Character Settings](../chat/character-config.md#services-tools-mcp);
+- Check them under **Services & Tools (MCP)** in [Character Settings](../chat/character-config.md#services--tools-mcp);
 - Or click the **Tools** tag in the chat input bar ("Configure the services & tools for the character").
 
 Once configured, the AI calls tools as needed.

@@ -56,4 +56,6 @@ CREATE DATABASE aideepin;
 
 从当前版本对应的编号之后，按编号顺序执行所有增量迁移脚本（`NNN_*.sql`），不需要执行 `all_*` 文件。
 
+完整升级流程（备份、停服、迁移与服务端前端的替换）见[部署文档：升级](../../docs/cn/deployment/upgrade.md)。
+
 > **注意**：DDL 中默认使用的 SCHEMA 为 `public`，请根据实际情况修改。

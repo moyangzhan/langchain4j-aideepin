@@ -104,6 +104,8 @@ java -jar adi-bootstrap-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev
 
 ## Production Deployment
 
+For the complete deployment and upgrade guide, see the [Deployment section](https://moyangzhan.github.io/langchain4j-aideepin/en/deployment/) of the docs site.
+
 ### Initialize the Database
 
 Same as the [development environment](#initialize-the-database).
@@ -129,7 +131,7 @@ Run:
 cd adi-bootstrap/target
 nohup java -jar -Xms768m -Xmx1024m -XX:+HeapDumpOnOutOfMemoryError \
   adi-bootstrap-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod \
-  /dev/null 2>&1 &
+  > /dev/null 2>&1 &
 ```
 
 #### Option B: Docker

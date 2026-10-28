@@ -87,7 +87,7 @@ Un-graphed documents can be indexed later from the [segment management](segment.
 | Attachment | The uploaded file; click to preview |
 | Characters | Body length — the first indicator of healthy parsing |
 | Vector hits / graph hits | How often this document's segments were recalled — long-standing 0 means content doesn't match questions |
-| Enabled | Toggle. Off = excluded from retrieval (consequences in [Segment Management](segment.md#enabling-disabling-segments-all-modes)) |
+| Enabled | Toggle. Off = excluded from retrieval (consequences in [Segment Management](segment.md#enablingdisabling-segments-all-modes)) |
 | Created / updated | Recent changes |
 
 Actions: **Details** (document detail page with segment management and graph entry), **Edit**, **Delete**.

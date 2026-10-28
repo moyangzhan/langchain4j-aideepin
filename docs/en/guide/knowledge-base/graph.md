@@ -43,14 +43,14 @@ After asking against a base with a graph index:
 1. Click the **Graph** button under the answer;
 2. The dialog shows the graph fragments referenced (entities with name/description, relations).
 
-Characters linked to the base support this too. Together with **Citations** (hit segments) this fully traces the answer — see [Chat Window · Memory & Citations](../chat/window.md#memory-citations).
+Characters linked to the base support this too. Together with **Citations** (hit segments) this fully traces the answer — see [Chat Window · Memory & Citations](../chat/window.md#memory--citations).
 
 ## Maintenance Notes
 
 > [!WARNING]
 > Graphs **do not auto-update** with body edits: after switching segmentation mode or editing the body, re-extract manually, or answers keep citing the old graph.
 
-- Disabling a segment deletes its graph footprint; re-extract after re-enabling if needed (see [Segment Management](segment.md#enabling-disabling-segments-all-modes));
+- Disabling a segment deletes its graph footprint; re-extract after re-enabling if needed (see [Segment Management](segment.md#enablingdisabling-segments-all-modes));
 - Graph cost scales with document length — prioritize entity-dense material (org structures, product specs, policy clauses); narrative text is fine with vectors only.
 
 ---
