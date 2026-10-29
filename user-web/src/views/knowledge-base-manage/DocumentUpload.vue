@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import { computed, onActivated, onDeactivated, onUnmounted, reactive, ref, watch } from 'vue'
-import { NBreadcrumb, NBreadcrumbItem, NButton, NCard, NFlex, NIcon, NInputNumber, NP, NSelect, NSpace, NSpin, NText, NUpload, NUploadDragger, useMessage } from 'naive-ui'
+import { NAlert, NBreadcrumb, NBreadcrumbItem, NButton, NCard, NFlex, NIcon, NInputNumber, NP, NSelect, NSpace, NSpin, NText, NUpload, NUploadDragger, useMessage } from 'naive-ui'
 import { ArchiveOutline } from '@vicons/ionicons5'
 import { useRoute, useRouter } from 'vue-router'
 import type { UploadFileInfo, UploadInst } from 'naive-ui'
@@ -32,7 +32,6 @@ const segmentModeOptions = [
   { label: t('knowledgeBase.segmentModeQa'), value: 'qa' },
   { label: t('knowledgeBase.segmentModeParentChild'), value: 'parent_child' },
 ]
-const uploadAccept = computed(() => (uploadSegmentMode.value === 'qa' ? '.xlsx,.xls,.csv' : undefined))
 const uploadAction = computed(() => {
   let url = `/api/knowledge-base/upload/${kbUuid}?segmentMode=${uploadSegmentMode.value}`
   if (uploadSegmentMode.value === 'parent_child' && uploadChildMaxChunkSize.value)
@@ -46,6 +45,7 @@ const uploadModeTip = computed(() => ({
 }[uploadSegmentMode.value] ?? ''))
 watch(uploadSegmentMode, () => {
   fileList.value = []
+  resetQaUploadOutcome()
 })
 const fileListLength = computed(() => fileList.value.length)
 
@@ -64,16 +64,16 @@ async function downloadQaTemplate() {
   }
 }
 
-function onUploadBefore(data: {
-  file: UploadFileInfo
-  fileList: UploadFileInfo[]
-}) {
-  // qa mode: accept only filters the file picker, not drag-and-drop; guard the extension here
-  if (uploadSegmentMode.value === 'qa' && !/\.(xlsx|xls|csv)$/i.test(data.file.name)) {
-    ms.error(t('knowledgeBase.qaUploadFileHint'))
-    return false
-  }
-  return true
+const qaFailures = ref<{ name: string; reason: string }[]>([])
+const qaSucceededCount = ref(0)
+
+function resetQaUploadOutcome() {
+  qaFailures.value = []
+  qaSucceededCount.value = 0
+}
+
+function recordQaFailure(file: UploadFileInfo, reason: string) {
+  qaFailures.value.push({ name: file.name, reason })
 }
 
 // stays true when any file in the current submit failed: keeps the page open
@@ -88,7 +88,10 @@ function markUploadFailed(file: UploadFileInfo) {
 function onUploadError({ file }: { file: UploadFileInfo; event?: ProgressEvent }) {
   uploadHasError = true
   markUploadFailed(file)
-  ms.error(t('common.uploadFailed'))
+  if (uploadSegmentMode.value === 'qa')
+    recordQaFailure(file, t('common.uploadFailed'))
+  else
+    ms.error(t('common.uploadFailed'))
 }
 
 // true from submit until every file settles (uploaded / failed)
@@ -113,6 +116,7 @@ onActivated(async () => {
   uploadSegmentMode.value = 'text'
   uploadChildMaxChunkSize.value = 200
   uploadSubmitting.value = false
+  resetQaUploadOutcome()
   loading.value = true
   try {
     const resp = await api.knowledgeBaseInfo<KnowledgeBase.Info>(kbUuid)
@@ -126,6 +130,13 @@ function onUploadSubmit() {
   if (uploadSubmitting.value)
     return
   uploadHasError = false
+  resetQaUploadOutcome()
+  if (uploadSegmentMode.value === 'qa') {
+    fileList.value.forEach((f) => {
+      if (f.status === 'error')
+        f.status = 'pending'
+    })
+  }
   uploadSubmitting.value = true
   uploadRef.value?.submit()
   backWhenUploadDone(stayToken)
@@ -160,19 +171,32 @@ function onUploadFinish({
   } catch {
     respData = null
   }
+  const qaMode = uploadSegmentMode.value === 'qa'
   if (!respData) {
     uploadHasError = true
     markUploadFailed(file)
-    ms.error(t('knowledgeBase.uploadFailedResponseError'))
+    if (qaMode)
+      recordQaFailure(file, t('knowledgeBase.uploadFailedResponseError'))
+    else
+      ms.error(t('knowledgeBase.uploadFailedResponseError'))
+
     return file
   }
   const { success, message } = respData
   if (success) {
-    ms.success(t('common.uploadSuccess'))
+    if (qaMode) {
+      qaSucceededCount.value++
+      fileList.value = fileList.value.filter(f => f.id !== file.id)
+    } else {
+      ms.success(t('common.uploadSuccess'))
+    }
   } else {
     uploadHasError = true
     markUploadFailed(file)
-    ms.error(message || t('common.uploadFailed'))
+    if (qaMode)
+      recordQaFailure(file, message || t('common.uploadFailed'))
+    else
+      ms.error(message || t('common.uploadFailed'))
   }
 
   return file
@@ -203,7 +227,7 @@ function onUploadFinish({
           <div style="font-size: 12px; opacity: 0.7">
             {{ uploadModeTip }}
           </div>
-          <SegmentConfigPanel v-if="uploadSegmentMode !== 'qa'" :kb="curKb" :kb-uuid="kbUuid" :segment-mode="uploadSegmentMode">
+          <SegmentConfigPanel :kb="curKb" :kb-uuid="kbUuid" :segment-mode="uploadSegmentMode">
             <div v-if="uploadSegmentMode === 'parent_child'" class="flex items-center gap-2">
               <span>{{ t('knowledgeBase.childChunkMaxLabel') }}:</span>
               <NInputNumber v-model:value="uploadChildMaxChunkSize" :min="50" :max="4000" size="small" style="width: 140px" />
@@ -219,8 +243,8 @@ function onUploadFinish({
           </template>
           <NUpload
             ref="uploadRef" v-model:file-list="fileList" multiple directory-dnd
-            :action="uploadAction" :accept="uploadAccept"
-            :default-upload="false" :max="20" :headers="headers" @before-upload="onUploadBefore" @finish="onUploadFinish"
+            :action="uploadAction"
+            :default-upload="false" :max="20" :headers="headers" @finish="onUploadFinish"
             @error="onUploadError"
           >
             <NUploadDragger>
@@ -243,6 +267,17 @@ function onUploadFinish({
               </NP>
             </NUploadDragger>
           </NUpload>
+          <NAlert
+            v-if="uploadSegmentMode === 'qa' && qaFailures.length"
+            type="warning" :show-icon="false" style="font-size: 12px;"
+          >
+            <div style="font-weight: 600;">
+              {{ t('knowledgeBase.qaUploadSummaryTitle', { success: qaSucceededCount, fail: qaFailures.length }) }}
+            </div>
+            <div v-for="(failure, index) in qaFailures" :key="index">
+              {{ failure.name }} — {{ failure.reason }}
+            </div>
+          </NAlert>
           <NFlex>
             <NButton type="primary" :disabled="!fileListLength" :loading="uploadSubmitting" @click="onUploadSubmit">
               {{ t('knowledgeBase.uploadAndGenerate') }}

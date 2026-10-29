@@ -35,7 +35,7 @@ const graphicalStatusLabel = computed(() => {
     case 'FAIL':
       return t('knowledgeBase.statusFailed')
     default:
-      return t('knowledgeBase.statusPending')
+      return t('knowledgeBase.statusNotGenerated')
   }
 })
 

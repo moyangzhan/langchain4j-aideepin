@@ -83,7 +83,7 @@ const embeddingStatusLabel = computed(() => {
     case 'FAIL':
       return t('knowledgeBase.statusFailed')
     default:
-      return t('knowledgeBase.statusPending')
+      return t('knowledgeBase.statusNotVectorized')
   }
 })
 
@@ -254,7 +254,10 @@ function confirmGenerateQa() {
   if (paginationReactive.itemCount > 0) {
     dialog.warning({
       title: t('knowledgeBase.regenerateQaTitle'),
-      content: t('knowledgeBase.regenerateQaConfirm'),
+      content: () => h('div', null, [
+        h('div', t('knowledgeBase.regenerateQaConfirm')),
+        h('div', { style: 'margin-top: 6px' }, t('knowledgeBase.generateQaModelLine', { model: curKb.ingestModelName || '-' })),
+      ]),
       positiveText: t('common.confirm'),
       negativeText: t('common.cancel'),
       onPositiveClick: () => doGenerateQa(),
@@ -373,7 +376,7 @@ function confirmGraphitize() {
   if (indexInProgress.value)
     return
   const d = dialog.warning({
-    title: t('knowledgeBase.clickToGraphitize'),
+    title: t('knowledgeBase.clickToGraph'),
     content: t('knowledgeBase.graphitizeConfirm', { model: curKb.ingestModelName || '-' }),
     positiveText: t('common.confirm'),
     negativeText: t('common.cancel'),
@@ -819,7 +822,7 @@ onActivated(() => {
         <span v-if="curDoc.graphicalStatus === 'NONE'" style="font-size: 12px;">
           {{ t('knowledgeBase.graphNotGenerated') }}
           <NButton text type="primary" size="tiny" :disabled="indexInProgress" @click="confirmGraphitize">
-            {{ t('knowledgeBase.clickToGraphitize') }}
+            {{ t('knowledgeBase.clickToGraph') }}
           </NButton>
         </span>
         <NButton v-else text type="primary" size="tiny" @click="goGraph">

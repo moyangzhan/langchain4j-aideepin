@@ -78,6 +78,11 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
             "mp4", "avi", "mov", "wmv", "flv", "mkv", "webm", "m4v", "mpeg", "3gp"
     );
 
+    /**
+     * Persist an uploaded file (sha256-deduplicated) and return its record.
+     * With local storage the multipart temp file may be moved away (transferTo):
+     * finish all multipart stream reads before calling this.
+     */
     public AdiFile saveFile(MultipartFile file, boolean image) {
         String originalFilename = file.getOriginalFilename();
         if (StringUtils.isBlank(originalFilename) || !originalFilename.contains(".")) {

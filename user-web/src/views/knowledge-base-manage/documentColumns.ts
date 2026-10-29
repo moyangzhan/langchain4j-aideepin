@@ -63,7 +63,7 @@ export const createColumns = (callbacks: DocumentColumnCallbacks): DataTableColu
       render(row) {
         const renderElements: VNode[] = []
         if (row.embeddingStatus === 'NONE') {
-          renderElements.push(createText(t('knowledgeBase.statusPending')))
+          renderElements.push(createText(t('knowledgeBase.statusNotVectorized')))
         } else if (row.embeddingStatus === 'DOING') {
           renderElements.push(createText(t('knowledgeBase.statusProcessing')))
         } else if (row.embeddingStatus === 'DONE') {
@@ -99,7 +99,7 @@ export const createColumns = (callbacks: DocumentColumnCallbacks): DataTableColu
       render(row) {
         const renderElements: VNode[] = []
         if (row.graphicalStatus === 'NONE') {
-          renderElements.push(createText(t('knowledgeBase.statusPending')))
+          renderElements.push(createText(t('knowledgeBase.statusNotGenerated'), t('knowledgeBase.graphManualTip')))
         } else if (row.graphicalStatus === 'DOING') {
           renderElements.push(createText(t('knowledgeBase.statusProcessing')))
         } else if (row.graphicalStatus === 'DONE') {
@@ -260,11 +260,12 @@ function segmentModeTagType(segmentMode?: string) {
   return 'default'
 }
 
-function createText(txt: string) {
+function createText(txt: string, title?: string) {
   return h(
     'div',
     {
       class: 'mt-1',
+      title,
     },
     { default: () => txt },
   )

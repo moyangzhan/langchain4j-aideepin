@@ -19,6 +19,7 @@ const segmentConfigRows = computed(() => {
     ? { label: t('knowledgeBase.customSeparator'), value: `${props.kb.ingestCustomSeparator}${sharedNote}` }
     : { label: t('knowledgeBase.configStrategyLabel'), value: `${SPLIT_STRATEGY.find(option => option.value === props.kb.ingestSplitStrategy)?.label ?? props.kb.ingestSplitStrategy ?? ''}${sharedNote}` }
   return [
+    { label: t('knowledgeBase.ingestModelLabel'), value: props.kb.ingestModelName || '-' },
     { label: tokenLabel, value: `${props.kb.ingestMaxSegmentSize ?? 0}` },
     { label: t('knowledgeBase.configOverlapLabel'), value: `${props.kb.ingestMaxOverlap ?? 0}` },
     strategyRow,

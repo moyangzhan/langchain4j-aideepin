@@ -223,27 +223,45 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                               SegmentModeEnum segmentMode, Integer childMaxChunkSize) {
         try {
             String fileName = doc.getOriginalFilename();
-            // Q&A mode: the file is the pair data; no source file record is kept (raw Q/A
-            // text goes into remark) and questions are vectorized synchronously
             if (SegmentModeEnum.QA == segmentMode) {
-                KbDocument qaDoc = documentQaModeService.importQa(knowledgeBase,
-                        fileName == null || fileName.isBlank() ? "qa_import" : fileName, doc);
-                // user-level in-flight key held for the duration of the synchronous vectorization.
-                // Protocol matches the task executor (seed when absent, increment per in-flight
-                // unit, decrement + delete at <=0): a plain SET/DELETE clobbers the executor's
-                // live counter when a concurrently dispatched task is being counted
-                String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
-                stringRedisTemplate.opsForValue().setIfAbsent(userIndexKey, "0", 10, TimeUnit.MINUTES);
-                stringRedisTemplate.opsForValue().increment(userIndexKey);
-                try {
-                    documentQaModeService.vectorizePendingQaDoc(knowledgeBase, qaDoc, ThreadContext.getCurrentUser());
-                } finally {
-                    Long remaining = stringRedisTemplate.opsForValue().decrement(userIndexKey);
-                    if (remaining != null && remaining <= 0) {
-                        stringRedisTemplate.delete(userIndexKey);
+                String qaName = fileName == null || fileName.isBlank() ? "qa_import" : fileName;
+                if (isQaPairTable(qaName)) {
+                    KbDocument qaDoc = documentQaModeService.importQa(knowledgeBase, qaName, doc);
+                    String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
+                    stringRedisTemplate.opsForValue().setIfAbsent(userIndexKey, "0", 10, TimeUnit.MINUTES);
+                    stringRedisTemplate.opsForValue().increment(userIndexKey);
+                    try {
+                        documentQaModeService.vectorizePendingQaDoc(knowledgeBase, qaDoc, ThreadContext.getCurrentUser());
+                    } finally {
+                        Long remaining = stringRedisTemplate.opsForValue().decrement(userIndexKey);
+                        if (remaining != null && remaining <= 0) {
+                            stringRedisTemplate.delete(userIndexKey);
+                        }
                     }
+                    stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, knowledgeBase.getUuid());
+                    return null;
                 }
+                AdiFile adiFile = fileService.saveFile(doc, false);
+                Document document = FileOperatorContext.loadDocument(adiFile);
+                if (null == document) {
+                    throw new BaseException(A_FILE_TYPE_NOT_SUPPORTED, qaName);
+                }
+                String content = document.text().replace("\u0000", "");
+                if (StringUtils.isBlank(content)) {
+                    throw new BaseException(A_FILE_NO_CONTENT, qaName);
+                }
+                KbDocument qaDoc = new KbDocument();
+                qaDoc.setUuid(UuidUtil.createShort());
+                qaDoc.setKbId(knowledgeBase.getId());
+                qaDoc.setKbUuid(knowledgeBase.getUuid());
+                qaDoc.setSourceFileId(adiFile.getId());
+                qaDoc.setTitle(qaName);
+                qaDoc.setBrief(StringUtils.substring(content, 0, 200));
+                qaDoc.setRemark(content);
+                qaDoc.setSegmentMode(SegmentModeEnum.QA);
+                kbDocumentService.save(qaDoc);
                 stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, knowledgeBase.getUuid());
+                documentQaModeService.autoGenerateQa(ThreadContext.getCurrentUser(), qaDoc);
                 return null;
             }
             AdiFile adiFile = fileService.saveFile(doc, false);
@@ -293,6 +311,15 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
             log.error("upload error", e);
             throw new BaseException(A_UPLOAD_FAIL);
         }
+    }
+
+    /**
+     * Q&A upload routing: a spreadsheet carries ready-made pairs and is imported as-is;
+     * every other file is treated as a source document for LLM pair generation
+     */
+    private boolean isQaPairTable(String fileName) {
+        String lower = fileName.toLowerCase();
+        return lower.endsWith(".xlsx") || lower.endsWith(".xls") || lower.endsWith(".csv");
     }
 
     /**

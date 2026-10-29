@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyz.adi.common.cosntant.AdiConstant;
+import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.entity.DocumentSegment;
 import com.moyz.adi.common.entity.DocumentSegmentQuestion;
 import com.moyz.adi.common.entity.KbDocument;
@@ -38,22 +39,29 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import jakarta.annotation.Resource;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static com.moyz.adi.common.cosntant.RedisKeyConstant.KB_STATISTIC_RECALCULATE_SIGNAL;
+import static com.moyz.adi.common.cosntant.RedisKeyConstant.USER_INDEXING;
 import static com.moyz.adi.common.enums.ErrorEnum.A_DATA_NOT_FOUND;
 import static com.moyz.adi.common.enums.ErrorEnum.A_DOC_INDEX_DOING;
-import static com.moyz.adi.common.enums.ErrorEnum.A_PARAMS_ERROR;
+import static com.moyz.adi.common.enums.ErrorEnum.A_FILE_NO_CONTENT;
+import static com.moyz.adi.common.enums.ErrorEnum.A_FILE_TYPE_NOT_SUPPORTED;
+import static com.moyz.adi.common.enums.ErrorEnum.A_QA_TABLE_HEADER_INVALID;
 import static com.moyz.adi.common.enums.ErrorEnum.A_UPLOAD_FAIL;
 
 /**
@@ -111,6 +119,12 @@ public class DocumentQaModeService {
     @Resource
     private KnowledgeBaseMapper knowledgeBaseMapper;
 
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
+    @Resource
+    private FileService fileService;
+
     // @Lazy: indexTaskService's dependency graph may point back at this service's callers
     // (KbDocumentService); lazy injection breaks the cycle
     @Lazy
@@ -134,8 +148,9 @@ public class DocumentQaModeService {
     public KbDocument importQa(KnowledgeBase kb, String fileName, MultipartFile file) {
         List<QaPair> pairs = parseQaFile(fileName, file);
         if (pairs.isEmpty()) {
-            throw new BaseException(A_PARAMS_ERROR);
+            throw new BaseException(A_FILE_NO_CONTENT, fileName);
         }
+        AdiFile sourceFile = fileService.saveFile(file, false);
         // remark keeps the raw imported text (Q/A per pair) for traceability and re-import
         String remark = pairs.stream()
                 .map(pair -> "Q: " + pair.question() + "\nA: " + pair.answer())
@@ -145,6 +160,7 @@ public class DocumentQaModeService {
         doc.setUuid(UuidUtil.createShort());
         doc.setKbId(kb.getId());
         doc.setKbUuid(kb.getUuid());
+        doc.setSourceFileId(sourceFile.getId());
         doc.setTitle(fileName);
         doc.setBrief(StringUtils.substring(remark, 0, 200));
         doc.setRemark(remark);
@@ -241,7 +257,7 @@ public class DocumentQaModeService {
         String fileName = file.getOriginalFilename();
         List<QaPair> pairs = parseQaFile(fileName == null || fileName.isBlank() ? "qa_import" : fileName, file);
         if (pairs.isEmpty()) {
-            throw new BaseException(A_PARAMS_ERROR);
+            throw new BaseException(A_FILE_NO_CONTENT, fileName);
         }
         importQaPairs(doc, pairs);
     }
@@ -359,6 +375,10 @@ public class DocumentQaModeService {
         if (!tryMarkEmbeddingDoing(doc)) {
             throw new BaseException(A_DOC_INDEX_DOING);
         }
+        if (null != user) {
+            String userIndexKey = MessageFormat.format(USER_INDEXING, user.getId());
+            stringRedisTemplate.opsForValue().setIfAbsent(userIndexKey, "0", 10, TimeUnit.MINUTES);
+        }
         self.generateQaAsync(user, kb, doc);
     }
 
@@ -388,7 +408,14 @@ public class DocumentQaModeService {
         int versionSnapshot = doc.getIndexVersion() == null ? 0 : doc.getIndexVersion();
         int totalTokens = 0;
         long startTime = System.currentTimeMillis();
+        String userIndexKey = user == null ? null : MessageFormat.format(USER_INDEXING, user.getId());
+        boolean counterHeld = false;
         try {
+            if (null != userIndexKey) {
+                stringRedisTemplate.opsForValue().increment(userIndexKey);
+                counterHeld = true;
+                stringRedisTemplate.expire(userIndexKey, 10, TimeUnit.MINUTES);
+            }
             llmService = LLMContext.getServiceById(kb.getIngestModelId(), true);
             ChatModel chatModel = llmService.buildChatLLM(ChatModelBuilderProperties.builder()
                     .temperature(kb.getQueryLlmTemperature())
@@ -405,6 +432,9 @@ public class DocumentQaModeService {
             for (TextSegment chunk : chunks) {
                 if (StringUtils.isBlank(chunk.text())) {
                     continue;
+                }
+                if (null != userIndexKey) {
+                    stringRedisTemplate.expire(userIndexKey, 10, TimeUnit.MINUTES);
                 }
                 ChatResponse response = chatModel.chat(dev.langchain4j.data.message.UserMessage.from(
                         QA_GENERATE_PROMPT.replace("{input_text}", chunk.text())));
@@ -439,8 +469,13 @@ public class DocumentQaModeService {
             log.error("generateQa error, docUuid:{}", doc.getUuid(), e);
             markQaFailed(doc, versionSnapshot, e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
         } finally {
-            // record whatever was consumed, success or failure: chunks already billed before an
-            // abort must not vanish from the token monitor
+            if (counterHeld) {
+                Long remaining = stringRedisTemplate.opsForValue().decrement(userIndexKey);
+                if (remaining != null && remaining <= 0) {
+                    stringRedisTemplate.delete(userIndexKey);
+                }
+            }
+            stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, kb.getUuid());
             saveQaCallRecord(user, doc, llmService, totalTokens, System.currentTimeMillis() - startTime);
         }
     }
@@ -528,14 +563,14 @@ public class DocumentQaModeService {
         try {
             List<QaPair> pairs;
             if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) {
-                pairs = parseXlsx(file);
+                pairs = parseXlsx(file, fileName);
             } else if (lower.endsWith(".csv")) {
-                pairs = parseCsv(file);
+                pairs = parseCsv(file, fileName);
             } else {
-                throw new BaseException(A_PARAMS_ERROR);
+                throw new BaseException(A_FILE_TYPE_NOT_SUPPORTED, fileName);
             }
             if (pairs.isEmpty()) {
-                throw new BaseException(A_PARAMS_ERROR);
+                throw new BaseException(A_FILE_NO_CONTENT, fileName);
             }
             return pairs;
         } catch (BaseException e) {
@@ -555,7 +590,7 @@ public class DocumentQaModeService {
      * 2. Rows with fully identical answer text are merged by saveQaPairs' answer grouping into
      *    one answer holding multiple questions
      */
-    private List<QaPair> parseXlsx(MultipartFile file) throws Exception {
+    private List<QaPair> parseXlsx(MultipartFile file, String fileName) throws Exception {
         List<QaPair> pairs = new ArrayList<>();
         try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
@@ -569,7 +604,7 @@ public class DocumentQaModeService {
                     if (isHeaderRow(col0, col1)) {
                         continue;
                     }
-                    throw new BaseException(A_PARAMS_ERROR);
+                    throw new BaseException(A_QA_TABLE_HEADER_INVALID, fileName);
                 }
                 if (StringUtils.isNotBlank(col1)) {
                     lastAnswer = col1.trim();
@@ -582,7 +617,7 @@ public class DocumentQaModeService {
         return pairs;
     }
 
-    private List<QaPair> parseCsv(MultipartFile file) throws Exception {
+    private List<QaPair> parseCsv(MultipartFile file, String fileName) throws Exception {
         List<QaPair> pairs = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             boolean headerHandled = false;
@@ -619,7 +654,7 @@ public class DocumentQaModeService {
                     if (isHeaderRow(col(cols, 0), col(cols, 1))) {
                         continue;
                     }
-                    throw new BaseException(A_PARAMS_ERROR);
+                    throw new BaseException(A_QA_TABLE_HEADER_INVALID, fileName);
                 }
                 List<String> cols = splitCsvLine(record);
                 String q = col(cols, 0);

@@ -29,7 +29,7 @@ export function segmentStatusMeta(seg: KnowledgeBase.Segment, t: (key: string) =
     case 'DONE':
       return { kind: 'done', text: t('knowledgeBase.statusVectorized'), color: '#18a058', muted: false, iconCheck: true, title: t('knowledgeBase.statusVectorized'), retryable: false }
     default:
-      return { kind: 'pending', text: t('knowledgeBase.statusPending'), color: '', muted: true, iconCheck: false, title: '', retryable: false }
+      return { kind: 'pending', text: t('knowledgeBase.statusNotVectorized'), color: '', muted: true, iconCheck: false, title: '', retryable: false }
   }
 }
 

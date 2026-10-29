@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { NButton, NModal } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/store'
@@ -15,51 +15,47 @@ const emit = defineEmits<{
   (e: 'update:show', value: boolean): void
 }>()
 
+const CSV_PREVIEW_MAX_LINES = 50
+
 const { t } = useI18n()
 const authStore = useAuthStore()
 
 const fullUrl = ref('')
-const mimeType = ref('')
+const previewKind = ref<'text' | 'embed' | 'unsupported'>('unsupported')
 const textContent = ref('')
+const truncated = ref(false)
 
 watch(() => [props.fileUrl, props.fileName], () => {
   textContent.value = ''
-  mimeType.value = ''
+  truncated.value = false
   fullUrl.value = ''
   if (!props.fileUrl)
     return
   fullUrl.value = `${props.fileUrl}?token=${authStore.token}`
   const ext = props.fileName.substring(props.fileName.lastIndexOf('.') + 1)
-  switch (ext) {
-    case 'pdf':
-      mimeType.value = 'application/pdf'
-      break
-    case 'doc':
-    case 'docx':
-      mimeType.value = 'application/msword'
-      break
-    case 'ppt':
-    case 'pptx':
-      mimeType.value = 'application/vnd.ms-powerpoint'
-      break
-    case 'xls':
-    case 'xlsx':
-      mimeType.value = 'application/vnd.ms-excel'
-      break
-    case 'html':
-      mimeType.value = 'text/html'
-      break
-    case 'txt':
-      mimeType.value = 'text/plain'
-      api.loadFileContent(fullUrl.value).then((resp: any) => {
-        textContent.value = resp.data
-      }).catch(() => {
-      })
-      break
-    default:
-      mimeType.value = 'text/plain'
+  if (ext === 'txt' || ext === 'csv') {
+    previewKind.value = 'text'
+    api.loadFileContent(fullUrl.value).then((resp: any) => {
+      const text = String(resp.data ?? '')
+      if (ext !== 'csv') {
+        textContent.value = text
+        return
+      }
+      const lines = text.split('\n')
+      truncated.value = lines.length > CSV_PREVIEW_MAX_LINES
+      textContent.value = lines.slice(0, CSV_PREVIEW_MAX_LINES).join('\n')
+    }).catch(() => {
+    })
+    return
   }
+  if (ext === 'pdf' || ext === 'html') {
+    previewKind.value = 'embed'
+    return
+  }
+  previewKind.value = 'unsupported'
 }, { immediate: true })
+
+const embedMime = computed(() => (props.fileName.endsWith('.pdf') ? 'application/pdf' : 'text/html'))
 
 function download() {
   const x = new window.XMLHttpRequest()
@@ -87,15 +83,19 @@ export default { name: 'FilePreviewModal' }
     @update:show="(v: boolean) => emit('update:show', v)"
   >
     <div style="text-align: center;max-height:700px;overflow-y: auto">
-      <div v-if="props.fileUrl && mimeType === 'text/plain'">
-        {{ textContent }}
+      <pre v-if="previewKind === 'text'" style="text-align:left;white-space:pre;overflow-x:auto;margin:0;font-size:12px;">{{ textContent }}</pre>
+      <div v-if="previewKind === 'text' && truncated" style="font-size:12px;opacity:0.6;margin-top:8px;">
+        {{ t('workflow.filePreviewTruncated', { n: CSV_PREVIEW_MAX_LINES }) }}
       </div>
       <object
-        v-if="props.fileUrl && mimeType !== 'text/plain' && mimeType !== 'application/pdf'"
-        :data="fullUrl" width="100%" height="90%" :type="mimeType"
+        v-if="previewKind === 'embed'"
+        :data="fullUrl" width="100%" height="90%" :type="embedMime"
       >
         <p>{{ t('workflow.browserNotSupportEmbed') }}</p>
       </object>
+      <div v-if="previewKind === 'unsupported'" style="padding: 40px 0;opacity:0.7;">
+        {{ t('workflow.filePreviewUnsupported') }}
+      </div>
     </div>
     <template #footer>
       <NButton type="primary" text tag="a" size="small" @click="download">

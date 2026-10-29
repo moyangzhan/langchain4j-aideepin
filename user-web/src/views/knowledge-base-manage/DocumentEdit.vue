@@ -1,5 +1,5 @@
 <script setup lang='ts'>
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { computed, h, onActivated, onMounted, reactive, ref } from 'vue'
 import { NBreadcrumb, NBreadcrumbItem, NButton, NCard, NCheckbox, NInput, NInputNumber, NSelect, NSpace, NSpin, useDialog, useMessage } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 import SegmentConfigPanel from './components/SegmentConfigPanel.vue'
@@ -54,9 +54,12 @@ async function saveOrUpdate() {
   if (tmpItem.segmentMode === 'qa' && tmpItem.autoGenerateQa && (hasQaPairs.value || segmentModeChanged.value)) {
     dialog.warning({
       title: t('knowledgeBase.regenerateQaTitle'),
-      content: hasQaPairs.value
-        ? t('knowledgeBase.regenerateQaConfirm')
-        : t('knowledgeBase.switchGenerateQaConfirm'),
+      content: () => h('div', null, [
+        h('div', hasQaPairs.value
+          ? t('knowledgeBase.regenerateQaConfirm')
+          : t('knowledgeBase.switchGenerateQaConfirm')),
+        h('div', { style: 'margin-top: 6px' }, t('knowledgeBase.generateQaModelLine', { model: curKb.ingestModelName || '-' })),
+      ]),
       positiveText: t('common.confirm'),
       negativeText: t('common.cancel'),
       onPositiveClick: () => doSave(),
