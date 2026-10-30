@@ -6,7 +6,7 @@ This directory contains the backend service. For project overview, see the [root
 
 ## Tech Stack
 
-- JDK 17
+- JDK 21
 - Spring Boot 3.5.14
 - [langchain4j](https://github.com/langchain4j/langchain4j) (Java version of LangChain)
 - [langgraph4j](https://github.com/bsorrentino/langgraph4j)

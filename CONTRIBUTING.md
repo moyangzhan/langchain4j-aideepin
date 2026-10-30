@@ -74,7 +74,7 @@ Overall, keep your code style consistent with the existing codebase.
 #### Backend (Java)
 
 - Use your IDE's default formatting
-- JDK 17 language features
+- JDK 21 language features
 - **Comment convention for compatibility/transitional code**: transitional components (legacy-data migration runners, one-off backfills, e.g. `SegmentNeo4jBackfillRunner`) must document five points in their class-level Javadoc, all mandatory:
   1. **Role**: mark it as compatibility code; reference the formal migration it mirrors (e.g. SQL migration number) and its activation condition (e.g. config flag);
   2. **Purpose**: which refactor introduced it and what problem it solves;

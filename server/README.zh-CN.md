@@ -6,7 +6,7 @@
 
 ## 技术栈
 
-- JDK 17
+- JDK 21
 - Spring Boot 3.5.14
 - [langchain4j](https://github.com/langchain4j/langchain4j)（Java 版 LangChain）
 - [langgraph4j](https://github.com/bsorrentino/langgraph4j)
