@@ -6,6 +6,8 @@ For environments without Docker: run the backend as a JAR directly and host the 
 
 ## Build
 
+Prerequisite: JDK 21+ (for both building and running).
+
 ```bash
 cd server
 mvn clean package -Dmaven.test.skip=true

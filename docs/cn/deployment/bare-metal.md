@@ -6,6 +6,8 @@
 
 ## 编译
 
+环境要求：JDK 21+（构建与运行）。
+
 ```bash
 cd server
 mvn clean package -Dmaven.test.skip=true

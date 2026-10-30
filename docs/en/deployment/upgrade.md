@@ -23,6 +23,7 @@ Upgrading is intended for deployers with development experience and is an atomic
    ```
 
 2. For Docker deployments, also update `IMAGE_VERSION` in `.env`: images are tagged with this value, so incrementing it per release keeps previous images available
+3. For bare-metal deployments, make sure JDK 21+ is installed: the backend is compiled for Java 21 from this release on, so both building and running require JDK 21+ and an older JDK cannot start the new JAR (Docker images bundle JRE 21 and are not affected)
 
 ## 3. Perform the Upgrade
 
