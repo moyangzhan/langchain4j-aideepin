@@ -141,7 +141,7 @@ public class WorkflowEngine {
         streamingResult(wfState, outputs, sseUuid);
 
         StateSnapshot<WfNodeState> stateSnapshot = app.getState(invokeConfig);
-        String nextNode = stateSnapshot.config().nextNode().orElse("");
+        String nextNode = stateSnapshot.nextNodeId();
         //A non-END next node means an interruption waiting for user feedback
         if (StringUtils.isNotBlank(nextNode) && !nextNode.equalsIgnoreCase(END)) {
             String intTip = WorkflowUtil.getHumanFeedbackTip(nextNode, wfNodes);

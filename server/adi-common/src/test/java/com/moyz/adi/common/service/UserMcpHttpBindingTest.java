@@ -51,11 +51,9 @@ import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -82,7 +80,6 @@ class UserMcpHttpBindingTest {
     private GenericApplicationContext context;
     private ListAppender<ILoggingEvent> logs;
     private String oldAesKey;
-    private OutputStream sseStream;
 
     @BeforeEach
     void setup() throws Exception {
@@ -139,8 +136,6 @@ class UserMcpHttpBindingTest {
         new SpringUtil().setApplicationContext(context);
         http = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         http.createContext("/mcp", this::handle);
-        http.createContext("/sse", this::handleSse);
-        http.createContext("/messages", this::handleSseMessage);
         http.start();
         logs = new ListAppender<>();
         logs.start();
@@ -319,10 +314,10 @@ class UserMcpHttpBindingTest {
     }
 
     @Test
-    void legacySseUsesTheSameHeadersForConnectionAndMessagesAndClosesItsExecutor() throws Exception {
+    void sseTransportBindsHeadersOnEveryRequestAndClosesCleanly() throws Exception {
         Mcp mcp = services.get(100L);
         mcp.setTransportType("sse");
-        mcp.setSseUrl("http://127.0.0.1:" + http.getAddress().getPort() + "/sse");
+        mcp.setSseUrl("http://127.0.0.1:" + http.getAddress().getPort() + "/mcp");
         stored.put(key(10L, 100L), storedUser(10L, 100L, "u10-first"));
         clients.addAll(service.createMcpClients(10L, List.of(100L)));
         assertEquals(1, clients.size());
@@ -332,10 +327,8 @@ class UserMcpHttpBindingTest {
         assertTrue(requests.stream().allMatch(r -> r.authorization.equals("Bearer u10-first") && !r.query.contains("u10-first")));
         client.close();
         Object transport = ReflectionTestUtils.getField(client, "transport");
-        Object httpClient = ReflectionTestUtils.getField(transport, "client");
-        Object dispatcher = ReflectionTestUtils.invokeMethod(httpClient, "dispatcher");
-        java.util.concurrent.ExecutorService executor = ReflectionTestUtils.invokeMethod(dispatcher, "executorService");
-        assertTrue(executor.isShutdown());
+        Object closed = ReflectionTestUtils.getField(transport, "closed");
+        assertTrue((Boolean) ReflectionTestUtils.invokeMethod(closed, "get"));
         assertNoSecretsInLogs("u10-first");
     }
 
@@ -376,40 +369,6 @@ class UserMcpHttpBindingTest {
     private void assertNoSecretsInLogs(String... values) {
         String text = logs.list.stream().map(event -> event.getFormattedMessage() + (event.getThrowableProxy() == null ? "" : ThrowableProxyUtil.asString(event.getThrowableProxy()))).reduce("", String::concat);
         for (String value : values) assertFalse(text.contains(value), "A credential appeared in captured application/SDK logs");
-    }
-
-    private void handleSse(HttpExchange exchange) throws IOException {
-        String authorization = exchange.getRequestHeaders().getFirst("Authorization");
-        String query = exchange.getRequestURI().getRawQuery();
-        requests.add(new Request("sse-connect", authorization == null ? "" : authorization, query == null ? "" : query));
-        if (!"Bearer u10-first".equals(authorization) || !"fixture-fixed".equals(exchange.getRequestHeaders().getFirst("X-Fixed"))) {
-            exchange.sendResponseHeaders(401, -1);
-            exchange.close();
-            return;
-        }
-        exchange.getResponseHeaders().set("Content-Type", "text/event-stream");
-        exchange.sendResponseHeaders(200, 0);
-        sseStream = exchange.getResponseBody();
-        sseStream.write("event: endpoint\ndata: /messages?fixture=1\n\n".getBytes(StandardCharsets.UTF_8));
-        sseStream.flush();
-    }
-
-    private void handleSseMessage(HttpExchange exchange) throws IOException {
-        JsonNode request = json.readTree(exchange.getRequestBody());
-        String authorization = exchange.getRequestHeaders().getFirst("Authorization");
-        requests.add(new Request(request.path("method").asText(), authorization == null ? "" : authorization, exchange.getRequestURI().getRawQuery()));
-        if (!"Bearer u10-first".equals(authorization) || !"fixture-fixed".equals(exchange.getRequestHeaders().getFirst("X-Fixed"))) {
-            exchange.sendResponseHeaders(401, -1);
-            exchange.close();
-            return;
-        }
-        if (request.has("id")) {
-            byte[] response = json.writeValueAsBytes(Map.of("jsonrpc", "2.0", "id", request.get("id"), "result", resultFor(request)));
-            sseStream.write(("event: message\ndata: " + new String(response, StandardCharsets.UTF_8) + "\n\n").getBytes(StandardCharsets.UTF_8));
-            sseStream.flush();
-        }
-        exchange.sendResponseHeaders(202, -1);
-        exchange.close();
     }
 
     private void handle(HttpExchange exchange) throws IOException {

@@ -32,9 +32,9 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <langchain4j.version>1.14.1</langchain4j.version>
-        <tmp-langchain4j.version>1.14.1-beta24</tmp-langchain4j.version>
-        <langgraph4j.version>1.8.27</langgraph4j.version>
+        <langchain4j.version>1.22.0</langchain4j.version>
+        <tmp-langchain4j.version>1.22.0-beta32</tmp-langchain4j.version>
+        <langgraph4j.version>1.9.7</langgraph4j.version>
     </properties>
 
     <dependencyManagement>
