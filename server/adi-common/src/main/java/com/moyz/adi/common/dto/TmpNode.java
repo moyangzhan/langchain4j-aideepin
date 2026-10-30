@@ -1,6 +1,6 @@
 package com.moyz.adi.common.dto;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.workflow.WfNodeInputConfig;
 import lombok.Data;
 

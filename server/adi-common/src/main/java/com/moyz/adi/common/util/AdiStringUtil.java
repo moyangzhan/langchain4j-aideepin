@@ -1,6 +1,6 @@
 package com.moyz.adi.common.util;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import org.jsoup.Jsoup;
 
 import java.util.ArrayList;

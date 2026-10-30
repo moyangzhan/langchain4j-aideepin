@@ -1,6 +1,6 @@
 package com.moyz.adi.common.service;
 
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.entity.User;

@@ -1,6 +1,6 @@
 package com.moyz.adi.common.workflow;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.dto.workflow.WfRuntimeMetricsSummary;
 import com.moyz.adi.common.dto.workflow.WfRuntimeNodeDto;
 import com.moyz.adi.common.entity.*;

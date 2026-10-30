@@ -1,6 +1,6 @@
 package com.moyz.adi.common.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.moyz.adi.common.dto.mcp.McpCommonParam;
 import com.moyz.adi.common.dto.mcp.McpCustomizedParamDefinition;
 import org.apache.ibatis.type.JdbcType;

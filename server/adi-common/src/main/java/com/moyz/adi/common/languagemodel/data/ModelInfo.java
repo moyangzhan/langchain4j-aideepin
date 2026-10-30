@@ -1,6 +1,6 @@
 package com.moyz.adi.common.languagemodel.data;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.ObjectNode;
 import lombok.Data;
 
 @Data

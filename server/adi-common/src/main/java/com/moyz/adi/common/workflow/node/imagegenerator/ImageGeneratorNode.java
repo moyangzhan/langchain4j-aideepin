@@ -1,6 +1,6 @@
 package com.moyz.adi.common.workflow.node.imagegenerator;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.entity.Draw;
 import com.moyz.adi.common.entity.WorkflowComponent;
 import com.moyz.adi.common.entity.WorkflowNode;

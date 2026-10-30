@@ -1,7 +1,7 @@
 server:
   port: 9999
-  context-path: /
   servlet:
+    context-path: /
     session:
       timeout: 28800s
   tomcat:
@@ -18,7 +18,6 @@ spring:
   jackson:
     date-format: "yyyy-MM-dd HH:mm:ss"
     time-zone: "GMT+8"
-    serialization: { write-dates-as-timestamps: false }
   cache:
     type: redis
     redis:

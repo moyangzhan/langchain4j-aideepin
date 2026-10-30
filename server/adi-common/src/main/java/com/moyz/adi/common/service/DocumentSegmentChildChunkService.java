@@ -1,6 +1,6 @@
 package com.moyz.adi.common.service;
 
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.moyz.adi.common.entity.DocumentSegmentChildChunk;
 import com.moyz.adi.common.mapper.DocumentSegmentChildChunkMapper;
 import org.apache.commons.collections4.CollectionUtils;

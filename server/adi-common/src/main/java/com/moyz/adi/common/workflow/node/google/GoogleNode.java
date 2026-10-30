@@ -1,6 +1,6 @@
 package com.moyz.adi.common.workflow.node.google;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.SearchReturn;
 import com.moyz.adi.common.dto.SearchReturnWebPage;

@@ -1,7 +1,7 @@
 package com.moyz.adi.common.service.embedding.pgvector;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.moyz.adi.common.dto.KbDocumentEmbeddingDto;
 import com.moyz.adi.common.entity.CharacterMemoryEmbedding;
 import com.moyz.adi.common.mapper.CharacterMemoryEmbeddingMapper;

@@ -1,7 +1,7 @@
 package com.moyz.adi.common.workflow;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ObjectNode;
 import com.google.gson.JsonObject;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.enums.WfIODataTypeEnum;
@@ -57,7 +57,7 @@ public class WfNodeIODataUtil {
         } else if (WfIODataTypeEnum.FILES.getValue().equals(type)) {
             if (value.isArray()) {
                 List<String> fileUrls = new ArrayList<>();
-                Iterator<JsonNode> iterator = value.elements();
+                Iterator<JsonNode> iterator = value.values().iterator();
                 while (iterator.hasNext()) {
                     fileUrls.add(iterator.next().asText());
                 }

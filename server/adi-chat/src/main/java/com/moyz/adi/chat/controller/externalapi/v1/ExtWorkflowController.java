@@ -1,6 +1,6 @@
 package com.moyz.adi.chat.controller.externalapi.v1;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.extapi.ExtApiWfRunReq;
 import com.moyz.adi.common.entity.User;

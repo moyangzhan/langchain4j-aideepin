@@ -1,6 +1,6 @@
 package com.moyz.adi.common.service.embedding.pgvector;
 
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.moyz.adi.common.entity.KnowledgeBaseEmbedding;
 import com.moyz.adi.common.mapper.KnowledgeBaseEmbeddingMapper;
 import com.moyz.adi.common.service.embedding.IKnowledgeEmbeddingService;

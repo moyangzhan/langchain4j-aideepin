@@ -1,22 +1,20 @@
 package com.moyz.adi.common.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
-import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,14 +24,12 @@ import java.util.Map;
 @Slf4j
 public class JsonUtil {
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-
-    static {
-        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-        objectMapper.configure(SerializationFeature.INDENT_OUTPUT, Boolean.FALSE);
-        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        objectMapper.registerModules(LocalDateTimeUtil.getSimpleModule(), new JavaTimeModule(), new Jdk8Module());
-    }
+    private static final ObjectMapper objectMapper = JsonMapper.builder()
+            .changeDefaultPropertyInclusion(value -> value.withValueInclusion(JsonInclude.Include.NON_NULL))
+            .disable(SerializationFeature.INDENT_OUTPUT)
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .addModule(LocalDateTimeUtil.getSimpleModule())
+            .build();
 
     public static final ObjectMapper getObjectMapper() {
         return objectMapper;
@@ -43,7 +39,7 @@ public class JsonUtil {
         String resp = null;
         try {
             resp = objectMapper.writeValueAsString(obj);
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             log.error("JsonUtil error", e);
         }
         return resp;
@@ -59,9 +55,9 @@ public class JsonUtil {
     private static JsonParser getParser(String content) {
         if (StringUtils.isNotBlank(content)) {
             try {
-                return objectMapper.getFactory().createParser(content);
-            } catch (IOException ioe) {
-                log.error("JsonUtil getParser error", ioe);
+                return objectMapper.tokenStreamFactory().createParser(content);
+            } catch (JacksonException e) {
+                log.error("JsonUtil getParser error", e);
             }
         }
         return null;
@@ -74,8 +70,8 @@ public class JsonUtil {
      */
     private static JsonGenerator getGenerator(StringWriter sw) {
         try {
-            return objectMapper.getFactory().createGenerator(sw);
-        } catch (IOException e) {
+            return objectMapper.tokenStreamFactory().createGenerator(sw);
+        } catch (JacksonException e) {
             log.error("JsonUtil getGenerator error", e);
         }
         return null;
@@ -95,8 +91,8 @@ public class JsonUtil {
                 return null;
             }
             return jp.readValueAs(clazz);
-        } catch (IOException ioe) {
-            log.error("Deserialization failed", ioe);
+        } catch (JacksonException e) {
+            log.error("Deserialization failed", e);
         }
         return null;
     }
@@ -104,7 +100,7 @@ public class JsonUtil {
     public static <T> T fromJson(JsonNode jsonNode, Class<T> clazz) {
         try {
             return objectMapper.treeToValue(jsonNode, clazz);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("Deserialization failed", e);
         }
         return null;
@@ -117,16 +113,19 @@ public class JsonUtil {
             for (JsonNode jsonNode : arrayNode) {
                 result.add(objectMapper.treeToValue(jsonNode, clazz));
             }
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("Deserialization failed", e);
         }
         return result;
     }
 
     public static JsonNode toJsonNode(String json) {
+        if (StringUtils.isBlank(json)) {
+            return null;
+        }
         try {
             return objectMapper.readTree(json);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("Deserialization failed", e);
         }
         return null;
@@ -136,7 +135,7 @@ public class JsonUtil {
         Map<String, Object> result;
         try {
             result = objectMapper.readValue(json, Map.class);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new RuntimeException(e);
         }
         return result;
@@ -145,7 +144,7 @@ public class JsonUtil {
     public static <T> List<T> toList(String json, Class<T> clazz) {
         try {
             return objectMapper.readValue(json, objectMapper.getTypeFactory().constructCollectionType(List.class, clazz));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("Deserialization failed", e);
         }
         return null;

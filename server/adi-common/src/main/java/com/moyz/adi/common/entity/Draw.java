@@ -2,7 +2,7 @@ package com.moyz.adi.common.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import com.moyz.adi.common.base.JsonNodeTypeHandler;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;

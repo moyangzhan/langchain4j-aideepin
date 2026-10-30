@@ -1,7 +1,7 @@
 package com.moyz.adi.common.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import lombok.Data;
 
 import java.time.LocalDateTime;

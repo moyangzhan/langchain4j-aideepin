@@ -1,7 +1,7 @@
 package com.moyz.adi.common.service;
 
 import com.alibaba.dashscope.utils.JsonUtils;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.moyz.adi.common.dto.RefGraphDto;
 import com.moyz.adi.common.entity.CharacterMessageRefGraph;
 import com.moyz.adi.common.mapper.CharacterMessageRefGraphMapper;

@@ -1,6 +1,6 @@
 package com.moyz.adi.common.workflow.node.faqextractor;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.entity.WorkflowComponent;

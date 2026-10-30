@@ -1,6 +1,6 @@
 package com.moyz.adi.common.base;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.util.JsonUtil;
 import com.moyz.adi.common.vo.AudioConfig;
 import com.moyz.adi.common.workflow.WfNodeInputConfig;

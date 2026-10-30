@@ -1,6 +1,6 @@
 package com.moyz.adi.common.workflow;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.workflow.WfRuntimeMetricsSummary;
 import com.moyz.adi.common.dto.workflow.WfRuntimeNodeDto;
@@ -254,7 +254,7 @@ public class WorkflowEngine {
         if (null == persisted) {
             return result;
         }
-        persisted.fields().forEachRemaining(entry -> {
+        persisted.properties().forEach(entry -> {
             ObjectNode shaped = JsonUtil.createObjectNode();
             shaped.put("name", entry.getKey());
             shaped.set("content", entry.getValue());

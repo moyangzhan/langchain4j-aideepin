@@ -3,7 +3,7 @@ package com.moyz.adi.common.languagemodel;
 import com.alibaba.dashscope.audio.asr.transcription.*;
 import com.alibaba.dashscope.common.TaskStatus;
 import com.aliyun.oss.common.utils.StringUtils;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.ModelPlatform;
 import com.moyz.adi.common.exception.BaseException;

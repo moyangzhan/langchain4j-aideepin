@@ -40,7 +40,7 @@ public class LogClientHttpRequestInterceptor implements ClientHttpRequestInterce
         }
 
         log.info("rest log status:{},time:{},url:{},body:{},response:{}",
-                response.getRawStatusCode(), stopWatch.getLastTaskTimeMillis(),
+                response.getStatusCode().value(), stopWatch.getLastTaskTimeMillis(),
                 request.getURI(), new String(body, StandardCharsets.UTF_8), resBody);
         return response;
     }

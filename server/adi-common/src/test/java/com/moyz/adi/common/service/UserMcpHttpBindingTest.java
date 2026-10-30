@@ -9,9 +9,10 @@ import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.AbstractWrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.core.override.MybatisMapperProxy;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.UserMcpDto;
 import com.moyz.adi.common.dto.mcp.UserMcpUpdateReq;
@@ -68,7 +69,7 @@ import static org.mockito.Mockito.*;
 
 /** Real SDK/host path; database, model and MCP service are synthetic, without external network or keys. */
 class UserMcpHttpBindingTest {
-    private final ObjectMapper json = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private final ObjectMapper json = JsonMapper.builder().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).build();
     private final Map<Long, Mcp> services = new ConcurrentHashMap<>();
     private final Map<String, UserMcp> stored = new ConcurrentHashMap<>();
     private final List<Request> requests = new CopyOnWriteArrayList<>();

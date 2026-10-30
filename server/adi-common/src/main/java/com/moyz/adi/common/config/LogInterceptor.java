@@ -1,7 +1,7 @@
 package com.moyz.adi.common.config;
 
 import com.moyz.adi.common.helper.HttpHelper;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

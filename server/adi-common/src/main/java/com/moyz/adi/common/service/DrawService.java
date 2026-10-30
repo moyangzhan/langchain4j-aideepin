@@ -3,7 +3,7 @@ package com.moyz.adi.common.service;
 import cn.hutool.core.img.Img;
 import cn.hutool.core.io.FileUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.config.AdiProperties;
 import com.moyz.adi.common.cosntant.RedisKeyConstant;

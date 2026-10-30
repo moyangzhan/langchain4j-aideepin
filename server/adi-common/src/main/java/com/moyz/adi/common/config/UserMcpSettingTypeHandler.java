@@ -1,7 +1,7 @@
 package com.moyz.adi.common.config;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.moyz.adi.common.dto.mcp.UserMcpCustomizedParam;
 import com.moyz.adi.common.util.JsonUtil;
 import org.apache.ibatis.type.BaseTypeHandler;
@@ -57,12 +57,12 @@ public class UserMcpSettingTypeHandler extends BaseTypeHandler<List<UserMcpCusto
         }
         try {
             return parseJsonArray(json);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new SQLException("Error converting JSON to list", e);
         }
     }
 
-    private List<UserMcpCustomizedParam> parseJsonArray(String jsonArray) throws JsonProcessingException {
+    private List<UserMcpCustomizedParam> parseJsonArray(String jsonArray) {
         List<UserMcpCustomizedParam> list = JsonUtil.toList(jsonArray, UserMcpCustomizedParam.class);
         if (null == list || list.isEmpty()) {
             return new ArrayList<>();

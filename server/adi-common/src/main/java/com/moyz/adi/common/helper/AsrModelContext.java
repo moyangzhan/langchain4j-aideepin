@@ -1,6 +1,6 @@
 package com.moyz.adi.common.helper;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;

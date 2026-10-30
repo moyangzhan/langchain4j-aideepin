@@ -1,6 +1,5 @@
 package com.moyz.adi.common.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyz.adi.common.enums.SegmentModeEnum;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -9,10 +8,11 @@ import org.springframework.format.FormatterRegistry;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
 
@@ -21,14 +21,14 @@ import java.util.List;
 public class WebMvcConfig implements WebMvcConfigurer {
 
     @Resource
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @Override
     public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
         log.info("WebMvcConfig==configureMessageConverters");
         WebMvcConfigurer.super.configureMessageConverters(converters);
         converters.add(new StringHttpMessageConverter());
-        converters.add(new MappingJackson2HttpMessageConverter(objectMapper));
+        converters.add(new JacksonJsonHttpMessageConverter(jsonMapper));
         converters.add(new ByteArrayHttpMessageConverter());
     }
 

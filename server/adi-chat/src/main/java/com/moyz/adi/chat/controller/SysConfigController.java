@@ -1,7 +1,7 @@
 package com.moyz.adi.chat.controller;
 
 import com.aliyun.core.utils.StringUtils;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.exception.BaseException;

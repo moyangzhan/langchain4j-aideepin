@@ -1,8 +1,8 @@
 package com.moyz.adi.common.service;
 
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.entity.DocumentSegment;

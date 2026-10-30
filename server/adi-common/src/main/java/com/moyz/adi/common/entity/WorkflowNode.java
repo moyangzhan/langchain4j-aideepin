@@ -2,7 +2,7 @@ package com.moyz.adi.common.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.ObjectNode;
 import com.moyz.adi.common.base.JsonNodeTypeHandler;
 import com.moyz.adi.common.base.NodeInputConfigTypeHandler;
 import com.moyz.adi.common.workflow.WfNodeInputConfig;

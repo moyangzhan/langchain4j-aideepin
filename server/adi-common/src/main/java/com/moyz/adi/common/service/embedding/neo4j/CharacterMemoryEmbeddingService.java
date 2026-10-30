@@ -1,6 +1,6 @@
 package com.moyz.adi.common.service.embedding.neo4j;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.moyz.adi.common.dto.KbDocumentEmbeddingDto;
 import com.moyz.adi.common.rag.neo4j.AdiNeo4jEmbeddingStore;
 import com.moyz.adi.common.service.embedding.ICharacterMemoryEmbeddingService;
