@@ -113,7 +113,7 @@ UPDATE adi_model_platform SET base_url = 'my_ollama_base_url' WHERE name = 'olla
 再启用需要的模型：
 
 ```sql
-UPDATE adi_ai_model SET is_enable = true WHERE name = 'deepseek-v4-flash';
+UPDATE adi_ai_model SET is_enable = true WHERE name = 'deepseek-flash';
 ```
 
 ## 配置项参考（.env）

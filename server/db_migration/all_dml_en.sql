@@ -190,7 +190,7 @@ VALUES ('7bb3d7b63d2c4773aafde36fca9b67e9', 1, 3, 0, 'Translate', '{
   "user_inputs": []
 }', '{
   "prompt": "Translate the following content into Chinese. Output only the translation result without any explanation, prefix, or suffix:\n{var_rising}",
-  "model_name": "deepseek-v4-flash"
+  "model_name": "deepseek-flash"
 }', -105.91822303004142, 328.82173298096063);
 INSERT INTO adi_workflow_node (uuid, workflow_id, workflow_component_id, user_id, title, input_config, node_config,
                                position_x, position_y)
@@ -215,7 +215,7 @@ VALUES ('7a71f5860723457ba5815a71cb21f4d5', 1, 9, 0, 'Classify Content', '{
       "target_node_uuid": "444bdaf7e35c4bb08aba35cfe42d7ee5"
     }
   ],
-  "model_name": "deepseek-v4-flash"
+  "model_name": "deepseek-flash"
 }', 178.36431809503244, 256.2306178307531);
 INSERT INTO adi_workflow_node (uuid, workflow_id, workflow_component_id, user_id, title, input_config, node_config,
                                position_x, position_y)
@@ -275,7 +275,7 @@ VALUES ('f2b59926da754b7a8938eb3f400920ac', 1, 3, 0, 'Give 1 Antonym', '{
   "user_inputs": []
 }', '{
   "prompt": "Give one antonym of the following content. Output only the antonym itself without any explanation, prefix, or suffix:\n{var_feel}",
-  "model_name": "deepseek-v4-flash"
+  "model_name": "deepseek-flash"
 }', 891.5056599104687, 142.47976951620672);
 INSERT INTO adi_workflow_node (uuid, workflow_id, workflow_component_id, user_id, title, input_config, node_config,
                                position_x, position_y)
@@ -290,7 +290,7 @@ VALUES ('7ac3c57446584c2b8f809daa51091eb0', 1, 3, 0, 'Give 10 Antonyms', '{
   "user_inputs": []
 }', '{
   "prompt": "Give 10 antonyms of the following content: {var_fine},\\n##Note\\nList the antonyms directly, separated by commas, with no extra words",
-  "model_name": "deepseek-v4-flash"
+  "model_name": "deepseek-flash"
 }', 844.9517549754598, -7.5875938393296565);
 INSERT INTO adi_workflow_node (uuid, workflow_id, workflow_component_id, user_id, title, input_config, node_config,
                                position_x, position_y)
@@ -324,7 +324,7 @@ VALUES ('e87c362ff13f489dad9568f94e8219ca', 1, 3, 0, 'Give 1 Synonym', '{
   "user_inputs": []
 }', '{
   "prompt": "Give one synonym of the following content: {var_muscle}",
-  "model_name": "deepseek-v4-flash"
+  "model_name": "deepseek-flash"
 }', 575.9071882206999, 331.8698354997035);
 INSERT INTO adi_workflow_node (uuid, workflow_id, workflow_component_id, user_id, title, input_config, node_config,
                                position_x, position_y)

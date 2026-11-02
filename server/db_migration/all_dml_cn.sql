@@ -189,7 +189,7 @@ VALUES ('7bb3d7b63d2c4773aafde36fca9b67e9', 1, 3, 0, '翻译', '{
   "user_inputs": []
 }', '{
   "prompt": "将以下内容翻译成英文，只输出翻译结果，不要添加任何解释、前缀或后缀：\n{var_rising}",
-  "model_name": "deepseek-v4-flash"
+  "model_name": "deepseek-flash"
 }', -105.91822303004142, 328.82173298096063);
 INSERT INTO adi_workflow_node (uuid, workflow_id, workflow_component_id, user_id, title, input_config, node_config,
                                position_x, position_y)
@@ -214,7 +214,7 @@ VALUES ('7a71f5860723457ba5815a71cb21f4d5', 1, 9, 0, '内容分类', '{
       "target_node_uuid": "444bdaf7e35c4bb08aba35cfe42d7ee5"
     }
   ],
-  "model_name": "deepseek-v4-flash"
+  "model_name": "deepseek-flash"
 }', 178.36431809503244, 256.2306178307531);
 INSERT INTO adi_workflow_node (uuid, workflow_id, workflow_component_id, user_id, title, input_config, node_config,
                                position_x, position_y)
@@ -274,7 +274,7 @@ VALUES ('f2b59926da754b7a8938eb3f400920ac', 1, 3, 0, '给出1个反义词', '{
   "user_inputs": []
 }', '{
   "prompt": "给出一个以下内容的反义词，只输出反义词本身，不要添加任何解释、前缀或后缀：\n{var_feel}",
-  "model_name": "deepseek-v4-flash"
+  "model_name": "deepseek-flash"
 }', 891.5056599104687, 142.47976951620672);
 INSERT INTO adi_workflow_node (uuid, workflow_id, workflow_component_id, user_id, title, input_config, node_config,
                                position_x, position_y)
@@ -289,7 +289,7 @@ VALUES ('7ac3c57446584c2b8f809daa51091eb0', 1, 3, 0, '给出10个反义词', '{
   "user_inputs": []
 }', '{
   "prompt": "给出10个以下内容的反义词：{var_fine},\\n##注意\\n直接列出反义词，用逗号隔开，不需要其他多余的话",
-  "model_name": "deepseek-v4-flash"
+  "model_name": "deepseek-flash"
 }', 844.9517549754598, -7.5875938393296565);
 INSERT INTO adi_workflow_node (uuid, workflow_id, workflow_component_id, user_id, title, input_config, node_config,
                                position_x, position_y)
@@ -323,7 +323,7 @@ VALUES ('e87c362ff13f489dad9568f94e8219ca', 1, 3, 0, '给出1个近义词', '{
   "user_inputs": []
 }', '{
   "prompt": "给出一个以下内容的近义词：{var_muscle}",
-  "model_name": "deepseek-v4-flash"
+  "model_name": "deepseek-flash"
 }', 575.9071882206999, 331.8698354997035);
 INSERT INTO adi_workflow_node (uuid, workflow_id, workflow_component_id, user_id, title, input_config, node_config,
                                position_x, position_y)

@@ -113,7 +113,7 @@ UPDATE adi_model_platform SET base_url = 'my_ollama_base_url' WHERE name = 'olla
 Then enable the models you need:
 
 ```sql
-UPDATE adi_ai_model SET is_enable = true WHERE name = 'deepseek-v4-flash';
+UPDATE adi_ai_model SET is_enable = true WHERE name = 'deepseek-flash';
 ```
 
 ## Configuration Reference (.env)

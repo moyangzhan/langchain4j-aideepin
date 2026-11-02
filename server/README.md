@@ -48,7 +48,7 @@ Enable models or add new models:
 
 ```sql
 -- Enable models
-UPDATE adi_ai_model SET is_enable = true WHERE name = 'deepseek-v4-flash';
+UPDATE adi_ai_model SET is_enable = true WHERE name = 'deepseek-flash';
 UPDATE adi_ai_model SET is_enable = true WHERE name = 'gpt-5-mini';
 UPDATE adi_ai_model SET is_enable = true WHERE name = 'gpt-image-2';
 UPDATE adi_ai_model SET is_enable = true WHERE name = 'qwen-turbo';

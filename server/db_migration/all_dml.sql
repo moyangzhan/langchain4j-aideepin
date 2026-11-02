@@ -89,7 +89,7 @@ values ('openai-compatible-platform-test', 'OpenAI-Compatible Platform', 'https:
 INSERT INTO adi_ai_model (name, title, type, platform, context_window, max_input_tokens, max_output_tokens,
                           response_format_types, is_reasoner,
                           is_thinking_closable, is_enable)
-VALUES ('deepseek-v4-flash', 'DeepSeek-V4-Flash', 'text', 'deepseek', 1000000, 980000, 384000, 'text,json_object', true, true,
+VALUES ('deepseek-flash', 'DeepSeek-Flash', 'text', 'deepseek', 1000000, 980000, 384000, 'text,json_object', true, true,
         false);
 
 -- https://developers.openai.com/api/docs/models/gpt-5-mini (superseded by gpt-5.4-mini)
