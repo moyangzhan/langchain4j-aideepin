@@ -8,14 +8,22 @@
 
 ### 安装 PostgreSQL 与扩展
 
-Ubuntu 建议先添加 [PGDG 源](https://www.postgresql.org/download/linux/ubuntu/)，然后一键安装 PostgreSQL 及所需扩展：
+系统的存储分三部分，向量与图库各自可在 PostgreSQL 扩展与 Neo4j 之间二选一：
+
+| 用途 | PostgreSQL 方案（默认） | 替代方案 | 切换配置 |
+|------|----------------------|---------|---------|
+| 主业务库 | PostgreSQL（必需） | — | — |
+| 向量检索 | pgvector 扩展 | Neo4j | `adi.vector-database: pgvector / neo4j` |
+| 知识图谱 | Apache AGE 扩展 | Neo4j | `adi.graph-database: apache-age / neo4j` |
+
+PostgreSQL 主业务库在任何方案下都必需。Ubuntu 建议先添加 [PGDG 源](https://www.postgresql.org/download/linux/ubuntu/)，然后一键安装 PostgreSQL 及所需扩展：
 
 ```bash
 sudo apt install -y postgresql-16 postgresql-16-pgvector postgresql-16-age
 ```
 
 > [!NOTE]
-> 扩展按需安装：pgvector（向量检索）与 Apache AGE（知识图谱）都可以用 neo4j 替代，改用 neo4j 的部分无需安装对应扩展。
+> 扩展按需安装：改用 Neo4j 的部分无需安装对应扩展，apt 命令与 `CREATE EXTENSION` 均可省略对应项。
 
 启用扩展并创建数据库：
 
@@ -24,6 +32,19 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS age;
 CREATE DATABASE aideepin;
 ```
+
+**使用默认方案（pgvector + Apache AGE）**
+
+无需额外配置。
+
+**向量库或图库切换到 Neo4j**
+
+两项独立，可只切其一。Docker Compose 部署：
+
+1. 在 `.env` 的 `JAVA_OPTS` 中追加对应参数：向量库 `-Dadi.vector-database=neo4j`，图库 `-Dadi.graph-database=neo4j`
+2. 取消 `docker-compose.yml` 中 `ADI_NEO4J_*` 的注释，并在 `.env` 填入连接信息（任一项切换即需要）
+
+源码部署：直接修改对应 profile 的 `application-*.yml`。
 
 ### 执行初始化脚本
 

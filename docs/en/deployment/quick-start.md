@@ -2,20 +2,28 @@
 
 > [← Deployment](index.md) · [简体中文](../../cn/deployment/quick-start.md)
 
-Bring up every service with one command using the `docker/` directory at the repository root: backend (aideepin-api), Redis, user web, admin web, and nginx. PostgreSQL is not included in the compose stack — install and initialize it first.
+Bring up every service with one command from the `docker/` directory at the repository root: backend (aideepin-api), Redis, the user web, the admin web, and nginx. PostgreSQL is not included in the compose stack — install and initialize it first.
 
 ## 1. Initialize the Database
 
 ### Install PostgreSQL and Extensions
 
-On Ubuntu, add the [PGDG repository](https://www.postgresql.org/download/linux/ubuntu/) first, then install PostgreSQL and the required extensions in one command:
+Storage falls into three parts; the vector store and the graph store can each run either as a PostgreSQL extension or on Neo4j:
+
+| Purpose | PostgreSQL option (default) | Alternative | Config key |
+|---------|----------------------------|-------------|------------|
+| Primary database | PostgreSQL (required) | — | — |
+| Vector search | pgvector extension | Neo4j | `adi.vector-database: pgvector / neo4j` |
+| Knowledge graph | Apache AGE extension | Neo4j | `adi.graph-database: apache-age / neo4j` |
+
+PostgreSQL itself is required in every setup — only the extensions are optional. On Ubuntu, add the [PGDG repository](https://www.postgresql.org/download/linux/ubuntu/) first, then install PostgreSQL and the extensions in one command:
 
 ```bash
 sudo apt install -y postgresql-16 postgresql-16-pgvector postgresql-16-age
 ```
 
 > [!NOTE]
-> Install extensions as needed: pgvector (vector search) and Apache AGE (knowledge graph) can each be replaced by neo4j — if you use neo4j for one of them, the corresponding extension is not required.
+> Install the extensions only if you use them: for any store running on Neo4j, skip the corresponding apt package and `CREATE EXTENSION` statement.
 
 Enable the extensions and create the database:
 
@@ -25,13 +33,26 @@ CREATE EXTENSION IF NOT EXISTS age;
 CREATE DATABASE aideepin;
 ```
 
+**Keeping the defaults (pgvector + Apache AGE)**
+
+No extra configuration needed.
+
+**Switching the vector store or graph store to Neo4j**
+
+The two are independent — switch either one or both. For Docker Compose deployments:
+
+1. Append the matching flag to `JAVA_OPTS` in `.env`: `-Dadi.vector-database=neo4j` for the vector store, `-Dadi.graph-database=neo4j` for the graph store
+2. Uncomment the `ADI_NEO4J_*` entries in `docker-compose.yml` and fill in the connection details in `.env` (required if either one is switched)
+
+For source deployments, edit the matching `application-*.yml` directly.
+
 ### Run the initialization scripts
 
 The scripts live in `server/db_migration/`; run them in order:
 
 1. `all_ddl.sql` — creates all tables, triggers, and comments
 2. `all_dml.sql` — inserts base data (admin account, system config, model platforms, AI models)
-3. `all_dml_cn.sql` or `all_dml_en.sql` — pick one, inserts language-specific display data (conversation presets, workflow components, MCP services)
+3. `all_dml_cn.sql` or `all_dml_en.sql` — pick one; inserts language-specific display data (preset characters, workflow components, MCP services)
 
 > [!NOTE]
 > The default SCHEMA in the DDL is `public`; adjust it if yours differs. Naming conventions and details are in the [db_migration README](https://github.com/moyangzhan/langchain4j-aideepin/blob/main/server/db_migration/README.md).
@@ -45,10 +66,10 @@ cd docker
 # ⚠️ Must update: ADI_DB_HOST, ADI_DB_USERNAME, ADI_DB_PASSWORD,
 #    ADI_MAIL_HOST, ADI_MAIL_USERNAME, ADI_MAIL_PASSWORD, ADI_ENCRYPT_AES_KEY
 
-# Servers with ≥ 8G memory: build in parallel directly
+# Servers with ≥ 8 GB RAM: build everything in one step
 docker compose up -d --build
 
-# Servers with < 8G memory: build sequentially to avoid OOM
+# Servers with < 8 GB RAM: build one image at a time to avoid OOM
 docker compose build aideepin-admin-web aideepin-user-web
 docker compose build aideepin-api
 docker compose up -d
@@ -67,7 +88,7 @@ Browser → nginx:80
 
 ## 4. First-time Initialization
 
-Enable at least one model platform after startup, or regular users cannot use the app. The admin account is initialized by `all_dml.sql`; after signing in to the admin console:
+Enable at least one model platform after startup — otherwise regular users won't be able to use the app. The admin account is initialized by `all_dml.sql`; after signing in to the admin console:
 
 - **Recommended**: fill in the platform API keys and enable platforms under "Platform Configuration" (see the [Admin Guide](../guide/admin/admin.md));
 - or configure directly via SQL (examples):

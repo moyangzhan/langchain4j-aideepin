@@ -10,10 +10,10 @@
 - Spring Boot 4.1.2
 - [langchain4j](https://github.com/langchain4j/langchain4j)（Java 版 LangChain）
 - [langgraph4j](https://github.com/bsorrentino/langgraph4j)
-- PostgreSQL
+- PostgreSQL（主业务库）
   - [pgvector](https://github.com/pgvector/pgvector) 扩展（向量数据库）
   - [Apache AGE](https://github.com/apache/age) 扩展（图数据库）
-- [neo4j](https://neo4j.com/deployment-center/)（pgvector + Apache AGE 的替代方案）
+- [neo4j](https://neo4j.com/deployment-center/)（可选，替代 pgvector 与 Apache AGE）
 
 ## 开发及本地运行
 

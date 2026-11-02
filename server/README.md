@@ -10,10 +10,10 @@ This directory contains the backend service. For project overview, see the [root
 - Spring Boot 4.1.2
 - [langchain4j](https://github.com/langchain4j/langchain4j) (Java version of LangChain)
 - [langgraph4j](https://github.com/bsorrentino/langgraph4j)
-- PostgreSQL
+- PostgreSQL (primary database)
   - [pgvector](https://github.com/pgvector/pgvector) extension (vector database)
   - [Apache AGE](https://github.com/apache/age) extension (graph database)
-- [neo4j](https://neo4j.com/deployment-center/) (alternative to pgvector + Apache AGE)
+- [neo4j](https://neo4j.com/deployment-center/) (optional, alternative to pgvector + Apache AGE)
 
 ## Local Development
 
