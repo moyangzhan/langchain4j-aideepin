@@ -24,9 +24,8 @@ import java.text.MessageFormat;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
 /**
- * 外部 API 请求由 {@link ExtApiAuthFilter} 在前置校验并标记上下文，本过滤器只认该标记放行，不再按路径白名单放行。
- * External API requests are authenticated upstream by {@link ExtApiAuthFilter}; this filter passes them only on that
- * context flag, never by path, so a misordered or missing upstream filter fails closed.
+ * 外部 API 请求只凭 {@link ExtApiAuthFilter} 设置的上下文标记放行，不按路径放行。
+ * External API requests pass only on the context flag set by {@link ExtApiAuthFilter}, never by path.
  */
 @Slf4j
 @Component
@@ -39,10 +38,10 @@ public class TokenFilter extends OncePerRequestFilter {
             "/user/avatar/",
             "/draw/public/",
             "/draw/detail/",
-            "/draw/comment/list",
+            "/draw/comment/list/",
             "/knowledge-base/public/",
-            "/workflow/public",
-            "/mcp/public",
+            "/workflow/public/",
+            "/mcp/public/",
             "/sys/config/public/",
     };
 
@@ -117,9 +116,17 @@ public class TokenFilter extends OncePerRequestFilter {
         }
     }
 
+    /**
+     * 尾斜杠条目按子树前缀匹配，无尾斜杠条目按精确端点匹配。
+     * Entries with a trailing slash match the subtree below them; entries without it match the exact endpoint.
+     */
+    private static boolean matchesEntry(String path, String entry) {
+        return entry.endsWith("/") ? path.startsWith(entry) : path.equals(entry);
+    }
+
     private boolean excludePath(String path) {
         for (String excluded : EXCLUDE_API) {
-            if (path.startsWith(excluded)) {
+            if (matchesEntry(path, excluded)) {
                 return true;
             }
         }
@@ -133,7 +140,7 @@ public class TokenFilter extends OncePerRequestFilter {
 
     private boolean checkPathWithToken(String path) {
         for (String tokenInParams : TOKEN_IN_PARAMS) {
-            if (path.startsWith(tokenInParams)) {
+            if (matchesEntry(path, tokenInParams)) {
                 return true;
             }
         }

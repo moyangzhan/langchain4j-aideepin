@@ -39,9 +39,9 @@ public class ExtApiAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String requestUri = request.getRequestURI();
-        String apiPath = request.getContextPath() + API_V1_PREFIX;
+        String path = requestUri.substring(request.getContextPath().length());
 
-        if (!requestUri.startsWith(apiPath)) {
+        if (!path.startsWith(API_V1_PREFIX)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -55,7 +55,7 @@ public class ExtApiAuthFilter extends OncePerRequestFilter {
         }
         rawKey = rawKey.trim();
 
-        String type = inferType(requestUri.substring(apiPath.length()));
+        String type = inferType(path.substring(API_V1_PREFIX.length()));
         if (StringUtils.isBlank(type)) {
             log.warn("ExternalAPI: unable to infer resource type from uri:{}", requestUri);
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

@@ -84,12 +84,40 @@ class TokenFilterTest {
     }
 
     @Test
+    void slashSuffixedEntriesMatchSubtreesOnly() throws Exception {
+        assertEquals(HttpServletResponse.SC_OK, run("", "/mcp/public/list", null));
+        assertEquals(HttpServletResponse.SC_UNAUTHORIZED, run("", "/mcp/publicx", null));
+        assertEquals(HttpServletResponse.SC_UNAUTHORIZED, run("", "/mcp/publicX/list", null));
+        assertEquals(HttpServletResponse.SC_UNAUTHORIZED, run("", "/mcp/public", null));
+        assertEquals(HttpServletResponse.SC_UNAUTHORIZED, run("", "/authorize/login", null));
+        assertEquals(HttpServletResponse.SC_UNAUTHORIZED, run("", "/models/list", null));
+    }
+
+    @Test
+    void everyWhitelistEntryIsSubtreeStyled() {
+        for (String entry : TokenFilter.EXCLUDE_API) {
+            assertTrue(entry.endsWith("/"), entry);
+        }
+        for (String entry : TokenFilter.TOKEN_IN_PARAMS) {
+            assertTrue(entry.endsWith("/"), entry);
+        }
+    }
+
+    @Test
+    void queryTokenAppliesBelowResourcePrefixesOnly() throws Exception {
+        stubUser("qt-token", false);
+        assertEquals(HttpServletResponse.SC_OK, runWithQueryToken("/image/abc.png", "qt-token"));
+        assertEquals(HttpServletResponse.SC_UNAUTHORIZED, runWithQueryToken("/image", "qt-token"));
+    }
+
+    @Test
     void adminPathRequiresAdminUnderSubContext() throws Exception {
         stubUser("member-token", false);
         stubUser("admin-token", true);
         assertEquals(HttpServletResponse.SC_UNAUTHORIZED, run("/api", "/api/admin/user/list", "member-token"));
         assertEquals(HttpServletResponse.SC_OK, run("/api", "/api/admin/user/list", "admin-token"));
         assertEquals(HttpServletResponse.SC_OK, run("/api", "/api/user/info", "member-token"));
+        assertEquals(HttpServletResponse.SC_OK, run("/api", "/api/administrator/info", "member-token"));
     }
 
     private void stubUser(String token, boolean admin) {
@@ -105,6 +133,15 @@ class TokenFilterTest {
         if (token != null) {
             request.addHeader("Authorization", token);
         }
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, new MockFilterChain());
+        return response.getStatus();
+    }
+
+    private int runWithQueryToken(String uri, String token) throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", uri);
+        request.setContextPath("");
+        request.addParameter("token", token);
         MockHttpServletResponse response = new MockHttpServletResponse();
         filter.doFilter(request, response, new MockFilterChain());
         return response.getStatus();
