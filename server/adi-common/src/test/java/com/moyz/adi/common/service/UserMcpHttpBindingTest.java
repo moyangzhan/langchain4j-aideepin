@@ -9,6 +9,7 @@ import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.AbstractWrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.core.override.MybatisMapperProxy;
+import dev.langchain4j.exception.HttpException;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -310,6 +311,25 @@ class UserMcpHttpBindingTest {
             assertTrue(requests.isEmpty());
         } finally {
             logger.setLevel(previousLevel);
+        }
+    }
+
+    /** HTTP build failures must surface the status code for triage (e.g. 405 = server without streamable support). */
+    @Test
+    void httpBuildFailureLogsStatusCodeWithoutMessagesOrCauses() throws Exception {
+        stored.put(key(10L, 100L), storedUser(10L, 100L, "u10-first"));
+        try (var builders = mockConstruction(DefaultMcpClient.Builder.class, (builder, ignored) -> {
+            when(builder.transport(any())).thenReturn(builder);
+            when(builder.build()).thenThrow(new HttpException(405, "fixture-url-secret"));
+        })) {
+            assertTrue(service.createMcpClients(10L, List.of(100L)).isEmpty());
+            List<ILoggingEvent> failures = logs.list.stream().filter(event ->
+                    event.getLoggerName().equals(UserMcpService.class.getName())
+                            && event.getFormattedMessage().startsWith("Failed to build MCP client")).toList();
+            assertEquals(1, failures.size());
+            assertTrue(failures.get(0).getFormattedMessage().contains("HttpException(405)"));
+            assertNull(failures.get(0).getThrowableProxy());
+            assertNoSecretsInLogs("fixture-url-secret", "u10-first");
         }
     }
 

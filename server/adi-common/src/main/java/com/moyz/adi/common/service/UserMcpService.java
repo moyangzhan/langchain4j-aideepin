@@ -18,6 +18,7 @@ import com.moyz.adi.common.util.MPPageUtil;
 import com.moyz.adi.common.util.McpHttpParameters;
 import com.moyz.adi.common.util.PrivilegeUtil;
 import com.moyz.adi.common.util.UuidUtil;
+import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
@@ -234,7 +235,7 @@ public class UserMcpService extends ServiceImpl<UserMcpMapper, UserMcp> {
             } catch (Exception e) {
                 // SDK exceptions can contain request URLs/headers. Do not log their messages or causes.
                 log.error("Failed to build MCP client, mcpId: {}, transportType: {}, error: {}",
-                        mcp.getId(), mcp.getTransportType(), e.getClass().getName());
+                        mcp.getId(), mcp.getTransportType(), errorSummary(e));
                 if (transport != null) {
                     try {
                         transport.close();
@@ -246,6 +247,13 @@ public class UserMcpService extends ServiceImpl<UserMcpMapper, UserMcp> {
         }
 
         return result;
+    }
+
+    private static String errorSummary(Exception e) {
+        if (e instanceof HttpException httpException) {
+            return e.getClass().getName() + "(" + httpException.statusCode() + ")";
+        }
+        return e.getClass().getName();
     }
 
     public void enable(String uuid) {
