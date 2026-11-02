@@ -2,8 +2,6 @@ package com.moyz.adi.common.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import tools.jackson.core.JacksonException;
-import tools.jackson.core.JsonGenerator;
-import tools.jackson.core.JsonParser;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.JsonNode;
@@ -15,7 +13,6 @@ import tools.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -45,38 +42,6 @@ public class JsonUtil {
         return resp;
     }
 
-
-    /**
-     * 创建JSON处理器的静态方法
-     *
-     * @param content JSON字符串
-     * @return
-     */
-    private static JsonParser getParser(String content) {
-        if (StringUtils.isNotBlank(content)) {
-            try {
-                return objectMapper.tokenStreamFactory().createParser(content);
-            } catch (JacksonException e) {
-                log.error("JsonUtil getParser error", e);
-            }
-        }
-        return null;
-    }
-
-    /**
-     * 创建JSON生成器的静态方法, 使用标准输出
-     *
-     * @return
-     */
-    private static JsonGenerator getGenerator(StringWriter sw) {
-        try {
-            return objectMapper.tokenStreamFactory().createGenerator(sw);
-        } catch (JacksonException e) {
-            log.error("JsonUtil getGenerator error", e);
-        }
-        return null;
-    }
-
     /**
      * JSON对象反序列化
      */
@@ -85,12 +50,7 @@ public class JsonUtil {
             return null;
         }
         try {
-            JsonParser jp = getParser(json);
-            if (null == jp) {
-                log.error("json parser is null");
-                return null;
-            }
-            return jp.readValueAs(clazz);
+            return objectMapper.readValue(json, clazz);
         } catch (JacksonException e) {
             log.error("Deserialization failed", e);
         }
