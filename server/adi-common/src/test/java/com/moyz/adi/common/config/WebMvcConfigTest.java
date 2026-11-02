@@ -4,9 +4,22 @@ import com.moyz.adi.common.enums.SegmentModeEnum;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.convert.ConversionFailedException;
 import org.springframework.format.support.DefaultFormattingConversionService;
+import org.springframework.http.converter.ByteArrayHttpMessageConverter;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.HttpMessageConverters;
+import org.springframework.http.converter.ResourceHttpMessageConverter;
+import org.springframework.http.converter.StringHttpMessageConverter;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
+import org.springframework.test.util.ReflectionTestUtils;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WebMvcConfigTest {
 
@@ -27,5 +40,33 @@ class WebMvcConfigTest {
         new WebMvcConfig().addFormatters(service);
 
         assertThrows(ConversionFailedException.class, () -> service.convert("bogus", SegmentModeEnum.class));
+    }
+
+    /**
+     * converter 配置契约：String 槽位必须是 UTF-8（SSE 字符串数据经此序列化，ISO-8859-1 会把
+     * 非 Latin-1 字符写成 "?"）、JSON 槽位是项目的 JsonMapper、默认集（ByteArray/Resource 等）
+     * 保持注册不被整体替换。按 WebMvcConfigurationSupport 的真实调用序组装 builder。
+     */
+    @Test
+    void converterSlotsPinUtf8StringProjectJsonMapperAndDefaultSet() {
+        WebMvcConfig config = new WebMvcConfig();
+        ReflectionTestUtils.setField(config, "jsonMapper", JsonMapper.builder().build());
+
+        HttpMessageConverters.ServerBuilder builder = HttpMessageConverters.forServer().registerDefaults();
+        config.configureMessageConverters(builder);
+
+        List<HttpMessageConverter<?>> converters = new ArrayList<>();
+        builder.build().forEach(converters::add);
+
+        List<HttpMessageConverter<?>> stringSlots = converters.stream()
+                .filter(StringHttpMessageConverter.class::isInstance)
+                .toList();
+        assertEquals(1, stringSlots.size());
+        StringHttpMessageConverter stringConverter = (StringHttpMessageConverter) stringSlots.getFirst();
+        assertEquals(StandardCharsets.UTF_8, stringConverter.getDefaultCharset());
+
+        assertTrue(converters.stream().anyMatch(JacksonJsonHttpMessageConverter.class::isInstance));
+        assertTrue(converters.stream().anyMatch(ByteArrayHttpMessageConverter.class::isInstance));
+        assertTrue(converters.stream().anyMatch(ResourceHttpMessageConverter.class::isInstance));
     }
 }
