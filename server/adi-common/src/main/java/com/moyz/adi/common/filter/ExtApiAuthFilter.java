@@ -11,7 +11,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -19,15 +20,18 @@ import java.io.IOException;
 
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
+/**
+ * 必须先于 {@link TokenFilter} 执行：外部 API 请求在此校验 key 并标记上下文，TokenFilter 仅凭该标记放行。
+ * Must run before {@link TokenFilter}: external API keys are validated here and the context flag is the only thing
+ * TokenFilter accepts for these requests.
+ */
 @Slf4j
 @Component
+@Order(Ordered.LOWEST_PRECEDENCE - 2)
 public class ExtApiAuthFilter extends OncePerRequestFilter {
 
     private static final String API_V1_PREFIX = "/ext/v1/";
     private static final String KEY_PREFIX = "ext-";
-
-    @Value("${server.servlet.context-path:}")
-    private String contextPath;
 
     @Resource
     private ExtApiService extApiService;
@@ -35,7 +39,7 @@ public class ExtApiAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String requestUri = request.getRequestURI();
-        String apiPath = contextPath + API_V1_PREFIX;
+        String apiPath = request.getContextPath() + API_V1_PREFIX;
 
         if (!requestUri.startsWith(apiPath)) {
             filterChain.doFilter(request, response);
@@ -51,7 +55,7 @@ public class ExtApiAuthFilter extends OncePerRequestFilter {
         }
         rawKey = rawKey.trim();
 
-        String type = inferType(requestUri);
+        String type = inferType(requestUri.substring(apiPath.length()));
         if (StringUtils.isBlank(type)) {
             log.warn("ExternalAPI: unable to infer resource type from uri:{}", requestUri);
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -91,9 +95,7 @@ public class ExtApiAuthFilter extends OncePerRequestFilter {
         return extApiService.validateApiKey(rawKey, type);
     }
 
-    private String inferType(String requestUri) {
-        String apiPath = contextPath + API_V1_PREFIX;
-        String pathAfterPrefix = requestUri.substring(apiPath.length());
+    private String inferType(String pathAfterPrefix) {
         String firstSegment = pathAfterPrefix.split("/")[0];
         ExtApiResourceType type = switch (firstSegment) {
             case "character" -> ExtApiResourceType.CHARACTER;

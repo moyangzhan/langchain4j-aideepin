@@ -12,7 +12,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -22,8 +23,14 @@ import java.text.MessageFormat;
 
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
+/**
+ * 外部 API 请求由 {@link ExtApiAuthFilter} 在前置校验并标记上下文，本过滤器只认该标记放行，不再按路径白名单放行。
+ * External API requests are authenticated upstream by {@link ExtApiAuthFilter}; this filter passes them only on that
+ * context flag, never by path, so a misordered or missing upstream filter fails closed.
+ */
 @Slf4j
 @Component
+@Order(Ordered.LOWEST_PRECEDENCE - 1)
 public class TokenFilter extends OncePerRequestFilter {
 
     protected static final String[] EXCLUDE_API = {
@@ -37,7 +44,6 @@ public class TokenFilter extends OncePerRequestFilter {
             "/workflow/public",
             "/mcp/public",
             "/sys/config/public/",
-            "/ext/v1/",
     };
 
     protected static final String[] TOKEN_IN_PARAMS = {
@@ -50,19 +56,20 @@ public class TokenFilter extends OncePerRequestFilter {
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
-    @Value("${server.servlet.context-path:}")
-    private String contextPath;
-
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         try {
+            if (ThreadContext.isExtApiRequest()) {
+                filterChain.doFilter(request, response);
+                return;
+            }
             String requestUri = request.getRequestURI();
+            String path = requestUri.substring(request.getContextPath().length());
             String token = request.getHeader(AUTHORIZATION);
-            if (StringUtils.isBlank(token) && checkPathWithToken(requestUri)) {
+            if (StringUtils.isBlank(token) && checkPathWithToken(path)) {
                 token = request.getParameter("token");
             }
-            if (excludePath(requestUri)) {
-
+            if (excludePath(path)) {
                 if (StringUtils.isNotBlank(token)) {
                     String tokenKey = MessageFormat.format(RedisKeyConstant.USER_TOKEN, token);
                     String userJson = stringRedisTemplate.opsForValue().get(tokenKey);
@@ -90,7 +97,7 @@ public class TokenFilter extends OncePerRequestFilter {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     return;
                 }
-                if (Boolean.TRUE.equals(!user.getIsAdmin()) && requestUri.startsWith("/admin/")) {
+                if (Boolean.TRUE.equals(!user.getIsAdmin()) && path.startsWith("/admin/")) {
                     log.warn("No admin permission:{}", requestUri);
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     return;
@@ -110,23 +117,23 @@ public class TokenFilter extends OncePerRequestFilter {
         }
     }
 
-    private boolean excludePath(String requestUri) {
-        for (String path : EXCLUDE_API) {
-            if (requestUri.startsWith(contextPath + path)) {
+    private boolean excludePath(String path) {
+        for (String excluded : EXCLUDE_API) {
+            if (path.startsWith(excluded)) {
                 return true;
             }
         }
-        for (String path : AdiConstant.WEB_RESOURCES) {
-            if (requestUri.startsWith(contextPath + path) || requestUri.endsWith(path)) {
+        for (String resource : AdiConstant.WEB_RESOURCES) {
+            if (path.startsWith(resource) || path.endsWith(resource)) {
                 return true;
             }
         }
         return false;
     }
 
-    private boolean checkPathWithToken(String requestUri) {
-        for (String path : TOKEN_IN_PARAMS) {
-            if (requestUri.startsWith(contextPath + path)) {
+    private boolean checkPathWithToken(String path) {
+        for (String tokenInParams : TOKEN_IN_PARAMS) {
+            if (path.startsWith(tokenInParams)) {
                 return true;
             }
         }

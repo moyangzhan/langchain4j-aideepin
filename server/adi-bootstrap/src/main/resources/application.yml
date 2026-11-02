@@ -1,7 +1,6 @@
 server:
   port: 9999
   servlet:
-    context-path: /
     session:
       timeout: 28800s
   tomcat:
