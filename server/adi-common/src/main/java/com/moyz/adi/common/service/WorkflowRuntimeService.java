@@ -268,9 +268,9 @@ public class WorkflowRuntimeService extends ServiceImpl<WorkflowRunMapper, Workf
      * so the UI hides them (e.g. still DOING, or legacy row).
      */
     private void fillMetricsFromEntity(WorkflowRuntime source, WfRuntimeResp target) {
-        target.setInputTokens(source.getInputTokens() == null ? null : source.getInputTokens().longValue());
-        target.setOutputTokens(source.getOutputTokens() == null ? null : source.getOutputTokens().longValue());
-        target.setDuration(source.getDuration() == null ? null : source.getDuration().longValue());
+        target.setInputTokens(source.getInputTokens());
+        target.setOutputTokens(source.getOutputTokens());
+        target.setDuration(source.getDuration());
     }
 
     public boolean softDelete(String uuid) {

@@ -24,13 +24,13 @@ public class WfRuntimeResp {
     /**
      * Total input tokens aggregated from LLM-typed nodes (terminal snapshot).
      */
-    private Long inputTokens;
+    private Integer inputTokens;
     /**
      * Total output tokens aggregated from LLM-typed nodes (terminal snapshot).
      */
-    private Long outputTokens;
+    private Integer outputTokens;
     /**
-     * Total run duration in milliseconds aggregated from all nodes (terminal snapshot).
+     * Total run duration in milliseconds, wall-clock from runtime row creation to terminal status.
      */
-    private Long duration;
+    private Integer duration;
 }

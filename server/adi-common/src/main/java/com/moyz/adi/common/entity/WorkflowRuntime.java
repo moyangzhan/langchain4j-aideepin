@@ -54,7 +54,7 @@ public class WorkflowRuntime extends BaseEntity {
     private Integer outputTokens;
 
     /**
-     * Total run duration in milliseconds aggregated from all nodes. Written at terminal status.
+     * Total run duration in milliseconds, wall-clock from row creation. Written at terminal status.
      */
     @TableField("duration")
     private Integer duration;
