@@ -348,11 +348,15 @@ public class WorkflowEngine {
     /**
      * 构建+编译主状态图：从 startNode 展开编译树（检测节点重复访问防止无限循环），
      * 注册全部节点/边，再以给定 saver（首轮 MemorySaver / 续跑 PreloadedSaver）与 interruptBefore 编译为可执行图，赋给 {@link #app}。
+     * 编译必须关闭 releaseThread：引擎在流结束后仍要从 saver 读最新快照（判定中断点/落库中断 blob），
+     * 而 langgraph4j 默认在抵达 END 时释放线程检查点，会使 getState 抛 Missing Checkpoint。
      * run / resume / blockingRun 三入口共用。
      * <p>
      * Build and compile the main state graph shared by run / resume / blockingRun:
      * expand the compile tree from startNode (with revisit detection against infinite loops), register all nodes/edges,
      * then compile with the given saver (MemorySaver for a fresh run, PreloadedSaver for a resumed one) and interruptBefore into {@link #app}.
+     * releaseThread must be disabled: the engine still reads the latest snapshot from the saver after the stream ends
+     * (interruption detection / checkpoint blob persistence), while langgraph4j releases the thread checkpoints on reaching END by default.
      * </p>
      *
      * @param startNode 起始节点 | the start node
@@ -371,6 +375,7 @@ public class WorkflowEngine {
 
         CompileConfig compileConfig = CompileConfig.builder()
                 .checkpointSaver(saver)
+                .releaseThread(false)
                 .interruptBefore(wfState.getInterruptNodes().toArray(String[]::new))
                 .build();
         app = mainStateGraph.compile(compileConfig);
