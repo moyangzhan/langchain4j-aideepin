@@ -103,17 +103,14 @@ public class CharacterService extends ServiceImpl<CharacterMapper, Character> {
      * @return 列表
      */
     public CharacterMsgListResp detail(String uuid, String maxMsgUuid, int pageSize) {
-        Character character = this.lambdaQuery().eq(Character::getUuid, uuid).one();
-        if (null == character) {
-            log.error("character not exist, uuid: {}", uuid);
-            throw new BaseException(A_CHARACTER_NOT_EXIST);
-        }
+        Character character = getOrThrow(uuid);
 
         long maxId = Long.MAX_VALUE;
         if (StringUtils.isNotBlank(maxMsgUuid)) {
             CharacterMessage maxMsg = characterMessageService.lambdaQuery()
                     .select(CharacterMessage::getId)
                     .eq(CharacterMessage::getUuid, maxMsgUuid)
+                    .eq(CharacterMessage::getCharacterId, character.getId())
                     .eq(CharacterMessage::getIsDeleted, false)
                     .one();
             if (null == maxMsg) {
