@@ -89,7 +89,7 @@ public class ExtApiAuthFilter extends OncePerRequestFilter {
      */
     private ExtApiService.ValidateResult validateByType(String rawKey, String type) {
         ExtApiResourceType resourceType = ExtApiResourceType.fromValue(type);
-        if (resourceType != null && resourceType.isUserLevel()) {
+        if (resourceType != null && resourceType.isUserLevelKey()) {
             return extApiService.validateUserApiKey(rawKey, type);
         }
         return extApiService.validateApiKey(rawKey, type);

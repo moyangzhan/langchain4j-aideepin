@@ -30,9 +30,12 @@ public enum ExtApiResourceType {
     }
 
     /**
-     * 判断是否为用户级资源类型
+     * 该类型的外部 API Key 是否绑定到用户（draw/mcp），而非单个资源（character/knowledge/workflow）
+     * <p>
+     * Whether the external API key of this type is bound to the user (draw/mcp) rather than to a
+     * single resource (character/knowledge/workflow).
      */
-    public boolean isUserLevel() {
+    public boolean isUserLevelKey() {
         return this == DRAW || this == MCP;
     }
 }

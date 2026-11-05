@@ -34,8 +34,7 @@ const showingRaw = ref(false)
 const justGenerated = ref(false)
 const canManage = ref(false)
 
-// 判断是否为用户级 API Key 类型
-const isUserLevelType = computed(() => ['draw', 'mcp'].includes(props.type))
+const isUserLevelKeyType = computed(() => ['draw', 'mcp'].includes(props.type))
 
 const isLoggedIn = computed(() => !!authStore.token)
 
@@ -60,7 +59,7 @@ async function fetchKeyInfo() {
   loading.value = true
   try {
     let data
-    if (isUserLevelType.value)
+    if (isUserLevelKeyType.value)
       data = (await api.extApiKeyUserInfo(props.type)).data
     else
       data = (await api.extApiKeyInfo(props.type, props.uuid)).data
@@ -82,7 +81,7 @@ async function handleGenerate() {
   loading.value = true
   try {
     let data
-    if (isUserLevelType.value)
+    if (isUserLevelKeyType.value)
       data = (await api.extApiKeyUserGenerate(props.type)).data
     else
       data = (await api.extApiKeyGenerate(props.type, props.uuid)).data
@@ -106,7 +105,7 @@ async function handleReveal() {
   loading.value = true
   try {
     let data
-    if (isUserLevelType.value)
+    if (isUserLevelKeyType.value)
       data = (await api.extApiKeyUserReveal(props.type)).data
     else
       data = (await api.extApiKeyReveal(props.type, props.uuid)).data
