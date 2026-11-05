@@ -389,7 +389,11 @@ public class CharacterService extends ServiceImpl<CharacterMapper, Character> {
         return baseMapper.countAllCreated();
     }
 
-    private Character getOrThrow(String uuid) {
+    /**
+     * Resolve a character only after verifying the given user owns it (admins pass);
+     * usable on async threads where ThreadContext is not propagated.
+     */
+    public Character getOrThrow(String uuid, User user) {
         Character character = this.lambdaQuery()
                 .eq(Character::getUuid, uuid)
                 .eq(Character::getIsDeleted, false)
@@ -397,10 +401,14 @@ public class CharacterService extends ServiceImpl<CharacterMapper, Character> {
         if (null == character) {
             throw new BaseException(A_CHARACTER_NOT_EXIST);
         }
-        if (!character.getUserId().equals(ThreadContext.getCurrentUserId()) && !ThreadContext.getCurrentUser().getIsAdmin()) {
+        if (!character.getUserId().equals(user.getId()) && !Boolean.TRUE.equals(user.getIsAdmin())) {
             throw new BaseException(A_USER_NOT_AUTH);
         }
         return character;
+    }
+
+    private Character getOrThrow(String uuid) {
+        return getOrThrow(uuid, ThreadContext.getCurrentUser());
     }
 
     /**

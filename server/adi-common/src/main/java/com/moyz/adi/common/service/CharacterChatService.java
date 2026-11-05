@@ -129,12 +129,7 @@ public class CharacterChatService {
     public Map<String, Object> blockingAsk(AskReq askReq) {
         User user = ThreadContext.getExistCurrentUser();
 
-        // Validate character exists
-        Character character = characterService.lambdaQuery()
-                .eq(Character::getUuid, askReq.getCharacterUuid())
-                .eq(Character::getIsDeleted, false)
-                .oneOpt()
-                .orElseThrow(() -> new BaseException(A_CHARACTER_NOT_FOUND));
+        characterService.getOrThrow(askReq.getCharacterUuid(), user);
 
         // Quota check
         AiModel aiModel = LLMContext.getAiModel(askReq.getModelPlatform(), askReq.getModelName());
@@ -196,6 +191,13 @@ public class CharacterChatService {
                     .one();
             if (null != delConv) {
                 sseManager.sendErrorAndComplete(user.getId(), sseUuid, SpringUtil.getMessage("A_CHARACTER_DELETED"));
+                return false;
+            }
+
+            try {
+                characterService.getOrThrow(askReq.getCharacterUuid(), user);
+            } catch (BaseException e) {
+                sseManager.sendErrorAndComplete(user.getId(), sseUuid, e.getInfo());
                 return false;
             }
 

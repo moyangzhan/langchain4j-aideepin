@@ -24,8 +24,13 @@ import java.text.MessageFormat;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
 /**
+ * 认证层：token 解析与 ThreadContext 装配；admin 授权在 AdminAuthInterceptor。
  * 外部 API 请求只凭 {@link ExtApiAuthFilter} 设置的上下文标记放行，不按路径放行。
- * External API requests pass only on the context flag set by {@link ExtApiAuthFilter}, never by path.
+ * <p>
+ * Authentication only: resolves tokens and populates ThreadContext; admin authorization
+ * lives in AdminAuthInterceptor. External API requests pass only on the context flag
+ * set by {@link ExtApiAuthFilter}, never by path.
+ * </p>
  */
 @Slf4j
 @Component
@@ -93,11 +98,6 @@ public class TokenFilter extends OncePerRequestFilter {
                 User user = JsonUtil.fromJson(userJson, User.class);
                 if (null == user) {
                     log.warn("User not found:{}", requestUri);
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    return;
-                }
-                if (Boolean.TRUE.equals(!user.getIsAdmin()) && path.startsWith("/admin/")) {
-                    log.warn("No admin permission:{}", requestUri);
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     return;
                 }

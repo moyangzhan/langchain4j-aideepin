@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -101,6 +102,35 @@ class CharacterServiceAuthorizationTest {
 
         assertEquals(ErrorEnum.A_CHARACTER_NOT_EXIST.getCode(), exception.getCode());
         verifyNoInteractions(messageMapper);
+    }
+
+    @Test
+    void getOrThrowRejectsNonOwner() {
+        when(characterMapper.selectOne(any())).thenReturn(character());
+
+        BaseException exception = assertThrows(BaseException.class,
+                () -> characterService.getOrThrow("private-character", user(7L, false)));
+
+        assertEquals(ErrorEnum.A_USER_NOT_AUTH.getCode(), exception.getCode());
+    }
+
+    @Test
+    void getOrThrowAllowsOwnerAndAdmin() {
+        Character character = character();
+        when(characterMapper.selectOne(any())).thenReturn(character);
+
+        assertSame(character, characterService.getOrThrow("private-character", user(42L, false)));
+        assertSame(character, characterService.getOrThrow("private-character", user(7L, true)));
+    }
+
+    @Test
+    void getOrThrowRejectsMissingCharacter() {
+        when(characterMapper.selectOne(any())).thenReturn(null);
+
+        BaseException exception = assertThrows(BaseException.class,
+                () -> characterService.getOrThrow("missing-character", user(42L, false)));
+
+        assertEquals(ErrorEnum.A_CHARACTER_NOT_EXIST.getCode(), exception.getCode());
     }
 
     @Test

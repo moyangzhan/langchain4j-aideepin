@@ -362,6 +362,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
         if (knowledgeBase == null) {
             throw new BaseException(A_DATA_NOT_FOUND);
         }
+        checkWritePrivilege(null, knowledgeBase.getUuid());
         String userIndexKey = MessageFormat.format(USER_INDEXING, knowledgeBase.getOwnerId());
         Boolean exist = stringRedisTemplate.hasKey(userIndexKey);
         if (Boolean.TRUE.equals(exist)) {

@@ -1,6 +1,7 @@
 package com.moyz.adi.common.config;
 
 import com.moyz.adi.common.enums.SegmentModeEnum;
+import com.moyz.adi.common.interceptor.AdminAuthInterceptor;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.convert.ConversionFailedException;
 import org.springframework.format.support.DefaultFormattingConversionService;
@@ -11,6 +12,8 @@ import org.springframework.http.converter.ResourceHttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistration;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.charset.StandardCharsets;
@@ -20,6 +23,11 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 class WebMvcConfigTest {
 
@@ -68,5 +76,24 @@ class WebMvcConfigTest {
         assertTrue(converters.stream().anyMatch(JacksonJsonHttpMessageConverter.class::isInstance));
         assertTrue(converters.stream().anyMatch(ByteArrayHttpMessageConverter.class::isInstance));
         assertTrue(converters.stream().anyMatch(ResourceHttpMessageConverter.class::isInstance));
+    }
+
+    /**
+     * 拦截器注册契约：AdminAuthInterceptor 必须注册，且不配任何 path pattern——
+     * 包判定是唯一依据，加 pattern 会把覆盖面重新绑回 URL。
+     */
+    @Test
+    void registersAdminAuthInterceptorWithoutPathPatterns() {
+        WebMvcConfig config = new WebMvcConfig();
+        AdminAuthInterceptor interceptor = new AdminAuthInterceptor();
+        ReflectionTestUtils.setField(config, "adminAuthInterceptor", interceptor);
+        InterceptorRegistry registry = mock(InterceptorRegistry.class);
+        InterceptorRegistration registration = mock(InterceptorRegistration.class);
+        when(registry.addInterceptor(any())).thenReturn(registration);
+
+        config.addInterceptors(registry);
+
+        verify(registry).addInterceptor(interceptor);
+        verifyNoInteractions(registration);
     }
 }

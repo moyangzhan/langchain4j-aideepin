@@ -1,5 +1,7 @@
 package com.moyz.adi.common.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.entity.KnowledgeBase;
 import com.moyz.adi.common.entity.KnowledgeBaseMessage;
@@ -8,19 +10,26 @@ import com.moyz.adi.common.enums.ErrorEnum;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.KnowledgeBaseMapper;
 import com.moyz.adi.common.util.SpringUtil;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.MessageSource;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class KnowledgeBaseServiceAuthorizationTest {
@@ -28,12 +37,17 @@ class KnowledgeBaseServiceAuthorizationTest {
     private KnowledgeBaseService knowledgeBaseService;
     private KnowledgeBaseMapper knowledgeBaseMapper;
     private KnowledgeBaseChatService knowledgeBaseChatService;
+    private StringRedisTemplate stringRedisTemplate;
+    private KbDocumentService kbDocumentService;
 
     @BeforeEach
     void setUp() {
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), "fixture"), KnowledgeBase.class);
         knowledgeBaseService = new KnowledgeBaseService();
         knowledgeBaseMapper = mock(KnowledgeBaseMapper.class);
         knowledgeBaseChatService = mock(KnowledgeBaseChatService.class);
+        stringRedisTemplate = mock(StringRedisTemplate.class);
+        kbDocumentService = mock(KbDocumentService.class);
         ApplicationContext applicationContext = mock(ApplicationContext.class);
         MessageSource messageSource = mock(MessageSource.class);
         when(applicationContext.getBean(MessageSource.class)).thenReturn(messageSource);
@@ -41,6 +55,8 @@ class KnowledgeBaseServiceAuthorizationTest {
         ReflectionTestUtils.setField(SpringUtil.class, "applicationContext", applicationContext);
         ReflectionTestUtils.setField(knowledgeBaseService, "baseMapper", knowledgeBaseMapper);
         ReflectionTestUtils.setField(knowledgeBaseService, "knowledgeBaseChatService", knowledgeBaseChatService);
+        ReflectionTestUtils.setField(knowledgeBaseService, "stringRedisTemplate", stringRedisTemplate);
+        ReflectionTestUtils.setField(knowledgeBaseService, "kbDocumentService", kbDocumentService);
     }
 
     @AfterEach
@@ -94,6 +110,39 @@ class KnowledgeBaseServiceAuthorizationTest {
                 () -> knowledgeBaseService.getReadableChatOrThrow("qa-record"));
 
         assertEquals(ErrorEnum.A_DATA_NOT_FOUND.getCode(), exception.getCode());
+    }
+
+    @Test
+    void indexItemsRejectsNonOwnerBeforeTouchingIndexing() {
+        when(knowledgeBaseMapper.getByItemUuid("item-1")).thenReturn(knowledgeBase(11L, 42L, false));
+        ThreadContext.setCurrentUser(user(7L, false));
+
+        BaseException exception = assertThrows(BaseException.class,
+                () -> knowledgeBaseService.indexItems(List.of("item-1"), List.of("embedding")));
+
+        assertEquals(ErrorEnum.A_USER_NOT_AUTH.getCode(), exception.getCode());
+        verifyNoInteractions(stringRedisTemplate, kbDocumentService);
+    }
+
+    @Test
+    void indexItemsAllowsOwner() {
+        when(knowledgeBaseMapper.getByItemUuid("item-1")).thenReturn(knowledgeBase(11L, 42L, false));
+        when(knowledgeBaseMapper.exists(any())).thenReturn(true);
+        when(stringRedisTemplate.hasKey(anyString())).thenReturn(false);
+        when(kbDocumentService.checkAndIndexing(any(), any(), any())).thenReturn(true);
+        ThreadContext.setCurrentUser(user(42L, false));
+
+        assertTrue(knowledgeBaseService.indexItems(List.of("item-1"), List.of("embedding")));
+    }
+
+    @Test
+    void indexItemsAllowsAdmin() {
+        when(knowledgeBaseMapper.getByItemUuid("item-1")).thenReturn(knowledgeBase(11L, 42L, false));
+        when(stringRedisTemplate.hasKey(anyString())).thenReturn(false);
+        when(kbDocumentService.checkAndIndexing(any(), any(), any())).thenReturn(true);
+        ThreadContext.setCurrentUser(user(7L, true));
+
+        assertTrue(knowledgeBaseService.indexItems(List.of("item-1"), List.of("embedding")));
     }
 
     private static KnowledgeBase knowledgeBase(Long id, Long ownerId, boolean isPublic) {

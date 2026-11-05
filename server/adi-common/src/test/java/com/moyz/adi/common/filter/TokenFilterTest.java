@@ -110,16 +110,6 @@ class TokenFilterTest {
         assertEquals(HttpServletResponse.SC_UNAUTHORIZED, runWithQueryToken("/image", "qt-token"));
     }
 
-    @Test
-    void adminPathRequiresAdminUnderSubContext() throws Exception {
-        stubUser("member-token", false);
-        stubUser("admin-token", true);
-        assertEquals(HttpServletResponse.SC_UNAUTHORIZED, run("/api", "/api/admin/user/list", "member-token"));
-        assertEquals(HttpServletResponse.SC_OK, run("/api", "/api/admin/user/list", "admin-token"));
-        assertEquals(HttpServletResponse.SC_OK, run("/api", "/api/user/info", "member-token"));
-        assertEquals(HttpServletResponse.SC_OK, run("/api", "/api/administrator/info", "member-token"));
-    }
-
     private void stubUser(String token, boolean admin) {
         User user = new User();
         user.setId(1L);

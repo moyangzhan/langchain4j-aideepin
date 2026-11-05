@@ -1,6 +1,7 @@
 package com.moyz.adi.common.config;
 
 import com.moyz.adi.common.enums.SegmentModeEnum;
+import com.moyz.adi.common.interceptor.AdminAuthInterceptor;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
@@ -21,6 +22,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Resource
     private JsonMapper jsonMapper;
+
+    @Resource
+    private AdminAuthInterceptor adminAuthInterceptor;
 
     @Override
     public void configureMessageConverters(HttpMessageConverters.ServerBuilder builder) {
@@ -53,12 +57,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-//Replaced by ParamsLogAspect
-        //使用ParamsLogAspect代替
-//        log.info("WebMvcConfig==addInterceptors");
-//        registry.addInterceptor(logInterceptor)
-//                .addPathPatterns("/**")
-//                .excludePathPatterns("/swagger-resources/**", "/webjars/**", "/v3/**", "/swagger-ui.html");
+        registry.addInterceptor(adminAuthInterceptor);
     }
 
 }
