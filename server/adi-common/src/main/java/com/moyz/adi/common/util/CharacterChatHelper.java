@@ -44,14 +44,9 @@ import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.MEMORY_TYPE;
 import static com.moyz.adi.common.cosntant.AdiConstant.RAG_RETRIEVE_MIN_SCORE_DEFAULT;
 
 /**
- * Character 聊天辅助类
+ * Character 聊天检索与请求构建辅助，供 Agent 节点与聊天链路共用
  * <p>
- * 从 {@link com.moyz.adi.common.service.CharacterMessageService} 提取的核心逻辑，
- * 供 Agent 节点和 Character 聊天服务共用。
- * </p>
- * <p>
- * Character chat helper — core logic extracted from CharacterMessageService,
- * shared between Agent node and Character chat service.
+ * Character chat retrieval and request building, shared by the agent node and chat pipeline.
  * </p>
  */
 @Slf4j
@@ -61,17 +56,22 @@ public class CharacterChatHelper {
     }
 
     /**
-     * 多知识库搜索、记忆搜索
+     * 并发执行语义记忆、情景记忆、知识库三通道检索。
+     * semantic 通道排除显式 episodic 记录，缺失 memory_type 视为 semantic（IsNotEqualTo 键缺失时返回 true）。
+     * episodic 记忆使用物理隔离的独立向量库。
      * <p>
-     * Concurrent RAG retrieval from knowledge bases and character memory.
+     * Concurrent retrieval across semantic memory, episodic memory and knowledge bases.
+     * The semantic channel excludes explicitly episodic records; rows missing memory_type
+     * count as semantic (IsNotEqualTo is true on missing keys).
+     * Episodic memory uses its own physically isolated vector store.
      * </p>
      *
-     * @param characterId 角色ID / Character ID
-     * @param filteredKb  有效的已关联的知识库 / Filtered enabled knowledge bases
-     * @param llmService  大模型服务 / LLM service
-     * @param queryText   查询文本 / Query text
-     * @param mainExecutor 异步执行器 / Async task executor
-     * @return 检索结果列表 / Retrieval result list
+     * @param characterId  角色ID
+     * @param filteredKb   已过滤的可用知识库
+     * @param llmService   大模型服务
+     * @param queryText    查询文本
+     * @param mainExecutor 异步执行器
+     * @return 检索结果列表
      */
     public static List<RetrieverWrapper> retrieve(Long characterId, List<KbInfoResp> filteredKb,
                                                   AbstractLLMService llmService, String queryText,
@@ -81,13 +81,6 @@ public class CharacterChatHelper {
                         .temperature(AdiConstant.LLM_TEMPERATURE_DEFAULT)
                         .build());
 
-        //Create memory retriever for SEMANTIC channel.
-        //Excludes records explicitly tagged as episodic. Old records without the
-        //memory_type metadata (created before this feature) are treated as semantic.
-        //<p>
-        //创建 SEMANTIC 通道的记忆 retriever。
-        //排除显式标记为 episodic 的记录；缺失 memory_type 字段的历史记录视为 semantic（pgvector 的
-        //IsNotEqualTo 在键缺失时返回 true，符合预期）。
         Filter semanticFilter = new And(
                 new IsEqualTo(CHARACTER_ID, characterId),
                 new IsNotEqualTo(MEMORY_TYPE, MemoryType.EPISODIC.getDesc())
@@ -101,12 +94,6 @@ public class CharacterChatHelper {
                 .build();
         List<RetrieverWrapper> retrieverWrappers = new CompositeRag(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY).createRetriever(memoryRetrieveParam);
 
-        //Create episodic memory retriever (its own physically isolated vector store).
-        //Episodic memories are retrieved alongside semantic ones and presented as a
-        //timeline-structured "past events" section in the prompt.
-        //<p>
-        //创建情景记忆 retriever（独立向量库，与语义记忆物理隔离）。
-        //episodic 记忆与 semantic 并行检索，在 prompt 中以时间轴结构的"过去事件"段落呈现。
         EmbeddingRag episodicRag = EmbeddingRagContext.get(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY_EPISODIC);
         if (episodicRag != null) {
             RetrieverCreateParam episodicRetrieveParam = RetrieverCreateParam.builder()
@@ -123,7 +110,6 @@ public class CharacterChatHelper {
                     .build());
         }
 
-        //Create knowledge base retriever
         if (!filteredKb.isEmpty()) {
             List<String> kbUuids = filteredKb.stream().map(KbInfoResp::getUuid).toList();
             log.info("Preparing to search related knowledge bases, kbUuids:{}, question:{}", String.join(",", kbUuids), queryText);
@@ -138,7 +124,6 @@ public class CharacterChatHelper {
             retrieverWrappers.addAll(kbRetrievers);
         }
 
-        //Retrieve contents concurrently
         if (!retrieverWrappers.isEmpty()) {
             CountDownLatch countDownLatch = new CountDownLatch(retrieverWrappers.size());
             for (RetrieverWrapper retriever : retrieverWrappers) {
@@ -167,16 +152,11 @@ public class CharacterChatHelper {
     }
 
     /**
-     * 将检索结果分离为记忆文本和知识文本
+     * 将检索结果分离为记忆文本与知识文本。
+     * 记忆文本融合语义知识与 episodic「过往事件」两个通道。
      * <p>
-     * Separate retrieved content into memory text and knowledge text. Memory text
-     * combines two channels: stable semantic knowledge and a timeline-flavored
-     * "past events" section for episodic memories. Episodic items are formatted
-     * with their content from the vector segment as-is (timestamps/importance/event_type
-     * already live in the segment metadata and could be surfaced here later if needed).
-     * <p>
-     * 将检索结果分离为记忆文本和知识文本。记忆文本融合两个通道：稳定的语义知识 +
-     * "过往事件"段（episodic）。
+     * Separate retrieved content into memory text and knowledge text;
+     * memory merges the semantic channel and the episodic "past events" channel.
      * </p>
      */
     public static Pair<String, String> buildMemoryAndKnowledge(List<RetrieverWrapper> wrappers) {
@@ -229,13 +209,14 @@ public class CharacterChatHelper {
      * Build ChatModelRequest from Character configuration.
      * </p>
      *
-     * @param character       角色 / Character
-     * @param userPrompt      处理后的用户提示词 / Processed user prompt
-     * @param user            用户 / User
-     * @param llmService      LLM 服务 / LLM service
-     * @param enableMcp       是否启用 MCP 工具 / Enable MCP tools
-     * @param enableWebSearch 是否启用联网搜索 / Enable web search
-     * @return 聊天请求参数 / Chat request params
+     * @param character       角色配置
+     * @param userPrompt      处理后的用户提示词
+     * @param user            用户
+     * @param llmService      LLM 服务
+     * @param enableMcp       是否启用 MCP 工具
+     * @param enableWebSearch 是否启用联网搜索
+     * @param imageUrls       多模态图片 URL 列表
+     * @return 聊天请求参数
      */
     public static ChatModelRequest buildChatRequestParams(Character character, String userPrompt,
                                                                 User user, AbstractLLMService llmService,
@@ -243,25 +224,20 @@ public class CharacterChatHelper {
                                                                 List<String> imageUrls) {
         ChatModelRequest.ChatModelRequestBuilder builder = ChatModelRequest.builder();
 
-        //System message
         if (StringUtils.isNotBlank(character.getAiSystemMessage())) {
             builder.systemMessage(character.getAiSystemMessage());
         }
 
-        //Memory (for context understanding)
         if (Boolean.TRUE.equals(character.getUnderstandContextEnable())) {
             builder.memoryId(character.getUuid());
         }
 
-        //User message
         builder.userMessage(userPrompt);
 
-        //Image URLs (multimodal)
         if (imageUrls != null && !imageUrls.isEmpty()) {
             builder.imageUrls(imageUrls);
         }
 
-        //MCP tools
         if (enableMcp && StringUtils.isNotBlank(character.getMcpIds())) {
             UserMcpService userMcpService = SpringUtil.getBean(UserMcpService.class);
             List<Long> mcpIds = AdiStringUtil.stringToList(character.getMcpIds(), ",", Long::parseLong);
@@ -269,13 +245,10 @@ public class CharacterChatHelper {
             builder.mcpClients(mcpClients);
         }
 
-        //Thinking
         AiModel aiModel = llmService.getAiModel();
         Boolean returnThinking = checkIfReturnThinking(aiModel, character);
         builder.returnThinking(returnThinking);
 
-        //Web search — drop the flag if the resolved model does not support it,
-        //so a stale config or capability change cannot cause a confusing LLM error.
         boolean effectiveWebSearch = enableWebSearch;
         if (effectiveWebSearch && !Boolean.TRUE.equals(aiModel.getIsSupportWebSearch())) {
             log.warn("Web search requested but model {}/{} does not support it; ignoring flag",
@@ -293,9 +266,9 @@ public class CharacterChatHelper {
      * Check if thinking/reasoning should be returned.
      * </p>
      *
-     * @param aiModel   模型 / AI model
-     * @param character 角色 / Character
-     * @return 是否返回推理过程 / Whether to return thinking
+     * @param aiModel   模型
+     * @param character 角色配置
+     * @return 是否返回推理过程
      */
     public static Boolean checkIfReturnThinking(AiModel aiModel, Character character) {
         if (!aiModel.getIsReasoner()) {
