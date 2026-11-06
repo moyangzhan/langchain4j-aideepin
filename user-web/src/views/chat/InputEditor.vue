@@ -385,7 +385,9 @@ defineExpose({
       </template>
     </NAutoComplete>
     <div class="flex items-center justify-end py-1">
-      <span v-if="!isMobile" class="mr-auto text-xs text-[#b4bbc4]">{{ t('chat.enterToSendHint') }}</span>
+      <div v-if="!isMobile" class="flex min-w-0 flex-1 items-center mr-2">
+        <slot name="toolbar" />
+      </div>
       <div class="flex items-center space-x-2">
         <NButton class="flex-none" type="primary" :disabled="buttonDisabled" @click="handleSubmit">
           <template #icon>

@@ -2,7 +2,8 @@
 import type { Ref } from 'vue'
 import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { NButton, NCollapse, NCollapseItem, NIcon, NModal, NTabPane, NTabs, useDialog, useLoadingBar, useMessage } from 'naive-ui'
+import { NButton, NCollapse, NCollapseItem, NIcon, NList, NListItem, NModal, NTabPane, NTabs, useDialog, useLoadingBar, useMessage } from 'naive-ui'
+import type { UploadFileInfo } from 'naive-ui'
 import { Cat } from '@vicons/fa'
 import { v4 as uuidv4 } from 'uuid'
 import { AudioMessage, Message } from './components'
@@ -52,6 +53,8 @@ const firstPageLoading = computed(() => {
 })
 const currCharacter = computed(() => chatStore.getCurCharacter || getDefaultCharacter())
 const imageUuids = ref<string[]>([])
+const uploadedFileInfoList = ref<UploadFileInfo[]>([])
+const uploadedUuidList = ref<string[]>([])
 const isChatting = ref<boolean>(false)
 const loadingMsgs = ref<boolean>(false)
 const loaddingEmbeddingRef = ref<boolean>(false)
@@ -409,8 +412,21 @@ function toggleUsingContext() {
     ms.warning(t('chat.turnOffContext'))
 }
 
-function imagesChange(uuids: string[]) {
-  imageUuids.value = uuids
+function onUploadFinish(payload: { file: UploadFileInfo; uuid: string; url: string }) {
+  uploadedUuidList.value.push(payload.uuid)
+  imageUuids.value.push(payload.url)
+  uploadedFileInfoList.value.push(payload.file)
+}
+
+function onFileRemove(file: UploadFileInfo) {
+  const itemIndex = uploadedFileInfoList.value.findIndex(item => item.id === file.id)
+  const removeUuid = uploadedUuidList.value.at(itemIndex)
+  if (removeUuid) {
+    api.fileDel(removeUuid)
+    imageUuids.value.splice(itemIndex, 1)
+    uploadedUuidList.value.splice(itemIndex, 1)
+    uploadedFileInfoList.value.splice(itemIndex, 1)
+  }
 }
 
 watch(
@@ -687,12 +703,27 @@ onDeactivated(() => {
     </main>
     <footer :class="footerClass">
       <div class="w-full max-w-screen-xl m-auto border-t">
-        <InputToolbar @images-change="imagesChange" />
+        <InputToolbar v-if="isMobile" @upload-finish="onUploadFinish" />
+        <NList hoverable show-divider>
+          <NListItem v-for="fileInfo in uploadedFileInfoList" :key="fileInfo.id">
+            <div class="flex">
+              <span class="flex-1 text-xs">{{ fileInfo.name }}</span>
+              <SvgIcon
+                class="flex-none cursor-pointer text-sm" icon="clarity:remove-line"
+                @click="onFileRemove(fileInfo)"
+              />
+            </div>
+          </NListItem>
+        </NList>
         <InputEditor
           ref="inputEditorRef" :character-uuid="curCharacterUuid" :image-uuids="imageUuids"
           @sse-started="sseStarted" @message-receiving="chatMessageReceiving" @message-complelted="messageComplelted"
           @is-chatting="(chatting) => isChatting = chatting"
-        />
+        >
+          <template v-if="!isMobile" #toolbar>
+            <InputToolbar @upload-finish="onUploadFinish" />
+          </template>
+        </InputEditor>
       </div>
     </footer>
 

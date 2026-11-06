@@ -1,7 +1,7 @@
 <script setup lang='ts'>
 import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { NAutoComplete, NButton, NCol, NInput, NRow } from 'naive-ui'
+import { NAutoComplete, NButton, NInput } from 'naive-ui'
 import { useAuthStore, useDrawStore, usePromptStore } from '@/store'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
 import { debounce } from '@/utils/functions/debounce'
@@ -92,24 +92,17 @@ watch(
 </script>
 
 <template>
-  <NRow class="pb-3">
-    <NCol :span="24">
-      <div class="flex items-center justify-between space-x-2">
-        <NAutoComplete v-model:value="prompt" :options="promptTemplate" :get-show="getShow" :on-select="handleSelect">
-          <template #default="{ handleInput, handleBlur, handleFocus, value: slotValue }">
-            <NInput
-              :value="slotValue" type="textarea" :placeholder="placeholder"
-              :autosize="{ minRows: 3, maxRows: isMobile ? 4 : 8 }" @input="handleInput" @focus="handleFocus"
-              @blur="handleBlur" @keypress="handleEnter"
-            />
-          </template>
-        </NAutoComplete>
-      </div>
-    </NCol>
-  </NRow>
-  <div class="flex items-center justify-end">
-    <span v-if="!isMobile" class="mr-auto text-xs text-[#b4bbc4]">{{ t('common.enterToSubmitHint') }}</span>
-    <NButton type="primary" :disabled="buttonDisabled" @click="handleSubmit">
+  <div class="flex items-center space-x-2">
+    <NAutoComplete v-model:value="prompt" class="grow" :options="promptTemplate" :get-show="getShow" :on-select="handleSelect">
+      <template #default="{ handleInput, handleBlur, handleFocus, value: slotValue }">
+        <NInput
+          :value="slotValue" type="textarea" :placeholder="placeholder"
+          :autosize="{ minRows: 1, maxRows: isMobile ? 4 : 8 }" @input="handleInput" @focus="handleFocus"
+          @blur="handleBlur" @keypress="handleEnter"
+        />
+      </template>
+    </NAutoComplete>
+    <NButton class="flex-none" type="primary" :disabled="buttonDisabled" @click="handleSubmit">
       {{ t('common.submit') }}
     </NButton>
   </div>

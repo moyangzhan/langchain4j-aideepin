@@ -7,9 +7,9 @@ const expanded = ref<boolean>(true)
 </script>
 
 <template>
-  <div class="relative">
+  <div class="relative min-h-8">
     <div
-      class="absolute bottom-0 right-2 z-10 -translate-y-1/2 cursor-pointer select-none"
+      class="absolute top-1 right-2 z-10 cursor-pointer select-none"
       @click="expanded = !expanded"
     >
       <span class="flex items-center rounded bg-neutral-100 px-2 py-0.5 text-neutral-500 transition-colors hover:bg-neutral-200 hover:text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-200">

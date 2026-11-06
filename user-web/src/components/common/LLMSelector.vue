@@ -5,6 +5,13 @@ import type { DropdownOption } from 'naive-ui'
 import AvatarComponent from '@/views/chat/components/Message/Avatar.vue'
 import { useAppStore } from '@/store'
 
+interface Props {
+  imageSize?: number
+}
+const props = withDefaults(defineProps<Props>(), {
+  imageSize: 20,
+})
+
 const appStore = useAppStore()
 
 // Resolve the current model from the authoritative llms list by id, instead of trusting the
@@ -31,7 +38,7 @@ function renderLabel(option: DropdownOption) {
       AvatarComponent,
       {
         name: modelPlatform,
-        imageSize: 20,
+        imageSize: props.imageSize,
       },
     ),
     h(
@@ -64,7 +71,7 @@ function handleSelect(key: string | number) {
     :options="appStore.llms" @select="handleSelect"
   >
     <NButton icon-placement="right">
-      <AvatarComponent :name="currentLLM.modelPlatform" :image-size="20" class="mr-1" />{{ currentLLM.modelTitle || currentLLM.modelName }}
+      <AvatarComponent :name="currentLLM.modelPlatform" :image-size="imageSize" class="mr-1" />{{ currentLLM.modelTitle || currentLLM.modelName }}
     </NButton>
   </NDropdown>
 </template>
