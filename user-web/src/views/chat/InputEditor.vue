@@ -374,8 +374,8 @@ defineExpose({
 </script>
 
 <template>
-  <div class="flex items-center space-x-2">
-    <NAutoComplete v-model:value="prompt" class="grow" :options="searchOptions" :get-show="getShow">
+  <div class="flex flex-col">
+    <NAutoComplete v-model:value="prompt" :options="searchOptions" :get-show="getShow">
       <template #default="{ handleInput, handleBlur, handleFocus }">
         <NInput
           ref="inputRef" v-model:value="prompt" type="textarea" :placeholder="placeholder"
@@ -384,20 +384,25 @@ defineExpose({
         />
       </template>
     </NAutoComplete>
-    <NButton class="flex-none" type="primary" :disabled="buttonDisabled" @click="handleSubmit">
-      <template #icon>
-        <span class="dark:text-black">
-          <SvgIcon icon="ri:send-plane-fill" />
-        </span>
-      </template>
-    </NButton>
-    <NButton class="flex-none" type="primary" @click="handleShowAudioRecorderModal">
-      <template #icon>
-        <span class="dark:text-black">
-          <SvgIcon icon="icon-park-outline:voice" />
-        </span>
-      </template>
-    </NButton>
+    <div class="flex items-center justify-end py-1">
+      <span v-if="!isMobile" class="mr-auto text-xs text-[#b4bbc4]">{{ t('chat.enterToSendHint') }}</span>
+      <div class="flex items-center space-x-2">
+        <NButton class="flex-none" type="primary" :disabled="buttonDisabled" @click="handleSubmit">
+          <template #icon>
+            <span class="dark:text-black">
+              <SvgIcon icon="ri:send-plane-fill" />
+            </span>
+          </template>
+        </NButton>
+        <NButton class="flex-none" type="primary" @click="handleShowAudioRecorderModal">
+          <template #icon>
+            <span class="dark:text-black">
+              <SvgIcon icon="icon-park-outline:voice" />
+            </span>
+          </template>
+        </NButton>
+      </div>
+    </div>
     <NModal :show="showAudioRecorderModal">
       <NCard style="max-width: 600px" :title="t('chat.voiceChat')" size="huge" :bordered="false" role="dialog" aria-modal="true">
         <AudioRecorder

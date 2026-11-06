@@ -5,6 +5,7 @@ import type { UploadFileInfo, UploadInst } from 'naive-ui'
 import RuntimeNodes from './RuntimeNodes.vue'
 import { useAuthStore, useWfStore } from '@/store'
 import { SvgIcon } from '@/components/common'
+import { useBasicLayout } from '@/hooks/useBasicLayout'
 import api from '@/api'
 import { t } from '@/locales'
 interface Props {
@@ -26,6 +27,7 @@ const wfStore = useWfStore()
 const authStore = useAuthStore()
 const token = ref<string>(authStore.token)
 const ms = useMessage()
+const { isMobile } = useBasicLayout()
 const submitting = ref<boolean>(wfStore.submitting)
 const startNode = wfStore.getStartNode(props.workflow.uuid)
 const wfRuntimeUuid = ref<string>('')
@@ -190,6 +192,28 @@ function buildRunStreamHandlers(nodeUuidToRuntimeNodeUuid: Map<string, string>):
       runtimeErrorMsg.value = error || ''
       emit('runError', error)
     },
+  }
+}
+
+// Enter 提交守卫：桌面 Enter 直交；移动端软键盘的换行键即 Enter 本身，须 Ctrl+Enter 防误触
+// Enter guard: plain Enter submits on desktop; on mobile the soft-keyboard newline key is Enter itself, so Ctrl+Enter is required
+function isSubmitEnter(event: KeyboardEvent) {
+  if (isMobile.value)
+    return event.key === 'Enter' && event.ctrlKey
+  return event.key === 'Enter' && !event.shiftKey
+}
+
+function handleEnterRun(event: KeyboardEvent) {
+  if (isSubmitEnter(event)) {
+    event.preventDefault()
+    run()
+  }
+}
+
+function handleEnterResume(event: KeyboardEvent) {
+  if (isSubmitEnter(event)) {
+    event.preventDefault()
+    resume()
   }
 }
 
@@ -377,7 +401,7 @@ onUnmounted(() => {
           <!-- 文本 -->
           <NInput
             v-if="userInput.content.type === 1" v-model:value="userInput.content.value" type="textarea"
-            :autosize="{ minRows: 1, maxRows: 5 }"
+            :autosize="{ minRows: 1, maxRows: 5 }" @keypress="handleEnterRun"
           />
           <!-- 数字 -->
           <NInputNumber v-if="userInput.content.type === 2" v-model:value="userInput.content.value" />
@@ -403,7 +427,8 @@ onUnmounted(() => {
           <!-- 布尔值 -->
           <NSwitch v-if="userInput.content.type === 5" v-model:value="userInput.content.value" />
         </div>
-        <div class="w-full flex justify-end">
+        <div class="w-full flex items-center justify-end">
+          <span v-if="!isMobile" class="mr-auto text-xs text-[#b4bbc4]">{{ t('common.enterToSubmitHint') }}</span>
           <NButton type="primary" :disabled="submitting" :loading="submitting" @click="run">
             {{ t('common.submit') }}
           </NButton>
@@ -425,10 +450,11 @@ onUnmounted(() => {
             </div>
             <NInput
               v-model:value="humanFeedbackContent" type="textarea" :autosize="{ minRows: 2, maxRows: 5 }"
-              :disabled="submitting"
+              :disabled="submitting" @keypress="handleEnterResume"
             />
           </div>
-          <div v-if="!submitting" class="flex justify-end">
+          <div v-if="!submitting" class="flex items-center justify-end">
+            <span v-if="!isMobile" class="mr-auto text-xs text-[#b4bbc4]">{{ t('common.enterToSubmitHint') }}</span>
             <NButton type="primary" @click="resume">
               {{ t('common.submit') }}
             </NButton>

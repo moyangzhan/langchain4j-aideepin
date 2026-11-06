@@ -107,11 +107,10 @@ watch(
       </div>
     </NCol>
   </NRow>
-  <NRow>
-    <NCol>
-      <NButton type="primary" :disabled="buttonDisabled" @click="handleSubmit">
-        {{ t('common.submit') }}
-      </NButton>
-    </NCol>
-  </NRow>
+  <div class="flex items-center justify-end">
+    <span v-if="!isMobile" class="mr-auto text-xs text-[#b4bbc4]">{{ t('common.enterToSubmitHint') }}</span>
+    <NButton type="primary" :disabled="buttonDisabled" @click="handleSubmit">
+      {{ t('common.submit') }}
+    </NButton>
+  </div>
 </template>
