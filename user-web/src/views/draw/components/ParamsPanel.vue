@@ -1,5 +1,5 @@
 <script setup lang='ts'>
-import { NIcon, NCollapseTransition } from 'naive-ui'
+import { NIcon } from 'naive-ui'
 import { ChevronDown16Filled, ChevronUp16Filled } from '@vicons/fluent'
 import { ref } from 'vue'
 
@@ -19,8 +19,15 @@ const expanded = ref<boolean>(true)
         </NIcon>
       </span>
     </div>
-    <NCollapseTransition :show="expanded">
-      <slot />
-    </NCollapseTransition>
+    <!-- 折叠用 grid 0fr/1fr 而非卸载式过渡：子树须保持挂载，否则上传等子组件内部状态会丢失 -->
+    <!-- Collapse via grid 0fr/1fr instead of unmounting: children stay mounted so in-child state (uploads) survives -->
+    <div
+      class="grid transition-[grid-template-rows] duration-300 ease-in-out"
+      :class="expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
+    >
+      <div class="min-h-0 overflow-hidden">
+        <slot />
+      </div>
+    </div>
   </div>
 </template>
