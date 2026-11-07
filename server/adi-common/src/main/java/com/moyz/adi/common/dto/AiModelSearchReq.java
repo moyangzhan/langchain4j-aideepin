@@ -6,5 +6,7 @@ import lombok.Data;
 public class AiModelSearchReq {
     private String type;
     private String platform;
+    private String name;
     private Boolean isEnable;
+    private String healthStatus;
 }

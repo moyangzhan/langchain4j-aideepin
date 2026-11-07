@@ -154,7 +154,7 @@
 <script lang="ts" setup>
   import { h, onMounted, reactive, ref, computed } from 'vue'
   import { BasicTable, TableAction } from '@/components/Table'
-  import { BasicForm, useForm } from '@/components/Form/index'
+  import { BasicForm, FormSchema, useForm } from '@/components/Form/index'
   import api from '@/api/aiModel'
   import platformApi from '@/api/modelPlatform'
   import {
@@ -168,7 +168,9 @@
   const MODEL_TYPES = getModelTypes()
   const MODEL_INPUT_TYPES = getModelInputTypes()
   const MODEL_RESPONSE_FORMAT_TYPES = getModelResponseFormatTypes()
-  const allPlatforms = getDefaultModelPlatforms()
+  // 编辑弹窗与过滤表单共用，须为响应式数组，否则平台列表加载后过滤下拉不刷新
+  // Shared by the edit modal and the filter form; must be reactive or the filter dropdown misses loaded platforms
+  const allPlatforms = reactive(getDefaultModelPlatforms())
   import { PlusOutlined } from '@vicons/antd'
   import { MonitorHeartRound as HealthOutlined } from '@vicons/material'
   import { AiModelData } from '/#/aiModel'
@@ -321,9 +323,67 @@
     },
   })
 
+  const schemas: FormSchema[] = [
+    {
+      field: 'name',
+      component: 'NInput',
+      label: t('columns.name'),
+      componentProps: {
+        placeholder: t('model.modelNamePlaceholder'),
+      },
+    },
+    {
+      field: 'platform',
+      component: 'NSelect',
+      label: t('columns.platform'),
+      componentProps: {
+        placeholder: t('model.platformPlaceholder'),
+        options: allPlatforms,
+        clearable: true,
+      },
+    },
+    {
+      field: 'healthStatus',
+      component: 'NSelect',
+      label: t('columns.healthStatus'),
+      componentProps: {
+        options: [
+          {
+            label: t('common.normal'),
+            value: 'HEALTHY',
+          },
+          {
+            label: t('common.abnormal'),
+            value: 'UNHEALTHY',
+          },
+        ],
+        clearable: true,
+      },
+    },
+    {
+      field: 'isEnable',
+      component: 'NSelect',
+      label: t('columns.isEnable'),
+      componentProps: {
+        options: [
+          {
+            label: t('common.yes'),
+            value: true,
+          },
+          {
+            label: t('common.no'),
+            value: false,
+          },
+        ],
+        clearable: true,
+      },
+    },
+  ]
+
   const [register, { getFieldsValue }] = useForm({
     gridProps: { cols: '1 s:1 m:2 l:3 xl:4 2xl:4' },
     labelWidth: 120,
+    schemas,
   })
 
   function addTable() {
@@ -477,7 +537,7 @@
   }
 
   function handleReset(_values: Recordable) {
-    // 重置回调
+    reloadTable()
   }
 
   onMounted(() => {

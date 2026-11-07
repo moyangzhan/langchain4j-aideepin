@@ -8,6 +8,7 @@ import com.moyz.adi.common.dto.AiModelDto;
 import com.moyz.adi.common.dto.AiModelSearchReq;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.enums.ErrorEnum;
+import com.moyz.adi.common.enums.ModelHealthStatus;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.mapper.AiModelMapper;
 import com.moyz.adi.common.util.MPPageUtil;
@@ -18,6 +19,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -25,6 +27,9 @@ public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
 
     @Resource
     private AiModelInitializer aiModelInitializer;
+
+    @Resource
+    private ModelHealthService modelHealthService;
 
     public void init() {
         log.info("Initializing AI model...");
@@ -82,10 +87,42 @@ public class AiModelService extends ServiceImpl<AiModelMapper, AiModel> {
         if (null != aiModelSearchReq.getIsEnable()) {
             lambdaQueryWrapper.eq(AiModel::getIsEnable, aiModelSearchReq.getIsEnable());
         }
+        lambdaQueryWrapper.like(StringUtils.isNotBlank(aiModelSearchReq.getName()), AiModel::getName, aiModelSearchReq.getName());
         lambdaQueryWrapper.eq(AiModel::getIsDeleted, false);
         lambdaQueryWrapper.orderByDesc(AiModel::getUpdateTime);
+        if (StringUtils.isNotBlank(aiModelSearchReq.getHealthStatus())) {
+            return searchByHealth(lambdaQueryWrapper, aiModelSearchReq.getHealthStatus(), currentPage, pageSize);
+        }
         Page<AiModel> aiModelPage = baseMapper.selectPage(new Page<>(currentPage, pageSize), lambdaQueryWrapper);
         return MPPageUtil.convertToPage(aiModelPage, new Page<>(), AiModelDto.class);
+    }
+
+    /**
+     * 健康状态过滤：状态存于内存缓存而非数据库，先查出全部匹配行再内存过滤、手工分页；
+     * 只对启用模型生效，禁用模型在健康列显示「禁用」，不参与健康过滤。
+     * <p>
+     * Health status filter: statuses live in an in-memory cache instead of the database, so all
+     * matching rows are loaded, filtered and paginated in memory; only enabled models take part,
+     * disabled ones show "disabled" in the health column and never match this filter.
+     * </p>
+     */
+    private Page<AiModelDto> searchByHealth(LambdaQueryWrapper<AiModel> lambdaQueryWrapper, String healthStatus, Integer currentPage, Integer pageSize) {
+        Map<String, ModelHealthService.HealthCheckResult> statuses = modelHealthService.getAllStatuses();
+        boolean unhealthy = ModelHealthStatus.UNHEALTHY.name().equals(healthStatus);
+        List<AiModel> matched = baseMapper.selectList(lambdaQueryWrapper).stream()
+                .filter(model -> Boolean.TRUE.equals(model.getIsEnable()))
+                .filter(model -> {
+                    ModelHealthService.HealthCheckResult result = statuses.get(model.getName());
+                    boolean isUnhealthy = null != result && ModelHealthStatus.UNHEALTHY == result.getStatus();
+                    return isUnhealthy == unhealthy;
+                })
+                .toList();
+        Page<AiModel> source = new Page<>(currentPage, pageSize);
+        long from = (long) (currentPage - 1) * pageSize;
+        int to = (int) Math.min(from + pageSize, matched.size());
+        source.setRecords(from >= matched.size() ? List.of() : matched.subList((int) from, to));
+        source.setTotal(matched.size());
+        return MPPageUtil.convertToPage(source, new Page<>(), AiModelDto.class);
     }
 
     public void disable(Long id) {
