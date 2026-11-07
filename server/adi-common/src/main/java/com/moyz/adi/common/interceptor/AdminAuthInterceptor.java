@@ -11,10 +11,10 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
  * 管理端角色闸：按处理器所在包判定，与 URL 前缀、上下文路径、URL 规范化无关；
- * 与 TokenFilter 的 /admin/ 前缀检查互为独立的两道闸，任一失效另一道仍能拦截。
+ * 管理端授权的唯一闸门，认证由 TokenFilter 负责。
  * Admin role gate resolved from the handler's package, independent of URL prefixes, the
- * context path and URL normalization; a second, independent gate besides TokenFilter's
- * /admin/ prefix check, so either one failing still leaves the other in place.
+ * context path and URL normalization; the single authorization gate for the admin area,
+ * with authentication handled by TokenFilter.
  */
 @Slf4j
 @Component
