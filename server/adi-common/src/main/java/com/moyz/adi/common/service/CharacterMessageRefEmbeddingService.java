@@ -1,6 +1,7 @@
 package com.moyz.adi.common.service;
 
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
+import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.KbDocumentEmbeddingDto;
 import com.moyz.adi.common.dto.RefEmbeddingDto;
 import com.moyz.adi.common.entity.CharacterMessageRefEmbedding;
@@ -23,7 +24,7 @@ public class CharacterMessageRefEmbeddingService extends ServiceImpl<CharacterMe
     private ICharacterMemoryEmbeddingService characterMemoryEmbeddingService;
 
     public List<RefEmbeddingDto> listRefEmbeddings(String msgUuid) {
-        List<CharacterMessageRefEmbedding> recordReferences = this.getBaseMapper().listByMsgUuid(msgUuid);
+        List<CharacterMessageRefEmbedding> recordReferences = this.getBaseMapper().listByMsgUuid(msgUuid, ThreadContext.getCurrentUserId());
         if (CollectionUtils.isEmpty(recordReferences)) {
             return Collections.emptyList();
         }

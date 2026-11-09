@@ -9,5 +9,5 @@ import java.util.List;
 
 @Mapper
 public interface CharacterMessageRefMemoryEmbeddingMapper extends BaseMapper<CharacterMessageRefMemoryEmbedding> {
-    List<CharacterMessageRefMemoryEmbedding> listByMsgUuid(@Param("uuid") String msgUuid);
+    List<CharacterMessageRefMemoryEmbedding> listByMsgUuid(@Param("uuid") String msgUuid, @Param("userId") Long userId);
 }

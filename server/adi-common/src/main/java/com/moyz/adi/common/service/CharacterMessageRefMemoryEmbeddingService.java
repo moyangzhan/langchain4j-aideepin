@@ -2,6 +2,7 @@ package com.moyz.adi.common.service;
 
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import tools.jackson.databind.JsonNode;
+import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.KbDocumentEmbeddingDto;
 import com.moyz.adi.common.dto.RefEmbeddingDto;
 import com.moyz.adi.common.entity.CharacterMessageRefMemoryEmbedding;
@@ -49,7 +50,7 @@ public class CharacterMessageRefMemoryEmbeddingService extends ServiceImpl<Chara
      * 物理向量库一次性反查；不再做"先 semantic 后 episodic"的盲查 fallback。
      */
     public List<RefEmbeddingDto> listRefEmbeddings(String uuid) {
-        List<CharacterMessageRefMemoryEmbedding> recordReferences = this.getBaseMapper().listByMsgUuid(uuid);
+        List<CharacterMessageRefMemoryEmbedding> recordReferences = this.getBaseMapper().listByMsgUuid(uuid, ThreadContext.getCurrentUserId());
         if (CollectionUtils.isEmpty(recordReferences)) {
             return Collections.emptyList();
         }

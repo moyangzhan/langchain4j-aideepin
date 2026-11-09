@@ -6,5 +6,7 @@
         from adi_character_message_ref_graph a
                  inner join adi_character_message b on a.message_id = b.id
         where b.uuid = #{uuid}
+          and b.user_id = #{userId}
+          and b.is_deleted = false
     </select>
 </mapper>

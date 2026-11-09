@@ -9,5 +9,5 @@ import java.util.List;
 
 @Mapper
 public interface CharacterMessageRefGraphMapper extends BaseMapper<CharacterMessageRefGraph> {
-    List<CharacterMessageRefGraph> listByMsgUuid(@Param("uuid") String uuid);
+    List<CharacterMessageRefGraph> listByMsgUuid(@Param("uuid") String uuid, @Param("userId") Long userId);
 }

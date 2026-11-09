@@ -2,6 +2,7 @@ package com.moyz.adi.common.service;
 
 import com.alibaba.dashscope.utils.JsonUtils;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
+import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.RefGraphDto;
 import com.moyz.adi.common.entity.CharacterMessageRefGraph;
 import com.moyz.adi.common.mapper.CharacterMessageRefGraphMapper;
@@ -18,7 +19,7 @@ import java.util.List;
 public class CharacterMessageRefGraphService extends ServiceImpl<CharacterMessageRefGraphMapper, CharacterMessageRefGraph> {
 
     public RefGraphDto getByMsgUuid(String messageUuid) {
-        List<CharacterMessageRefGraph> list = this.getBaseMapper().listByMsgUuid(messageUuid);
+        List<CharacterMessageRefGraph> list = this.getBaseMapper().listByMsgUuid(messageUuid, ThreadContext.getCurrentUserId());
         if (list.isEmpty()) {
             return RefGraphDto
                     .builder()
