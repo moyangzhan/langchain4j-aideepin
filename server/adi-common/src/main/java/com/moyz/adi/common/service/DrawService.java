@@ -411,65 +411,61 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
     }
 
     public DrawDto newerStarredOne(String uuid) {
-        Draw draw = this.lambdaQuery()
-                .eq(Draw::getUuid, uuid)
-                .eq(Draw::getIsDeleted, false)
-                .oneOpt()
-                .orElse(null);
-//Public images or own images can be retrieved
-        //公开的图片或者自己的图片，都可以获取到
-        if (null != draw) {
-            DrawStar currentDrawStar = drawStarService.lambdaQuery()
-                    .eq(DrawStar::getUserId, ThreadContext.getCurrentUserId())
-                    .eq(DrawStar::getDrawId, draw.getId())
-                    .eq(DrawStar::getIsDeleted, false)
-                    .one();
-            if (null != currentDrawStar) {
-                DrawStar drawStar = drawStarService.lambdaQuery()
-                        .eq(DrawStar::getUserId, draw.getUserId())
-                        .gt(DrawStar::getUpdateTime, currentDrawStar.getUpdateTime())
-                        .eq(DrawStar::getIsDeleted, false)
-                        .last(MP_LIMIT_1)
-                        .orderByAsc(DrawStar::getUpdateTime)
-                        .one();
-                draw = this.lambdaQuery().gt(Draw::getId, drawStar.getDrawId()).last(MP_LIMIT_1).orderByDesc(Draw::getId).one();
-                if (null != draw) {
-                    return convertDrawToDto(draw);
-                }
-            }
-        }
-        return null;
+        return adjacentStarredOne(uuid, true);
     }
 
     public DrawDto olderStarredOne(String uuid) {
+        return adjacentStarredOne(uuid, false);
+    }
+
+    /**
+     * Neighbour of the given draw inside the caller's own favorites, ordered by the moment the
+     * caller starred them. Two things have to hold: the neighbour is looked up among the caller's
+     * stars (not the draw owner's), and "newer"/"older" walk in the two opposite directions —
+     * forward reads the smallest update time above the current one, backward the largest below it.
+     * The draw returned is the one the neighbouring star points at, not some other draw with a
+     * bigger id. Missing neighbours yield null, which the UI treats as "end of the list".
+     * <p>
+     * 取当前用户收藏夹里这张图的前一张/后一张：范围必须是「我的收藏」（不是图片属主的收藏），
+     * 方向必须相反（向后取比当前更晚一条里最早的，向前取比当前更早一条里最晚的），
+     * 返回的是那条收藏所指向的图，而不是 id 更大的任意图。没有相邻项时返回 null。
+     */
+    private DrawDto adjacentStarredOne(String uuid, boolean newer) {
         Draw draw = this.lambdaQuery()
                 .eq(Draw::getUuid, uuid)
                 .eq(Draw::getIsDeleted, false)
                 .oneOpt()
                 .orElse(null);
-//Public images or own images can be retrieved
-        //公开的图片或者自己的图片，都可以获取到
-        if (null != draw) {
-            DrawStar currentDrawStar = drawStarService.lambdaQuery()
-                    .eq(DrawStar::getUserId, ThreadContext.getCurrentUserId())
-                    .eq(DrawStar::getIsDeleted, false)
-                    .eq(DrawStar::getDrawId, draw.getId())
-                    .one();
-            if (null != currentDrawStar) {
-                DrawStar drawStar = drawStarService.lambdaQuery()
-                        .eq(DrawStar::getUserId, draw.getUserId())
-                        .gt(DrawStar::getUpdateTime, currentDrawStar.getUpdateTime())
-                        .eq(DrawStar::getIsDeleted, false)
-                        .last(MP_LIMIT_1)
-                        .orderByDesc(DrawStar::getUpdateTime)
-                        .one();
-                draw = this.lambdaQuery().lt(Draw::getId, drawStar.getDrawId()).last(MP_LIMIT_1).orderByDesc(Draw::getId).one();
-                if (null != draw) {
-                    return convertDrawToDto(draw);
-                }
-            }
+        if (null == draw) {
+            return null;
         }
-        return null;
+        Long currentUserId = ThreadContext.getCurrentUserId();
+        DrawStar currentStar = drawStarService.lambdaQuery()
+                .eq(DrawStar::getUserId, currentUserId)
+                .eq(DrawStar::getDrawId, draw.getId())
+                .eq(DrawStar::getIsDeleted, false)
+                .one();
+        if (null == currentStar) {
+            return null;
+        }
+        DrawStar neighbourStar = drawStarService.lambdaQuery()
+                .eq(DrawStar::getUserId, currentUserId)
+                .eq(DrawStar::getIsDeleted, false)
+                .gt(newer, DrawStar::getUpdateTime, currentStar.getUpdateTime())
+                .lt(!newer, DrawStar::getUpdateTime, currentStar.getUpdateTime())
+                .orderByAsc(newer, DrawStar::getUpdateTime)
+                .orderByDesc(!newer, DrawStar::getUpdateTime)
+                .last(MP_LIMIT_1)
+                .one();
+        if (null == neighbourStar) {
+            return null;
+        }
+        Draw neighbour = this.lambdaQuery()
+                .eq(Draw::getId, neighbourStar.getDrawId())
+                .eq(Draw::getIsDeleted, false)
+                .oneOpt()
+                .orElse(null);
+        return null == neighbour ? null : convertDrawToDto(neighbour);
     }
 
     public DrawDto newerMine(String uuid) {
