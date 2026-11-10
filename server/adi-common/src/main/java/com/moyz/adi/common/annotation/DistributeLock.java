@@ -43,4 +43,11 @@ public @interface DistributeLock {
      */
     boolean continueIfAcquireFail() default true;
 
+    /**
+     * 为 true 时即使执行成功也不主动释放锁，仅由 TTL 到期自动释放，用于拉长同名任务在多实例下的集群最小执行间隔。
+     * When true the aspect never unlocks even on success; the lock is released by TTL alone,
+     * pacing same-name jobs across instances.
+     */
+    boolean unlockByTimeout() default false;
+
 }

@@ -40,16 +40,31 @@ public class DistributeLockAspect {
             clientId = UuidUtil.createShort();
         }
 
-        boolean lockAndContinue = checkAndLock(key, clientId, expireInSeconds, continueIfAcquireFail);
-        if (!lockAndContinue) {
-            log.warn("This request is ignored");
-            return lockFailReturnValue(joinPoint);
+        log.info("lock info,key:{},clientId:{},expireInSecond:{},continueIfAcquireFail:{}", key, clientId, expireInSeconds, continueIfAcquireFail);
+        if (StringUtils.isBlank(key) || expireInSeconds < 1) {
+            log.warn("Invalid lock parameters, please check and try again");
+            throw new IllegalArgumentException("Invalid lock parameters, please check and try again");
+        }
+        boolean locked = redisTemplateUtil.lock(key, clientId, expireInSeconds);
+        if (!locked) {
+            if (continueIfAcquireFail) {
+                log.warn("Lock acquisition failed, continue without lock,key:{}", key);
+            } else {
+                log.warn("Parameter continueIfAcquireFail is false and lock acquisition failed, this request is ignored");
+                return lockFailReturnValue(joinPoint);
+            }
         }
         try {
             return joinPoint.proceed();
         } finally {
-            boolean unlockResult = redisTemplateUtil.unlock(key, clientId);
-            log.info("unlock:{},key:{},clientId:{}", unlockResult, key, clientId);
+            if (locked) {
+                if (distributeLock.unlockByTimeout()) {
+                    log.info("Lock held until TTL expiry,key:{},clientId:{}", key, clientId);
+                } else {
+                    boolean unlockResult = redisTemplateUtil.unlock(key, clientId);
+                    log.info("unlock:{},key:{},clientId:{}", unlockResult, key, clientId);
+                }
+            }
         }
     }
 
@@ -65,6 +80,9 @@ public class DistributeLockAspect {
     private Object lockFailReturnValue(ProceedingJoinPoint joinPoint) {
         if (joinPoint.getSignature() instanceof MethodSignature signature) {
             Class<?> returnType = signature.getMethod().getReturnType();
+            if (void.class == returnType) {
+                return null;
+            }
             if (boolean.class == returnType) {
                 return false;
             }
@@ -74,29 +92,5 @@ public class DistributeLockAspect {
             }
         }
         return null;
-    }
-
-    /**
-     * 校验参数及加锁
-     * Validate parameters and acquire lock
-     *
-     * @param key                   redis key
-     * @param clientId              加锁方标识 / Lock holder identifier
-     * @param expireInSeconds       超时时间 （秒） / Timeout in seconds
-     * @param continueIfAcquireFail 获取锁失败是否继续执行后面的业务逻辑 / Whether to continue if lock acquisition fails
-     * @return 是否成功加锁 / Whether the lock was successfully acquired
-     */
-    private boolean checkAndLock(String key, String clientId, int expireInSeconds, boolean continueIfAcquireFail) {
-        log.info("lock info,key:{},clientId:{},expireInSecond:{},continueIfAcquireFail:{}", key, clientId, expireInSeconds, continueIfAcquireFail);
-        if (StringUtils.isBlank(key) || expireInSeconds < 1) {
-            log.warn("Invalid lock parameters, please check and try again");
-            throw new IllegalArgumentException("Invalid lock parameters, please check and try again");
-        }
-        boolean lock = redisTemplateUtil.lock(key, clientId, expireInSeconds);
-        if (!lock && !continueIfAcquireFail) {
-            log.warn("Parameter continueIfAcquireFail is false and lock acquisition failed, this request is ignored");
-            return false;
-        }
-        return lock;
     }
 }
