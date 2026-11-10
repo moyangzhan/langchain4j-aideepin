@@ -161,4 +161,6 @@ public class RedisKeyConstant {
     public static final String LOCK_JOBS_INDEX_POLL = "lock:jobs:index-poll";
 
     public static final String LOCK_JOBS_WF_EXPIRE = "lock:jobs:wf-expire";
+
+    public static final String LOCK_JOBS_FILE_GC = "lock:jobs:file-gc";
 }

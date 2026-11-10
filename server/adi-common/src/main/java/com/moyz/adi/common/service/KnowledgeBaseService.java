@@ -260,6 +260,7 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 qaDoc.setRemark(content);
                 qaDoc.setSegmentMode(SegmentModeEnum.QA);
                 kbDocumentService.save(qaDoc);
+                fileService.attachRef(adiFile.getUuid());
                 stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, knowledgeBase.getUuid());
                 documentQaModeService.autoGenerateQa(ThreadContext.getCurrentUser(), qaDoc);
                 return null;
@@ -295,6 +296,9 @@ public class KnowledgeBaseService extends ServiceImpl<KnowledgeBaseMapper, Knowl
                 knowledgeBaseItem.setChildMaxChunkSize(childMaxChunkSize);
             }
             boolean success = kbDocumentService.save(knowledgeBaseItem);
+            if (success) {
+                fileService.attachRef(adiFile.getUuid());
+            }
             if (success && Boolean.TRUE.equals(indexAfterUpload)) {
                 // default index type is embedding; empty types would enqueue nothing
                 List<String> types = indexTypes.isEmpty() ? List.of(AdiConstant.DOC_INDEX_TYPE_EMBEDDING) : indexTypes;

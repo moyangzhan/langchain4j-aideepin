@@ -35,7 +35,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
@@ -55,8 +55,7 @@ import static com.moyz.adi.common.enums.ErrorEnum.*;
 public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument> {
 
     @Resource
-    @Lazy
-    private KbDocumentService self;
+    private TransactionTemplate transactionTemplate;
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
@@ -303,7 +302,7 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
     }
 
     /**
-     * 批量软删：逐个走单删管线（权限、级联软删、任务取消、向量与图谱足迹清理）；任一失败即抛出中断，已删的保持生效。
+     * 批量软删：逐个走单删管线；已删或不存在的文档，管理员静默跳过、普通用户抛无权限异常，中断时已删的保持生效。
      */
     public void softDeleteBatch(List<String> uuids) {
         for (String uuid : uuids) {
@@ -311,23 +310,90 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
         }
     }
 
+    /**
+     * 删除单个文档的完整管线，1-4 阶段收在一个事务里：
+     * 1、软删文档行并解除源文件引用；
+     * 2、取消索引任务，在途任务在检查点作废；
+     * 3、软删全部段行；
+     * 4、软删段派生的问题与子块；
+     * 5、清理向量与图谱足迹、发统计重算信号。
+     * 阶段 5 为远程调用，在事务外执行。
+     * <p>
+     * Full pipeline for deleting one document; stages 1-4 sit in one transaction:
+     * 1. soft-delete the document row and detach its source-file reference;
+     * 2. cancel index tasks (in-flight tasks abort at their next checkpoint);
+     * 3. soft-delete all segment rows;
+     * 4. soft-delete segment-derived questions and child chunks;
+     * 5. clean up vectors and the graph footprint, then signal a statistic recalculation.
+     * Stage 5 makes remote calls and runs outside the transaction.
+     * </p>
+     */
     public boolean softDelete(String uuid) {
         checkWritePrivilege(uuid);
-        // DB writes in one transaction; remote store cleanup stays OUTSIDE it — the vector and
-        // graph stores can be remote (neo4j profile) and holding a pooled DB connection across
-        // those calls for a doc with many contributions pins the pool
-        if (!self.softDeleteDb(uuid)) {
+        Boolean deleted = transactionTemplate.execute(status -> {
+            if (!softDeleteDocument(uuid)) {
+                return false;
+            }
+            cancelIndexTasks(uuid);
+            softDeleteSegments(uuid);
+            softDeleteSegmentDerivedData(uuid);
+            return true;
+        });
+        if (!Boolean.TRUE.equals(deleted)) {
             return false;
         }
-        // best-effort vector cleanup: on failure the orphaned vectors are unreachable (their
-        // segment rows are soft-deleted and excluded from retrieval expansion) and get purged
-        // by the next doc-level reindex of this uuid
-        iKnowledgeEmbeddingService.deleteByItemUuid(uuid);
+        cleanupAfterDelete(uuid);
+        return true;
+    }
 
+    /**
+     * 条件软删文档行，成功后解除其源文件引用。
+     * Conditionally soft-delete the document row, then detach its source-file reference.
+     */
+    private boolean softDeleteDocument(String uuid) {
+        KbDocument document = baseMapper.getByUuid(uuid);
+        boolean success = ChainWrappers.lambdaUpdateChain(baseMapper)
+                .eq(KbDocument::getUuid, uuid)
+                .eq(KbDocument::getIsDeleted, false)
+                .set(KbDocument::getIsDeleted, true)
+                .update();
+        if (!success) {
+            return false;
+        }
+        if (null != document && null != document.getSourceFileId()) {
+            AdiFile sourceFile = fileService.getById(document.getSourceFileId());
+            if (null != sourceFile) {
+                fileService.detachRef(sourceFile.getUuid());
+            }
+        }
+        return true;
+    }
+
+    private void cancelIndexTasks(String uuid) {
+        indexTaskService.cancelByDoc(uuid);
+    }
+
+    private void softDeleteSegments(String uuid) {
+        documentSegmentService.deleteSegmentsByDocUuid(uuid);
+    }
+
+    private void softDeleteSegmentDerivedData(String uuid) {
+        documentSegmentService.deleteDerivedByDocUuid(uuid);
+    }
+
+    /**
+     * 事务外清理，尽力而为：向量删除若失败，残留的向量不可达（段行已软删，检索展开排除），
+     * 由该文档下次重建索引收敛；图库异常不阻断删除，残留由该库后续图谱操作收敛。
+     * <p>
+     * Best-effort cleanup outside the transaction: vectors left behind by a failed delete are
+     * unreachable (their segment rows are soft-deleted and excluded from retrieval) and purged by
+     * the next doc-level reindex; a graph-store failure never blocks deletion.
+     * </p>
+     */
+    private void cleanupAfterDelete(String uuid) {
+        iKnowledgeEmbeddingService.deleteByItemUuid(uuid);
         KbDocument item = baseMapper.getByUuid(uuid);
         if (null != item) {
-            // 补齐存量缺口：文档删除时清理其图谱足迹（账本驱动，文档外无贡献者的元素定点删除）。
-            // 尽力而为：图库异常不应阻断文档删除，残留可由该库后续图谱操作收敛
             try {
                 knowledgeBaseGraphService.removeDocumentGraphFootprint(item.getKbUuid(), uuid);
             } catch (Exception e) {
@@ -335,29 +401,7 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
             }
             stringRedisTemplate.opsForSet().add(KB_STATISTIC_RECALCULATE_SIGNAL, item.getKbUuid());
         }
-        return true;
     }
-
-    /**
-     * 删除的库内部分（单事务）：软删文档行、取消其全部索引任务、级联软删段/问题/子块。
-     */
-    @Transactional
-    public boolean softDeleteDb(String uuid) {
-        boolean success = ChainWrappers.lambdaUpdateChain(baseMapper)
-                .eq(KbDocument::getUuid, uuid)
-                .set(KbDocument::getIsDeleted, true)
-                .update();
-        if (!success) {
-            return false;
-        }
-        // cancel queued/running index tasks first: pending fails in place, running aborts at its
-        // next checkpoint -- otherwise an in-flight task would re-split and re-embed the deleted
-        // document's content right after the cleanup below
-        indexTaskService.cancelByDoc(uuid);
-        documentSegmentService.deleteByDocUuid(uuid);
-        return true;
-    }
-
 
     public int countByKbUuid(String kbUuid) {
         return ChainWrappers.lambdaQueryChain(baseMapper)

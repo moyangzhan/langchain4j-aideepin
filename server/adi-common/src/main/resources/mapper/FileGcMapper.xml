@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moyz.adi.common.mapper.FileGcMapper">
+
+    <!--
+      Reference recount across all business tables, live records only.
+      Scan surface:
+      - adi_draw: ref_image_uuids, generated_images, original_image, mask_image
+      - adi_character_message: attachments, audio_uuid
+      - adi_workflow_runtime and its nodes: type=4 file lists in input/output
+      - adi_document.source_file_id, adi_knowledge_base_message.source_file_ids
+      Workflow URL values are reduced to the uuid in the last path segment.
+      jsonb paths use jsonb_typeof; never the ? operator (JDBC placeholder).
+      全业务表引用实查，仅统计未删除记录。扫描面：
+      - adi_draw：ref_image_uuids、generated_images、original_image、mask_image
+      - adi_character_message：attachments、audio_uuid
+      - 工作流运行与其节点：input/output 中 type=4 的文件列表
+      - adi_document.source_file_id、adi_knowledge_base_message.source_file_ids
+      工作流 URL 取值取末段路径归一化为 uuid。
+      jsonb 路径用 jsonb_typeof 防御，不用 ?（与 JDBC 占位符冲突）。
+    -->
+    <select id="countRefs" resultType="com.moyz.adi.common.dto.FileRefCountDto">
+        select t.fileUuid as fileUuid, sum(t.cnt) as total
+        from (
+        select je.value as fileUuid, count(*) as cnt
+        from adi_draw d,
+             jsonb_array_elements_text(
+                 case when jsonb_typeof(d.dynamic_params -&gt; 'ref_image_uuids') = 'array'
+                      then d.dynamic_params -&gt; 'ref_image_uuids' else '[]'::jsonb end) je
+        where d.is_deleted = false
+          and je.value in
+        <foreach collection="uuids" item="uuid" open="(" separator="," close=")">#{uuid}</foreach>
+        group by je.value
+        union all
+        select u.uuid as fileUuid, count(*) as cnt
+        from adi_draw d, unnest(string_to_array(d.generated_images, ',')) u(uuid)
+        where d.is_deleted = false
+          and d.generated_images &lt;&gt; ''
+          and u.uuid in
+        <foreach collection="uuids" item="uuid" open="(" separator="," close=")">#{uuid}</foreach>
+        group by u.uuid
+        union all
+        select d.original_image as fileUuid, count(*) as cnt
+        from adi_draw d
+        where d.is_deleted = false
+          and d.original_image &lt;&gt; ''
+          and d.original_image in
+        <foreach collection="uuids" item="uuid" open="(" separator="," close=")">#{uuid}</foreach>
+        group by d.original_image
+        union all
+        select d.mask_image as fileUuid, count(*) as cnt
+        from adi_draw d
+        where d.is_deleted = false
+          and d.mask_image &lt;&gt; ''
+          and d.mask_image in
+        <foreach collection="uuids" item="uuid" open="(" separator="," close=")">#{uuid}</foreach>
+        group by d.mask_image
+        union all
+        select u.uuid as fileUuid, count(*) as cnt
+        from adi_character_message m, unnest(string_to_array(m.attachments, ',')) u(uuid)
+        where m.is_deleted = false
+          and m.attachments &lt;&gt; ''
+          and u.uuid in
+        <foreach collection="uuids" item="uuid" open="(" separator="," close=")">#{uuid}</foreach>
+        group by u.uuid
+        union all
+        select m.audio_uuid as fileUuid, count(*) as cnt
+        from adi_character_message m
+        where m.is_deleted = false
+          and m.audio_uuid &lt;&gt; ''
+          and m.audio_uuid in
+        <foreach collection="uuids" item="uuid" open="(" separator="," close=")">#{uuid}</foreach>
+        group by m.audio_uuid
+        union all
+        select s.fileUuid as fileUuid, count(*) as cnt
+        from (
+            select case when fe.value like 'http%' or fe.value like '/file/%'
+                        then regexp_replace(regexp_replace(fe.value, '^.*/', ''), '\.[^.]+$', '')
+                        else fe.value end as fileUuid
+            from adi_workflow_runtime wr,
+                 jsonb_each(wr.input) e,
+                 jsonb_array_elements_text(
+                     case when e.value -&gt;&gt; 'type' = '4' and jsonb_typeof(e.value -&gt; 'value') = 'array'
+                          then e.value -&gt; 'value' else '[]'::jsonb end) fe
+        where wr.is_deleted = false
+          and wr.input is not null
+          and jsonb_typeof(wr.input) = 'object'
+        ) s
+        where s.fileUuid in
+        <foreach collection="uuids" item="uuid" open="(" separator="," close=")">#{uuid}</foreach>
+        group by s.fileUuid
+        union all
+        select s.fileUuid as fileUuid, count(*) as cnt
+        from (
+            select case when fe.value like 'http%' or fe.value like '/file/%'
+                        then regexp_replace(regexp_replace(fe.value, '^.*/', ''), '\.[^.]+$', '')
+                        else fe.value end as fileUuid
+            from adi_workflow_runtime wr,
+                 jsonb_each(wr."output") e,
+                 jsonb_array_elements_text(
+                     case when e.value -&gt;&gt; 'type' = '4' and jsonb_typeof(e.value -&gt; 'value') = 'array'
+                          then e.value -&gt; 'value' else '[]'::jsonb end) fe
+        where wr.is_deleted = false
+          and wr."output" is not null
+          and jsonb_typeof(wr."output") = 'object'
+        ) s
+        where s.fileUuid in
+        <foreach collection="uuids" item="uuid" open="(" separator="," close=")">#{uuid}</foreach>
+        group by s.fileUuid
+        union all
+        select s.fileUuid as fileUuid, count(*) as cnt
+        from (
+            select case when fe.value like 'http%' or fe.value like '/file/%'
+                        then regexp_replace(regexp_replace(fe.value, '^.*/', ''), '\.[^.]+$', '')
+                        else fe.value end as fileUuid
+            from adi_workflow_runtime_node n,
+                 jsonb_each(n.input) e,
+                 jsonb_array_elements_text(
+                     case when e.value -&gt;&gt; 'type' = '4' and jsonb_typeof(e.value -&gt; 'value') = 'array'
+                          then e.value -&gt; 'value' else '[]'::jsonb end) fe
+        where n.is_deleted = false
+          and n.input is not null
+          and jsonb_typeof(n.input) = 'object'
+              and exists (select 1 from adi_workflow_runtime wr where wr.id = n.workflow_runtime_id and wr.is_deleted = false)
+        ) s
+        where s.fileUuid in
+        <foreach collection="uuids" item="uuid" open="(" separator="," close=")">#{uuid}</foreach>
+        group by s.fileUuid
+        union all
+        select s.fileUuid as fileUuid, count(*) as cnt
+        from (
+            select case when fe.value like 'http%' or fe.value like '/file/%'
+                        then regexp_replace(regexp_replace(fe.value, '^.*/', ''), '\.[^.]+$', '')
+                        else fe.value end as fileUuid
+            from adi_workflow_runtime_node n,
+                 jsonb_each(n."output") e,
+                 jsonb_array_elements_text(
+                     case when e.value -&gt;&gt; 'type' = '4' and jsonb_typeof(e.value -&gt; 'value') = 'array'
+                          then e.value -&gt; 'value' else '[]'::jsonb end) fe
+        where n.is_deleted = false
+          and n."output" is not null
+          and jsonb_typeof(n."output") = 'object'
+              and exists (select 1 from adi_workflow_runtime wr where wr.id = n.workflow_runtime_id and wr.is_deleted = false)
+        ) s
+        where s.fileUuid in
+        <foreach collection="uuids" item="uuid" open="(" separator="," close=")">#{uuid}</foreach>
+        group by s.fileUuid
+        union all
+        select f.uuid as fileUuid, count(*) as cnt
+        from adi_document kd
+        join adi_file f on f.id = kd.source_file_id
+        where kd.is_deleted = false
+          and kd.source_file_id is not null
+          and f.uuid in
+        <foreach collection="uuids" item="uuid" open="(" separator="," close=")">#{uuid}</foreach>
+        group by f.uuid
+        union all
+        select f.uuid as fileUuid, count(*) as cnt
+        from adi_knowledge_base_message kbm
+        join adi_file f
+          on (f.id::text = ANY(string_to_array(kbm.source_file_ids, ','))
+              or f.uuid = ANY(string_to_array(kbm.source_file_ids, ',')))
+        where kbm.is_deleted = false
+          and kbm.source_file_ids &lt;&gt; ''
+          and f.uuid in
+        <foreach collection="uuids" item="uuid" open="(" separator="," close=")">#{uuid}</foreach>
+        group by f.uuid
+        ) t
+        group by t.fileUuid
+    </select>
+
+    <!-- Phase one: live rows with ref_count = 0 past the TTL guard.
+         阶段一：ref_count=0 且过 TTL 保护期的活行。 -->
+    <select id="listUnreferencedCandidates" resultType="com.moyz.adi.common.entity.AdiFile">
+        select *
+        from adi_file
+        where id &gt; #{lastId}
+          and ref_count = 0
+          and is_deleted = false
+          and create_time &lt; #{ttl}
+        order by id asc
+        limit #{batchSize}
+    </select>
+
+    <!-- Phase two: soft-deleted rows past the grace period; update_time is
+         the grace clock (refreshed by the soft-delete trigger).
+         阶段二：软删满宽限期的行；update_time=宽限时钟（软删触发器刷新）。 -->
+    <select id="listGraceExpired" resultType="com.moyz.adi.common.entity.AdiFile">
+        select *
+        from adi_file
+        where id &gt; #{lastId}
+          and is_deleted = true
+          and update_time &lt; #{before}
+        order by id asc
+        limit #{batchSize}
+    </select>
+
+    <update id="softDeleteById">
+        update adi_file
+        set is_deleted = true
+        where id = #{id} and is_deleted = false
+    </update>
+
+    <update id="updateRefCount">
+        update adi_file
+        set ref_count = #{refCount}
+        where id = #{id} and is_deleted = false
+    </update>
+
+    <update id="reviveById">
+        update adi_file
+        set is_deleted = false, ref_count = #{refCount}
+        where id = #{id} and is_deleted = true
+    </update>
+
+    <delete id="deleteById">
+        delete from adi_file
+        where id = #{id}
+    </delete>
+</mapper>

@@ -241,6 +241,7 @@ public class AdiConstant {
         public static final String ASR_SETTING = "asr_setting";
         public static final String TTS_SETTING = "tts_setting";
         public static final String DEFAULT_LOCALE = "default_locale";
+        public static final String FILE_GC_ENABLED = "file_gc_enabled";
     }
 
     public static final String[] POI_DOC_TYPES = {"doc", "docx", "ppt", "pptx", "xls", "xlsx"};

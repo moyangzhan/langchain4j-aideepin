@@ -74,13 +74,30 @@ public class DocumentSegmentService extends ServiceImpl<DocumentSegmentMapper, D
     }
 
     /**
-     * 软删除某文档下的全部段行及子表数据（问题、子块级联）
+     * 级联软删该文档的段行与由段派生的问题、子块。
+     * Cascading soft delete of a document's segments and their derived questions/child chunks.
      */
     public void deleteByDocUuid(String docUuid) {
+        deleteSegmentsByDocUuid(docUuid);
+        deleteDerivedByDocUuid(docUuid);
+    }
+
+    /**
+     * 软删该文档的全部段行。
+     * Soft-delete all segment rows of a document.
+     */
+    public void deleteSegmentsByDocUuid(String docUuid) {
         lambdaUpdate()
                 .eq(DocumentSegment::getDocUuid, docUuid)
                 .set(DocumentSegment::getIsDeleted, true)
                 .update();
+    }
+
+    /**
+     * 软删由段派生出的数据：问题与子块。
+     * Soft-delete data derived from segments: questions and child chunks.
+     */
+    public void deleteDerivedByDocUuid(String docUuid) {
         questionService.deleteByDocUuid(docUuid);
         childChunkService.deleteByDocUuid(docUuid);
     }

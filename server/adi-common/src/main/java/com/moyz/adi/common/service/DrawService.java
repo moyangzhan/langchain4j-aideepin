@@ -161,6 +161,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         }
         getBaseMapper().insert(draw);
         Draw obj = this.lambdaQuery().eq(Draw::getUuid, uuid).one();
+        fileService.attachRefs(drawRefUuids(draw));
         self.createFromRemote(obj, user);
         return uuid;
     }
@@ -248,10 +249,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         if (StringUtils.isBlank(localImagesUuid)) {
             return;
         }
-        AdiFile adiFile = fileService.lambdaQuery().eq(AdiFile::getUuid, localImagesUuid).oneOpt().orElse(null);
-        if (null != adiFile) {
-            fileService.lambdaUpdate().eq(AdiFile::getId, adiFile.getId()).set(AdiFile::getRefCount, adiFile.getRefCount() + 1).update();
-        }
+        fileService.attachRefs(Arrays.asList(localImagesUuid.split(",")));
     }
 
     public void updateDrawFail(Long drawId, String failMsg, long durationMs) {
@@ -531,11 +529,47 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         if (StringUtils.isNotBlank(draw.getGeneratedImages())) {
             String[] uuids = draw.getGeneratedImages().split(",");
             for (String fileUuid : uuids) {
-                fileService.removeFileAndSoftDel(fileUuid);
+                removeGeneratedFile(draw, fileUuid);
             }
         }
+        fileService.detachRefs(drawRefUuids(draw));
         self.softDel(draw.getId());
         return true;
+    }
+
+    /**
+     * 物理删除生成图文件并软删其文件行；管理员可删除他人画图，属主不是当前用户时走不校验属主的删除。
+     * <p>
+     * Physically delete a generated image and soft-delete its file row; an admin may delete
+     * another user's draw, so a non-owner current user takes the owner-agnostic path.
+     * </p>
+     */
+    private void removeGeneratedFile(Draw draw, String fileUuid) {
+        if (draw.getUserId().equals(ThreadContext.getCurrentUserId())) {
+            fileService.removeFileAndSoftDel(fileUuid);
+        } else {
+            fileService.removeFileAndSoftDelIgnoreOwner(fileUuid);
+        }
+    }
+
+    /**
+     * 画图记录引用的输入侧文件 uuid（参考图/原图/蒙版）；生成图引用在生成成功时登记一次，
+     * 随删除的物理删除+软删释放，不走 detach。
+     * <p>
+     * Input-side file uuids referenced by a draw record (reference images / original / mask);
+     * generated-image references are attached once on success and released by the physical
+     * delete plus row soft-delete on removal, never through detach.
+     * </p>
+     */
+    private List<String> drawRefUuids(Draw draw) {
+        List<String> uuids = new ArrayList<>(draw.getRefImageUuids());
+        if (StringUtils.isNotBlank(draw.getOriginalImage())) {
+            uuids.add(draw.getOriginalImage());
+        }
+        if (StringUtils.isNotBlank(draw.getMaskImage())) {
+            uuids.add(draw.getMaskImage());
+        }
+        return uuids;
     }
 
     /**
@@ -554,7 +588,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         for (int i = 0; i < uuids.length; i++) {
             String fileUuid = uuids[i];
             if (fileUuid.equals(generatedImageUuid)) {
-                fileService.removeFileAndSoftDel(fileUuid);
+                removeGeneratedFile(draw, fileUuid);
                 uuids[i] = "";
             }
         }

@@ -100,6 +100,27 @@ public class SysConfigService extends ServiceImpl<SysConfigMapper, SysConfig> {
         return LocalCache.CONFIGS.get(key);
     }
 
+    /**
+     * 按 key 直查数据库（不经 LocalCache），键不存在返回 null。
+     * 供每轮一次的低频消费（如 GC 开关）：一次廉价查询换「落库即对下一轮生效」+跨实例零传播延迟；
+     * 每请求高频消费的配置仍走本地缓存。
+     * <p>
+     * Read a config straight from the database (bypassing LocalCache); a missing key yields null.
+     * For low-frequency consumers (e.g. the GC switch, once per job round): one cheap query buys
+     * "effective on the next round after save" with zero cross-instance propagation lag;
+     * per-request configs keep using the local cache.
+     * </p>
+     */
+    public String getRawByKey(String key) {
+        return this.lambdaQuery()
+                .eq(SysConfig::getName, key)
+                .eq(SysConfig::getIsDeleted, false)
+                .last("limit 1")
+                .oneOpt()
+                .map(SysConfig::getValue)
+                .orElse(null);
+    }
+
     public static Integer getIntByKey(String key, int defaultValue) {
         String val = LocalCache.CONFIGS.get(key);
         if (null != val) {

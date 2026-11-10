@@ -166,6 +166,7 @@ public class DocumentQaModeService {
         doc.setRemark(remark);
         doc.setSegmentMode(com.moyz.adi.common.enums.SegmentModeEnum.QA);
         kbDocumentService.save(doc);
+        fileService.attachRef(sourceFile.getUuid());
 
         saveQaPairs(kb, doc, pairs, AdiConstant.SegmentSource.DOC);
         return doc;

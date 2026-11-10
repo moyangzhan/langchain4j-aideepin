@@ -43,6 +43,12 @@ VALUES ('storage_location', '1');
 INSERT INTO adi_sys_config (name, value)
 VALUES ('storage_location_ali_oss', '{"access_key_id":"","access_key_secret":"","endpoint":"","bucket_name":""}');
 
+-- 无引用文件自动回收开关，默认关闭；开启后定时任务两段式回收无引用文件（软删宽限一个月后物理删除）
+-- Unreferenced-file GC switch, off by default; when enabled the scheduled job reclaims unreferenced files
+-- in two stages (soft-delete first, physical delete after a one-month grace period)
+INSERT INTO adi_sys_config (name, value)
+VALUES ('file_gc_enabled', 'false');
+
 -- ASR settings
 -- Supported platforms and models:
 --   siliconflow  -> FunAudioLLM/SenseVoiceSmall

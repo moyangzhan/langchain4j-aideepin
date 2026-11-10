@@ -399,6 +399,11 @@ public class CharacterChatService {
             question.setAudioDuration(askReq.getAudioDuration());
             question.setAttachments(String.join(",", askReq.getImageUrls()));
             characterMessageService.save(question);
+            List<String> attachedUuids = new ArrayList<>(askReq.getImageUrls());
+            if (StringUtils.isNotBlank(askReq.getAudioUuid())) {
+                attachedUuids.add(askReq.getAudioUuid());
+            }
+            fileService.attachRefs(attachedUuids);
 
             promptMsg = characterMessageService.lambdaQuery().eq(CharacterMessage::getUuid, questionMeta.getUuid()).one();
 
@@ -425,6 +430,9 @@ public class CharacterChatService {
         int answerContentType = getAnswerContentType(character, askReq);
         aiAnswer.setContentType(answerContentType);
         characterMessageService.save(aiAnswer);
+        if (null != audioInfo && StringUtils.isNotBlank(audioInfo.getUuid())) {
+            fileService.attachRef(audioInfo.getUuid());
+        }
 
         //Aggregate token usage across all LLM calls in this request (streaming chat may
         //recurse through multiple tool calls, each cached under the same uuid in Redis).

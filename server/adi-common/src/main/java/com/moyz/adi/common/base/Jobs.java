@@ -2,6 +2,7 @@ package com.moyz.adi.common.base;
 
 import com.moyz.adi.common.annotation.DistributeLock;
 import com.moyz.adi.common.cosntant.RedisKeyConstant;
+import com.moyz.adi.common.service.FileGcService;
 import com.moyz.adi.common.service.KnowledgeBaseService;
 import com.moyz.adi.common.service.ModelHealthService;
 import com.moyz.adi.common.service.SysConfigService;
@@ -26,6 +27,9 @@ public class Jobs {
 
     @Resource
     private WorkflowRuntimeService workflowRuntimeService;
+
+    @Resource
+    private FileGcService fileGcService;
 
     /**
      * WAITING_INPUT 回收阈值（分钟）：远大于人机交互的自然反馈间隔，且远大于实例重启窗口。
@@ -73,5 +77,16 @@ public class Jobs {
         if (expired > 0) {
             log.warn("Expired {} waiting-input workflow runtime(s) older than {} minutes", expired, WAITING_INPUT_TIMEOUT_MINUTES);
         }
+    }
+
+    /**
+     * 回收无引用文件，默认关闭，开关为 file_gc_enabled。
+     * Reclaim unreferenced files; off by default, controlled by the file_gc_enabled switch.
+     */
+    @DistributeLock(redisKey = RedisKeyConstant.LOCK_JOBS_FILE_GC, expireInSeconds = 6 * 3600,
+            continueIfAcquireFail = false, unlockByTimeout = true)
+    @Scheduled(initialDelay = 300_000, fixedDelay = 24 * 3600_000)
+    public void gcUnreferencedFiles() {
+        fileGcService.gc();
     }
 }

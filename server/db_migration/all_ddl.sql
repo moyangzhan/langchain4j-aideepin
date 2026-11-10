@@ -479,6 +479,8 @@ CREATE TRIGGER trigger_file_update_time
     FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
 
+CREATE UNIQUE INDEX uk_file_uuid ON adi_file (uuid);
+
 CREATE TABLE adi_prompt
 (
     id          bigserial primary key,

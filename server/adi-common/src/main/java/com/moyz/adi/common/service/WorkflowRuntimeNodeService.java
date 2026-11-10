@@ -63,6 +63,25 @@ public class WorkflowRuntimeNodeService extends ServiceImpl<WorkflowRuntimeNodeM
         return result;
     }
 
+    /**
+     * 按运行 id 集合批量取节点实体（一次查询），供运行删除后的引用钳制读取 input/output；
+     * 调用方的运行集合已完成属主过滤，此处不再按 ThreadContext 过滤。
+     * <p>
+     * Batch-load node entities by runtime ids in one query, for the post-delete reference clamp
+     * to read input/output; the caller's runtime set is already ownership-scoped, so no
+     * ThreadContext filter is applied here.
+     * </p>
+     */
+    public List<WorkflowRuntimeNode> listByRuntimeIds(List<Long> runtimeIds) {
+        if (CollectionUtils.isEmpty(runtimeIds)) {
+            return List.of();
+        }
+        return ChainWrappers.lambdaQueryChain(baseMapper)
+                .in(WorkflowRuntimeNode::getWorkflowRuntimeId, runtimeIds)
+                .eq(WorkflowRuntimeNode::getIsDeleted, false)
+                .list();
+    }
+
     public WfRuntimeNodeDto createByState(User user, long wfNodeId, long wfRuntimeId, WfNodeState state) {
         WorkflowRuntimeNode runtimeNode = new WorkflowRuntimeNode();
         runtimeNode.setUuid(state.getUuid());

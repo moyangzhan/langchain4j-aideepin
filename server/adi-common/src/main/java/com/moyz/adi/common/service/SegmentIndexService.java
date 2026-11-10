@@ -356,7 +356,7 @@ public class SegmentIndexService {
                 try {
                     kbEmbeddingStore.removeAll(storedIds);
                 } catch (Exception cleanupError) {
-                    log.warn("Failed to roll back {} stored embeddings for doc {}, orphans remain until the next reindex",
+                    log.warn("Failed to roll back {} stored embeddings for doc {}, they remain until the next reindex",
                             storedIds.size(), doc.getUuid(), cleanupError);
                 }
             }

@@ -18,8 +18,11 @@ import com.moyz.adi.common.util.JsonUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +45,9 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
     @Resource
     private CharacterMessageRefMemoryEmbeddingService characterMessageRefMemoryEmbeddingService;
 
+    @Resource
+    private FileService fileService;
+
     public List<CharacterMessage> listQuestionsByCharacterId(long characterId, long maxId, int pageSize) {
         LambdaQueryWrapper<CharacterMessage> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(CharacterMessage::getCharacterId, characterId);
@@ -53,13 +59,42 @@ public class CharacterMessageService extends ServiceImpl<CharacterMessageMapper,
         return getBaseMapper().selectList(queryWrapper);
     }
 
+    /**
+     * 软删消息并解除其对文件的引用（附件与语音；软删即解除，与 GC 软删记录不算引用的口径一致）。
+     * 条件软删成功才解除——并发双删只有一个请求实际删除，引用只解除一次。
+     * <p>
+     * Soft-delete a message and detach its file references (attachments and audio; a soft delete
+     * is a detach, matching the GC rule that soft-deleted records do not count as references).
+     * The conditional soft delete wins only once under concurrent deletes, so references detach exactly once.
+     * </p>
+     */
     public boolean softDelete(String uuid) {
-        return this.lambdaUpdate()
+        CharacterMessage message = this.lambdaQuery()
                 .eq(CharacterMessage::getUuid, uuid)
                 .eq(CharacterMessage::getUserId, ThreadContext.getCurrentUserId())
                 .eq(CharacterMessage::getIsDeleted, false)
+                .oneOpt()
+                .orElse(null);
+        if (null == message) {
+            return false;
+        }
+        boolean deleted = this.lambdaUpdate()
+                .eq(CharacterMessage::getId, message.getId())
+                .eq(CharacterMessage::getIsDeleted, false)
                 .set(CharacterMessage::getIsDeleted, true)
                 .update();
+        if (!deleted) {
+            return false;
+        }
+        List<String> detachUuids = new ArrayList<>();
+        if (StringUtils.isNotBlank(message.getAttachments())) {
+            detachUuids.addAll(Arrays.asList(message.getAttachments().split(",")));
+        }
+        if (StringUtils.isNotBlank(message.getAudioUuid())) {
+            detachUuids.add(message.getAudioUuid());
+        }
+        fileService.detachRefs(detachUuids);
+        return true;
     }
 
     public String getTextByAudioUuid(String audioUuid) {

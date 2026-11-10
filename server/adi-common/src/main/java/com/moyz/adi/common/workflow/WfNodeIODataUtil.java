@@ -136,4 +136,73 @@ public class WfNodeIODataUtil {
             }
         });
     }
+
+    /**
+     * 从持久化的 {参数名: {type, title, value}} JSON 中提取 type=4 文件参数的纯 uuid：
+     * URL 形态（http(s) 外链与本地 /file/ 相对链接——画图节点产物以 URL 持久化，其引用由 GC 复核面覆盖）
+     * 不是 adi_file 的 uuid，直接跳过；结果去重。运行建立时的引用登记与运行删除时的引用解除共用此源，保持计数对称。
+     * <p>
+     * Extract plain uuids from type=4 (files) parameters of a persisted {name: {type, title, value}} JSON:
+     * URL-shaped values (http(s) links and local /file/ relative links — draw-node products persist as
+     * URLs; the GC recount surface covers them) are not adi_file uuids and are skipped; the result is
+     * deduplicated. Reference attach on run creation and detach on runtime deletion share this source
+     * so the counting stays symmetric.
+     * </p>
+     */
+    public static List<String> extractFileUuids(ObjectNode persisted) {
+        List<String> result = new ArrayList<>();
+        collectFileUuids(persisted, false, result);
+        return result;
+    }
+
+    /**
+     * 提取 type=4 文件参数涉及的全部文件 uuid，与复核 SQL 同口径：URL 形态归一化为末段路径
+     * 去扩展名后的 uuid（URL 产物无 detach 路径，引用消散后靠实查钳制收敛）；结果去重。
+     * <p>
+     * Extract every file uuid touched by type=4 (files) parameters, normalized the same way as the
+     * recount SQL: URL-shaped values reduce to the uuid in the last path segment without extension
+     * (URL products have no detach path; their counts converge through the live clamp once the
+     * reference dissolves); the result is deduplicated.
+     * </p>
+     */
+    public static List<String> extractFileUuidsForRecount(ObjectNode persisted) {
+        List<String> result = new ArrayList<>();
+        collectFileUuids(persisted, true, result);
+        return result;
+    }
+
+    private static void collectFileUuids(ObjectNode persisted, boolean normalizeUrls, List<String> result) {
+        if (null == persisted) {
+            return;
+        }
+        persisted.properties().forEach(entry -> {
+            JsonNode content = entry.getValue();
+            if (content instanceof ObjectNode contentObj
+                    && WfIODataTypeEnum.FILES.getValue().equals(contentObj.path("type").asInt(-1))) {
+                JsonNode value = contentObj.path("value");
+                if (value.isArray()) {
+                    value.forEach(item -> {
+                        String text = item.asText("");
+                        if (item.isNull() || text.isBlank()) {
+                            return;
+                        }
+                        boolean urlShaped = text.startsWith("http") || text.startsWith("/file/");
+                        if (urlShaped && !normalizeUrls) {
+                            return;
+                        }
+                        String uuid = urlShaped ? normalizeUrlToUuid(text) : text;
+                        if (!uuid.isBlank() && !result.contains(uuid)) {
+                            result.add(uuid);
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    private static String normalizeUrlToUuid(String text) {
+        String lastSegment = text.substring(text.lastIndexOf('/') + 1);
+        int dot = lastSegment.lastIndexOf('.');
+        return dot > 0 && dot < lastSegment.length() - 1 ? lastSegment.substring(0, dot) : lastSegment;
+    }
 }

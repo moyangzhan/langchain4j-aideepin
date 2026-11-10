@@ -165,6 +165,80 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
                 .update();
     }
 
+    /**
+     * 引用登记的统一入口，ref_count 只在此自增，业务代码不要直接修改计数。
+     * 行已被软删但物理文件未删时，复活该行并计数加一；
+     * 行不存在或物理文件已被删除时，视为失效引用，仅告警，不阻断业务。
+     * <p>
+     * Single entry point for attaching references; ref_count is incremented only here.
+     * A soft-deleted row whose physical file still exists is revived and its count incremented;
+     * a missing row or an already-deleted file only warns.
+     * </p>
+     */
+    public void attachRef(String uuid) {
+        if (StringUtils.isBlank(uuid)) {
+            return;
+        }
+        AdiFile adiFile = this.lambdaQuery()
+                .eq(AdiFile::getUuid, uuid)
+                .last("limit 1")
+                .oneOpt()
+                .orElse(null);
+        if (null == adiFile) {
+            log.warn("Attach reference to a missing file, uuid:{}", uuid);
+            return;
+        }
+        if (null != adiFile.getIsDeleted() && adiFile.getIsDeleted()) {
+            if (!FileOperatorContext.checkIfExist(adiFile)) {
+                log.warn("Attach reference to a soft-deleted file whose physical file is gone, uuid:{}", uuid);
+                return;
+            }
+            this.lambdaUpdate()
+                    .eq(AdiFile::getId, adiFile.getId())
+                    .set(AdiFile::getIsDeleted, false)
+                    .setSql("ref_count = ref_count + 1")
+                    .update();
+            log.info("Revived soft-deleted file for a new reference, uuid:{}", uuid);
+            return;
+        }
+        this.lambdaUpdate()
+                .eq(AdiFile::getId, adiFile.getId())
+                .setSql("ref_count = ref_count + 1")
+                .update();
+    }
+
+    public void attachRefs(Collection<String> uuids) {
+        if (CollectionUtils.isEmpty(uuids)) {
+            return;
+        }
+        uuids.forEach(this::attachRef);
+    }
+
+    /**
+     * 引用解除收口：业务记录删除（软删即解除）时调用，原子递减且地板为 0；软删行不再计数，视为无引用。
+     * <p>
+     * Single entry point for reference removal: decrements atomically with a floor of 0;
+     * already soft-deleted rows are skipped — a soft-deleted file row counts as unreferenced.
+     * </p>
+     */
+    public void detachRef(String uuid) {
+        if (StringUtils.isBlank(uuid)) {
+            return;
+        }
+        this.lambdaUpdate()
+                .eq(AdiFile::getUuid, uuid)
+                .eq(AdiFile::getIsDeleted, false)
+                .setSql("ref_count = GREATEST(ref_count - 1, 0)")
+                .update();
+    }
+
+    public void detachRefs(Collection<String> uuids) {
+        if (CollectionUtils.isEmpty(uuids)) {
+            return;
+        }
+        uuids.forEach(this::detachRef);
+    }
+
     public boolean removeFileAndSoftDel(String uuid) {
         AdiFile adiFile = this.lambdaQuery()
                 .eq(AdiFile::getUserId, ThreadContext.getCurrentUserId())
@@ -176,6 +250,29 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         }
         FileOperatorContext.delete(adiFile);
         return this.softDel(uuid);
+    }
+
+    /**
+     * 不校验属主的物理删除+软删，供管理员在业务层已完成属主判定后清理他人文件；
+     * 常规删除仍走 removeFileAndSoftDel（属主即当前用户）。
+     * <p>
+     * Physically delete and soft-delete without the owner check, for admin flows whose ownership
+     * has already been decided by the business layer; regular deletes keep removeFileAndSoftDel.
+     * </p>
+     */
+    public boolean removeFileAndSoftDelIgnoreOwner(String uuid) {
+        AdiFile adiFile = this.lambdaQuery()
+                .eq(AdiFile::getUuid, uuid)
+                .oneOpt()
+                .orElse(null);
+        if (null == adiFile) {
+            return false;
+        }
+        FileOperatorContext.delete(adiFile);
+        return this.lambdaUpdate()
+                .eq(AdiFile::getUuid, uuid)
+                .set(AdiFile::getIsDeleted, true)
+                .update();
     }
 
     public AdiFile getByUuid(String uuid) {
