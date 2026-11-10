@@ -76,6 +76,7 @@
       :pagination="pagination"
       @update:page="updatePage"
       @update:page-size="updatePageSize"
+      @update:checked-row-keys="updateCheckedRowKeys"
     >
       <template #[item]="data" v-for="item in Object.keys($slots)" :key="item">
         <slot :name="item" v-bind="data"></slot>
@@ -302,6 +303,7 @@
         densitySelect,
         updatePage,
         updatePageSize,
+        updateCheckedRowKeys,
         pagination,
         tableAction,
         setStriped,

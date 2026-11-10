@@ -2,7 +2,7 @@
 
 > [← User Guide](../index.md) · [简体中文](../../../cn/guide/admin/admin.md)
 
-The admin console (admin-web) is for system administrators, deployed separately from the user web; sign in with an admin account. Sixteen pages across nine top-level menus: dashboard, users, model platforms, models, characters, preset characters, knowledge bases, MCP, workflow orchestration (components + flows), token monitoring, and system settings (storage / ASR / TTS / quota / rate limits).
+The admin console (admin-web) is for system administrators, deployed separately from the user web; sign in with an admin account. Eighteen pages across ten top-level menus: dashboard, users, model platforms, models, characters, preset characters, knowledge bases, MCP, workflow orchestration (components + flows), token monitoring, system settings (storage / ASR / TTS / quota / rate limits / automatic cleanup), and file cleanup.
 
 ## Dashboard
 
@@ -114,6 +114,24 @@ Source types: unknown, character chat, KB Q&A, KB indexing, workflow node, agent
 | **TTS** | Banner (translated): "Synthesizer side — 1. Client: use the client's (e.g. browser) TTS, ignoring model/platform parameters, free. 2. Server: server-side synthesis via LLMs such as cosyvoice-v2, usually paid."; pick the side + TTS model |
 | **Quota configuration** | Note: "**changes take effect within 10 minutes**". Four dimensions: tokens (daily/monthly max), requests (daily/monthly count), images (daily/monthly count), chat (daily/monthly questions) |
 | **Rate limits** | Note: "changes take effect within 10 minutes". Text requests and image generation each set "requests + time window (minutes)" |
+| **Automatic cleanup** | Toggles the scheduled automatic reclamation of unreferenced files (`file_gc_enabled`), off by default. When enabled it reclaims in two stages (see [File Cleanup](#file-cleanup)); the switch takes effect **immediately**, unlike the cached "within 10 minutes" quota/rate-limit configs |
+
+## File Cleanup
+
+The files listed under **File Cleanup** are **not all files, but files the system has judged unreferenced after a reference check** — uploaded beyond the protection period and currently referenced by no chat message, draw record, knowledge-base document or workflow. Files in use never appear here, and the system verifies once more before actually deleting.
+
+Filters: file name, owner name.
+
+Table: file name, type, size, owner, create time, preview (images are directly viewable — spot checks rely mainly on the preview).
+
+**Manual cleanup**: single-row delete and multi-select delete within the current page; before each delete the system re-verifies references — a file with a newly found reference is rejected with the reason reported, and the remaining files in a batch continue one by one.
+
+**Automatic cleanup switch**: System Settings → Automatic Cleanup (`file_gc_enabled`), off by default. When enabled, a scheduled job reclaims files in two stages: it first marks them (a recoverable state) and physically deletes them from storage only after one month. The switch takes effect **immediately** — the next job round runs with the new value (the job reads the switch straight from the database each round, unlike quota/rate-limit configs that are "effective within 10 minutes" via cache).
+
+**Automatic vs manual deletion at a glance**:
+
+- Shared: the candidate judgment is the same source (appearing in the list means the reference check passed); files inside the protection period never enter any deletion path; every delete re-verifies references at execution time and only proceeds when none remain.
+- Different: trigger (scheduled job automatically vs an admin operating the menu), who confirms (system judgment vs human spot check), timing (mark first, physically delete after one month vs physical deletion immediately once verified), reversibility (recoverable while marked vs final once deleted), switch (automatic cleanup requires the switch on; the manual menu is always available).
 
 ---
 
