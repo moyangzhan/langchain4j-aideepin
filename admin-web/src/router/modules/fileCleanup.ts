@@ -34,6 +34,14 @@ const routes: Array<RouteRecordRaw> = [
         },
         component: () => import('@/views/file-cleanup/index.vue'),
       },
+      {
+        path: 'gc',
+        name: 'FileCleanupGc',
+        meta: {
+          title: 'route.fileGcConfig',
+        },
+        component: () => import('@/views/file-cleanup/gc.vue'),
+      },
     ],
   },
 ]

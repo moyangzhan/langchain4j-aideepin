@@ -66,14 +66,6 @@ const routes: Array<RouteRecordRaw> = [
         },
         component: () => import('@/views/system/ratelimit/index.vue'),
       },
-      {
-        path: 'file-gc',
-        name: 'FileGc',
-        meta: {
-          title: 'route.fileGcConfig',
-        },
-        component: () => import('@/views/system/filegc/index.vue'),
-      },
     ],
   },
 ]
