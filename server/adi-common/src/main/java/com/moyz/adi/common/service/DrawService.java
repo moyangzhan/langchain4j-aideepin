@@ -173,10 +173,11 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
      */
     public void regenerate(String uuid) {
         User user = ThreadContext.getCurrentUser();
-        Draw obj = this.lambdaQuery()
-                .eq(Draw::getUuid, uuid)
-                .eq(Draw::getProcessStatus, STATUS_FAIL)
-                .oneOpt().orElseThrow(() -> new BaseException(B_FIND_IMAGE_404));
+        // Re-running the model writes its result back into this row, so the row has to belong to
+        // the caller — same check as del / delGeneratedFile / setDrawPublic in this service. Admins
+        // keep regenerating anyone's failed draw, which is what PrivilegeUtil allows.
+        Draw obj = PrivilegeUtil.checkAndGetByUuid(uuid,
+                this.query().eq("process_status", STATUS_FAIL), B_FIND_IMAGE_404);
 
         self.createFromRemote(obj, user);
     }
