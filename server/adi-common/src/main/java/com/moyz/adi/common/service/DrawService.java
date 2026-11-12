@@ -625,7 +625,13 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         dto.setMaskImageUuid(StringUtils.defaultString(draw.getMaskImage(), Strings.EMPTY));
         String maskUrl = fileService.getUrl(draw.getMaskImage());
         dto.setMaskImageUrl(StringUtils.defaultString(maskUrl, Strings.EMPTY));
-        boolean isStarred = drawStarService.isStarred(draw.getId(), dto.getUserId());
+        // isStar describes the viewer, not the draw's owner: for a public draw of another user
+        // dto.getUserId() is that owner, so reading the flag against it reports the owner's
+        // favorite state. The list endpoints (listByCurrentUser / listPublic / listStarred)
+        // already recompute the flag for the current user; the detail endpoints get it from here.
+        // isStar 描述的是「当前查看者」，不是图片属主。
+        boolean isStarred = ThreadContext.isLogin()
+                && drawStarService.isStarred(draw.getId(), ThreadContext.getCurrentUserId());
         dto.setIsStar(isStarred);
 
         //User
@@ -687,7 +693,16 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
     }
 
     public DrawDto toggleStar(String uuid) {
-        DrawDto draw = getOrThrow(uuid);
+        // Favoriting is a read-then-write on the draw row, so it follows the read rule: the owner,
+        // or anyone when the draw is public. This is the rule KnowledgeBaseService#toggleStar
+        // applies (owner or public), and what the gallery star button needs: with an owner-only
+        // lookup, starring another user's public image fails with NOT_FOUND and the button is dead.
+        // 收藏是对该行 draw 的读后写，因此按读权限判定：属主，或公开图的所有人。
+        // 与知识库收藏一致；若按属主取行，画廊里收藏别人的公开图会直接报 NOT_FOUND。
+        DrawDto draw = getPublicOrMine(uuid);
+        if (null == draw) {
+            throw new BaseException(A_AI_IMAGE_NOT_FOUND);
+        }
         drawStarService.toggle(draw.getId(), ThreadContext.getCurrentUserId());
 
         //Calculate stars
