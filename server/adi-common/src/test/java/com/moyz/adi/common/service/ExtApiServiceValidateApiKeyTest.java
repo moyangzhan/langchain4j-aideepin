@@ -28,12 +28,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * An external API key keeps answering on behalf of the account that owns the resource. Deleting
- * that account has to revoke every key shape it ever issued — including the resource-level keys
- * (character / knowledge base / workflow), which used to only check that the row exists.
+ * An external API key acts on behalf of the account that owns the resource: once that account is
+ * deleted, every key shape issued for it — resource-level (character / knowledge base / workflow)
+ * included — is rejected, while a live owner keeps validating.
  * <p>
- * 外部 API Key 是代某个账号行使权限的：账号被删之后，它发出去的所有 Key 都必须失效，
- * 包括绑定在角色 / 知识库 / 工作流上的资源级 Key（这类以前只判断“行还在不在”）。
+ * 外部 API Key 代属主账号行使权限：属主账号已软删时，角色 / 知识库 / 工作流的资源级 Key
+ * 一律失效；属主正常时照常通过。
  */
 class ExtApiServiceValidateApiKeyTest {
 

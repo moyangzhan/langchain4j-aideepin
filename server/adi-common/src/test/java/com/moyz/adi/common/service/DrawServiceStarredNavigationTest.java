@@ -139,11 +139,11 @@ class DrawServiceStarredNavigationTest {
         });
         when(drawStarMapper.selectOne(any())).thenAnswer(invocation -> {
             AbstractWrapper<?, ?, ?> query = invocation.getArgument(0);
+            String sql = query.getSqlSegment();
             if (query.getParamNameValuePairs().containsValue(OWNER_ID)) {
                 // Nobody starred anything as the draw's owner: only the viewer has favorites.
                 return null;
             }
-            String sql = query.getSqlSegment();
             if (sql.contains("update_time >")) {
                 return hideNewerStar == null ? star(NEWER_DRAW_ID, NEWER_STARRED_AT) : null;
             }

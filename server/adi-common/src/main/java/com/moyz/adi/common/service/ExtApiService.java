@@ -285,14 +285,10 @@ public class ExtApiService {
     // ========== Private helpers ==========
 
     /**
-     * Resolve the owner of a key that just matched a row, and refuse the request when that account
-     * is gone. A soft-deleted user must lose access through every key shape: the user-level keys
-     * (draw / mcp) already reject a deleted owner in this class, and resource-level keys
-     * (character / knowledge base / workflow) used to only reject a missing row — so deleting an
-     * account left its resource keys working, still answering on that account's behalf.
+     * Resolve the owner of a matched API key; a missing or soft-deleted owner account is rejected
+     * with A_API_KEY_INVALID.
      * <p>
-     * 校验 API Key 命中的资源属主：账号已软删的一律拒绝。用户级 Key 这里本来就检查，
-     * 资源级 Key 以前只判断“行不存在”，于是删号之后它的角色/知识库/工作流 Key 还能继续用。
+     * 校验 API Key 命中的属主账号：属主不存在或已软删的一律拒绝。
      */
     private User requireActiveOwner(Long userId) {
         User owner = userService.getById(userId);
