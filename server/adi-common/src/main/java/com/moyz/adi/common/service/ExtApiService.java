@@ -288,7 +288,7 @@ public class ExtApiService {
      * Resolve the owner of a matched API key; a missing or soft-deleted owner account is rejected
      * with A_API_KEY_INVALID.
      * <p>
-     * 校验 API Key 命中的属主账号：属主不存在或已软删的一律拒绝。
+     * 校验 API Key 命中的所有者账号：所有者不存在或已软删的一律拒绝。
      */
     private User requireActiveOwner(Long userId) {
         User owner = userService.getById(userId);

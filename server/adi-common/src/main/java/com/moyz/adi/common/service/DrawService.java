@@ -84,6 +84,9 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
     @Resource
     private UserService userService;
 
+    @Resource
+    private FileGcService fileGcService;
+
     public void check() {
         User user = ThreadContext.getCurrentUser();
         String askingKey = MessageFormat.format(RedisKeyConstant.USER_DRAWING, user.getId());
@@ -425,7 +428,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
      * The draw returned is the one the neighbouring star points at, not some other draw with a
      * bigger id. Missing neighbours yield null, which the UI treats as "end of the list".
      * <p>
-     * 取当前用户收藏夹里这张图的前一张/后一张：范围必须是「我的收藏」（不是图片属主的收藏），
+     * 取当前用户收藏夹里这张图的前一张/后一张：范围必须是「我的收藏」（不是图片所有者的收藏），
      * 方向必须相反（向后取比当前更晚一条里最早的，向前取比当前更早一条里最晚的），
      * 返回的是那条收藏所指向的图，而不是 id 更大的任意图。没有相邻项时返回 null。
      */
@@ -523,39 +526,19 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
      */
     public boolean del(String uuid) {
         Draw draw = PrivilegeUtil.checkAndGetByUuid(uuid, this.query(), A_AI_IMAGE_NOT_FOUND);
-        if (StringUtils.isNotBlank(draw.getGeneratedImages())) {
-            String[] uuids = draw.getGeneratedImages().split(",");
-            for (String fileUuid : uuids) {
-                removeGeneratedFile(draw, fileUuid);
-            }
-        }
         fileService.detachRefs(drawRefUuids(draw));
         self.softDel(draw.getId());
+        fileGcService.reclaimUnreferenced(generatedImageUuids(draw));
         return true;
     }
 
     /**
-     * 物理删除生成图文件并软删其文件行；管理员可删除他人画图，属主不是当前用户时走不校验属主的删除。
-     * <p>
-     * Physically delete a generated image and soft-delete its file row; an admin may delete
-     * another user's draw, so a non-owner current user takes the owner-agnostic path.
-     * </p>
-     */
-    private void removeGeneratedFile(Draw draw, String fileUuid) {
-        if (draw.getUserId().equals(ThreadContext.getCurrentUserId())) {
-            fileService.removeFileAndSoftDel(fileUuid);
-        } else {
-            fileService.removeFileAndSoftDelIgnoreOwner(fileUuid);
-        }
-    }
-
-    /**
      * 画图记录引用的输入侧文件 uuid（参考图/原图/蒙版）；生成图引用在生成成功时登记一次，
-     * 随删除的物理删除+软删释放，不走 detach。
+     * 随删除的引用重算回收释放，不走 detach。
      * <p>
      * Input-side file uuids referenced by a draw record (reference images / original / mask);
-     * generated-image references are attached once on success and released by the physical
-     * delete plus row soft-delete on removal, never through detach.
+     * generated-image references are attached once on success and released by recount-based
+     * reclamation on removal, never through detach.
      * </p>
      */
     private List<String> drawRefUuids(Draw draw) {
@@ -570,6 +553,19 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
     }
 
     /**
+     * draw 行 generated_images 的 uuid 列表；空串返回空列表。
+     * <p>
+     * Uuid list parsed from the draw row's generated_images; a blank value yields an empty list.
+     * </p>
+     */
+    private List<String> generatedImageUuids(Draw draw) {
+        if (StringUtils.isBlank(draw.getGeneratedImages())) {
+            return new ArrayList<>();
+        }
+        return new ArrayList<>(Arrays.asList(draw.getGeneratedImages().split(",")));
+    }
+
+    /**
      * 删除做图任务中的一张图片
      *
      * @param uuid               adi_draw uuid
@@ -578,21 +574,18 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
      */
     public boolean delGeneratedFile(String uuid, String generatedImageUuid) {
         Draw draw = PrivilegeUtil.checkAndGetByUuid(uuid, this.query(), A_AI_IMAGE_NOT_FOUND);
-        if (StringUtils.isBlank(draw.getGeneratedImages())) {
+        List<String> uuids = generatedImageUuids(draw);
+        if (uuids.isEmpty()) {
             return false;
         }
-        String[] uuids = draw.getGeneratedImages().split(",");
-        for (int i = 0; i < uuids.length; i++) {
-            String fileUuid = uuids[i];
-            if (fileUuid.equals(generatedImageUuid)) {
-                removeGeneratedFile(draw, fileUuid);
-                uuids[i] = "";
-            }
-        }
-        String remainFiles = Arrays.stream(uuids)
+        boolean removed = uuids.removeIf(fileUuid -> fileUuid.equals(generatedImageUuid));
+        String remainFiles = uuids.stream()
                 .filter(StringUtils::isNotBlank)
                 .collect(Collectors.joining(","));
         self.lambdaUpdate().eq(Draw::getId, draw.getId()).set(Draw::getGeneratedImages, remainFiles).update();
+        if (removed) {
+            fileGcService.reclaimUnreferenced(List.of(generatedImageUuid));
+        }
         return true;
     }
 
@@ -625,7 +618,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         // dto.getUserId() is that owner, so reading the flag against it reports the owner's
         // favorite state. The list endpoints (listByCurrentUser / listPublic / listStarred)
         // already recompute the flag for the current user; the detail endpoints get it from here.
-        // isStar 描述的是「当前查看者」，不是图片属主。
+        // isStar 描述的是「当前查看者」，不是图片所有者。
         boolean isStarred = ThreadContext.isLogin()
                 && drawStarService.isStarred(draw.getId(), ThreadContext.getCurrentUserId());
         dto.setIsStar(isStarred);
@@ -693,8 +686,8 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
         // or anyone when the draw is public. This is the rule KnowledgeBaseService#toggleStar
         // applies (owner or public), and what the gallery star button needs: with an owner-only
         // lookup, starring another user's public image fails with NOT_FOUND and the button is dead.
-        // 收藏是对该行 draw 的读后写，因此按读权限判定：属主，或公开图的所有人。
-        // 与知识库收藏一致；若按属主取行，画廊里收藏别人的公开图会直接报 NOT_FOUND。
+        // 收藏是对该行 draw 的读后写，因此按读权限判定：所有者，或（公开图时）任何用户。
+        // 与知识库收藏一致；若按所有者取行，画廊里收藏别人的公开图会直接报 NOT_FOUND。
         DrawDto draw = getPublicOrMine(uuid);
         if (null == draw) {
             throw new BaseException(A_AI_IMAGE_NOT_FOUND);

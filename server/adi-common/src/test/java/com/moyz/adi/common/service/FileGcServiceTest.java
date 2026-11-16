@@ -1,8 +1,13 @@
 package com.moyz.adi.common.service;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.FileRefCountDto;
 import com.moyz.adi.common.entity.AdiFile;
@@ -13,6 +18,7 @@ import com.moyz.adi.common.file.FileOperatorContext;
 import com.moyz.adi.common.mapper.FileGcMapper;
 import com.moyz.adi.common.util.SpringUtil;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.MessageSource;
 import org.junit.jupiter.api.AfterEach;
@@ -95,6 +101,7 @@ class FileGcServiceTest {
     @AfterEach
     void tearDown() {
         fileOperatorContext.close();
+        ThreadContext.unload();
         ReflectionTestUtils.setField(SpringUtil.class, "applicationContext", null);
     }
 
@@ -315,6 +322,191 @@ class FileGcServiceTest {
         verify(fileGcMapper).updateRefCount(1L, 1);
         verify(fileGcMapper).updateRefCount(3L, 0);
         verify(fileGcMapper, never()).updateRefCount(eq(2L), anyInt());
+    }
+
+    @Test
+    void reclaimWritesBackStillReferencedRowsAndKeepsThemLive() {
+        AdiFile busy = file(1L, "busy-uuid");
+        busy.setRefCount(1);
+        when(fileService.list(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(List.of(busy));
+        when(fileGcMapper.countRefs(anyList())).thenReturn(List.of(refCount("busy-uuid", 2L)));
+
+        fileGcService.reclaimUnreferenced(List.of("busy-uuid"));
+
+        verify(fileGcMapper).updateRefCount(1L, 2);
+        verify(fileGcMapper, never()).softDeleteById(anyLong());
+        fileOperatorContext.verify(() -> FileOperatorContext.delete(busy), never());
+    }
+
+    @Test
+    void reclaimSoftDeletesAnUnreferencedSharedRowWithoutTouchingBytes() {
+        AdiFile shared = file(1L, "shared-uuid");
+        shared.setPath("/data/shared.png");
+        when(fileService.list(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(List.of(shared));
+        when(fileGcMapper.countRefs(anyList())).thenReturn(List.of());
+        when(fileService.count(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(1L);
+
+        fileGcService.reclaimUnreferenced(List.of("shared-uuid"));
+
+        verify(fileGcMapper).softDeleteById(1L);
+        fileOperatorContext.verify(() -> FileOperatorContext.delete(shared), never());
+    }
+
+    @Test
+    void reclaimPhysicallyDeletesAnUnreferencedUnsharedRow() {
+        AdiFile lonely = file(1L, "lonely-uuid");
+        lonely.setPath("/data/lonely.png");
+        when(fileService.list(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(List.of(lonely));
+        when(fileGcMapper.countRefs(anyList())).thenReturn(List.of());
+        fileOperatorContext.when(() -> FileOperatorContext.delete(lonely)).then(invocation -> null);
+
+        fileGcService.reclaimUnreferenced(List.of("lonely-uuid"));
+
+        fileOperatorContext.verify(() -> FileOperatorContext.delete(lonely));
+        verify(fileGcMapper).softDeleteById(1L);
+    }
+
+    @Test
+    void reclaimSoftDeletesTheRowEvenWhenPhysicalDeleteFails() {
+        AdiFile doomed = file(1L, "doomed-uuid");
+        doomed.setPath("/data/doomed.png");
+        when(fileService.list(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(List.of(doomed));
+        when(fileGcMapper.countRefs(anyList())).thenReturn(List.of());
+        fileOperatorContext.when(() -> FileOperatorContext.delete(doomed)).thenThrow(new RuntimeException("oss down"));
+
+        fileGcService.reclaimUnreferenced(List.of("doomed-uuid"));
+
+        verify(fileGcMapper).softDeleteById(1L);
+    }
+
+    @Test
+    void phaseTwoLogsThePurgedRowSnapshotWithTheByteDisposition() {
+        AdiFile lonely = file(7L, "lonely-audit-uuid");
+        lonely.setName("lonely.png");
+        lonely.setExt("png");
+        lonely.setSha256("lonely-sha");
+        lonely.setPath("/data/lonely.png");
+        AdiFile shared = file(8L, "shared-audit-uuid");
+        shared.setName("shared.png");
+        shared.setExt("png");
+        shared.setSha256("shared-sha");
+        shared.setPath("/data/shared.png");
+        when(fileGcMapper.listUnreferencedCandidates(anyLong(), any(LocalDateTime.class), anyInt())).thenReturn(List.of());
+        when(fileGcMapper.listGraceExpired(anyLong(), any(LocalDateTime.class), anyInt()))
+                .thenReturn(List.of(lonely, shared))
+                .thenReturn(List.of());
+        when(fileGcMapper.countRefs(anyList())).thenReturn(List.of());
+        when(fileService.count(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(0L, 1L);
+        fileOperatorContext.when(() -> FileOperatorContext.delete(lonely)).then(invocation -> null);
+        ListAppender<ILoggingEvent> logs = new ListAppender<>();
+        logs.start();
+        Logger logger = (Logger) LoggerFactory.getLogger(FileGcService.class);
+        logger.addAppender(logs);
+        try {
+            fileGcService.gc();
+        } finally {
+            logger.detachAppender(logs);
+            logs.stop();
+        }
+
+        List<String> snapshots = logs.list.stream()
+                .filter(event -> event.getLevel() == Level.INFO && event.getFormattedMessage().startsWith("Purge file row"))
+                .map(ILoggingEvent::getFormattedMessage)
+                .toList();
+        assertEquals(2, snapshots.size());
+        String lonelySnapshot = snapshots.stream().filter(m -> m.contains("lonely-audit-uuid")).findFirst().orElse("");
+        assertTrue(lonelySnapshot.contains("lonely.png"));
+        assertTrue(lonelySnapshot.contains("lonely-sha"));
+        assertTrue(lonelySnapshot.contains("/data/lonely.png"));
+        assertTrue(lonelySnapshot.endsWith("bytes:deleted"));
+        String sharedSnapshot = snapshots.stream().filter(m -> m.contains("shared-audit-uuid")).findFirst().orElse("");
+        assertTrue(sharedSnapshot.contains("shared.png"));
+        assertTrue(sharedSnapshot.contains("shared-sha"));
+        assertTrue(sharedSnapshot.contains("/data/shared.png"));
+        assertTrue(sharedSnapshot.endsWith("bytes:kept"));
+        verify(fileGcMapper).deleteById(7L);
+        verify(fileGcMapper).deleteById(8L);
+        fileOperatorContext.verify(() -> FileOperatorContext.delete(shared), never());
+    }
+
+    @Test
+    void phaseTwoPurgesASharedPathRowWithoutDeletingBytes() {
+        AdiFile shared = file(4L, "shared-grace-uuid");
+        shared.setPath("/data/shared-grace.png");
+        when(fileGcMapper.listUnreferencedCandidates(anyLong(), any(LocalDateTime.class), anyInt())).thenReturn(List.of());
+        when(fileGcMapper.listGraceExpired(anyLong(), any(LocalDateTime.class), anyInt()))
+                .thenReturn(List.of(shared))
+                .thenReturn(List.of());
+        when(fileGcMapper.countRefs(anyList())).thenReturn(List.of());
+        when(fileService.count(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(1L);
+
+        fileGcService.gc();
+
+        verify(fileGcMapper).deleteById(4L);
+        fileOperatorContext.verify(() -> FileOperatorContext.delete(shared), never());
+    }
+
+    @Test
+    void adminDeleteKeepsSharedBytesAndStillSoftDeletesTheRow() {
+        when(fileGcMapper.countRefs(anyList())).thenReturn(List.of());
+        AdiFile shared = file(9L, "shared-uuid");
+        shared.setPath("/data/shared.png");
+        when(fileService.getOne(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(shared);
+        when(fileService.count(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(1L);
+
+        fileGcService.deleteForCleanup("shared-uuid");
+
+        fileOperatorContext.verify(() -> FileOperatorContext.delete(shared), never());
+        verify(fileService, times(1)).update(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
+    }
+
+    @Test
+    void deleteByOwnerRejectsAStillReferencedFile() {
+        when(fileGcMapper.countRefs(anyList())).thenReturn(List.of(refCount("busy-uuid", 2L)));
+
+        assertFalse(fileGcService.deleteByOwner("busy-uuid"));
+
+        verify(fileService, never()).update(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
+    }
+
+    @Test
+    void deleteByOwnerScopesTheRowToTheCurrentUser() {
+        when(fileGcMapper.countRefs(anyList())).thenReturn(List.of());
+        when(fileService.getOne(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenAnswer(invocation -> {
+            com.baomidou.mybatisplus.core.conditions.AbstractWrapper<?, ?, ?> wrapper = invocation.getArgument(0);
+            return wrapper.getSqlSegment().contains("user_id") ? file(9L, "mine-uuid") : null;
+        });
+        ThreadContext.setCurrentUser(user(5L, "bob"));
+
+        assertTrue(fileGcService.deleteByOwner("mine-uuid"));
+
+        verify(fileService).update(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
+    }
+
+    @Test
+    void deleteByOwnerReturnsFalseWhenTheCallerDoesNotOwnTheFile() {
+        when(fileGcMapper.countRefs(anyList())).thenReturn(List.of());
+        when(fileService.getOne(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(null);
+        ThreadContext.setCurrentUser(user(5L, "bob"));
+
+        assertFalse(fileGcService.deleteByOwner("foreign-uuid"));
+
+        verify(fileService, never()).update(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
+    }
+
+    @Test
+    void deleteByOwnerKeepsTheRowWhenPhysicalDeleteFails() {
+        when(fileGcMapper.countRefs(anyList())).thenReturn(List.of());
+        AdiFile stuck = file(9L, "stuck-uuid");
+        stuck.setPath("/data/stuck.png");
+        when(fileService.getOne(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(stuck);
+        when(fileService.count(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(0L);
+        ThreadContext.setCurrentUser(user(5L, "bob"));
+        fileOperatorContext.when(() -> FileOperatorContext.delete(stuck)).thenThrow(new RuntimeException("disk error"));
+
+        assertFalse(fileGcService.deleteByOwner("stuck-uuid"));
+
+        verify(fileService, never()).update(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
     }
 
     private static Page<AdiFile> batch(AdiFile... files) {

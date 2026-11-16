@@ -481,6 +481,10 @@ EXECUTE PROCEDURE update_modified_column();
 
 CREATE UNIQUE INDEX uk_file_uuid ON adi_file (uuid);
 
+CREATE INDEX idx_file_sha256 ON adi_file (sha256);
+
+CREATE INDEX idx_file_path ON adi_file (path);
+
 CREATE TABLE adi_prompt
 (
     id          bigserial primary key,

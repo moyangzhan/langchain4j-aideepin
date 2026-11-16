@@ -34,7 +34,7 @@ import static org.mockito.Mockito.when;
  * caller has no further favorite, on a NullPointerException instead of "end of list".
  * <p>
  * 收藏夹里的「上一张 / 下一张」按「我收藏的时间」在我自己的收藏里走：
- * 范围错了（用图片属主的收藏）或方向错了（向前却查更晚的）都会跳到不相干的图，
+ * 范围错了（用图片所有者的收藏）或方向错了（向前却查更晚的）都会跳到不相干的图，
  * 而没有相邻项时应当返回 null 表示到底，不是抛空指针。
  */
 class DrawServiceStarredNavigationTest {

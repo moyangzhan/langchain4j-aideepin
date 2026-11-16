@@ -157,11 +157,11 @@ public class WfNodeIODataUtil {
 
     /**
      * 提取 type=4 文件参数涉及的全部文件 uuid，与复核 SQL 同口径：URL 形态归一化为末段路径
-     * 去扩展名后的 uuid（URL 产物无 detach 路径，引用消散后靠实查钳制收敛）；结果去重。
+     * 去扩展名后的 uuid（URL 产物无 detach 路径，引用消散后靠实查重算收敛）；结果去重。
      * <p>
      * Extract every file uuid touched by type=4 (files) parameters, normalized the same way as the
      * recount SQL: URL-shaped values reduce to the uuid in the last path segment without extension
-     * (URL products have no detach path; their counts converge through the live clamp once the
+     * (URL products have no detach path; their counts converge through the live recount once the
      * reference dissolves); the result is deduplicated.
      * </p>
      */

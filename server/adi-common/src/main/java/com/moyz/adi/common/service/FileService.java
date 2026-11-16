@@ -98,14 +98,25 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         String sha256 = HashUtil.sha256(file);
         Optional<AdiFile> existFile = this.lambdaQuery()
                 .eq(AdiFile::getSha256, sha256)
+                .eq(AdiFile::getUserId, ThreadContext.getCurrentUserId())
                 .eq(AdiFile::getIsDeleted, false)
                 .last("limit 1")
                 .oneOpt();
+        if (existFile.isEmpty()) {
+            existFile = this.lambdaQuery()
+                    .eq(AdiFile::getSha256, sha256)
+                    .eq(AdiFile::getIsDeleted, false)
+                    .last("limit 1")
+                    .oneOpt();
+        }
         if (existFile.isPresent()) {
             AdiFile adiFile = existFile.get();
             boolean exist = FileOperatorContext.checkIfExist(adiFile);
             if (exist) {
-                return adiFile;
+                if (Objects.equals(adiFile.getUserId(), ThreadContext.getCurrentUserId())) {
+                    return adiFile;
+                }
+                return insertSharedRow(file, adiFile, sha256);
             } else {
                 log.warn("File not found, deleting record for regeneration, fileId:{}, uuid:{}, sha256:{}", adiFile.getId(), adiFile.getUuid(), adiFile.getSha256());
                 this.lambdaUpdate().eq(AdiFile::getId, adiFile.getId()).set(AdiFile::getIsDeleted, true).update();
@@ -121,6 +132,26 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         adiFile.setExt(originalFile.getRight());
         adiFile.setUserId(ThreadContext.getCurrentUserId());
         adiFile.setStorageLocation(FileOperatorContext.getStorageLocation());
+        this.getBaseMapper().insert(adiFile);
+        return adiFile;
+    }
+
+    /**
+     * 插入已被他人上传过的文件
+     * <p>
+     * Insert a row for a file that another user has already uploaded.
+     * </p>
+     */
+    private AdiFile insertSharedRow(MultipartFile file, AdiFile existing, String sha256) {
+        String originalFilename = file.getOriginalFilename();
+        AdiFile adiFile = new AdiFile();
+        adiFile.setName(originalFilename);
+        adiFile.setUuid(UuidUtil.createShort());
+        adiFile.setSha256(sha256);
+        adiFile.setPath(existing.getPath());
+        adiFile.setExt(originalFilename.substring(originalFilename.lastIndexOf('.') + 1).toLowerCase());
+        adiFile.setUserId(ThreadContext.getCurrentUserId());
+        adiFile.setStorageLocation(existing.getStorageLocation());
         this.getBaseMapper().insert(adiFile);
         return adiFile;
     }
@@ -155,14 +186,6 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         adiFile.setStorageLocation(FileOperatorContext.getStorageLocation());
         this.getBaseMapper().insert(adiFile);
         return adiFile;
-    }
-
-    public boolean softDel(String uuid) {
-        return this.lambdaUpdate()
-                .eq(AdiFile::getUserId, ThreadContext.getCurrentUserId())
-                .eq(AdiFile::getUuid, uuid)
-                .set(AdiFile::getIsDeleted, true)
-                .update();
     }
 
     /**
@@ -237,42 +260,6 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
             return;
         }
         uuids.forEach(this::detachRef);
-    }
-
-    public boolean removeFileAndSoftDel(String uuid) {
-        AdiFile adiFile = this.lambdaQuery()
-                .eq(AdiFile::getUserId, ThreadContext.getCurrentUserId())
-                .eq(AdiFile::getUuid, uuid)
-                .oneOpt()
-                .orElse(null);
-        if (null == adiFile) {
-            return false;
-        }
-        FileOperatorContext.delete(adiFile);
-        return this.softDel(uuid);
-    }
-
-    /**
-     * 不校验属主的物理删除+软删，供管理员在业务层已完成属主判定后清理他人文件；
-     * 常规删除仍走 removeFileAndSoftDel（属主即当前用户）。
-     * <p>
-     * Physically delete and soft-delete without the owner check, for admin flows whose ownership
-     * has already been decided by the business layer; regular deletes keep removeFileAndSoftDel.
-     * </p>
-     */
-    public boolean removeFileAndSoftDelIgnoreOwner(String uuid) {
-        AdiFile adiFile = this.lambdaQuery()
-                .eq(AdiFile::getUuid, uuid)
-                .oneOpt()
-                .orElse(null);
-        if (null == adiFile) {
-            return false;
-        }
-        FileOperatorContext.delete(adiFile);
-        return this.lambdaUpdate()
-                .eq(AdiFile::getUuid, uuid)
-                .set(AdiFile::getIsDeleted, true)
-                .update();
     }
 
     public AdiFile getByUuid(String uuid) {

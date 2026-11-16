@@ -141,7 +141,7 @@ public class WorkflowRuntimeService extends ServiceImpl<WorkflowRunMapper, Workf
     /**
      * Load the runtime row WITH the checkpoint blob for resume, enforcing ownership (owner or admin).
      * Must run on the request thread (ThreadContext-scoped); the async continuation passes the loaded row along.
-     * 校验属主后返回含 checkpoint 的整行（仅 resume 重建用）。
+     * 校验所有者后返回含 checkpoint 的整行（仅 resume 重建用）。
      */
     public WorkflowRuntime getForResume(String uuid) {
         WorkflowRuntime runtime = baseMapper.selectWithCheckpoint(uuid);
@@ -331,12 +331,10 @@ public class WorkflowRuntimeService extends ServiceImpl<WorkflowRunMapper, Workf
 
     /**
      * 运行删除后把涉及文件（运行 input/output 与其节点 input/output 中的 type=4 值）的 ref_count
-     * 钳制为实查值：产物以 URL 形态引用、只增不减且无 detach 路径，须在引用消散点实查收敛。
+     * 改写为按业务表活跃引用重算出的真实计数。
      * <p>
-     * After a runtime is deleted, clamp the ref_count of every touched file (type=4 values in the
-     * run input/output and its nodes' input/output) to the live recount: product references are
-     * URL-shaped, count up only and have no detach path, so they must converge at the point where
-     * they dissolve.
+     * After a runtime is deleted, rewrite the ref_count of every touched file (type=4 values in
+     * the run input/output and its nodes' input/output) to the recomputed true count.
      * </p>
      */
     private void clampRefsAfterRuntimesDeleted(List<WorkflowRuntime> runtimes) {

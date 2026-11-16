@@ -4,6 +4,7 @@ import com.moyz.adi.common.entity.AdiFile;
 import com.moyz.adi.common.exception.BaseException;
 import com.moyz.adi.common.file.FileOperatorContext;
 import com.moyz.adi.common.file.LocalFileUtil;
+import com.moyz.adi.common.service.FileGcService;
 import com.moyz.adi.common.service.FileService;
 import com.moyz.adi.common.util.UrlUtil;
 import jakarta.annotation.Resource;
@@ -40,6 +41,9 @@ public class FileController {
 
     @Resource
     private FileService fileService;
+
+    @Resource
+    private FileGcService fileGcService;
 
 //    My images
 //    @Operation(summary = "我的图片")
@@ -138,6 +142,6 @@ public class FileController {
 
     @PostMapping("/file/del/{uuid}")
     public boolean del(@PathVariable String uuid) {
-        return fileService.removeFileAndSoftDel(uuid);
+        return fileGcService.deleteByOwner(uuid);
     }
 }

@@ -3,7 +3,9 @@ package com.moyz.adi.common.service;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.entity.AdiFile;
+import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.file.FileOperatorContext;
 import com.moyz.adi.common.mapper.FileMapper;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
@@ -12,9 +14,12 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -56,6 +61,7 @@ class FileServiceRefTest {
     @AfterEach
     void tearDown() {
         fileOperatorContext.close();
+        ThreadContext.unload();
     }
 
     @Test
@@ -135,6 +141,63 @@ class FileServiceRefTest {
         ArgumentCaptor<Wrapper<AdiFile>> captor = ArgumentCaptor.forClass(Wrapper.class);
         verify(fileMapper).update(any(), captor.capture());
         return (com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<AdiFile>) captor.getValue();
+    }
+
+    @Test
+    void saveFileReturnsTheCallersOwnRowOnASameContentHit() {
+        AdiFile mine = file("my-uuid", false);
+        mine.setUserId(7L);
+        AdiFile theirs = file("their-uuid", false);
+        theirs.setUserId(1L);
+        when(fileMapper.selectOne(any(Wrapper.class))).thenAnswer(invocation -> {
+            Wrapper<AdiFile> wrapper = invocation.getArgument(0);
+            return wrapper.getSqlSegment().contains("user_id") ? mine : theirs;
+        });
+        fileOperatorContext.when(() -> FileOperatorContext.checkIfExist(mine)).thenReturn(true);
+        ThreadContext.setCurrentUser(user(7L));
+
+        AdiFile returned = fileService.saveFile(new MockMultipartFile("file", "cat.png", "image/png", new byte[]{1, 2}), true);
+
+        assertEquals("my-uuid", returned.getUuid());
+        verify(fileMapper, never()).insert(any(AdiFile.class));
+    }
+
+    @Test
+    void saveFileInsertsASharedPathRowForAnotherUserOnASameContentHit() {
+        AdiFile theirs = file("their-uuid", false);
+        theirs.setUserId(1L);
+        theirs.setPath("/data/their.png");
+        theirs.setExt("png");
+        theirs.setStorageLocation(1);
+        byte[] content = new byte[]{1, 2};
+        String contentHash = com.moyz.adi.common.util.HashUtil.sha256(
+                new MockMultipartFile("file", "renamed.png", "image/png", content));
+        when(fileMapper.selectOne(any(Wrapper.class))).thenAnswer(invocation -> {
+            Wrapper<AdiFile> wrapper = invocation.getArgument(0);
+            return wrapper.getSqlSegment().contains("user_id") ? null : theirs;
+        });
+        fileOperatorContext.when(() -> FileOperatorContext.checkIfExist(theirs)).thenReturn(true);
+        ThreadContext.setCurrentUser(user(7L));
+
+        AdiFile returned = fileService.saveFile(new MockMultipartFile("file", "renamed.png", "image/png", content), true);
+
+        ArgumentCaptor<AdiFile> captor = ArgumentCaptor.forClass(AdiFile.class);
+        verify(fileMapper).insert(captor.capture());
+        AdiFile inserted = captor.getValue();
+        assertEquals(7L, inserted.getUserId());
+        assertEquals("/data/their.png", inserted.getPath());
+        assertEquals(contentHash, inserted.getSha256());
+        assertEquals("renamed.png", inserted.getName());
+        assertEquals("png", inserted.getExt());
+        assertEquals(Integer.valueOf(1), inserted.getStorageLocation());
+        assertNotEquals("their-uuid", inserted.getUuid());
+        assertEquals(inserted.getUuid(), returned.getUuid());
+    }
+
+    private static User user(Long id) {
+        User user = new User();
+        user.setId(id);
+        return user;
     }
 
     private static AdiFile file(String uuid, boolean deleted) {

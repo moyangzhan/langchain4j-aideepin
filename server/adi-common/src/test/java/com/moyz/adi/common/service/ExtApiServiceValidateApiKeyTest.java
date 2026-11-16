@@ -32,8 +32,8 @@ import static org.mockito.Mockito.when;
  * deleted, every key shape issued for it — resource-level (character / knowledge base / workflow)
  * included — is rejected, while a live owner keeps validating.
  * <p>
- * 外部 API Key 代属主账号行使权限：属主账号已软删时，角色 / 知识库 / 工作流的资源级 Key
- * 一律失效；属主正常时照常通过。
+ * 外部 API Key 代所有者账号行使权限：所有者账号已软删时，角色 / 知识库 / 工作流的资源级 Key
+ * 一律失效；所有者正常时照常通过。
  */
 class ExtApiServiceValidateApiKeyTest {
 

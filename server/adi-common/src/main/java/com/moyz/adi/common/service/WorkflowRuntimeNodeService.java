@@ -48,7 +48,7 @@ public class WorkflowRuntimeNodeService extends ServiceImpl<WorkflowRuntimeNodeM
      * the resume continuation runs on an @Async thread where ThreadContext is absent,
      * and the runtime's ownership was already enforced on the request thread (getForResume).
      * Ordered by id so the replayed completedNodes list keeps execution order.
-     * resume 重建专用：@Async 线程无 ThreadContext，属主已在请求线程校验过；按 id 升序保持执行顺序。
+     * resume 重建专用：@Async 线程无 ThreadContext，所有者已在请求线程校验过；按 id 升序保持执行顺序。
      */
     public List<WfRuntimeNodeDto> listByRuntimeIdForResume(long runtimeId) {
         List<WorkflowRuntimeNode> workflowNodeList = ChainWrappers.lambdaQueryChain(baseMapper)
@@ -64,10 +64,10 @@ public class WorkflowRuntimeNodeService extends ServiceImpl<WorkflowRuntimeNodeM
     }
 
     /**
-     * 按运行 id 集合批量取节点实体（一次查询），供运行删除后的引用钳制读取 input/output；
-     * 调用方的运行集合已完成属主过滤，此处不再按 ThreadContext 过滤。
+     * 按运行 id 集合批量取节点实体（一次查询），供运行删除后的引用重算读取 input/output；
+     * 调用方的运行集合已完成所有者过滤，此处不再按 ThreadContext 过滤。
      * <p>
-     * Batch-load node entities by runtime ids in one query, for the post-delete reference clamp
+     * Batch-load node entities by runtime ids in one query, for the post-delete reference recount
      * to read input/output; the caller's runtime set is already ownership-scoped, so no
      * ThreadContext filter is applied here.
      * </p>

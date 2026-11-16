@@ -34,8 +34,8 @@ import static org.mockito.Mockito.when;
  * follow the read rule (owner or public) rather than the ownership rule, and the {@code isStar}
  * flag it renders has to be the viewer's, not the owner's.
  * <p>
- * 画廊里点开的公开图属于别人，因此收藏要按「读权限」判定（属主或公开），
- * 且返回给前端的 isStar 必须是当前查看者的状态，而不是图片属主的。
+ * 画廊里点开的公开图属于别人，因此收藏要按「读权限」判定（所有者或公开），
+ * 且返回给前端的 isStar 必须是当前查看者的状态，而不是图片所有者的。
  */
 class DrawServiceStarTest {
 
