@@ -346,6 +346,7 @@ public class FileGcService {
         if (distinct.isEmpty()) {
             return;
         }
+        log.info("Reclaim unreferenced files, uuids:{}", distinct);
         Map<String, Long> refs;
         List<AdiFile> rows;
         try {

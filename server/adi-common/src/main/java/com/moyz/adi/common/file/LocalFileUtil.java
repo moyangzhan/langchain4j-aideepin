@@ -15,7 +15,6 @@ import ws.schild.jave.info.MultimediaInfo;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
@@ -103,7 +102,7 @@ public class LocalFileUtil {
                     );
                 }
             }
-            return ImageIO.read(new FileInputStream(currentFilePath));
+            return ImageIO.read(new File(currentFilePath));
         } catch (IOException e) {
             log.error("read image error", e);
             throw new BaseException(B_IO_EXCEPTION);

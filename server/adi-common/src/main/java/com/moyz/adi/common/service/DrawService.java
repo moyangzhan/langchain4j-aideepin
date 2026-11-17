@@ -633,6 +633,7 @@ public class DrawService extends ServiceImpl<DrawMapper, Draw> {
     }
 
     private void softDel(Long id) {
+        log.info("Soft delete draw, id:{}", id);
         this.lambdaUpdate().eq(Draw::getId, id).set(Draw::getIsDeleted, true).update();
     }
 

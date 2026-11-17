@@ -259,6 +259,7 @@ public class FileService extends ServiceImpl<FileMapper, AdiFile> {
         if (CollectionUtils.isEmpty(uuids)) {
             return;
         }
+        log.info("Detach file refs, uuids:{}", uuids);
         uuids.forEach(this::detachRef);
     }
 
