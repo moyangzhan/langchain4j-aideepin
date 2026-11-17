@@ -182,10 +182,10 @@
         limit #{batchSize}
     </select>
 
-    <!-- Phase two: soft-deleted rows past the grace period; update_time is
-         the grace clock (refreshed by the soft-delete trigger).
-         阶段二：软删满宽限期的行；update_time=宽限时钟（软删触发器刷新）。 -->
-    <select id="listGraceExpired" resultType="com.moyz.adi.common.entity.AdiFile">
+    <!-- Phase two: soft-deleted rows past the retention period; update_time is
+         the retention clock (refreshed by the soft-delete trigger).
+         阶段二：软删满保留期的行；update_time=保留期时钟（软删触发器刷新）。 -->
+    <select id="listRetentionExpired" resultType="com.moyz.adi.common.entity.AdiFile">
         select *
         from adi_file
         where id &gt; #{lastId}

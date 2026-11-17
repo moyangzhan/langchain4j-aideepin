@@ -18,8 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Windows 上句柄未释放会令物理删除失败。
  * <p>
  * readLocalImage must not hold the file handle after returning: image rendering is
- * immediately followed by file deletion, and on Windows an open handle makes the
- * physical delete fail.
+ * immediately followed by file deletion, and on Windows an open handle makes deleting
+ * the physical file fail.
  * </p>
  */
 class LocalFileUtilTest {

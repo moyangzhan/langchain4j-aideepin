@@ -77,11 +77,11 @@ class FileServiceRefTest {
 
     @Test
     void attachRevivesASoftDeletedRowOnlyWhenThePhysicalFileSurvives() {
-        AdiFile graceRow = file("grace-uuid", true);
-        when(fileMapper.selectOne(any(Wrapper.class))).thenReturn(graceRow);
-        fileOperatorContext.when(() -> FileOperatorContext.checkIfExist(graceRow)).thenReturn(true);
+        AdiFile retentionRow = file("retention-uuid", true);
+        when(fileMapper.selectOne(any(Wrapper.class))).thenReturn(retentionRow);
+        fileOperatorContext.when(() -> FileOperatorContext.checkIfExist(retentionRow)).thenReturn(true);
 
-        fileService.attachRef("grace-uuid");
+        fileService.attachRef("retention-uuid");
 
         String sqlSet = capturedSqlSet();
         assertTrue(sqlSet.contains("ref_count = ref_count + 1"), sqlSet);

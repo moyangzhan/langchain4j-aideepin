@@ -34,12 +34,12 @@ import java.util.stream.Collectors;
 import static com.moyz.adi.common.cosntant.AdiConstant.STORAGE_LOCATION_VALUE_LOCAL;
 
 /**
- * 无引用文件回收：两步判定（ref_count=0 快筛 → 业务表实查复核）+ 两段式删除（软删宽限 → 满月物理删+硬删行）。
+ * 无引用文件回收：两步判定（ref_count=0 快筛 → 业务表实查复核）+ 两段式删除（软删保留 → 满月物理删除文件及对应的数据行）。
  * 实查>0 一律回写 ref_count（自愈假零漂移，最危险方向）；每轮运行开始直查数据库读开关，missing key 即停。
  * 同时承载管理端手动清理的判定核心：列表实时计算，删除前再次复核。
  * <p>
  * Unreferenced-file GC: two-step detection (ref_count=0 prescreen → live recount across business tables) plus
- * two-stage deletion (soft-delete grace → physical delete + row purge after one month). Any positive recount
+ * two-stage deletion (soft-delete retention → delete the physical file + hard-delete the row after one month). Any positive recount
  * writes ref_count back (self-heals the dangerous false-zero drift); the switch is read straight from the
  * database at the start of every round, a missing key stops the job. The same judgment core backs the admin
  * manual-cleanup menu: the list is computed live and every delete re-verifies references first.
@@ -56,14 +56,14 @@ public class FileGcService {
     private static final int CANDIDATE_TTL_DAYS = 7;
 
     /**
-     * 软删宽限期（月）：机器判定的可逆后悔窗口，期满物理删+硬删行。
-     * Grace period in months for soft-deleted rows; expired rows are physically deleted and purged.
+     * 软删保留期（月）：机器判定的可逆后悔窗口，期满物理删除文件及对应的数据行。
+     * Retention period in months for soft-deleted rows; on expiry the physical file is deleted and its row hard-deleted.
      */
-    private static final int GRACE_MONTHS = 1;
+    private static final int RETENTION_MONTHS = 1;
 
     /**
      * 分批大小：候选复核、到期清运与手动列表实查的批粒度。
-     * Batch size shared by candidate verification, grace purging and the manual list recount.
+     * Batch size shared by candidate verification, retention-expiry cleanup and the manual list recount.
      */
     private static final int BATCH_SIZE = 200;
 
@@ -88,19 +88,19 @@ public class FileGcService {
             return;
         }
         markUnreferenced();
-        purgeExpired();
+        hardDeleteExpired();
     }
 
     /**
      * 阶段一：候选判定与软删。
      * 1. 游标分批取 ref_count=0 且过保护期的候选
      * 2. 逐批重算活跃引用
-     * 3. 重算=0 软删行进宽限期；>0 回写计数
+     * 3. 重算=0 软删行进保留期；>0 回写计数
      * <p>
      * Phase one: candidate detection and soft delete.
      * 1. cursor-batch candidates with ref_count=0 past the guard window
      * 2. recount the live references per batch
-     * 3. zero recount soft-deletes the row into grace; positive writes back
+     * 3. zero recount soft-deletes the row into retention; positive writes back
      * </p>
      */
     void markUnreferenced() {
@@ -132,29 +132,29 @@ public class FileGcService {
     }
 
     /**
-     * 阶段二：宽限期满清运。
-     * 1. 游标分批取软删满宽限期的行
+     * 阶段二：保留期结束后执行清运操作。
+     * 1. 游标分批取软删满保留期的行
      * 2. 逐批重算活跃引用
      * 3. 每行删除前复核后处置
      * 处置规则：重算=0 先记录行快照日志再硬删行，path 独占时一并物理删字节；
      * 重算>0 且物理文件仍在则复活并回写；文件已不在保持软删等待。
      * <p>
-     * Phase two: purge expired grace rows.
-     * 1. cursor-batch soft-deleted rows past the grace period
+     * Phase two: hard-delete retention-expired rows.
+     * 1. cursor-batch soft-deleted rows past the retention period
      * 2. recount the live references per batch
      * 3. re-verify each row before disposing of it
-     * Disposition: zero recount logs the row snapshot before purging the row, deleting the
+     * Disposition: zero recount logs the row snapshot before hard-deleting the row, deleting the
      * bytes only when the path is unshared; positive recount revives the row when the file
      * still exists, otherwise it stays soft-deleted waiting.
      * </p>
      */
-    void purgeExpired() {
-        LocalDateTime before = LocalDateTime.now().minusMonths(GRACE_MONTHS);
+    void hardDeleteExpired() {
+        LocalDateTime before = LocalDateTime.now().minusMonths(RETENTION_MONTHS);
         long lastId = 0L;
-        int purged = 0;
+        int hardDeleted = 0;
         int revived = 0;
         while (true) {
-            List<AdiFile> expired = fileGcMapper.listGraceExpired(lastId, before, BATCH_SIZE);
+            List<AdiFile> expired = fileGcMapper.listRetentionExpired(lastId, before, BATCH_SIZE);
             if (expired.isEmpty()) {
                 break;
             }
@@ -164,26 +164,26 @@ public class FileGcService {
                 long total = refs.getOrDefault(adiFile.getUuid(), 0L);
                 if (total == 0) {
                     boolean shared = pathSharedByOtherRow(adiFile);
-                    if (shared || physicalDelete(adiFile)) {
-                        log.info("Purge file row, id:{}, uuid:{}, userId:{}, name:{}, ext:{}, sha256:{}, storageLocation:{}, path:{}, createTime:{}, bytes:{}",
+                    if (shared || deletePhysicalFile(adiFile)) {
+                        log.info("Hard delete file row, id:{}, uuid:{}, userId:{}, name:{}, ext:{}, sha256:{}, storageLocation:{}, path:{}, createTime:{}, bytes:{}",
                                 adiFile.getId(), adiFile.getUuid(), adiFile.getUserId(), adiFile.getName(), adiFile.getExt(),
                                 adiFile.getSha256(), adiFile.getStorageLocation(), adiFile.getPath(), adiFile.getCreateTime(),
                                 shared ? "kept" : "deleted");
                         fileGcMapper.deleteById(adiFile.getId());
-                        purged++;
+                        hardDeleted++;
                     }
                 } else if (physicalFileExists(adiFile)) {
                     fileGcMapper.reviveById(adiFile.getId(), (int) total);
                     revived++;
-                    log.info("File revived inside grace window, uuid:{}, refs:{}", adiFile.getUuid(), total);
+                    log.info("File revived inside retention window, uuid:{}, refs:{}", adiFile.getUuid(), total);
                 } else {
                     log.warn("Soft-deleted file still referenced but physical file is gone, keep waiting, uuid:{}, refs:{}",
                             adiFile.getUuid(), total);
                 }
             }
         }
-        if (purged > 0 || revived > 0) {
-            log.info("File GC phase two finished, purged:{}, revived:{}", purged, revived);
+        if (hardDeleted > 0 || revived > 0) {
+            log.info("File GC phase two finished, hard-deleted:{}, revived:{}", hardDeleted, revived);
         }
     }
 
@@ -284,13 +284,13 @@ public class FileGcService {
 
     /**
      * 管理端手动删除：执行序钉死=①全扫描面实查复核→②>0 拒绝（顺手回写）→③=0 才软删行，path
-     * 无其他可用行共享时一并物理删字节。「立即」指不走宽限期，不指跳过复核——关掉列表渲染到点击
+     * 无其他可用行共享时一并物理删字节。「立即」指不走保留期，不指跳过复核——关掉列表渲染到点击
      * 之间的 TOCTOU 窗口。删除后的软删行由 GC 阶段二统一清运（文件已不在，复核恒 0）。
      * <p>
      * Admin manual delete, fixed order: ① recount across the full scan surface → ② reject on a positive
-     * count (writing it back) → ③ only on zero soft-delete the row, physically deleting the bytes when no
-     * other live row shares the path. "Immediate" skips the grace period, never the re-verification —
-     * it closes the TOCTOU window between rendering and clicking. The soft-deleted row is later purged by
+     * count (writing it back) → ③ only on zero soft-delete the row, deleting the bytes when no
+     * other live row shares the path. "Immediate" skips the retention period, never the re-verification —
+     * it closes the TOCTOU window between rendering and clicking. The soft-deleted row is later hard-deleted by
      * GC phase two (its file is gone, the recount stays zero).
      * </p>
      */
@@ -310,7 +310,7 @@ public class FileGcService {
         if (null == adiFile) {
             throw new BaseException(ErrorEnum.A_FILE_NOT_EXIST);
         }
-        if (!pathSharedByOtherRow(adiFile) && !physicalDelete(adiFile)) {
+        if (!pathSharedByOtherRow(adiFile) && !deletePhysicalFile(adiFile)) {
             throw new BaseException(ErrorEnum.A_FILE_DELETE_FAIL);
         }
         fileService.update(Wrappers.<AdiFile>lambdaUpdate()
@@ -331,8 +331,8 @@ public class FileGcService {
      * 2. recount the live references per file
      * 3. load the live rows and dispose of each by its recount
      * Disposition: a positive recount writes the count back and keeps the row; zero
-     * soft-deletes the row and physically deletes the bytes when the path is unshared (a
-     * failed physical delete leaves the bytes to GC phase two). Best-effort throughout — the
+     * soft-deletes the row and deletes the bytes when the path is unshared (a
+     * failed file deletion leaves the bytes to GC phase two). Best-effort throughout — the
      * recount, the row load and each disposition only log on failure.
      * </p>
      */
@@ -368,7 +368,7 @@ public class FileGcService {
                 } else {
                     fileGcMapper.softDeleteById(row.getId());
                     if (!pathSharedByOtherRow(row)) {
-                        physicalDelete(row);
+                        deletePhysicalFile(row);
                     }
                 }
             } catch (Exception e) {
@@ -382,7 +382,7 @@ public class FileGcService {
      * 共享时一并物理删字节。
      * <p>
      * Delete one of the current user's files: a still-referenced file returns false untouched;
-     * an unreferenced one is soft-deleted, with the bytes physically deleted when no other
+     * an unreferenced one is soft-deleted, with the bytes deleted when no other
      * live row shares the path.
      * </p>
      */
@@ -401,7 +401,7 @@ public class FileGcService {
         if (null == adiFile) {
             return false;
         }
-        if (!pathSharedByOtherRow(adiFile) && !physicalDelete(adiFile)) {
+        if (!pathSharedByOtherRow(adiFile) && !deletePhysicalFile(adiFile)) {
             return false;
         }
         return fileService.update(Wrappers.<AdiFile>lambdaUpdate()
@@ -487,16 +487,16 @@ public class FileGcService {
     /**
      * 物理删除文件，失败仅告警返回 false（行保留待重试——先删行会让盘上文件脱离追踪）。
      * <p>
-     * Physically delete the file; a failure only warns and returns false so the row survives for
-     * the next round — purging the row first would leave the on-disk file untracked.
+     * Delete the physical file; a failure only warns and returns false so the row survives for
+     * the next round — hard-deleting the row first would leave the on-disk file untracked.
      * </p>
      */
-    private boolean physicalDelete(AdiFile adiFile) {
+    private boolean deletePhysicalFile(AdiFile adiFile) {
         try {
             FileOperatorContext.delete(adiFile);
             return true;
         } catch (Exception e) {
-            log.error("Physical delete file fail, uuid:{}, path:{}", adiFile.getUuid(), adiFile.getPath(), e);
+            log.error("Delete physical file fail, uuid:{}, path:{}", adiFile.getUuid(), adiFile.getPath(), e);
             return false;
         }
     }

@@ -24,7 +24,7 @@ public interface FileGcMapper {
 
     List<AdiFile> listUnreferencedCandidates(@Param("lastId") Long lastId, @Param("ttl") LocalDateTime ttl, @Param("batchSize") int batchSize);
 
-    List<AdiFile> listGraceExpired(@Param("lastId") Long lastId, @Param("before") LocalDateTime before, @Param("batchSize") int batchSize);
+    List<AdiFile> listRetentionExpired(@Param("lastId") Long lastId, @Param("before") LocalDateTime before, @Param("batchSize") int batchSize);
 
     int softDeleteById(@Param("id") Long id);
 

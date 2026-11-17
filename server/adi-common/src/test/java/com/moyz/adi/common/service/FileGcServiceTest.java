@@ -54,7 +54,7 @@ import static org.mockito.Mockito.when;
 /**
  * GC orchestration contract: the switch is read live from the database (missing key = off),
  * phase one soft-deletes only zero-recount rows and writes back positive recounts, phase two
- * re-verifies every expired row (purge / revive / keep), and the admin delete path never skips
+ * re-verifies every expired row (hard delete / revive / keep), and the admin delete path never skips
  * the recount. Cursor batching keeps both loops finite even when rows stay in place.
  * <p>
  * GC 编排契约：开关每轮直查库（缺键=关）；阶段一只软删复核为零的行、复核为正一律回写；
@@ -137,18 +137,18 @@ class FileGcServiceTest {
     }
 
     @Test
-    void phaseTwoPurgesRevivesAndKeepsAccordingToRecountAndPhysicalFile() {
-        AdiFile purgeMe = file(1L, "purge-uuid");
+    void phaseTwoHardDeletesRevivesAndKeepsAccordingToRecountAndPhysicalFile() {
+        AdiFile hardDeleteMe = file(1L, "hard-delete-uuid");
         AdiFile reviveMe = file(2L, "revive-uuid");
         AdiFile keepMe = file(3L, "keep-uuid");
         when(fileGcMapper.listUnreferencedCandidates(anyLong(), any(LocalDateTime.class), anyInt())).thenReturn(List.of());
-        when(fileGcMapper.listGraceExpired(anyLong(), any(LocalDateTime.class), anyInt()))
-                .thenReturn(List.of(purgeMe, reviveMe, keepMe))
+        when(fileGcMapper.listRetentionExpired(anyLong(), any(LocalDateTime.class), anyInt()))
+                .thenReturn(List.of(hardDeleteMe, reviveMe, keepMe))
                 .thenReturn(List.of());
         when(fileGcMapper.countRefs(anyList())).thenReturn(List.of(
                 refCount("revive-uuid", 2L),
                 refCount("keep-uuid", 5L)));
-        fileOperatorContext.when(() -> FileOperatorContext.delete(purgeMe)).then(invocation -> null);
+        fileOperatorContext.when(() -> FileOperatorContext.delete(hardDeleteMe)).then(invocation -> null);
         fileOperatorContext.when(() -> FileOperatorContext.checkIfExist(reviveMe)).thenReturn(true);
         fileOperatorContext.when(() -> FileOperatorContext.checkIfExist(keepMe)).thenReturn(false);
 
@@ -159,14 +159,14 @@ class FileGcServiceTest {
         verify(fileGcMapper, never()).deleteById(2L);
         verify(fileGcMapper, never()).reviveById(eq(3L), anyInt());
         verify(fileGcMapper, never()).deleteById(3L);
-        fileOperatorContext.verify(() -> FileOperatorContext.delete(purgeMe));
+        fileOperatorContext.verify(() -> FileOperatorContext.delete(hardDeleteMe));
     }
 
     @Test
-    void physicalDeleteFailureKeepsTheRowForTheNextRound() {
+    void physicalFileDeletionFailureKeepsTheRowForTheNextRound() {
         AdiFile doomed = file(1L, "doomed-uuid");
         when(fileGcMapper.listUnreferencedCandidates(anyLong(), any(LocalDateTime.class), anyInt())).thenReturn(List.of());
-        when(fileGcMapper.listGraceExpired(anyLong(), any(LocalDateTime.class), anyInt()))
+        when(fileGcMapper.listRetentionExpired(anyLong(), any(LocalDateTime.class), anyInt()))
                 .thenReturn(List.of(doomed))
                 .thenReturn(List.of());
         when(fileGcMapper.countRefs(anyList())).thenReturn(List.of());
@@ -178,7 +178,7 @@ class FileGcServiceTest {
     }
 
     @Test
-    void adminDeleteFailsVisiblyWhenPhysicalDeleteFails() {
+    void adminDeleteFailsVisiblyWhenPhysicalFileDeletionFails() {
         when(fileGcMapper.countRefs(anyList())).thenReturn(List.of());
         AdiFile target = file(9L, "stuck-uuid");
         when(fileService.getOne(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(target);
@@ -201,7 +201,7 @@ class FileGcServiceTest {
     }
 
     @Test
-    void adminDeletePhysicallyDeletesAndSoftDeletesOnlyAfterZeroRecount() {
+    void adminDeleteDeletesPhysicalFileAndSoftDeletesOnlyAfterZeroRecount() {
         when(fileGcMapper.countRefs(anyList())).thenReturn(List.of());
         AdiFile target = file(9L, "free-uuid");
         when(fileService.getOne(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(target);
@@ -353,7 +353,7 @@ class FileGcServiceTest {
     }
 
     @Test
-    void reclaimPhysicallyDeletesAnUnreferencedUnsharedRow() {
+    void reclaimSoftDeletesAnUnreferencedUnsharedRowAndDeletesItsBytes() {
         AdiFile lonely = file(1L, "lonely-uuid");
         lonely.setPath("/data/lonely.png");
         when(fileService.list(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(List.of(lonely));
@@ -367,7 +367,7 @@ class FileGcServiceTest {
     }
 
     @Test
-    void reclaimSoftDeletesTheRowEvenWhenPhysicalDeleteFails() {
+    void reclaimSoftDeletesTheRowEvenWhenPhysicalFileDeletionFails() {
         AdiFile doomed = file(1L, "doomed-uuid");
         doomed.setPath("/data/doomed.png");
         when(fileService.list(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(List.of(doomed));
@@ -380,7 +380,7 @@ class FileGcServiceTest {
     }
 
     @Test
-    void phaseTwoLogsThePurgedRowSnapshotWithTheByteDisposition() {
+    void phaseTwoLogsTheHardDeletedRowSnapshotWithTheByteDisposition() {
         AdiFile lonely = file(7L, "lonely-audit-uuid");
         lonely.setName("lonely.png");
         lonely.setExt("png");
@@ -392,7 +392,7 @@ class FileGcServiceTest {
         shared.setSha256("shared-sha");
         shared.setPath("/data/shared.png");
         when(fileGcMapper.listUnreferencedCandidates(anyLong(), any(LocalDateTime.class), anyInt())).thenReturn(List.of());
-        when(fileGcMapper.listGraceExpired(anyLong(), any(LocalDateTime.class), anyInt()))
+        when(fileGcMapper.listRetentionExpired(anyLong(), any(LocalDateTime.class), anyInt()))
                 .thenReturn(List.of(lonely, shared))
                 .thenReturn(List.of());
         when(fileGcMapper.countRefs(anyList())).thenReturn(List.of());
@@ -410,7 +410,7 @@ class FileGcServiceTest {
         }
 
         List<String> snapshots = logs.list.stream()
-                .filter(event -> event.getLevel() == Level.INFO && event.getFormattedMessage().startsWith("Purge file row"))
+                .filter(event -> event.getLevel() == Level.INFO && event.getFormattedMessage().startsWith("Hard delete file row"))
                 .map(ILoggingEvent::getFormattedMessage)
                 .toList();
         assertEquals(2, snapshots.size());
@@ -430,11 +430,11 @@ class FileGcServiceTest {
     }
 
     @Test
-    void phaseTwoPurgesASharedPathRowWithoutDeletingBytes() {
-        AdiFile shared = file(4L, "shared-grace-uuid");
-        shared.setPath("/data/shared-grace.png");
+    void phaseTwoHardDeletesASharedPathRowWithoutDeletingBytes() {
+        AdiFile shared = file(4L, "shared-retention-uuid");
+        shared.setPath("/data/shared-retention.png");
         when(fileGcMapper.listUnreferencedCandidates(anyLong(), any(LocalDateTime.class), anyInt())).thenReturn(List.of());
-        when(fileGcMapper.listGraceExpired(anyLong(), any(LocalDateTime.class), anyInt()))
+        when(fileGcMapper.listRetentionExpired(anyLong(), any(LocalDateTime.class), anyInt()))
                 .thenReturn(List.of(shared))
                 .thenReturn(List.of());
         when(fileGcMapper.countRefs(anyList())).thenReturn(List.of());
@@ -495,7 +495,7 @@ class FileGcServiceTest {
     }
 
     @Test
-    void deleteByOwnerKeepsTheRowWhenPhysicalDeleteFails() {
+    void deleteByOwnerKeepsTheRowWhenPhysicalFileDeletionFails() {
         when(fileGcMapper.countRefs(anyList())).thenReturn(List.of());
         AdiFile stuck = file(9L, "stuck-uuid");
         stuck.setPath("/data/stuck.png");
