@@ -14,6 +14,8 @@ public class KbDocumentDto {
 
     private String kbUuid;
 
+    private String kbTitle;
+
     private Long sourceFileId;
 
     private Long id;

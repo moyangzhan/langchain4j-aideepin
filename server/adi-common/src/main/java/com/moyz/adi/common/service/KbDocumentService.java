@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.KbDocumentAttachmentDto;
+import com.moyz.adi.common.dto.KbDocumentBaseEditReq;
 import com.moyz.adi.common.dto.KbDocumentDto;
 import com.moyz.adi.common.dto.KbDocumentEditReq;
 import com.moyz.adi.common.entity.AdiFile;
@@ -113,11 +114,11 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
                 throw new BaseException(A_PARAMS_ERROR);
             }
             item.setChildMaxChunkSize(childSize);
+        }
         item.setIngestSplitStrategy(itemEditReq.getIngestSplitStrategy());
         item.setIngestMaxSegmentSize(itemEditReq.getIngestMaxSegmentSize());
         item.setIngestMaxOverlapSize(itemEditReq.getIngestMaxOverlapSize());
         item.setIngestCustomSeparator(itemEditReq.getIngestCustomSeparator());
-        }
         if (null == itemEditReq.getId() || itemEditReq.getId() < 1) {
             // kbId is derived server-side from the authorized KB: a client-controlled kb_id
             // could diverge from kb_uuid and poison every privilege join (they join on kb_id)
@@ -160,11 +161,40 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
     }
 
     /**
-     * "变更即失效"模型：段行是 remark 的物化，内容变了段行即过期，下次重新向量化自动走
-     * 切段分支重建（全量、新段默认启用）。qa 模式的段行来自问答数据流、与 remark 无关，
-     * 仅 remark 变更不失效（模式切换仍失效，切换即放弃旧结构）。
-     * 顺带修复存量不一致：旧实现在重跑索引前，旧向量仍按旧内容命中检索。
-     * 图谱足迹不动——文档编辑从不触发图谱变更，图谱重跑自带先清后抽。
+     * 编辑文档基础信息（标题/摘要）：不动正文与分段参数，标题类元数据不触发索引失效
+     * Edit document base info (title/brief): remark and segment params untouched, no invalidation or reindex side effects
+     */
+    public boolean updateBaseInfo(KbDocumentBaseEditReq req) {
+        checkWritePrivilege(req.getUuid());
+        KbDocument doc = getEnable(req.getUuid());
+        if (null == doc) {
+            throw new BaseException(A_DATA_NOT_FOUND);
+        }
+        KbDocument item = new KbDocument();
+        item.setId(doc.getId());
+        item.setTitle(req.getTitle());
+        if (StringUtils.isNotBlank(req.getBrief())) {
+            item.setBrief(req.getBrief());
+        } else {
+            item.setBrief(StringUtils.substring(doc.getRemark(), 0, 200));
+        }
+        return baseMapper.updateById(item) > 0;
+    }
+
+    /**
+     * 变更即失效：分段模式、正文、子块大小或分段参数覆盖任一变更时，删除该文档段行并自动重新向量化（仅向量维度，图谱始终手动）。
+     * 判定条件：正文与覆盖列非 qa 模式才比较，子块大小仅父子模式比较，请求未传(null)的键不参与。
+     * 1. 推进索引版本，作废既有索引与在途任务
+     * 2. 无运行中任务时立即清理段行与向量
+     * 3. 置待并入队向量化；qa 勾选自动生成时跳过入队，由生成流程接管
+     * Invalidate-on-change: when segment mode, content, child chunk size or any segment-parameter
+     * override changes, the document's segment rows are deleted and re-vectorized automatically
+     * (embedding only; graph is always manual).
+     * Change detection: content and overrides are compared only outside qa mode, child chunk size
+     * only in parent-child mode, and keys absent (null) from the request are skipped.
+     * 1. Advance the index version, invalidating existing indexes and in-flight tasks
+     * 2. Clean segment rows and vectors immediately when no task is running
+     * 3. Mark pending and enqueue re-vectorization; skipped when qa + auto-generate, whose flow takes over
      */
     private void invalidateSegmentsIfChanged(KbDocument old, KbDocumentEditReq req, String docUuid) {
         if (old == null) {
@@ -192,6 +222,7 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
         }
         indexTaskService.enqueueDocument(old.getKbUuid(), docUuid, DOC_INDEX_TYPE_EMBEDDING, ThreadContext.getCurrentUser());
     }
+
     /**
      * 判断分段参数覆盖是否有变更；未传(null)的键不参与比较
      * Whether any segment-parameter override changed; keys absent (null) from the request are skipped
@@ -202,7 +233,6 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
                 || (req.getIngestMaxOverlapSize() != null && !Objects.equals(old.getIngestMaxOverlapSize(), req.getIngestMaxOverlapSize()))
                 || (req.getIngestCustomSeparator() != null && !Objects.equals(old.getIngestCustomSeparator(), req.getIngestCustomSeparator()));
     }
-
 
     /**
      * 文档级全量重建：入队指定维度的索引任务，不改动分段内容。
@@ -266,7 +296,8 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
     }
 
     /**
-     * Search items in a knowledge base by keyword.
+     * Search documents by keyword, optionally within one knowledge base.
+     * 按关键词搜索文档，知识库为空时搜索全部知识库。
      */
     public Page<KbDocumentDto> search(String kbUuid, String keyword, Integer currentPage, Integer pageSize) {
         Page<KbDocumentDto> page = baseMapper.searchByKb(new Page<>(currentPage, pageSize), kbUuid, keyword);

@@ -3,11 +3,14 @@
 <mapper namespace="com.moyz.adi.common.mapper.KbDocumentMapper">
 
     <select id="searchByKb" parameterType="Map" resultType="com.moyz.adi.common.dto.KbDocumentDto">
-        select a.*, b.name source_file_name, b.uuid source_file_uuid, b.storage_location
+        select a.*, b.name source_file_name, b.uuid source_file_uuid, b.storage_location, c.title kb_title
         from adi_document a
         left join adi_file b on a.source_file_id = b.id
+        left join adi_knowledge_base c on a.kb_id = c.id
         where a.is_deleted = false
-        and a.kb_uuid = #{kbUuid}
+        <if test="kbUuid!='' and kbUuid!=null">
+            and a.kb_uuid = #{kbUuid}
+        </if>
         <if test="keyword!='' and keyword!=null">
             and a.title like CONCAT('%', #{keyword}, '%')
         </if>

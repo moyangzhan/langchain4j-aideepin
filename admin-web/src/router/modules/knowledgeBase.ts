@@ -35,6 +35,14 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('@/views/knowledge-base/index.vue'),
       },
       {
+        path: 'documents',
+        name: 'KnowledgeBaseDocuments',
+        meta: {
+          title: 'route.knowledgeBaseDocuments',
+        },
+        component: () => import('@/views/knowledge-base/documents.vue'),
+      },
+      {
         path: 'info/:uuid?',
         name: 'KnowledgeBaseInfo',
         meta: {

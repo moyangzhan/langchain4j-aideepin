@@ -147,6 +147,7 @@
 
 <script lang="ts" setup>
   import { h, onMounted, reactive, ref } from 'vue'
+  import { useRouter } from 'vue-router'
   import { BasicTable, TableAction } from '@/components/Table'
   import { BasicForm, FormSchema, useForm } from '@/components/Form/index'
   import api from '@/api/knowledgeBase'
@@ -208,6 +209,7 @@
   ]
   const aiModelOpts = ref<SelectOpt[]>([])
   const dialog = useDialog()
+  const router = useRouter()
   const formRef: any = ref(null)
   const newRecordRules: FormRules = {
     title: {
@@ -264,7 +266,7 @@
 
   const actionRef = ref()
   const actionColumn = reactive({
-    width: 160,
+    width: 220,
     title: t('common.action'),
     key: 'action',
     fixed: 'right',
@@ -275,6 +277,10 @@
           {
             label: t('common.edit'),
             onClick: handleEdit.bind(null, record),
+          },
+          {
+            label: t('route.knowledgeBaseDocuments'),
+            onClick: handleDocuments.bind(null, record),
           },
         ],
         dropDownActions: [
@@ -345,6 +351,13 @@
   function handleEdit(record: Recordable) {
     showEditModal.value = true
     Object.assign(editFormParams, record)
+  }
+
+  function handleDocuments(record: Recordable) {
+    router.push({
+      name: 'KnowledgeBaseDocuments',
+      query: { kbUuid: record.uuid, title: record.title },
+    })
   }
 
   async function handleDelete(record: Recordable) {
