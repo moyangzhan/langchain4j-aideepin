@@ -13,7 +13,7 @@ public class KbInfoResp {
     private Boolean isPublic;
     private Boolean isStrict;
     private Integer starCount;
-    private Integer ingestMaxOverlap;
+    private Integer ingestMaxOverlapSize;
     private String ingestSplitStrategy;
     private Integer ingestMaxSegmentSize;
     private String ingestCustomSeparator;

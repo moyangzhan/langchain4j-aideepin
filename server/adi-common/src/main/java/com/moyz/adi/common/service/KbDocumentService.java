@@ -113,6 +113,10 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
                 throw new BaseException(A_PARAMS_ERROR);
             }
             item.setChildMaxChunkSize(childSize);
+        item.setIngestSplitStrategy(itemEditReq.getIngestSplitStrategy());
+        item.setIngestMaxSegmentSize(itemEditReq.getIngestMaxSegmentSize());
+        item.setIngestMaxOverlapSize(itemEditReq.getIngestMaxOverlapSize());
+        item.setIngestCustomSeparator(itemEditReq.getIngestCustomSeparator());
         }
         if (null == itemEditReq.getId() || itemEditReq.getId() < 1) {
             // kbId is derived server-side from the authorized KB: a client-controlled kb_id
@@ -170,29 +174,35 @@ public class KbDocumentService extends ServiceImpl<KbDocumentMapper, KbDocument>
         SegmentModeEnum newMode = req.getSegmentMode() == null ? SegmentModeEnum.TEXT : req.getSegmentMode();
         boolean modeChanged = newMode != oldMode;
         boolean remarkChanged = !Objects.equals(old.getRemark(), req.getRemark());
-        // 子块大小是父子模式的切段参数，变更即失效该文档段行（文档级，不影响库内其他文档）
         boolean childSizeChanged = req.getChildMaxChunkSize() != null
                 && newMode == SegmentModeEnum.PARENT_CHILD
                 && !Objects.equals(old.getChildMaxChunkSize(), req.getChildMaxChunkSize());
-        if (!modeChanged && !childSizeChanged && !(remarkChanged && newMode != SegmentModeEnum.QA)) {
+        boolean overrideChanged = newMode != SegmentModeEnum.QA && segmentOverrideChanged(old, req);
+        if (!modeChanged && !childSizeChanged && !overrideChanged && !(remarkChanged && newMode != SegmentModeEnum.QA)) {
             return;
         }
-        // “变更即失效”+自动重索引：版本推进使既有索引过期（在途任务经检查点作废并自清理）。
-        // 清理仅在无 running 任务时立即执行，否则移交在途任务的取消善后——清理与写入单线程化
         bumpIndexVersion(docUuid);
         if (!indexTaskService.hasRunningByDoc(docUuid)) {
             iKnowledgeEmbeddingService.deleteByItemUuid(docUuid);
             documentSegmentService.deleteByDocUuid(docUuid);
         }
         markEmbeddingPending(docUuid);
-        // 自动触发仅向量化；图谱始终手动（LLM 昂贵，频繁保存不应反复抽取）。
-        // 切到 qa 且勾选自动生成时跳过：紧随其后的 autoGenerateQa 自己置 DOING、
-        // 生成并向量化，再入队 embedding 任务会与生成流程并发写同一文档
         if (newMode == SegmentModeEnum.QA && Boolean.TRUE.equals(req.getAutoGenerateQa())) {
             return;
         }
         indexTaskService.enqueueDocument(old.getKbUuid(), docUuid, DOC_INDEX_TYPE_EMBEDDING, ThreadContext.getCurrentUser());
     }
+    /**
+     * 判断分段参数覆盖是否有变更；未传(null)的键不参与比较
+     * Whether any segment-parameter override changed; keys absent (null) from the request are skipped
+     */
+    boolean segmentOverrideChanged(KbDocument old, KbDocumentEditReq req) {
+        return (req.getIngestSplitStrategy() != null && !Objects.equals(old.getIngestSplitStrategy(), req.getIngestSplitStrategy()))
+                || (req.getIngestMaxSegmentSize() != null && !Objects.equals(old.getIngestMaxSegmentSize(), req.getIngestMaxSegmentSize()))
+                || (req.getIngestMaxOverlapSize() != null && !Objects.equals(old.getIngestMaxOverlapSize(), req.getIngestMaxOverlapSize()))
+                || (req.getIngestCustomSeparator() != null && !Objects.equals(old.getIngestCustomSeparator(), req.getIngestCustomSeparator()));
+    }
+
 
     /**
      * 文档级全量重建：入队指定维度的索引任务，不改动分段内容。

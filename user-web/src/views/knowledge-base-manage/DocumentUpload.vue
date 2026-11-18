@@ -6,7 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import type { UploadFileInfo, UploadInst } from 'naive-ui'
 import SegmentConfigPanel from './components/SegmentConfigPanel.vue'
 import QaImportFormatAlert from './components/QaImportFormatAlert.vue'
-import { useAuthStore } from '@/store'
+import { useAuthStore, useKbStore } from '@/store'
 import { knowledgeBaseEmptyInfo } from '@/utils/functions'
 import { t } from '@/locales'
 import api from '@/api'
@@ -21,6 +21,7 @@ const loading = ref(true)
 const curKb = reactive<KnowledgeBase.Info>(knowledgeBaseEmptyInfo())
 
 const authStore = useAuthStore()
+const kbStore = useKbStore()
 const headers = computed(() => ({ Authorization: authStore.token }))
 const uploadRef = ref<UploadInst | null>(null)
 const fileList = ref<UploadFileInfo[]>([])
@@ -184,6 +185,7 @@ function onUploadFinish({
   }
   const { success, message } = respData
   if (success) {
+    kbStore.markDocsChanged(kbUuid)
     if (qaMode) {
       qaSucceededCount.value++
       fileList.value = fileList.value.filter(f => f.id !== file.id)

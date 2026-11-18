@@ -422,8 +422,7 @@ public class DocumentQaModeService {
                     .temperature(kb.getQueryLlmTemperature())
                     .build());
 
-            // QA generation follows the KB-level max segment size; the factory normalizes overlap against it
-            DocumentSplitter splitter = segmentIndexService.createSplitter(kb, kb.getIngestMaxSegmentSize());
+            DocumentSplitter splitter = segmentIndexService.createSplitter(kb, doc, segmentIndexService.effectiveMaxSegmentSize(kb, doc));
             Metadata metadata = new Metadata();
             metadata.put(AdiConstant.MetadataKey.KB_UUID, kb.getUuid());
             metadata.put(AdiConstant.MetadataKey.KB_ITEM_UUID, doc.getUuid());

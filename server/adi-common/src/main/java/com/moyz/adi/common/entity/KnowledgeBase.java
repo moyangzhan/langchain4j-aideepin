@@ -57,8 +57,8 @@ public class KnowledgeBase extends BaseEntity {
     private String ownerName;
 
     @Schema(title = "文档切割时重叠数量(按token来计) | Document Chunking Overlap Count (by Token)")
-    @TableField("ingest_max_overlap")
-    private Integer ingestMaxOverlap;
+    @TableField("ingest_max_overlap_size")
+    private Integer ingestMaxOverlapSize;
 
     @Schema(title = "分段策略: recursive/paragraph/line/sentence/custom | Split strategy")
     @TableField("ingest_split_strategy")

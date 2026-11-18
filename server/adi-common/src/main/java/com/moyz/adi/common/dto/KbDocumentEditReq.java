@@ -40,6 +40,26 @@ public class KbDocumentEditReq {
     private Integer childMaxChunkSize;
 
     /**
+     * 分段策略覆盖；空串=跟随知识库默认，为空时不变更已有值
+     */
+    private String ingestSplitStrategy;
+
+    /**
+     * 每段最大token数覆盖；-1=跟随知识库默认，为空时不变更已有值
+     */
+    private Integer ingestMaxSegmentSize;
+
+    /**
+     * 分段重叠token数覆盖；-1=跟随知识库默认、0=无重叠，为空时不变更已有值
+     */
+    private Integer ingestMaxOverlapSize;
+
+    /**
+     * 自定义分隔符覆盖，仅策略为custom时有意义；空串=跟随知识库默认，为空时不变更已有值
+     */
+    private String ingestCustomSeparator;
+
+    /**
      * 保存为 qa 模式时由 AI 从正文自动生成问答对；仅对无段行的空 qa 文档生效
      */
     private Boolean autoGenerateQa;

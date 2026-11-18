@@ -23,7 +23,7 @@ export function knowledgeBaseEmptyInfo() {
     ownerName: '',
     itemCount: 0,
     embeddingCount: 0,
-    ingestMaxOverlap: 0,
+    ingestMaxOverlapSize: 0,
     ingestSplitStrategy: 'recursive',
     ingestMaxSegmentSize: 1000,
     ingestCustomSeparator: '',
@@ -58,11 +58,25 @@ export function knowledgeBaseEmptyItem() {
     enabledChangeTime: '',
     segmentMode: 'text',
     childMaxChunkSize: 200,
+    ingestSplitStrategy: '',
+    ingestMaxSegmentSize: -1,
+    ingestMaxOverlapSize: -1,
+    ingestCustomSeparator: '',
     sourceFileName: '',
     sourceFileUrl: '',
     sourceFileUuid: '',
     createTime: '',
     updateTime: '',
+  }
+}
+
+// 文档覆盖值优先，未覆盖（'' / -1）回退库级默认 | Document override first; '' / -1 (unset) falls back to the KB default
+export function effectiveIngest(doc: Partial<KnowledgeBase.Document>, kb: KnowledgeBase.Info) {
+  return {
+    strategy: doc.ingestSplitStrategy || kb.ingestSplitStrategy,
+    maxSegmentSize: (doc.ingestMaxSegmentSize ?? -1) >= 0 ? doc.ingestMaxSegmentSize! : kb.ingestMaxSegmentSize,
+    maxOverlapSize: (doc.ingestMaxOverlapSize ?? -1) >= 0 ? doc.ingestMaxOverlapSize! : kb.ingestMaxOverlapSize,
+    customSeparator: doc.ingestCustomSeparator || kb.ingestCustomSeparator,
   }
 }
 

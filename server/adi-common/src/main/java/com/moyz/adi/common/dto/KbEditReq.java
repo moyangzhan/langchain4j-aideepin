@@ -25,7 +25,7 @@ public class KbEditReq {
 
     private Double retrieveMinScore;
 
-    private Integer ingestMaxOverlap;
+    private Integer ingestMaxOverlapSize;
 
     private String ingestSplitStrategy;
 

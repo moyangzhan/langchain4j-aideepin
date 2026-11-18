@@ -46,10 +46,10 @@
         <n-form-item :label="t('knowledgeBase.isStrict')" path="isStrict">
           <n-switch v-model:value="editFormParams.isStrict" />
         </n-form-item>
-        <n-form-item :label="t('knowledgeBase.ingestMaxOverlap')" path="ingestMaxOverlap">
+        <n-form-item :label="t('knowledgeBase.ingestMaxOverlapSize')" path="ingestMaxOverlapSize">
           <n-input-number
-            :placeholder="t('knowledgeBase.ingestMaxOverlap')"
-            v-model:value="editFormParams.ingestMaxOverlap"
+            :placeholder="t('knowledgeBase.ingestMaxOverlapSize')"
+            v-model:value="editFormParams.ingestMaxOverlapSize"
             class="flex-grow"
           />
         </n-form-item>
@@ -169,7 +169,7 @@
     remark: '',
     isPublic: false,
     isStrict: false,
-    ingestMaxOverlap: 0,
+    ingestMaxOverlapSize: 0,
     ingestSplitStrategy: 'recursive',
     ingestMaxSegmentSize: 1000,
     ingestCustomSeparator: '',

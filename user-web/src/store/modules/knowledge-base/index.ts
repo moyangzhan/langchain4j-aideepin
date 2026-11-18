@@ -15,6 +15,7 @@ export const useKbStore = defineStore('kb-store', {
       loadingRecords: new Map<string, boolean>(),
       loaddingKbList: false,
       reloadKbInfosSignal: false,
+      docsChangedKbUuid: '',
     }
   },
 
@@ -75,6 +76,17 @@ export const useKbStore = defineStore('kb-store', {
     },
     setReloadKbInfosSignal(signal: boolean) {
       this.reloadKbInfosSignal = signal
+    },
+    markDocsChanged(kbUuid: string) {
+      this.docsChangedKbUuid = kbUuid
+    },
+    // 单槽标记：命中当前库才清除并返回 true，其他库的标记留待对应列表页消费
+    // Single-slot flag: cleared only when it matches the given KB; another KB's flag stays for its own list page
+    consumeDocsChanged(kbUuid: string) {
+      if (this.docsChangedKbUuid !== kbUuid)
+        return false
+      this.docsChangedKbUuid = ''
+      return true
     },
     setMyKbInfos(infos: KnowledgeBase.Info[]) {
       this.myKbInfos = infos

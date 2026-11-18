@@ -59,10 +59,10 @@ export function getColumns(): BasicColumn<KbInfoData>[] {
       },
     },
     {
-      key: 'ingestMaxOverlap',
+      key: 'ingestMaxOverlapSize',
       width: 100,
       title(column) {
-        return wrapTableTitle(t('columns.ingestMaxOverlap'))
+        return wrapTableTitle(t('columns.ingestMaxOverlapSize'))
       },
     },
     {

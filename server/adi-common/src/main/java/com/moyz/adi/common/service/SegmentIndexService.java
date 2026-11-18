@@ -165,7 +165,7 @@ public class SegmentIndexService {
 
     private void splitText(KnowledgeBase kb, KbDocument doc) {
         Document document = new DefaultDocument(doc.getRemark(), baseMetadata(kb, doc));
-        DocumentSplitter splitter = createSplitter(kb, kb.getIngestMaxSegmentSize());
+        DocumentSplitter splitter = createSplitter(kb, doc, effectiveMaxSegmentSize(kb, doc));
         List<DocumentSegment> rows = new ArrayList<>();
         int position = 0;
         for (TextSegment chunk : splitter.split(document)) {
@@ -179,9 +179,9 @@ public class SegmentIndexService {
 
     private void splitParentChild(KnowledgeBase kb, KbDocument doc) {
         Document document = new DefaultDocument(doc.getRemark(), baseMetadata(kb, doc));
-        DocumentSplitter parentSplitter = createSplitter(kb, kb.getIngestMaxSegmentSize());
+        DocumentSplitter parentSplitter = createSplitter(kb, doc, effectiveMaxSegmentSize(kb, doc));
         // one child splitter per run: per-parent creation would re-compile the separator pattern and re-warn on clamping for every parent
-        DocumentSplitter childSplitter = createSplitter(kb, childMaxChunkSize(doc));
+        DocumentSplitter childSplitter = createSplitter(kb, doc, childMaxChunkSize(doc));
         List<DocumentSegmentChildChunk> children = new ArrayList<>();
         int parentPosition = 0;
         for (TextSegment parentText : parentSplitter.split(document)) {
@@ -201,7 +201,7 @@ public class SegmentIndexService {
      * child chunk size.
      */
     public List<DocumentSegmentChildChunk> splitChildChunkRows(KnowledgeBase kb, KbDocument doc, Long parentSegmentId, String parentContent) {
-        return splitChildChunkRows(kb, doc, parentSegmentId, parentContent, createSplitter(kb, childMaxChunkSize(doc)));
+        return splitChildChunkRows(kb, doc, parentSegmentId, parentContent, createSplitter(kb, doc, childMaxChunkSize(doc)));
     }
 
     private List<DocumentSegmentChildChunk> splitChildChunkRows(KnowledgeBase kb, KbDocument doc, Long parentSegmentId,
@@ -388,13 +388,30 @@ public class SegmentIndexService {
         llmCallRecordService.saveAsync(record);
     }
 
-    public DocumentSplitter createSplitter(KnowledgeBase kb, Integer maxSegmentSize) {
+    /**
+     * 生效的每段最大token数：文档覆盖优先，-1(未覆盖)时回退知识库默认
+     * Effective max segment size: document override first, -1 (unset) falls back to the KB default
+     */
+    public Integer effectiveMaxSegmentSize(KnowledgeBase kb, KbDocument doc) {
+        return doc.getIngestMaxSegmentSize() >= 0 ? doc.getIngestMaxSegmentSize() : kb.getIngestMaxSegmentSize();
+    }
+
+    /**
+     * 构建切分器：策略/重叠/分隔符取文档覆盖值，未覆盖时回退知识库默认；maxSegmentSize 由调用方决定（父段取生效值、子段取子块大小）
+     * Build a splitter: strategy/overlap/separator take document-level overrides falling back to KB defaults; maxSegmentSize is decided by the caller (parent = effective value, child = child chunk size)
+     */
+    public DocumentSplitter createSplitter(KnowledgeBase kb, KbDocument doc, Integer maxSegmentSize) {
         int size = maxSegmentSize == null || maxSegmentSize < 1 ? 1000 : maxSegmentSize;
+        String strategy = StringUtils.isNotBlank(doc.getIngestSplitStrategy())
+                ? doc.getIngestSplitStrategy() : kb.getIngestSplitStrategy();
+        Integer overlap = doc.getIngestMaxOverlapSize() >= 0 ? doc.getIngestMaxOverlapSize() : kb.getIngestMaxOverlapSize();
+        String separator = StringUtils.isNotBlank(doc.getIngestCustomSeparator())
+                ? doc.getIngestCustomSeparator() : kb.getIngestCustomSeparator();
         return DocumentSplitterFactory.create(
-                kb.getIngestSplitStrategy(),
+                strategy,
                 size,
-                kb.getIngestMaxOverlap(),
-                kb.getIngestCustomSeparator(),
+                overlap,
+                separator,
                 TokenEstimatorFactory.create(kb.getIngestTokenEstimator()));
     }
 

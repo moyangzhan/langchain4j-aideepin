@@ -1,5 +1,5 @@
 <script setup lang='ts'>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { NBreadcrumb, NBreadcrumbItem, NButton, NCard, NIcon, NInput, NInputNumber, NRadio, NRadioGroup, NSelect, NSpin, NTooltip, useMessage } from 'naive-ui'
 import { QuestionCircle16Regular } from '@vicons/fluent'
 import { CreateOutline } from '@vicons/ionicons5'
@@ -69,7 +69,7 @@ async function saveOrUpdateKb() {
   }
   // The dynamic input max already blocks normal input; this backstops manually typed values that escaped clamping and legacy stored values
   const size = tmpKb.ingestMaxSegmentSize ?? 0
-  if (size > 0 && (tmpKb.ingestMaxOverlap ?? 0) >= size) {
+  if (size > 0 && (tmpKb.ingestMaxOverlapSize ?? 0) >= size) {
     ms.warning(t('knowledgeBase.overlapTooLarge'))
     return
   }
@@ -106,6 +106,13 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+})
+
+// 页面被全局 KeepAlive 缓存：同一 fullPath 再次进入不再走 onMounted，锚点定位挂 onActivated
+// The page is cached by the global KeepAlive: re-entering the same fullPath skips onMounted, so anchor scrolling lives in onActivated
+onActivated(() => {
+  if (route.query.anchor === 'ingestModelCard')
+    document.getElementById('ingestModelCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 })
 </script>
 
@@ -189,7 +196,7 @@ onMounted(async () => {
             </span>
             <div :class="itemBoxClass">
               <div>{{ t('knowledgeBase.docOverlapCount') }}</div>
-              <NInputNumber v-model:value="tmpKb.ingestMaxOverlap" :min="0" :max="overlapMax" />
+              <NInputNumber v-model:value="tmpKb.ingestMaxOverlapSize" :min="0" :max="overlapMax" />
             </div>
             <div :class="itemBoxClass">
               <div>{{ t('knowledgeBase.splitStrategy') }}</div>
@@ -222,7 +229,7 @@ onMounted(async () => {
             </div>
           </div>
         </NCard>
-        <NCard style="margin-top: 12px" :title="t('knowledgeBase.docIndexSettingGraph')" hoverable>
+        <NCard id="ingestModelCard" style="margin-top: 12px" :title="t('knowledgeBase.docIndexSettingGraph')" hoverable>
           <div :class="itemBoxClass">
             <div>
               {{ t('knowledgeBase.modelName') }}

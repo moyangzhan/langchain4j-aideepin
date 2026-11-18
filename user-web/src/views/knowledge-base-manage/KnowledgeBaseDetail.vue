@@ -6,7 +6,7 @@ import { createColumns } from './documentColumns'
 import FilePreviewModal from './components/FilePreviewModal.vue'
 import { ApiKeyModal } from '@/components/common'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
-import { useAuthStore } from '@/store'
+import { useAuthStore, useKbStore } from '@/store'
 import { knowledgeBaseEmptyInfo, knowledgeBaseEmptyItem } from '@/utils/functions'
 import { t } from '@/locales'
 import api from '@/api'
@@ -33,6 +33,7 @@ const paginationReactive = reactive({
 const searchValue = ref<string>('')
 const { isMobile } = useBasicLayout()
 const authStore = useAuthStore()
+const kbStore = useKbStore()
 const token = ref<string>(authStore.token)
 const checkedItemRowKeys = ref<string[]>([])
 const checkedItems = ref<KnowledgeBase.Document[]>([])
@@ -317,8 +318,11 @@ onMounted(async () => {
     await initData()
   inited.value = true
 })
-// Refresh the current page on return from the edit/detail pages; returning from the KB edit
-// page also reloads the KB info (title/description/visibility may have changed)
+// 返回刷新口径：库编辑页返回必刷（标题/可见性可能已变）；分段页返回必刷（页内多处操作会改状态列）；
+// 文档编辑/上传页仅保存过才刷（单槽标记按库匹配、命中即清，纯查看往返不重拉列表）
+// Returning refresh rules: a KB edit page return always reloads (title/visibility may have changed); a
+// segment page return always reloads (its actions change the status columns); document edit/upload returns
+// reload only after an actual save (single-slot flag matched by KB and consumed on hit)
 const cameFromRoute = ref('')
 router.afterEach((to, from) => {
   if (to.name === 'KnowledgeBaseManageDetail')
@@ -332,9 +336,9 @@ onActivated(() => {
     search(paginationReactive.page)
     return
   }
-  if (['DocumentAdd', 'DocumentEdit', 'DocumentDetail', 'DocumentUpload'].includes(cameFromRoute.value)) {
+  const docsChanged = kbStore.consumeDocsChanged(curKbUuid)
+  if (docsChanged || cameFromRoute.value === 'DocumentDetail') {
     search(paginationReactive.page)
-    // uploaded files index asynchronously: poll until the status column settles
     if (cameFromRoute.value === 'DocumentUpload')
       indexingCheck()
   }

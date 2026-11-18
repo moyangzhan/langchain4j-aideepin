@@ -12,7 +12,7 @@ declare namespace KnowledgeBase {
     loadingRecords?: boolean
     itemCount: number
     embeddingCount: number
-    ingestMaxOverlap: number
+    ingestMaxOverlapSize: number
     ingestSplitStrategy: string
     ingestMaxSegmentSize: number
     ingestCustomSeparator: string
@@ -48,6 +48,14 @@ declare namespace KnowledgeBase {
     enabledChangeTime: string
     segmentMode?: string
     childMaxChunkSize?: number
+    /** '' = follow the knowledge base default */
+    ingestSplitStrategy?: string
+    /** -1 = follow the knowledge base default */
+    ingestMaxSegmentSize?: number
+    /** -1 = follow the knowledge base default; 0 = no overlap */
+    ingestMaxOverlapSize?: number
+    /** '' = follow the knowledge base default */
+    ingestCustomSeparator?: string
     autoGenerateQa?: boolean
     failReason?: string
     sourceFileId?: string | number
@@ -189,6 +197,7 @@ declare namespace KnowledgeBase {
     loadingRecords: Map<string, boolean>
     loaddingKbList: boolean
     reloadKbInfosSignal: boolean
+    docsChangedKbUuid: string
   }
 
   interface KbStarInfo {

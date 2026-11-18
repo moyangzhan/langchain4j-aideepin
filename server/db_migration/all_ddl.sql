@@ -657,7 +657,7 @@ create table adi_knowledge_base
     remark                 text          default ''                not null,
     is_public              boolean       default false             not null,
     is_strict              boolean       default true              not null,
-    ingest_max_overlap     int           default 0                 not null,
+    ingest_max_overlap_size int          default 0                 not null,
     ingest_split_strategy  varchar(20)   default 'recursive'       not null,
     ingest_max_segment_size int          default 1000              not null,
     ingest_custom_separator varchar(100) default ''                not null,
@@ -686,7 +686,7 @@ comment on column adi_knowledge_base.title is 'Knowledge Base Title';
 comment on column adi_knowledge_base.remark is 'Knowledge Base Description';
 comment on column adi_knowledge_base.is_public is 'Is Public';
 comment on column adi_knowledge_base.is_strict is 'Strict mode: return no answer if no results found in knowledge base; Non-strict: fall back to LLM if no results';
-comment on column adi_knowledge_base.ingest_max_overlap is 'Max overlap (in tokens) when chunking documents, only used when cutting complete sentences';
+comment on column adi_knowledge_base.ingest_max_overlap_size is 'Max overlap (in tokens) when chunking documents, only used when cutting complete sentences';
 comment on column adi_knowledge_base.ingest_split_strategy is 'Split strategy: recursive/paragraph/line/sentence/custom';
 comment on column adi_knowledge_base.ingest_max_segment_size is 'Max segment size in tokens when chunking documents';
 comment on column adi_knowledge_base.ingest_custom_separator is 'Custom separator for splitting, only used when strategy is custom';
@@ -737,6 +737,10 @@ create table adi_document
     enabled_change_time          timestamp    default CURRENT_TIMESTAMP not null,
     index_version                int          default 0                 not null,
     child_max_chunk_size         int          default 200               not null,
+    ingest_split_strategy        varchar(20)  default ''                not null,
+    ingest_max_segment_size      int          default -1               not null,
+    ingest_max_overlap_size      int          default -1               not null,
+    ingest_custom_separator      varchar(100) default ''                not null,
     fail_reason                  varchar(500) default ''                not null,
     create_time                  timestamp    default CURRENT_TIMESTAMP not null,
     update_time                  timestamp    default CURRENT_TIMESTAMP not null,
@@ -759,8 +763,12 @@ comment on column adi_document.graph_hit_count is 'How many times this document 
 comment on column adi_document.word_count is 'Character count of the document content (auto-computed by PostgreSQL: char_length(remark))';
 comment on column adi_document.is_enabled is 'Whether the document is enabled for retrieval (false = its segments are excluded from vector/graph search)';
 comment on column adi_document.enabled_change_time is 'Last enabled/disabled status change time';
-comment on column adi_document.index_version is 'Generation of indexed artifacts built from this document; +1 on remark / segment_mode / KB split-param change (title and other metadata excluded). Index tasks snapshot it for staleness detection and merge-debounce';
+comment on column adi_document.index_version is 'Generation of indexed artifacts built from this document; +1 on remark / segment_mode / split-param change (knowledge base defaults and document overrides; title and other metadata excluded). Index tasks snapshot it for staleness detection and merge-debounce';
 comment on column adi_document.child_max_chunk_size is 'Parent-child mode: max child chunk size in tokens; document-level, applies to this document only';
+comment on column adi_document.ingest_split_strategy is 'Document-level split-strategy override: empty = follow the knowledge base default; otherwise recursive/paragraph/line/sentence/custom';
+comment on column adi_document.ingest_max_segment_size is 'Document-level max segment size override in tokens: -1 = follow the knowledge base default';
+comment on column adi_document.ingest_max_overlap_size is 'Document-level max overlap override in tokens: -1 = follow the knowledge base default; 0 = no overlap';
+comment on column adi_document.ingest_custom_separator is 'Document-level custom separator override, only used when the effective strategy is custom; empty = follow the knowledge base default';
 comment on column adi_document.fail_reason is 'Failure reason of the latest failed async pipeline on this document (embedding task, graph task or QA generation), prefixed with the failing stage (vectorize: / graph: / qa_generate:); empty when not failed, cleared on success/retry';
 comment on column adi_document.create_time is 'Creation time';
 comment on column adi_document.update_time is 'Last update time';

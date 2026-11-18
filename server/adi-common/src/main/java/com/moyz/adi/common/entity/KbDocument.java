@@ -52,6 +52,22 @@ public class KbDocument extends BaseEntity {
     @TableField("child_max_chunk_size")
     private Integer childMaxChunkSize;
 
+    @Schema(title = "分段策略覆盖,空串=跟随知识库默认 | Split-strategy override: empty = follow the knowledge base default")
+    @TableField("ingest_split_strategy")
+    private String ingestSplitStrategy;
+
+    @Schema(title = "每段最大token数覆盖,-1=跟随知识库默认 | Max segment size override in tokens: -1 = follow the knowledge base default")
+    @TableField("ingest_max_segment_size")
+    private Integer ingestMaxSegmentSize;
+
+    @Schema(title = "分段重叠token数覆盖,-1=跟随知识库默认,0=无重叠 | Max overlap override in tokens: -1 = follow the knowledge base default, 0 = no overlap")
+    @TableField("ingest_max_overlap_size")
+    private Integer ingestMaxOverlapSize;
+
+    @Schema(title = "自定义分隔符覆盖,仅custom策略生效,空串=跟随知识库默认 | Custom separator override, only used when strategy is custom; empty = follow the knowledge base default")
+    @TableField("ingest_custom_separator")
+    private String ingestCustomSeparator;
+
     @Schema(title = "最近一次失败的异步任务原因(向量化/QA生成) | Fail reason of the latest failed async pipeline")
     @TableField("fail_reason")
     private String failReason;
