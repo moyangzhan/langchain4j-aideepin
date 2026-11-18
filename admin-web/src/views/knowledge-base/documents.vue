@@ -139,6 +139,19 @@
     schemas,
   })
 
+  const segmentModeLabels: Record<string, string> = {
+    text: t('columns.segmentModeText'),
+    qa: t('columns.segmentModeQa'),
+    parent_child: t('columns.segmentModeParentChild'),
+  }
+
+  const embeddingStatusLabels: Record<string, string> = {
+    NONE: t('columns.embeddingStatusNone'),
+    DOING: t('columns.embeddingStatusDoing'),
+    DONE: t('columns.embeddingStatusDone'),
+    FAIL: t('columns.embeddingStatusFail'),
+  }
+
   const columns: BasicColumn<KbDocData>[] = [
     {
       title: t('columns.title'),
@@ -156,11 +169,17 @@
       title: t('columns.segmentMode'),
       key: 'segmentMode',
       width: 110,
+      render(row) {
+        return segmentModeLabels[row.segmentMode] || row.segmentMode
+      },
     },
     {
       title: t('columns.embeddingStatus'),
       key: 'embeddingStatus',
       width: 120,
+      render(row) {
+        return embeddingStatusLabels[row.embeddingStatus] || row.embeddingStatus
+      },
     },
     {
       title: t('columns.wordCount'),
