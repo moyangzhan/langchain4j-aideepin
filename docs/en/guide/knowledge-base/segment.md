@@ -59,7 +59,7 @@ Parents are the top-level chunks, children are sub-chunks; children match precis
 
 Segments (and parents, pairs) can be toggled individually — a way to "take content offline temporarily". Confirmation texts differ by graph status (translated):
 
-| Action | Document graphed | Document not graphed |
+| Action | Graph built | Graph not built |
 |---|---|---|
 | Disable | Disabling will delete the segment's generated vectors and graph data. Disable? | Disabling will delete the segment's generated vector data. Disable? |
 | Enable | Enabling will regenerate the segment's vectors and graph data (graph extraction consumes model quota). Enable? | Enabling will regenerate the segment's vector data. Enable? |
@@ -71,7 +71,7 @@ Segments (and parents, pairs) can be toggled individually — a way to "take con
 
 - **Missing vector**: when a segment is flagged, the confirmation reads (translated): "This item's vector does not exist in the vector store (may not match the status shown). Rebuild the vector?" — confirm to repair;
 - **Full rebuild** (document-card buttons): same semantics as failure retries (existing segments are reused), but always available instead of failure-only (see [Import Documents · Full Rebuild](document.md#full-rebuild));
-- **Index failures**: the bottom failure panel lists recent failure reasons per dimension (vector / graph) with three retries: re-vectorize / re-graph / re-vectorize and re-graph; an empty pair list offers **AI generate** instead;
+- **Index failures**: the bottom failure panel lists recent failure reasons per dimension (vector / graph) with three retries: re-vectorize / rebuild graph / re-vectorize and rebuild graph; an empty pair list offers **AI generate** instead;
 - While retrying, "Indexing: {dims}" shows and the page polls every 3 seconds.
 
 > [!NOTE]

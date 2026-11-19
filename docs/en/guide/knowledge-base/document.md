@@ -51,10 +51,10 @@ Uploading only creates documents and segments — **they become retrievable once
 
 1. Check one or more documents in the list;
 2. Click **Index selected (N)**;
-3. **Choose index type(s)**: vectorize / graph (both allowed). The dialog's in-app note (translated):
+3. **Choose index type(s)**: vectorize / build graph (both allowed). The dialog's in-app note (translated):
 
 > [!NOTE]
-> "Graphing documents uses a large language model and consumes a certain amount of tokens" — vectorize first to validate retrieval, then graph as needed.
+> "Graph extraction uses LLM which consumes a certain amount of tokens" — vectorize first to validate retrieval, then extract the graph as needed.
 
 4. Confirm — "Index task running in background"; the list polls every 3 seconds.
 
@@ -63,7 +63,7 @@ Uploading only creates documents and segments — **they become retrievable once
   <figcaption>Index dialog</figcaption>
 </figure>
 
-Un-graphed documents can be indexed later from the [segment management](segment.md) page's document card.
+Documents without a graph can be indexed later from the [segment management](segment.md) page's document card.
 
 ## Full Rebuild
 
@@ -82,8 +82,8 @@ Un-graphed documents can be indexed later from the [segment management](segment.
 | Column | Description |
 |---|---|
 | Segmentation mode | Plain / Q&A / parent-child tag |
-| Vector status | Not started / processing / success / failed; click Success/Failed for the completion time / failure reason |
-| Graph status | Not started / processing / success / failed; click Success/Failed for the completion time / failure reason |
+| Vector status | Not vectorized / processing / vectorized / failed; click Vectorized/Failed for the completion time / failure reason |
+| Graph status | Not generated / processing / generated / failed; click Generated/Failed for the completion time / failure reason |
 | Attachment | The uploaded file; click to preview |
 | Characters | Body length — the first indicator of healthy parsing |
 | Vector hits / graph hits | How often this document's segments were recalled — long-standing 0 means content doesn't match questions |

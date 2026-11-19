@@ -8,10 +8,10 @@ import java.util.Arrays;
 @Getter
 @AllArgsConstructor
 public enum GraphicalStatusEnum implements BaseEnum {
-    NONE(1, "Not Graphed"),
-    DOING(2, "Graphing"),
-    DONE(3, "Graphed"),
-    FAIL(4, "Graphing Failed");
+    NONE(1, "Not Built"),
+    DOING(2, "Building"),
+    DONE(3, "Built"),
+    FAIL(4, "Build Failed");
 
     private final Integer value;
     private final String desc;
