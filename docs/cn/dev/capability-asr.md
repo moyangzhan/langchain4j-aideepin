@@ -68,4 +68,4 @@ private synchronized void initAsrModelServiceList(Map<String, ModelPlatform> nam
 
 ---
 
-上一篇：[语音合成（TTS）能力接入](capability-tts.md) ｜ 下一篇：[返回总目录](../index.md)
+上一篇：[语音合成（TTS）能力接入](capability-tts.md) ｜ 下一篇：[数据库设计规范](database.md)

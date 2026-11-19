@@ -8,6 +8,7 @@
 4. [文生图能力接入](capability-image.md)：ImageModel Service 与前端编辑器适配
 5. [语音合成（TTS）能力接入](capability-tts.md)：TTS Service 开发与注册
 6. [语音识别（ASR）能力接入](capability-asr.md)：ASR Service 开发与注册
+7. [数据库设计规范](database.md)：基础字段、外键的形态约定
 
 ---
 

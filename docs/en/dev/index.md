@@ -8,6 +8,7 @@ For developers and operators of this system: understand the architecture and int
 4. [Text-to-Image Integration](capability-image.md): ImageModel service and front-end editor adaptation
 5. [TTS Integration](capability-tts.md): TTS service development and registration
 6. [ASR Integration](capability-asr.md): ASR service development and registration
+7. [Database Design Conventions](database.md): base columns and foreign-key shape conventions
 
 ---
 

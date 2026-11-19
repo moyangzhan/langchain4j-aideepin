@@ -68,4 +68,4 @@ private synchronized void initAsrModelServiceList(Map<String, ModelPlatform> nam
 
 ---
 
-Previous: [TTS Integration](capability-tts.md) · Next: [Back to contents](../index.md)
+Previous: [TTS Integration](capability-tts.md) · Next: [Database Design Conventions](database.md)
