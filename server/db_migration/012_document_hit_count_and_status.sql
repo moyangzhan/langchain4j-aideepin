@@ -26,13 +26,13 @@ ALTER TABLE adi_knowledge_base_item
 
 COMMENT ON TABLE  adi_knowledge_base_item IS 'Knowledge Base Document';
 COMMENT ON COLUMN adi_knowledge_base_item.title    IS 'Document Title';
-COMMENT ON COLUMN adi_knowledge_base_item.brief    IS 'Document Brief';
+COMMENT ON COLUMN adi_knowledge_base_item.brief    IS 'Short summary of the document';
 COMMENT ON COLUMN adi_knowledge_base_item.remark   IS 'Document Content';
-COMMENT ON COLUMN adi_knowledge_base_item.embedding_hit_count IS 'How many times this document was recalled via vector (embedding) retrieval';
-COMMENT ON COLUMN adi_knowledge_base_item.graph_hit_count     IS 'How many times this document was recalled via graph retrieval';
+COMMENT ON COLUMN adi_knowledge_base_item.embedding_hit_count IS 'Number of times this document was recalled via vector (embedding) retrieval';
+COMMENT ON COLUMN adi_knowledge_base_item.graph_hit_count     IS 'Number of times this document was recalled via graph retrieval';
 COMMENT ON COLUMN adi_knowledge_base_item.word_count          IS 'Character count of the document content (auto-computed: char_length(remark))';
 COMMENT ON COLUMN adi_knowledge_base_item.is_enabled          IS 'Whether the document is enabled for retrieval (false = its segments are excluded from vector/graph search)';
-COMMENT ON COLUMN adi_knowledge_base_item.enabled_change_time IS 'Last enabled/disabled status change time';
+COMMENT ON COLUMN adi_knowledge_base_item.enabled_change_time IS 'Time when the enabled flag last changed';
 
 
 -- ============================================================

@@ -1,16 +1,16 @@
 -- ============================================================
 -- Document-level segmentation parameter override:
 --   Section 1: rename adi_knowledge_base.ingest_max_overlap -> ingest_max_overlap_size
---              (the old name mirrors upstream langchain4j maxOverlapSize incompletely;
---               with document-level override columns added in Section 2, both tables
---               keep a one-to-one same-name column contract)
+--              (the old name only partially mirrored upstream langchain4j maxOverlapSize;
+--               with the document-level override columns added in Section 2, the four
+--               split-parameter columns now have identical names on both tables)
 --   Section 2: add the four document-level override columns on adi_document
 --
 -- Notes:
 --   * Section 1 RENAME is not idempotent (PostgreSQL has no IF EXISTS for RENAME); run once.
 --     Column comments survive the rename unchanged.
 --   * Section 2 ADD COLUMN IF NOT EXISTS is idempotent.
---   * Existing documents default to "follow the knowledge base" on all four keys
+--   * Existing documents default to "follow the knowledge base" for all four keys
 --     (varchar '' / int -1 sentinels): upgrade is a zero-behavior-change operation.
 -- ============================================================
 
@@ -27,14 +27,14 @@ ALTER TABLE adi_knowledge_base RENAME COLUMN ingest_max_overlap TO ingest_max_ov
 -- Section 2: document-level override columns
 -- Same names as the knowledge base columns; sentinel values mean "follow the
 -- knowledge base": '' for the two varchar columns, -1 for the two int columns
--- (-1 is outside the valid range; overlap 0 is a legal override meaning
+-- (-1 is outside the valid range; an overlap of 0 is a legal override meaning
 -- "no overlap", so 0 cannot serve as the sentinel).
 -- ============================================================
 
 ALTER TABLE adi_document
     ADD COLUMN IF NOT EXISTS ingest_split_strategy varchar(20) DEFAULT '' NOT NULL;
 
-COMMENT ON COLUMN adi_document.ingest_split_strategy IS 'Document-level split-strategy override: empty = follow the knowledge base default; otherwise recursive/paragraph/line/sentence/custom';
+COMMENT ON COLUMN adi_document.ingest_split_strategy IS 'Document-level split-strategy override: empty = follow the knowledge base default; one of recursive/paragraph/line/sentence/custom';
 
 ALTER TABLE adi_document
     ADD COLUMN IF NOT EXISTS ingest_max_segment_size int DEFAULT -1 NOT NULL;

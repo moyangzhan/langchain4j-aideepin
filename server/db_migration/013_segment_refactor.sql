@@ -39,7 +39,7 @@ ALTER TABLE adi_document
     ADD COLUMN IF NOT EXISTS segment_mode varchar(20) DEFAULT 'text' NOT NULL;
 
 COMMENT ON TABLE  adi_document IS 'Knowledge Base Document';
-COMMENT ON COLUMN adi_document.segment_mode IS 'Segment mode of this document: text | qa | parent_child. text: segments are chunks (vectorized). qa: document_segment rows are answers (not vectorized), questions live in adi_document_segment_question (vectorized). parent_child: document_segment rows are parent chunks (not vectorized), child chunks live in adi_document_segment_child_chunk (vectorized)';
+COMMENT ON COLUMN adi_document.segment_mode IS 'Segment mode of this document: text | qa | parent_child. text: segments are plain text chunks (vectorized). qa: document_segment rows are answers (not vectorized), questions live in adi_document_segment_question (vectorized). parent_child: document_segment rows are parent chunks (not vectorized), child chunks live in adi_document_segment_child_chunk (vectorized)';
 
 ALTER TABLE adi_document
     ADD COLUMN IF NOT EXISTS child_max_chunk_size int DEFAULT 200 NOT NULL;
@@ -98,7 +98,7 @@ COMMENT ON COLUMN adi_document_segment.create_time IS 'Creation time';
 COMMENT ON COLUMN adi_document_segment.update_time IS 'Last update time';
 COMMENT ON COLUMN adi_document_segment.is_deleted IS 'Whether the record is soft-deleted';
 COMMENT ON COLUMN adi_document_segment.is_enabled IS 'Whether this segment is enabled for retrieval (false = its vector & graph data has been deleted; enabling re-generates them)';
-COMMENT ON COLUMN adi_document_segment.enabled_change_time IS 'Last enabled/disabled status change time';
+COMMENT ON COLUMN adi_document_segment.enabled_change_time IS 'Time when the enabled flag last changed';
 COMMENT ON COLUMN adi_document_segment.embedding_status IS 'Rebuild status of this segment''s vector data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
 COMMENT ON COLUMN adi_document_segment.graphical_status IS 'Rebuild status of this segment''s graph data (segment-level, used by enable-segment async rebuild): 1=none (disabled), 2=rebuilding, 3=ready, 4=failed. Legacy rows default to 3';
 COMMENT ON COLUMN adi_document_segment.fail_reason IS 'Failure reason of the latest failed async pipeline on this segment (embedding or graph rebuild), prefixed with the failing stage (vectorize: / graph:); empty when not failed, cleared on success/retry';
@@ -142,7 +142,7 @@ COMMENT ON COLUMN adi_document_segment_question.answer_segment_id IS 'Answer seg
 COMMENT ON COLUMN adi_document_segment_question.position IS 'Zero-based order of the question within its answer segment';
 COMMENT ON COLUMN adi_document_segment_question.content IS 'Question original text (this is the content that gets vectorized)';
 COMMENT ON COLUMN adi_document_segment_question.word_count IS 'Character count of the question (auto-computed by PostgreSQL: char_length(content))';
-COMMENT ON COLUMN adi_document_segment_question.hit_count IS 'How many times this question was hit by vector retrieval';
+COMMENT ON COLUMN adi_document_segment_question.hit_count IS 'Number of times this question was hit by vector retrieval';
 COMMENT ON COLUMN adi_document_segment_question.embedding_id IS 'Vector store entry id';
 COMMENT ON COLUMN adi_document_segment_question.create_time IS 'Creation time';
 COMMENT ON COLUMN adi_document_segment_question.update_time IS 'Last update time';
@@ -186,7 +186,7 @@ COMMENT ON COLUMN adi_document_segment_child_chunk.parent_segment_id IS 'Parent 
 COMMENT ON COLUMN adi_document_segment_child_chunk.position IS 'Zero-based order of the child chunk within its parent segment';
 COMMENT ON COLUMN adi_document_segment_child_chunk.content IS 'Child chunk original text (this is the content that gets vectorized)';
 COMMENT ON COLUMN adi_document_segment_child_chunk.word_count IS 'Character count of the child chunk (auto-computed by PostgreSQL: char_length(content))';
-COMMENT ON COLUMN adi_document_segment_child_chunk.hit_count IS 'How many times this child chunk was hit by vector retrieval';
+COMMENT ON COLUMN adi_document_segment_child_chunk.hit_count IS 'Number of times this child chunk was hit by vector retrieval';
 COMMENT ON COLUMN adi_document_segment_child_chunk.embedding_id IS 'Vector store entry id';
 COMMENT ON COLUMN adi_document_segment_child_chunk.create_time IS 'Creation time';
 COMMENT ON COLUMN adi_document_segment_child_chunk.update_time IS 'Last update time';
