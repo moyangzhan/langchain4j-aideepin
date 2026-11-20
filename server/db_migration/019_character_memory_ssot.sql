@@ -20,9 +20,9 @@
 --     adi_character_episodic_memory_embedding[_suffix],
 --     adi_character_instruction_memory_embedding[_suffix]) are created by the app
 --     at startup (createTable); they are NOT part of this migration.
---   * The active vector tables are NOT touched by this section: existing rows keep
---     their text and metadata until the read paths switch (vector data is
---     rebuildable derived data).
+--   * Section 1 does not touch the active vector tables: existing rows keep their text
+--     and metadata until the read paths switch (vector data is rebuildable derived
+--     data). Section 2 backfills the relational rows FROM the active vector tables.
 -- ============================================================
 
 
@@ -149,3 +149,121 @@ CREATE TRIGGER trigger_character_memory_instruction_update_time
     on adi_character_memory_instruction
     for each row
 execute procedure update_modified_column();
+
+
+-- ============================================================
+-- Section 2: backfill from the ACTIVE pgvector memory tables
+--
+-- !! NOT RUNNABLE AS-IS: replace the two placeholders first (search & replace) !!
+--   {ACTIVE_SEMANTIC_TABLE}  e.g. adi_character_memory_embedding_openai_1536
+--   {ACTIVE_EPISODIC_TABLE}  e.g. adi_character_episodic_memory_embedding_openai_1536
+--
+-- Finding the active table names:
+--   * name = base name + "_" + suffix, where suffix = 平台_维度 of the embedding model
+--     currently enabled in the admin console (e.g. openai_1536, qwen_1024);
+--     the local bge-small-zh-v1.5 model gives suffix bge_384; all-minilm-l6-v2 gives
+--     NO suffix (bare base name)
+--   * list candidates:
+--       SELECT table_name FROM information_schema.tables
+--       WHERE table_schema = 'public'
+--         AND table_name LIKE 'adi_character_%_memory_embedding%'
+--       ORDER BY table_name;
+--
+-- Scope: ONLY the active tables are backfilled. Tables abandoned by past embedding-model
+-- switches are deliberately NOT rescued - their content has been unrecallable since the
+-- switch; dropping them is an optional cleanup left to the operator.
+--
+-- Re-run safety: both INSERTs use ON CONFLICT (uuid) DO NOTHING. Rows already written by
+-- the app's double-write (jar deployed before this backfill ran) are skipped, keeping the
+-- app-written row (its content is the newer one when an UPDATE happened in between).
+--
+-- hit_count: the column is added to vector tables at app startup; if your active table
+-- predates that and lacks the column, replace every hit_count reference in 2.1/2.2
+-- with 0.
+--
+-- neo4j vector backends: memory data lives in the graph store, SQL cannot reach it.
+-- A packaged runner is NOT shipped with this migration; until one is provided, backfill
+-- such deployments by exporting each memory store's nodes (id / text / metadata) and
+-- applying the same column mapping as 2.1 / 2.2 below. pgvector deployments are unaffected.
+-- ============================================================
+
+-- 2.0 Pre-check: rows in the semantic table still tagged memory_type='episodic' are
+-- physical-isolation leftovers from the mixed-table era; the backfill routes them to the
+-- episodic table by metadata fact. Record this number - 2.3 uses it as an input:
+-- rel_episodic must equal vec_episodic + this count. The vector-table leftovers
+-- themselves are not removed by this migration (cleanup is the operator's, same as
+-- abandoned tables).
+SELECT count(*) AS semantic_table_episodic_leftovers
+FROM {ACTIVE_SEMANTIC_TABLE}
+WHERE metadata ->> 'memory_type' = 'episodic';
+
+-- 2.1 Backfill episodic rows.
+-- Sources: every row of the active episodic table, PLUS the episodic-tagged leftovers of
+-- the active semantic table (union in the subquery; mapping and character join written once).
+-- uuid = embedding_id without dashes (vector PKs are canonical 36-char uuids, so the
+-- strip is lossless and the vector row itself keeps the canonical form - zero rewrites,
+-- zero broken refs). user_id resolves via the owning character (soft-deleted characters
+-- still resolve); unresolvable orphans get the -1 sentinel. word_count is a generated
+-- column and is deliberately absent from the column list.
+INSERT INTO adi_character_memory_episodic
+    (uuid, character_id, content, event_type, importance, source_msg_id, user_id, hit_count, create_time)
+SELECT replace(u.embedding_id, '-', ''),
+       (u.metadata ->> 'conv_id')::bigint,
+       u."text",
+       COALESCE(u.metadata ->> 'event_type', ''),
+       COALESCE((u.metadata ->> 'importance')::int, 3),
+       COALESCE((u.metadata ->> 'conv_msg_id')::bigint, -1),
+       COALESCE(ch.user_id, -1),
+       COALESCE(u.hit_count, 0),
+       COALESCE((u.metadata ->> 'create_time')::timestamp, CURRENT_TIMESTAMP)
+FROM (SELECT embedding_id::text AS embedding_id, metadata, "text", hit_count
+      FROM {ACTIVE_EPISODIC_TABLE}
+      UNION ALL
+      SELECT embedding_id::text, metadata, "text", hit_count
+      FROM {ACTIVE_SEMANTIC_TABLE}
+      WHERE metadata ->> 'memory_type' = 'episodic') u
+         LEFT JOIN adi_character ch ON ch.id = (u.metadata ->> 'conv_id')::bigint
+WHERE u.metadata ->> 'conv_id' IS NOT NULL
+  AND u."text" IS NOT NULL
+  AND u."text" <> ''
+ON CONFLICT (uuid) DO NOTHING;
+
+-- 2.2 Backfill semantic rows.
+-- Everything in the active semantic table EXCEPT the episodic leftovers. create_time
+-- takes the migration moment for every row: semantic metadata never carried a creation
+-- time, so the original time is physically unrecoverable and the migration moment is the
+-- honest "row creation time" (one-off same value; no behavioral consumer today).
+INSERT INTO adi_character_memory_semantic
+    (uuid, character_id, content, user_id, hit_count, create_time)
+SELECT replace(vec.embedding_id::text, '-', ''),
+       (vec.metadata ->> 'conv_id')::bigint,
+       vec."text",
+       COALESCE(ch.user_id, -1),
+       COALESCE(vec.hit_count, 0),
+       CURRENT_TIMESTAMP
+FROM {ACTIVE_SEMANTIC_TABLE} vec
+         LEFT JOIN adi_character ch ON ch.id = (vec.metadata ->> 'conv_id')::bigint
+WHERE vec.metadata ->> 'conv_id' IS NOT NULL
+  AND COALESCE(vec.metadata ->> 'memory_type', 'semantic') <> 'episodic'
+  AND vec."text" IS NOT NULL
+  AND vec."text" <> ''
+ON CONFLICT (uuid) DO NOTHING;
+
+-- 2.3 Post-backfill reconciliation. In a stopped-service window the counts must satisfy:
+--   rel_episodic_alive = vec_episodic + semantic_table_episodic_leftovers
+--   rel_semantic_alive = vec_semantic_pure
+-- Both relational counts exclude soft-deleted rows, so the equalities also hold when the
+-- double-write jar has been running before this backfill (rows it wrote are skipped by
+-- ON CONFLICT on both sides; memories it deleted are absent from the vector count and
+-- filtered from the relational count). Sustained small drift only means writes happened
+-- between the backfill and this query.
+SELECT (SELECT count(*) FROM adi_character_memory_episodic WHERE NOT is_deleted)      AS rel_episodic_alive,
+       (SELECT count(*) FROM adi_character_memory_semantic WHERE NOT is_deleted)      AS rel_semantic_alive,
+       (SELECT count(*) FROM {ACTIVE_EPISODIC_TABLE})                                AS vec_episodic,
+       (SELECT count(*) FROM {ACTIVE_SEMANTIC_TABLE})                                AS vec_semantic_total,
+       (SELECT count(*)
+        FROM {ACTIVE_SEMANTIC_TABLE}
+        WHERE COALESCE(metadata ->> 'memory_type', 'semantic') <> 'episodic')        AS vec_semantic_pure,
+       (SELECT count(*)
+        FROM {ACTIVE_SEMANTIC_TABLE}
+        WHERE metadata ->> 'memory_type' = 'episodic')                               AS semantic_table_episodic_leftovers;
