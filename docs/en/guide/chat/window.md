@@ -86,7 +86,7 @@ Three buttons under each answer let you check its sources:
 
 | Button | Content |
 |---|---|
-| Memory | Long-term memories hit by this answer, grouped into **semantic** / **episodic** |
+| Memory | Long-term memories hit by this answer, grouped into **semantic** / **episodic** / **instruction** |
 | Citations | Hit knowledge base segments per segmentation mode: Q&A shows the hit question and answer; parent-child shows the hit child chunk and its parent; plain shows the segment text |
 | Graph | Knowledge graph fragments referenced by the answer |
 

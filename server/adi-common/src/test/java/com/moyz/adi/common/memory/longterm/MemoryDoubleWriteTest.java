@@ -238,7 +238,7 @@ class MemoryDoubleWriteTest {
         row.setContent("关系行内容");
         when(semanticRelational.mapByUuids(anyList())).thenReturn(Map.of(knownUuid, row));
 
-        SemanticMemoryService.MergeCandidates candidates =
+        MergeCandidates candidates =
                 newSemanticService().searchMergeCandidates(List.of("新事实"), 7L);
 
         List<Map<String, String>> prompt = candidates.factToOldMemoriesForPrompt.get("新事实");
@@ -262,12 +262,12 @@ class MemoryDoubleWriteTest {
         return action;
     }
 
-    private static SemanticMemoryService.MergeCandidates emptyCandidates() {
-        return new SemanticMemoryService.MergeCandidates(java.util.Map.of(), java.util.Map.of());
+    private static MergeCandidates emptyCandidates() {
+        return new MergeCandidates(java.util.Map.of(), java.util.Map.of());
     }
 
-    private static SemanticMemoryService.MergeCandidates candidatesWith(String fact, String tmpId, String embeddingId) {
-        return new SemanticMemoryService.MergeCandidates(
+    private static MergeCandidates candidatesWith(String fact, String tmpId, String embeddingId) {
+        return new MergeCandidates(
                 java.util.Map.of(fact, List.of(java.util.Map.of("id", tmpId, "text", "old"))),
                 java.util.Map.of(fact, java.util.Map.of(tmpId, embeddingId)));
     }

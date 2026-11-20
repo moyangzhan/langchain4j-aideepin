@@ -280,7 +280,7 @@ public class CharacterChatService {
         String effectiveLocale = StringUtils.isNotBlank(user.getLocale())
                 ? user.getLocale()
                 : Objects.toString(SysConfigService.getByKey(AdiConstant.SysConfigKey.DEFAULT_LOCALE), "zh-CN");
-        Pair<String, String> memoryAndKnowledge = CharacterChatHelper.buildMemoryAndKnowledge(retrieverWrappers);
+        Pair<String, String> memoryAndKnowledge = CharacterChatHelper.buildMemoryAndKnowledge(retrieverWrappers, character.getId());
         String audioExtra = answerToAudio ? (effectiveLocale.startsWith("zh") ? PROMPT_EXTRA_AUDIO : PROMPT_EXTRA_AUDIO_EN) : "";
         String processedPrompt = PromptUtil.createPrompt(askReq.getPrompt(), memoryAndKnowledge.getLeft(), memoryAndKnowledge.getRight(), audioExtra, effectiveLocale);
         if (!Objects.equals(askReq.getPrompt(), processedPrompt)) {

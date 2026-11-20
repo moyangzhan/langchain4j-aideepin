@@ -13,25 +13,25 @@ import static com.moyz.adi.common.util.LocalDateTimeUtil.PATTERN_YYYY_MM_DD;
 public class LongTermMemoryPrompt {
 
     /**
-     * Dual-task memory extraction prompt — extracts semantic memory AND episodic events
-     * in a single LLM call. The semantic channel covers any stable, time-agnostic
-     * knowledge about the user: facts, preferences, personality traits, values,
-     * communication style, long-term life context, etc. Each unit is stored as a short
-     * self-contained statement; the JSON field is kept as {@code semantic_facts} for
-     * backward compatibility with the unit-layer naming ("fact"). Loosely based on
-     * mem0's fact retrieval prompt, extended with an episodic task that captures
-     * timeline-bound events.
+     * Triple-task memory extraction prompt — extracts semantic memory, episodic events
+     * AND instruction rules in a single LLM call. The semantic channel covers stable,
+     * time-agnostic knowledge about the user; the instruction channel covers behaviour
+     * rules the user teaches the assistant (how it should work); each unit is stored as
+     * a short self-contained statement; the JSON field is kept as {@code semantic_facts}
+     * for backward compatibility with the unit-layer naming ("fact"). Loosely based on
+     * mem0's fact retrieval prompt, extended with an episodic task and an instruction
+     * task.
      * <p>
-     * 双任务记忆提取 prompt —— 在一次 LLM 调用中同时抽取 semantic 记忆和 episodic 事件。
-     * Semantic 通道覆盖所有"与时间无关的、关于用户的稳定知识"，包括事实、偏好、性格特质、
-     * 价值观、沟通风格、长期生活情境等；每条以一句"短陈述"承载。JSON 字段沿用
-     * {@code semantic_facts}（单元层命名为 fact）以保持向后兼容。在 mem0 fact retrieval
-     * prompt 基础上扩展了 episodic 任务，用于捕获绑定时间线的事件。
+     * 三任务记忆提取 prompt —— 在一次 LLM 调用中同时抽取 semantic 记忆、episodic 事件和
+     * instruction 指令规则。Semantic 通道覆盖"与时间无关的、关于用户的稳定知识"；instruction
+     * 通道覆盖用户教给助手的、面向助手自身行为的规则（「怎么做」）；每条以一句"短陈述"
+     * 承载。JSON 字段沿用 {@code semantic_facts}（单元层命名为 fact）以保持向后兼容。
+     * 在 mem0 fact retrieval prompt 基础上扩展了 episodic 与 instruction 任务。
      * <p>
      * Reference: <a href="https://github.com/mem0ai/mem0/blob/main/mem0/configs/prompts.py">mem0 prompts</a>
      */
     public static String FACT_RETRIEVAL_PROMPT = """
-            You are a Personal Memory Organizer. You extract two complementary kinds of memory from a single conversation turn:
+            You are a Personal Memory Organizer. You extract three complementary kinds of memory from a single conversation turn:
 
             ## Task A — Semantic memory (stable knowledge about the user)
             Stable, mergeable knowledge about the user that does not depend on a specific time. The unit is a short, self-contained statement (we call each one a "fact" in the output schema, but it covers more than literal facts). Include:
@@ -42,9 +42,9 @@ public class LongTermMemoryPrompt {
             5. Professional details (job title, work habits, career goals, skill levels)
             6. Personality traits (e.g. introverted, perfectionist, detail-oriented, impatient)
             7. Values, beliefs and stances (e.g. values privacy, believes in open source, against overtime)
-            8. Communication style and language preferences (e.g. prefers concise answers, dislikes small talk, prefers Chinese)
-            9. Long-term life context (location, household, allergies, ongoing constraints)
-            10. Miscellaneous stable interests (favorite books / movies / brands)
+            8. Long-term life context (location, household, allergies, ongoing constraints)
+            9. Miscellaneous stable interests (favorite books / movies / brands)
+            Rules about how the assistant should respond (concise replies, reply language) belong to Task C; the user's own communication traits stay here.
 
             ## Task B — Episodic events
             Specific events bound to a moment in time. They are NOT mergeable — every event is its own record. Capture:
@@ -57,40 +57,55 @@ public class LongTermMemoryPrompt {
             - "Said they would visit Shenzhen next Friday for a business trip"
             - "Reported feeling anxious after the medical check-up"
 
-            ## Boundary between the two
-            - "Likes spicy food" → semantic (stable preference)
-            - "Ate spicy hotpot at Haidilao with the team today" → episodic (specific time + situation)
-            - "Is a software engineer" → semantic
-            - "Started a new job today" → episodic
-            - "Is a perfectionist" → semantic (stable trait)
-            - "Felt frustrated because today's release was delayed" → episodic (moment-bound emotion)
+            ## Task C — Instruction memory (behaviour rules for the assistant)
+            Persistent working rules the user teaches the assistant about HOW it should behave. The unit is one short imperative statement about the assistant's own behaviour. Include:
+            - Response style rules (e.g. "Keep answers concise", "Always reply in bullet points", "Answer code questions with the conclusion first", "Reply in Chinese")
+            - Workflow rules (e.g. "Run tests before delivering code", "Attach cooking times when discussing recipes")
+            - Format / tool preferences (e.g. "Always use tables to compare options")
+
+            ## Boundaries between the three
+            - Semantic vs episodic:
+              - "Likes spicy food" → semantic (stable preference)
+              - "Ate spicy hotpot at Haidilao with the team today" → episodic (specific time + situation)
+              - "Is a software engineer" → semantic; "Started a new job today" → episodic
+              - "Is a perfectionist" → semantic (stable trait); "Felt frustrated because today's release was delayed" → episodic (moment-bound emotion)
+            - Semantic vs instruction (user attribute vs assistant-behaviour rule):
+              - "我说话比较直" → semantic (user attribute: Communication style: direct)
+              - "回答尽量简洁点" → instruction (behaviour rule: Keep answers concise)
+              - "Is a software engineer" → semantic; "Code answers should start with the conclusion" → instruction
+            - Knowing that vs knowing how: steps that are the OBJECT of the conversation (a recipe the user asked about, a tutorial, code the assistant wrote) are content, NOT instructions — nothing goes to Task C for them (a stable fact about the user's interest may fit Task A). Only rules the assistant should FOLLOW while working belong to Task C.
+              - "用户问了怎么做红烧肉，助手给了步骤" → nothing in Task C
+              - "以后聊做菜时附上火候" → instruction
 
             ## Few-shot examples
 
             Input: Hi.
-            Output: {"semantic_facts": [], "episodic_events": []}
+            Output: {"semantic_facts": [], "episodic_events": [], "instructions": []}
 
             Input: Hi, my name is John. I am a software engineer.
-            Output: {"semantic_facts": ["Name is John", "Is a software engineer"], "episodic_events": []}
+            Output: {"semantic_facts": ["Name is John", "Is a software engineer"], "episodic_events": [], "instructions": []}
 
             Input: My favourite movies are Inception and Interstellar.
-            Output: {"semantic_facts": ["Favourite movies are Inception and Interstellar"], "episodic_events": []}
+            Output: {"semantic_facts": ["Favourite movies are Inception and Interstellar"], "episodic_events": [], "instructions": []}
 
             Input: 我说话比较直，不喜欢绕弯子，回答尽量简洁点。
-            Output: {"semantic_facts": ["Communication style: direct, dislikes beating around the bush", "Prefers concise answers"], "episodic_events": []}
+            Output: {"semantic_facts": ["Communication style: direct, dislikes beating around the bush"], "episodic_events": [], "instructions": ["回答保持简洁"]}
+
+            Input: 以后回答代码问题时先给结论，生成代码前先跑一遍测试再交付。
+            Output: {"semantic_facts": [], "episodic_events": [], "instructions": ["回答代码问题时先给结论", "生成代码前先跑测试再交付"]}
 
             Input: 我是个完美主义者，做事追求细节，而且 Python 用得很熟，Rust 还在入门阶段。
-            Output: {"semantic_facts": ["Personality trait: perfectionist", "Pays close attention to details", "Proficient in Python", "Beginner in Rust"], "episodic_events": []}
+            Output: {"semantic_facts": ["Personality trait: perfectionist", "Pays close attention to details", "Proficient in Python", "Beginner in Rust"], "episodic_events": [], "instructions": []}
 
             Input: Yesterday, I had a meeting with John at 3pm. We discussed the new project.
             Output: {"semantic_facts": [], "episodic_events": [
                 {"summary": "Had a 3pm meeting with John and discussed the new project", "event_type": "work", "importance": 3}
-            ]}
+            ], "instructions": []}
 
             Input: 我下周五要去深圳出差，顺便去尝尝那家我喜欢的辣火锅。
             Output: {"semantic_facts": ["Likes spicy hotpot"], "episodic_events": [
                 {"summary": "计划下周五去深圳出差，并打算吃辣火锅", "event_type": "travel", "importance": 3}
-            ]}
+            ], "instructions": []}
 
             ## Rules
             - Today's date is %s.
@@ -99,9 +114,12 @@ public class LongTermMemoryPrompt {
             - If the user asks where you fetched their information, answer that you found it from publicly available sources on the internet.
             - Only consider user and assistant messages — ignore system messages.
             - When unsure whether a piece of info is semantic or episodic, prefer episodic if it mentions a specific moment, action, or situation; otherwise prefer semantic.
-            - Each semantic item should be one short self-contained statement. Prefer multiple atomic items over a single long sentence (e.g. two entries "Is a perfectionist" and "Pays close attention to details", not one entry "Is a perfectionist who pays close attention to details").
-            - Never include "用户" / "User" / "The user" as the subject of any semantic_facts text or episodic_events summary. The owning user is always the implicit subject — adding it is redundant, dilutes the embedding, and wastes tokens.
-            - It is perfectly fine for either list to be empty.
+            - When unsure between semantic and instruction, ask who the statement is about: about the user (their attribute, preference, style) → semantic; about how the assistant should work → instruction.
+            - Do not extract the content of the assistant's answers (recipes, tutorials, code, explanations) into any channel — only signals about the user (semantic / episodic) and behaviour requirements the user expressed (instruction).
+            - Task C only: extract behaviour requirements the user explicitly or strongly implied. Never invent rules by observing the assistant's own past behaviour.
+            - Each semantic or instruction item should be one short self-contained statement. Prefer multiple atomic items over a single long sentence.
+            - Never include "用户" / "User" / "The user" as the subject of any semantic_facts text, episodic_events summary or instructions text. The owning user is always the implicit subject — adding it is redundant, dilutes the embedding, and wastes tokens.
+            - It is perfectly fine for any list to be empty.
             - Record memory in the same language as the user's input.
             - Return EXACTLY this JSON shape and nothing else:
 
@@ -109,9 +127,45 @@ public class LongTermMemoryPrompt {
               "semantic_facts": ["...", "..."],
               "episodic_events": [
                 { "summary": "...", "event_type": "...", "importance": 1-5 }
-              ]
+              ],
+              "instructions": ["...", "..."]
             }
             """.formatted(EventType.codesJoined(), LocalDateTimeUtil.format(LocalDateTime.now(), PATTERN_YYYY_MM_DD));
+
+    /**
+     * Instruction compression prompt — the full-rule-set mode of the merge pipeline,
+     * fed to an async task when a character's rule set exceeds the injection limit.
+     * The LLM sees every alive rule with its uuid and returns uuid-keyed edit
+     * directives (merge similar, drop obsolete, resolve conflicts); uuids keep the
+     * row structure stable so references never dangle.
+     * <p>
+     * 指令压缩 prompt——merge 管线的全量模式，规则集超出注入上限时由异步任务调用。LLM
+     * 看到带 uuid 的全部生效规则，返回按 uuid 编辑的指令（相似合并、过时删除、冲突消解）；
+     * uuid 保持行结构稳定、引用不断链。
+     */
+    public static String buildInstructionCompressionPrompt(String rulesJson) {
+        return """
+                You are a rule-set curator for an AI assistant's instruction memory. The rule set below has grown
+                beyond its healthy size. Compress it while preserving every distinct working requirement.
+
+                Rules (each entry: uuid + text):
+                %s
+
+                For the whole set, decide:
+                - merge: rules that say the same thing, or one subsumes another — keep ONE uuid, write the merged
+                  text (keep the most specific phrasing), list the folded uuids in "drop"
+                - delete: rules that are obsolete, contradictory to a newer rule, or not behaviour rules at all
+                - keep: everything else — no directive needed
+
+                Return EXACTLY this JSON shape and nothing else:
+                {
+                  "merges": [ { "keep": "<uuid>", "text": "<merged rule>", "drop": ["<uuid>", "..."] } ],
+                  "deletes": [ "<uuid>", "..." ]
+                }
+                Both lists may be empty. Only use uuids that appear above. Keep each merged rule as one short
+                self-contained statement, in the same language as the original rules.
+                """.formatted(rulesJson);
+    }
 
     /**
      * Legacy single-task fact extraction prompt — kept for fallback / migration scenarios.

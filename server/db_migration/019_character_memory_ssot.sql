@@ -16,10 +16,11 @@
 --   re-embedding on model switch reuses the same uuid, so refs never dangle.
 --
 -- Notes:
---   * The three vector tables themselves (adi_character_memory_embedding[_suffix],
---     adi_character_episodic_memory_embedding[_suffix],
---     adi_character_instruction_memory_embedding[_suffix]) are created by the app
---     at startup (createTable); they are NOT part of this migration.
+--   * The two vector tables themselves (adi_character_memory_embedding[_suffix],
+--     adi_character_episodic_memory_embedding[_suffix]) are created by the app at
+--     startup (createTable); they are NOT part of this migration. Instruction memory
+--     has NO vector table: rules are injected in full and merged against the full
+--     relational rule set, so a vector index has no consumer.
 --   * Section 1 does not touch the active vector tables: existing rows keep their text
 --     and metadata until the read paths switch (vector data is rebuildable derived
 --     data). Section 2 backfills the relational rows FROM the active vector tables.
@@ -267,3 +268,13 @@ SELECT (SELECT count(*) FROM adi_character_memory_episodic WHERE NOT is_deleted)
        (SELECT count(*)
         FROM {ACTIVE_SEMANTIC_TABLE}
         WHERE metadata ->> 'memory_type' = 'episodic')                               AS semantic_table_episodic_leftovers;
+
+
+-- ============================================================
+-- Section 3: refresh the memory-type routing comment on the ref table
+-- (the legacy comment still says 3=procedural from migration 010's era; the
+-- type is live as instruction now — comment-only, no data change)
+-- ============================================================
+
+COMMENT ON COLUMN adi_character_message_ref_memory_embedding.memory_type IS
+    'Routing code: 1=semantic, 2=episodic, 3=instruction';

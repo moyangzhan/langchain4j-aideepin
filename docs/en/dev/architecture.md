@@ -74,6 +74,7 @@ Post-processing (TTS synthesis, token billing, save history)
 **Core Capabilities**:
 - Multi-model switching: Users can select different AI models in a conversation
 - Multi-turn memory: Short-term memory (current session context) + Long-term memory (key information across sessions)
+- Long-term memory, three channels: semantic memory (stable facts about the user) and episodic memory (timeline events) are recalled via vector search; instruction memory (behaviour rules the user teaches the character) has no vector layer and is injected into the prompt in full. All three keep their content in relational tables (`adi_character_memory_episodic` / `adi_character_memory_semantic` / `adi_character_memory_instruction`) as the single source of truth; the semantic/episodic vector tables are derived retrieval indexes joined by uuid
 - Multimodal input: Text, images, voice
 - TTS synthesis: Convert AI responses to speech output
 - RAG-enhanced responses: When linked to a knowledge base, AI generates answers based on retrieved content

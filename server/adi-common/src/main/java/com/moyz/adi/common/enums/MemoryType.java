@@ -36,8 +36,8 @@ public enum MemoryType implements BaseEnum {
     /** 情景记忆：绑定时间线、不可合并的事件。 | Timeline-bound, non-mergeable events. */
     EPISODIC(2, "episodic"),
 
-    /** 程序性记忆（预留，尚未启用）。 | Procedural memory, reserved for future use. */
-    PROCEDURAL(3, "procedural");
+    /** 指令记忆：用户教给助手的、面向助手自身行为的可合并规则。 | Instruction memory: mergeable behaviour rules for the assistant, taught by the user. */
+    INSTRUCTION(3, "instruction");
 
     private final Integer value;
     private final String desc;

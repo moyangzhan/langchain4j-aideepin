@@ -17,10 +17,11 @@ const chatStore = useChatStore()
 const loading = ref<boolean>(false)
 const memoryEmbeddings = ref<Chat.MemoryEmbedding[]>([])
 
-// Split memory hits into two groups for display.
-// 把命中的记忆按类型分组,语义记忆和情景记忆分别展示。
-const semanticMemoryItems = computed(() => memoryEmbeddings.value.filter(m => m.memoryType !== 'episodic'))
+// Split memory hits into three groups for display.
+// 把命中的记忆按类型分组,语义记忆、情景记忆和指令记忆分别展示。
+const semanticMemoryItems = computed(() => memoryEmbeddings.value.filter(m => m.memoryType === 'semantic'))
 const episodicMemoryItems = computed(() => memoryEmbeddings.value.filter(m => m.memoryType === 'episodic'))
+const instructionMemoryItems = computed(() => memoryEmbeddings.value.filter(m => m.memoryType === 'instruction'))
 
 async function load(msgUuid: string) {
   if (!msgUuid) {
@@ -86,6 +87,21 @@ watch(() => props.msgUuid, newUuid => load(newUuid))
               <span>{{ reference.createTime || `${t('chat.episodicMemory')} ${idx + 1}` }}</span>
             </div>
           </template>
+          {{ reference.text }}
+        </NCollapseItem>
+      </NCollapse>
+    </div>
+    <!-- Instruction memory group -->
+    <div v-if="instructionMemoryItems.length > 0">
+      <div class="font-semibold text-sm mb-2 text-gray-700 dark:text-gray-300">
+        {{ t('chat.instructionMemory') }} ({{ instructionMemoryItems.length }})
+      </div>
+      <NCollapse :default-expanded-names="['ins_0']">
+        <NCollapseItem
+          v-for="(reference, idx) of instructionMemoryItems" :key="reference.embeddingId"
+          :title="`${t('chat.instructionMemory')} ${idx + 1}`"
+          :name="`ins_${idx}`"
+        >
           {{ reference.text }}
         </NCollapseItem>
       </NCollapse>

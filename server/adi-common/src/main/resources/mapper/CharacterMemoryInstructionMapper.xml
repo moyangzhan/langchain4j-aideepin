@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moyz.adi.common.mapper.CharacterMemoryInstructionMapper">
+
+    <!--
+      Merge UPDATE path: content upsert keyed on the memory uuid. The conflict branch
+      merges content and revives a soft-deleted row so an UPDATE following a DELETE in
+      the same batch keeps the memory alive. word_count is a generated column and
+      hit_count/create_time/update_time take their defaults on insert.
+      <p>
+      合并 UPDATE 路径：按记忆 uuid upsert 内容。冲突分支合并内容并把软删行复活——同批先
+      DELETE 后 UPDATE 时记忆保持存活（后写胜出）。
+    -->
+    <insert id="upsertContent">
+        insert into adi_character_memory_instruction (uuid, character_id, content, user_id)
+        values (#{uuid}, #{characterId}, #{content}, #{userId})
+        on conflict (uuid) do update set content = excluded.content, is_deleted = false
+    </insert>
+</mapper>

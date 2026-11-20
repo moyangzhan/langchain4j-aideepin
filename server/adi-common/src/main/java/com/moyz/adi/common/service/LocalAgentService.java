@@ -75,7 +75,7 @@ public class LocalAgentService implements AgentService {
         }
 
         // 4. Prompt enhancement
-        Pair<String, String> memoryAndKnowledge = CharacterChatHelper.buildMemoryAndKnowledge(retrieverWrappers);
+        Pair<String, String> memoryAndKnowledge = CharacterChatHelper.buildMemoryAndKnowledge(retrieverWrappers, character.getId());
         String effectiveLocale = StringUtils.isNotBlank(user.getLocale())
                 ? user.getLocale()
                 : Objects.toString(SysConfigService.getByKey(AdiConstant.SysConfigKey.DEFAULT_LOCALE), "zh-CN");

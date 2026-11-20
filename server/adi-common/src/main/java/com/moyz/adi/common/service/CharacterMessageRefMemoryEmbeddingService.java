@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.RefEmbeddingDto;
 import com.moyz.adi.common.entity.CharacterMemoryEpisodic;
+import com.moyz.adi.common.entity.CharacterMemoryInstruction;
 import com.moyz.adi.common.entity.CharacterMemorySemantic;
 import com.moyz.adi.common.entity.CharacterMessageRefMemoryEmbedding;
 import com.moyz.adi.common.enums.MemoryType;
@@ -32,9 +33,12 @@ public class CharacterMessageRefMemoryEmbeddingService extends ServiceImpl<Chara
     @Resource
     private CharacterMemoryEpisodicService characterMemoryEpisodicService;
 
+    @Resource
+    private CharacterMemoryInstructionService characterMemoryInstructionService;
+
     /**
      * List memory references attached to a message, enriched with memory-type metadata
-     * so the frontend can group semantic vs episodic hits in the "Memory" popup.
+     * so the frontend can group semantic / episodic / instruction hits in the "Memory" popup.
      * <p>
      * Each ref row carries a {@code memory_type} routing code; rows are bucketed by
      * code and each bucket is resolved against its relational memory table by uuid in
@@ -71,6 +75,11 @@ public class CharacterMessageRefMemoryEmbeddingService extends ServiceImpl<Chara
             List<String> uuids = uuidsOf(byType.get(MemoryType.EPISODIC));
             episodicByUuid = characterMemoryEpisodicService.mapByUuids(uuids);
         }
+        Map<String, CharacterMemoryInstruction> instructionByUuid = Collections.emptyMap();
+        if (byType.containsKey(MemoryType.INSTRUCTION)) {
+            List<String> uuids = uuidsOf(byType.get(MemoryType.INSTRUCTION));
+            instructionByUuid = characterMemoryInstructionService.mapByUuids(uuids);
+        }
 
         List<RefEmbeddingDto> dtos = new ArrayList<>();
         for (Map.Entry<MemoryType, List<CharacterMessageRefMemoryEmbedding>> entry : byType.entrySet()) {
@@ -98,6 +107,16 @@ public class CharacterMessageRefMemoryEmbeddingService extends ServiceImpl<Chara
                             .eventType(row.getEventType())
                             .createTime(format(row.getCreateTime()))
                             .importance(row.getImportance())
+                            .build());
+                } else if (entry.getKey() == MemoryType.INSTRUCTION) {
+                    CharacterMemoryInstruction row = instructionByUuid.get(memoryUuid);
+                    if (row == null) {
+                        continue;
+                    }
+                    dtos.add(RefEmbeddingDto.builder()
+                            .embeddingId(ref.getEmbeddingId())
+                            .text(row.getContent())
+                            .memoryType(MemoryType.INSTRUCTION.getDesc())
                             .build());
                 } else {
                     log.warn("Memory type {} has no store yet, skipping ref {}", ref.getMemoryType(), ref.getEmbeddingId());

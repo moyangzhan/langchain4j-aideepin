@@ -3,6 +3,7 @@ package com.moyz.adi.common.service;
 import com.moyz.adi.common.base.ThreadContext;
 import com.moyz.adi.common.dto.RefEmbeddingDto;
 import com.moyz.adi.common.entity.CharacterMemoryEpisodic;
+import com.moyz.adi.common.entity.CharacterMemoryInstruction;
 import com.moyz.adi.common.entity.CharacterMemorySemantic;
 import com.moyz.adi.common.entity.CharacterMessageRefMemoryEmbedding;
 import com.moyz.adi.common.entity.User;
@@ -43,6 +44,7 @@ class CharacterMemoryPopupTest {
     private CharacterMessageRefMemoryEmbeddingMapper mapper;
     private CharacterMemorySemanticService semanticService;
     private CharacterMemoryEpisodicService episodicService;
+    private CharacterMemoryInstructionService instructionService;
     private CharacterMessageRefMemoryEmbeddingService service;
 
     @BeforeEach
@@ -51,10 +53,12 @@ class CharacterMemoryPopupTest {
         mapper = mock(CharacterMessageRefMemoryEmbeddingMapper.class);
         semanticService = mock(CharacterMemorySemanticService.class);
         episodicService = mock(CharacterMemoryEpisodicService.class);
+        instructionService = mock(CharacterMemoryInstructionService.class);
         service = new CharacterMessageRefMemoryEmbeddingService();
         ReflectionTestUtils.setField(service, "baseMapper", mapper);
         ReflectionTestUtils.setField(service, "characterMemorySemanticService", semanticService);
         ReflectionTestUtils.setField(service, "characterMemoryEpisodicService", episodicService);
+        ReflectionTestUtils.setField(service, "characterMemoryInstructionService", instructionService);
     }
 
     @AfterEach
@@ -101,11 +105,27 @@ class CharacterMemoryPopupTest {
     }
 
     @Test
-    void strayInstructionRoutingCodeIsSkippedWithoutCrash() {
+    void instructionRefsResolveAgainstTheirRelationalTable() {
+        String instructionUuid = "0193a0b0c0d0e0f0a0b0c0d0e0f0a0b4";
         when(mapper.listByMsgUuid("m", 42L)).thenReturn(List.of(
-                ref(canonical("0193a0b0c0d0e0f0a0b0c0d0e0f0a0b4"), MemoryType.PROCEDURAL)));
-        when(semanticService.mapByUuids(anyList())).thenReturn(Map.of());
-        when(episodicService.mapByUuids(anyList())).thenReturn(Map.of());
+                ref(canonical(instructionUuid), MemoryType.INSTRUCTION)));
+        CharacterMemoryInstruction row = new CharacterMemoryInstruction();
+        row.setUuid(instructionUuid);
+        row.setContent("回答代码问题时先给结论");
+        when(instructionService.mapByUuids(anyList())).thenReturn(Map.of(instructionUuid, row));
+
+        List<RefEmbeddingDto> dtos = service.listRefEmbeddings("m");
+
+        assertEquals(1, dtos.size());
+        assertEquals("回答代码问题时先给结论", dtos.get(0).getText());
+        assertEquals("instruction", dtos.get(0).getMemoryType());
+    }
+
+    @Test
+    void instructionRefsWithoutRowAreSkipped() {
+        when(mapper.listByMsgUuid("m", 42L)).thenReturn(List.of(
+                ref(canonical("0193a0b0c0d0e0f0a0b0c0d0e0f0a0b5"), MemoryType.INSTRUCTION)));
+        when(instructionService.mapByUuids(anyList())).thenReturn(Map.of());
 
         assertEquals(List.of(), service.listRefEmbeddings("m"));
     }

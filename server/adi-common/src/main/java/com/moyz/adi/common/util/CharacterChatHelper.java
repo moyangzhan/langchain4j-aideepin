@@ -4,12 +4,14 @@ import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.dto.KbInfoResp;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.Character;
+import com.moyz.adi.common.entity.CharacterMemoryInstruction;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.rag.AdiEmbeddingStoreContentRetriever;
 import com.moyz.adi.common.rag.CompositeRag;
 import com.moyz.adi.common.rag.EmbeddingRag;
 import com.moyz.adi.common.rag.EmbeddingRagContext;
+import com.moyz.adi.common.service.CharacterMemoryInstructionService;
 import com.moyz.adi.common.service.UserMcpService;
 import com.moyz.adi.common.util.SpringUtil;
 import com.moyz.adi.common.util.AdiStringUtil;
@@ -141,14 +143,17 @@ public class CharacterChatHelper {
     }
 
     /**
-     * 将检索结果分离为记忆文本与知识文本。
-     * 记忆文本融合语义知识与 episodic「过往事件」两个通道。
+     * 将检索结果分离为记忆文本与知识文本，并追加指令记忆全量注入段。
+     * 记忆文本融合语义知识与 episodic「过往事件」两个检索通道，加上 instruction
+     * 「行为规则」全量注入（当前生效的规则集，不按话题相似度筛选）。
      * <p>
-     * Separate retrieved content into memory text and knowledge text;
-     * memory merges the semantic channel and the episodic "past events" channel.
+     * Separate retrieved content into memory text and knowledge text, then append the
+     * instruction section. Memory merges the semantic and episodic retrieval channels
+     * plus the instruction "how you should work" full-set injection (the currently
+     * effective rules; no topic-similarity filtering).
      * </p>
      */
-    public static Pair<String, String> buildMemoryAndKnowledge(List<RetrieverWrapper> wrappers) {
+    public static Pair<String, String> buildMemoryAndKnowledge(List<RetrieverWrapper> wrappers, Long characterId) {
         StringBuilder semanticMemory = new StringBuilder();
         StringBuilder episodicMemory = new StringBuilder();
         StringBuilder knowledge = new StringBuilder();
@@ -173,8 +178,11 @@ public class CharacterChatHelper {
             }
         });
 
+        List<CharacterMemoryInstruction> instructions = SpringUtil.getBean(CharacterMemoryInstructionService.class)
+                .listForInjection(characterId);
+
         StringBuilder memory = new StringBuilder();
-        if (semanticMemory.isEmpty() && episodicMemory.isEmpty()) {
+        if (semanticMemory.isEmpty() && episodicMemory.isEmpty() && instructions.isEmpty()) {
             memory.append("None\n");
         } else {
             if (!semanticMemory.isEmpty()) {
@@ -182,6 +190,11 @@ public class CharacterChatHelper {
             }
             if (!episodicMemory.isEmpty()) {
                 memory.append("[Past events you recall]\n").append(episodicMemory).append("\n");
+            }
+            if (!instructions.isEmpty()) {
+                memory.append("[How you should work]\n");
+                instructions.forEach(rule -> memory.append("- ").append(rule.getContent()).append("\n"));
+                memory.append("\n");
             }
         }
         if (knowledge.isEmpty()) {

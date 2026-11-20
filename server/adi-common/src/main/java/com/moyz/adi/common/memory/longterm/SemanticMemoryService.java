@@ -221,25 +221,4 @@ public class SemanticMemoryService {
                 List.of(TextSegment.from(canonicalId, metadata)));
     }
 
-    /**
-     * Merge candidates collected per-fact. Exposes the per-fact prompt input
-     * for the dispatcher to feed the LLM, and keeps the tmpId↔embeddingId mapping
-     * needed for {@link #applyActions}.
-     * <p>
-     * 按 fact 聚合的合并候选。两个 map 分别给调度器构造 prompt、给 applyActions 反查使用。
-     */
-    public static final class MergeCandidates {
-        public final Map<String, List<Map<String, String>>> factToOldMemoriesForPrompt;
-        public final Map<String, Map<String, String>> factToTmpIdToEmbeddingId;
-
-        public MergeCandidates(Map<String, List<Map<String, String>>> factToOldMemoriesForPrompt,
-                               Map<String, Map<String, String>> factToTmpIdToEmbeddingId) {
-            this.factToOldMemoriesForPrompt = factToOldMemoriesForPrompt;
-            this.factToTmpIdToEmbeddingId = factToTmpIdToEmbeddingId;
-        }
-
-        public boolean isEmpty() {
-            return factToOldMemoriesForPrompt.isEmpty();
-        }
-    }
 }

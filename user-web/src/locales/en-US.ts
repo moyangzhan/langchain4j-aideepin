@@ -215,6 +215,7 @@ export default {
     hitMemory: 'Matched Memory',
     semanticMemory: 'Semantic memory',
     episodicMemory: 'Episodic memory',
+    instructionMemory: 'Instruction memory',
     importance: 'Importance',
     reference: 'Reference',
     graph: 'Graph',

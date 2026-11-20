@@ -510,11 +510,11 @@ create table adi_character_message_ref_memory_embedding
     memory_type  smallint      default 1  not null,
     user_id      bigint        default 0  not null
 );
-comment on table adi_character_message_ref_memory_embedding is '角色消息引用的长期记忆命中（溯源表）。memory_type 列直接路由到对应的物理向量库（1=semantic、2=episodic、3=procedural 预留），新增类型只能 append，不得复用或重排。姊妹表：adi_character_message_ref_embedding（KB 向量命中）、adi_character_message_ref_graph（KB 图谱命中）。 | Provenance of long-term memory hits used by a character message. The memory_type column routes each row to its physical vector store (1=semantic, 2=episodic, 3=procedural-reserved). Codes are append-only — never reuse or reorder. Sibling tables: adi_character_message_ref_embedding (KB vector hits), adi_character_message_ref_graph (KB graph hits).';
+comment on table adi_character_message_ref_memory_embedding is '角色消息引用的长期记忆命中（溯源表）。memory_type 列直接路由到对应的物理向量库（1=semantic、2=episodic、3=instruction），新增类型只能 append，不得复用或重排。姊妹表：adi_character_message_ref_embedding（KB 向量命中）、adi_character_message_ref_graph（KB 图谱命中）。 | Provenance of long-term memory hits used by a character message. The memory_type column routes each row to its physical vector store (1=semantic, 2=episodic, 3=instruction). Codes are append-only — never reuse or reorder. Sibling tables: adi_character_message_ref_embedding (KB vector hits), adi_character_message_ref_graph (KB graph hits).';
 comment on column adi_character_message_ref_memory_embedding.message_id is 'adi_character_message.id this memory hit was used by';
-comment on column adi_character_message_ref_memory_embedding.embedding_id is 'UUID of the matched row in the semantic / episodic / procedural memory vector store; pick the store via memory_type';
+comment on column adi_character_message_ref_memory_embedding.embedding_id is 'UUID of the matched row in the semantic / episodic / instruction memory vector store; pick the store via memory_type';
 comment on column adi_character_message_ref_memory_embedding.score is 'Similarity score returned by the vector store at retrieval time (0-1)';
-comment on column adi_character_message_ref_memory_embedding.memory_type is 'Routing code: 1=semantic, 2=episodic, 3=procedural';
+comment on column adi_character_message_ref_memory_embedding.memory_type is 'Routing code: 1=semantic, 2=episodic, 3=instruction';
 comment on column adi_character_message_ref_memory_embedding.user_id is 'Owner user id (denormalized from the message for fast filtering)';
 
 -- ============================================================

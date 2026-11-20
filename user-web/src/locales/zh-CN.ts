@@ -215,6 +215,7 @@ export default {
     hitMemory: '命中记忆',
     semanticMemory: '语义记忆',
     episodicMemory: '情景记忆',
+    instructionMemory: '指令记忆',
     importance: '重要性',
     reference: '引用',
     graph: '图谱',
