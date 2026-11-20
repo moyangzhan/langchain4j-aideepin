@@ -64,8 +64,11 @@ public class SemanticMemoryService {
     /**
      * For each fact, find its top-K nearest neighbours in the semantic store. Each
      * fact keeps its own tmpId space so the LLM never sees ambiguous IDs across facts.
+     * Candidate texts hydrate from the relational rows by uuid; hits without a
+     * relational row are skipped.
      * <p>
      * 对每条 fact 检索 top-K 候选。每条 fact 独立的 tmpId 空间，避免 LLM 跨 fact 时 id 歧义。
+     * 候选文本按 uuid 回关系表取；无关系行的命中跳过。
      */
     public MergeCandidates searchMergeCandidates(List<String> facts, Long characterId) {
         Map<String, List<Map<String, String>>> factToOldMemoriesForPrompt = new LinkedHashMap<>();
@@ -87,16 +90,21 @@ public class SemanticMemoryService {
                     .build();
             EmbeddingSearchResult<TextSegment> searchResult = semanticEmbeddingStore.search(searchRequest);
 
-            Map<String, EmbeddingMatch<TextSegment>> embeddingIdToMatch = new LinkedHashMap<>();
-            searchResult.matches().forEach(item -> embeddingIdToMatch.put(item.embeddingId(), item));
+            List<EmbeddingMatch<TextSegment>> matches = searchResult.matches();
+            Map<String, CharacterMemorySemantic> rowByUuid = characterMemorySemanticService.mapByUuids(
+                    matches.stream().map(match -> UuidUtil.toShort(match.embeddingId())).toList());
 
             List<Map<String, String>> oldMemoryForPrompt = new ArrayList<>();
             Map<String, String> tmpIdToEmbeddingId = new HashMap<>();
             int i = 0;
-            for (Map.Entry<String, EmbeddingMatch<TextSegment>> entry : embeddingIdToMatch.entrySet()) {
+            for (EmbeddingMatch<TextSegment> match : matches) {
+                CharacterMemorySemantic row = rowByUuid.get(UuidUtil.toShort(match.embeddingId()));
+                if (row == null) {
+                    continue;
+                }
                 String tmpId = String.valueOf(i);
-                oldMemoryForPrompt.add(Map.of("id", tmpId, "text", entry.getValue().embedded().text()));
-                tmpIdToEmbeddingId.put(tmpId, entry.getKey());
+                oldMemoryForPrompt.add(Map.of("id", tmpId, "text", row.getContent()));
+                tmpIdToEmbeddingId.put(tmpId, match.embeddingId());
                 i++;
             }
 

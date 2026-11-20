@@ -1,5 +1,6 @@
 package com.moyz.adi.common.memory.longterm;
 
+import com.moyz.adi.common.config.AdiProperties;
 import com.moyz.adi.common.entity.CharacterMemoryEpisodic;
 import com.moyz.adi.common.entity.CharacterMemorySemantic;
 import com.moyz.adi.common.memory.vo.BatchActionMemories;
@@ -12,6 +13,8 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +24,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -75,6 +79,7 @@ class MemoryDoubleWriteTest {
         ReflectionTestUtils.setField(service, "semanticEmbeddingStore", semanticStore);
         ReflectionTestUtils.setField(service, "embeddingModel", embeddingModel);
         ReflectionTestUtils.setField(service, "characterMemorySemanticService", semanticRelational);
+        ReflectionTestUtils.setField(service, "adiProperties", new AdiProperties());
         return service;
     }
 
@@ -214,6 +219,30 @@ class MemoryDoubleWriteTest {
         Metadata metadata = segmentsCaptor.getValue().get(0).metadata();
         assertEquals(7, metadata.getInteger("conv_id"));
         assertEquals("semantic", metadata.getString("memory_type"));
+    }
+
+    @Test
+    void searchMergeCandidatesHydratesPromptTextFromRelationalRowsAndSkipsOrphans() {
+        String knownUuid = UuidUtil.createShort();
+        String orphanUuid = UuidUtil.createShort();
+        TextSegment placeholder = TextSegment.from("stale vector text", new Metadata(Map.of()));
+        List<EmbeddingMatch<TextSegment>> matches = List.of(
+                new EmbeddingMatch<>(0.95, UuidUtil.toCanonical(knownUuid), new Embedding(new float[]{0.1f}), placeholder),
+                new EmbeddingMatch<>(0.90, UuidUtil.toCanonical(orphanUuid), new Embedding(new float[]{0.1f}), placeholder));
+        when(semanticStore.search(any())).thenReturn(new EmbeddingSearchResult<>(matches));
+        CharacterMemorySemantic row = new CharacterMemorySemantic();
+        row.setUuid(knownUuid);
+        row.setContent("关系行内容");
+        when(semanticRelational.mapByUuids(anyList())).thenReturn(Map.of(knownUuid, row));
+
+        SemanticMemoryService.MergeCandidates candidates =
+                newSemanticService().searchMergeCandidates(List.of("新事实"), 7L);
+
+        List<Map<String, String>> prompt = candidates.factToOldMemoriesForPrompt.get("新事实");
+        assertEquals(1, prompt.size());
+        assertEquals("关系行内容", prompt.get(0).get("text"));
+        assertEquals(UuidUtil.toCanonical(knownUuid),
+                candidates.factToTmpIdToEmbeddingId.get("新事实").get("0"));
     }
 
     private static BatchActionMemories batchOf(BatchActionMemories.BatchActionMemory action) {

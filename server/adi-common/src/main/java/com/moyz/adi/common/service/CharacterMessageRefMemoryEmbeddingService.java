@@ -1,53 +1,48 @@
 package com.moyz.adi.common.service;
 
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
-import tools.jackson.databind.JsonNode;
 import com.moyz.adi.common.base.ThreadContext;
-import com.moyz.adi.common.dto.KbDocumentEmbeddingDto;
 import com.moyz.adi.common.dto.RefEmbeddingDto;
+import com.moyz.adi.common.entity.CharacterMemoryEpisodic;
+import com.moyz.adi.common.entity.CharacterMemorySemantic;
 import com.moyz.adi.common.entity.CharacterMessageRefMemoryEmbedding;
 import com.moyz.adi.common.enums.MemoryType;
 import com.moyz.adi.common.mapper.CharacterMessageRefMemoryEmbeddingMapper;
-import com.moyz.adi.common.service.embedding.ICharacterMemoryEmbeddingService;
-import com.moyz.adi.common.service.embedding.IEpisodicMemoryEmbeddingService;
-import com.moyz.adi.common.util.EmbeddingUtil;
+import com.moyz.adi.common.util.LocalDateTimeUtil;
+import com.moyz.adi.common.util.UuidUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CREATE_TIME;
-import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.EVENT_TYPE;
-import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.IMPORTANCE;
-import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.MEMORY_TYPE;
 
 @Slf4j
 @Service
 public class CharacterMessageRefMemoryEmbeddingService extends ServiceImpl<CharacterMessageRefMemoryEmbeddingMapper, CharacterMessageRefMemoryEmbedding> {
 
     @Resource
-    private ICharacterMemoryEmbeddingService characterMemoryEmbeddingService;
+    private CharacterMemorySemanticService characterMemorySemanticService;
 
     @Resource
-    private IEpisodicMemoryEmbeddingService episodicMemoryEmbeddingService;
+    private CharacterMemoryEpisodicService characterMemoryEpisodicService;
 
     /**
      * List memory references attached to a message, enriched with memory-type metadata
      * so the frontend can group semantic vs episodic hits in the "Memory" popup.
      * <p>
      * Each ref row carries a {@code memory_type} routing code; rows are bucketed by
-     * code and each bucket is resolved against its dedicated physical vector store
-     * in a single batch lookup — no fallback probing across stores.
+     * code and each bucket is resolved against its relational memory table by uuid in
+     * a single batch lookup. Content and structured fields come from the relational
+     * rows; refs whose memory row is gone (deleted) are skipped.
      * <p>
-     * 列出消息引用的记忆。每条 ref 行带 memory_type 路由码，按 enum 分桶后各自走对应的
-     * 物理向量库一次性反查；不再做"先 semantic 后 episodic"的盲查 fallback。
+     * 列出消息引用的记忆。每条 ref 行带 memory_type 路由码，按 enum 分桶后各自回对应的
+     * 关系记忆表按 uuid 一次性反查；内容与结构化字段来自关系行，记忆行已不存在的 ref 跳过。
      */
     public List<RefEmbeddingDto> listRefEmbeddings(String uuid) {
         List<CharacterMessageRefMemoryEmbedding> recordReferences = this.getBaseMapper().listByMsgUuid(uuid, ThreadContext.getCurrentUserId());
@@ -55,117 +50,68 @@ public class CharacterMessageRefMemoryEmbeddingService extends ServiceImpl<Chara
             return Collections.emptyList();
         }
 
-        // Bucket by routing code so each physical store is queried at most once.
-        // 按路由码分桶，每个物理向量库最多查一次。
-        Map<MemoryType, List<String>> byType = new EnumMap<>(MemoryType.class);
-        List<String> orderedIds = new ArrayList<>(recordReferences.size());
+        Map<MemoryType, List<CharacterMessageRefMemoryEmbedding>> byType = new EnumMap<>(MemoryType.class);
         for (CharacterMessageRefMemoryEmbedding ref : recordReferences) {
             if (ref.getEmbeddingId() == null || ref.getEmbeddingId().isEmpty()) {
                 continue;
             }
-            MemoryType type = ref.getMemoryType();
-            byType.computeIfAbsent(type, k -> new ArrayList<>()).add(ref.getEmbeddingId());
-            orderedIds.add(ref.getEmbeddingId());
+            byType.computeIfAbsent(ref.getMemoryType(), k -> new ArrayList<>()).add(ref);
         }
-        if (orderedIds.isEmpty()) {
+        if (byType.isEmpty()) {
             return Collections.emptyList();
         }
 
-        Map<String, KbDocumentEmbeddingDto> byId = new HashMap<>();
-        for (Map.Entry<MemoryType, List<String>> entry : byType.entrySet()) {
-            List<String> ids = entry.getValue();
-            if (ids.isEmpty()) {
-                continue;
-            }
-            List<KbDocumentEmbeddingDto> hits = switch (entry.getKey()) {
-                case SEMANTIC -> characterMemoryEmbeddingService.listByEmbeddingIds(ids);
-                case EPISODIC -> episodicMemoryEmbeddingService.listByEmbeddingIds(ids);
-                case PROCEDURAL -> {
-                    // Procedural store is not implemented yet — log and skip so a stray
-                    // routing code can't crash the whole memory popup.
-                    // 程序性记忆尚未实现，忽略以保护现网调用。
-                    log.warn("Procedural memory store not implemented, skipping {} refs", ids.size());
-                    yield Collections.emptyList();
+        Map<String, CharacterMemorySemantic> semanticByUuid = Collections.emptyMap();
+        if (byType.containsKey(MemoryType.SEMANTIC)) {
+            List<String> uuids = uuidsOf(byType.get(MemoryType.SEMANTIC));
+            semanticByUuid = characterMemorySemanticService.mapByUuids(uuids);
+        }
+        Map<String, CharacterMemoryEpisodic> episodicByUuid = Collections.emptyMap();
+        if (byType.containsKey(MemoryType.EPISODIC)) {
+            List<String> uuids = uuidsOf(byType.get(MemoryType.EPISODIC));
+            episodicByUuid = characterMemoryEpisodicService.mapByUuids(uuids);
+        }
+
+        List<RefEmbeddingDto> dtos = new ArrayList<>();
+        for (Map.Entry<MemoryType, List<CharacterMessageRefMemoryEmbedding>> entry : byType.entrySet()) {
+            for (CharacterMessageRefMemoryEmbedding ref : entry.getValue()) {
+                String memoryUuid = UuidUtil.toShort(ref.getEmbeddingId());
+                if (entry.getKey() == MemoryType.SEMANTIC) {
+                    CharacterMemorySemantic row = semanticByUuid.get(memoryUuid);
+                    if (row == null) {
+                        continue;
+                    }
+                    dtos.add(RefEmbeddingDto.builder()
+                            .embeddingId(ref.getEmbeddingId())
+                            .text(row.getContent())
+                            .memoryType(MemoryType.SEMANTIC.getDesc())
+                            .build());
+                } else if (entry.getKey() == MemoryType.EPISODIC) {
+                    CharacterMemoryEpisodic row = episodicByUuid.get(memoryUuid);
+                    if (row == null) {
+                        continue;
+                    }
+                    dtos.add(RefEmbeddingDto.builder()
+                            .embeddingId(ref.getEmbeddingId())
+                            .text(row.getContent())
+                            .memoryType(MemoryType.EPISODIC.getDesc())
+                            .eventType(row.getEventType())
+                            .createTime(format(row.getCreateTime()))
+                            .importance(row.getImportance())
+                            .build());
+                } else {
+                    log.warn("Memory type {} has no store yet, skipping ref {}", ref.getMemoryType(), ref.getEmbeddingId());
                 }
-            };
-            for (KbDocumentEmbeddingDto hit : hits) {
-                byId.put(hit.getEmbeddingId(), hit);
             }
-        }
-
-        // Preserve original ordering from the relational reference table.
-        // 按关联表原始顺序输出。
-        List<KbDocumentEmbeddingDto> orderedHits = new ArrayList<>();
-        for (String id : orderedIds) {
-            KbDocumentEmbeddingDto hit = byId.get(id);
-            if (hit != null) {
-                orderedHits.add(hit);
-            }
-        }
-
-        List<RefEmbeddingDto> dtos = EmbeddingUtil.itemToRefEmbeddingDto(orderedHits);
-        for (int i = 0; i < dtos.size(); i++) {
-            RefEmbeddingDto dto = dtos.get(i);
-            JsonNode metadata = orderedHits.get(i).getMetadata();
-            applyMemoryTypeAndFields(dto, metadata);
         }
         return dtos;
     }
 
-    /**
-     * Read memory_type and episodic structured fields off the vector store metadata.
-     * Legacy rows without a {@code memory_type} tag are treated as semantic.
-     * <p>
-     * 从向量库 metadata 读取 memory_type 和情景记忆的结构化字段。无 memory_type 标签的
-     * 历史数据默认归为 semantic。
-     */
-    private void applyMemoryTypeAndFields(RefEmbeddingDto dto, JsonNode metadata) {
-        String memoryType = readString(metadata, MEMORY_TYPE);
-        if (MemoryType.EPISODIC.getDesc().equals(memoryType)) {
-            dto.setMemoryType(MemoryType.EPISODIC.getDesc());
-            dto.setEventType(readString(metadata, EVENT_TYPE));
-            dto.setCreateTime(readString(metadata, CREATE_TIME));
-            dto.setImportance(readInt(metadata, IMPORTANCE));
-        } else {
-            dto.setMemoryType(MemoryType.SEMANTIC.getDesc());
-        }
+    private static List<String> uuidsOf(List<CharacterMessageRefMemoryEmbedding> refs) {
+        return refs.stream().map(ref -> UuidUtil.toShort(ref.getEmbeddingId())).toList();
     }
 
-    private static String readString(JsonNode metadata, String key) {
-        if (metadata == null) {
-            return null;
-        }
-        JsonNode value = metadata.get(key);
-        return value == null || value.isNull() ? null : value.asText();
-    }
-
-    /**
-     * Read an int-valued metadata field defensively. The Neo4j backend serializes
-     * all metadata values as strings (see {@code Neo4jEmbeddingUtils.toEmbeddingMatch}),
-     * so {@code IntNode} cannot be assumed even though pgvector stores integers
-     * natively. Returns {@code null} on missing / unparseable values so the UI
-     * field stays empty instead of defaulting to 0.
-     * <p>
-     * 防御性读取整数 metadata 字段：Neo4j 后端把所有 metadata 值序列化为字符串，
-     * 因此即使 pgvector 原生存整数也不能假设是 IntNode。缺失或无法解析时返回 null，
-     * 让 UI 字段为空而非默认 0。
-     */
-    private static Integer readInt(JsonNode metadata, String key) {
-        if (metadata == null) {
-            return null;
-        }
-        JsonNode value = metadata.get(key);
-        if (value == null || value.isNull()) {
-            return null;
-        }
-        if (value.isNumber()) {
-            return value.asInt();
-        }
-        try {
-            return Integer.parseInt(value.asText());
-        } catch (NumberFormatException e) {
-            log.warn("Unparseable {} in metadata: {}", key, value);
-            return null;
-        }
+    private static String format(LocalDateTime time) {
+        return time == null ? null : LocalDateTimeUtil.format(time, LocalDateTimeUtil.PATTERN_DEFAULT);
     }
 }

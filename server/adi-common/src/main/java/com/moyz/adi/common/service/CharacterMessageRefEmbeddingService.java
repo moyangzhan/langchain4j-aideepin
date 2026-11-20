@@ -2,12 +2,9 @@ package com.moyz.adi.common.service;
 
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.moyz.adi.common.base.ThreadContext;
-import com.moyz.adi.common.dto.KbDocumentEmbeddingDto;
 import com.moyz.adi.common.dto.RefEmbeddingDto;
 import com.moyz.adi.common.entity.CharacterMessageRefEmbedding;
 import com.moyz.adi.common.mapper.CharacterMessageRefEmbeddingMapper;
-import com.moyz.adi.common.service.embedding.ICharacterMemoryEmbeddingService;
-import com.moyz.adi.common.util.EmbeddingUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -20,8 +17,11 @@ import java.util.List;
 @Service
 public class CharacterMessageRefEmbeddingService extends ServiceImpl<CharacterMessageRefEmbeddingMapper, CharacterMessageRefEmbedding> {
 
+    /**
+     * 段内容唯一事实源在关系表：text→段内容；问题→答案内容；子块→父段内容
+     */
     @Resource
-    private ICharacterMemoryEmbeddingService characterMemoryEmbeddingService;
+    private DocumentSegmentService documentSegmentService;
 
     public List<RefEmbeddingDto> listRefEmbeddings(String msgUuid) {
         List<CharacterMessageRefEmbedding> recordReferences = this.getBaseMapper().listByMsgUuid(msgUuid, ThreadContext.getCurrentUserId());
@@ -32,8 +32,7 @@ public class CharacterMessageRefEmbeddingService extends ServiceImpl<CharacterMe
         if (CollectionUtils.isEmpty(embeddingIds)) {
             return Collections.emptyList();
         }
-        List<KbDocumentEmbeddingDto> embeddings = characterMemoryEmbeddingService.listByEmbeddingIds(embeddingIds);
-        return EmbeddingUtil.itemToRefEmbeddingDto(embeddings);
+        return documentSegmentService.listRefTextsByEmbeddingIds(embeddingIds);
     }
 
 }

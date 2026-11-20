@@ -6,8 +6,6 @@ import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.mapper.CharacterMessageRefEmbeddingMapper;
 import com.moyz.adi.common.mapper.CharacterMessageRefGraphMapper;
 import com.moyz.adi.common.mapper.CharacterMessageRefMemoryEmbeddingMapper;
-import com.moyz.adi.common.service.embedding.ICharacterMemoryEmbeddingService;
-import com.moyz.adi.common.service.embedding.IEpisodicMemoryEmbeddingService;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -86,20 +84,20 @@ class CharacterMessageRefScopingTest {
     }
 
     @Test
-    void memoryReadThreadsCurrentUserIntoMapperAndSkipsVectorStoresWhenEmpty() {
+    void memoryReadThreadsCurrentUserIntoMapperAndSkipsRelationalLookupsWhenEmpty() {
         CharacterMessageRefMemoryEmbeddingMapper mapper = mock(CharacterMessageRefMemoryEmbeddingMapper.class);
         when(mapper.listByMsgUuid("some-message", 42L)).thenReturn(List.of());
-        ICharacterMemoryEmbeddingService semanticStore = mock(ICharacterMemoryEmbeddingService.class);
-        IEpisodicMemoryEmbeddingService episodicStore = mock(IEpisodicMemoryEmbeddingService.class);
+        CharacterMemorySemanticService semanticService = mock(CharacterMemorySemanticService.class);
+        CharacterMemoryEpisodicService episodicService = mock(CharacterMemoryEpisodicService.class);
         CharacterMessageRefMemoryEmbeddingService service = new CharacterMessageRefMemoryEmbeddingService();
         ReflectionTestUtils.setField(service, "baseMapper", mapper);
-        ReflectionTestUtils.setField(service, "characterMemoryEmbeddingService", semanticStore);
-        ReflectionTestUtils.setField(service, "episodicMemoryEmbeddingService", episodicStore);
+        ReflectionTestUtils.setField(service, "characterMemorySemanticService", semanticService);
+        ReflectionTestUtils.setField(service, "characterMemoryEpisodicService", episodicService);
 
         assertEquals(List.of(), service.listRefEmbeddings("some-message"));
 
         verify(mapper).listByMsgUuid("some-message", 42L);
-        verifyNoInteractions(semanticStore, episodicStore);
+        verifyNoInteractions(semanticService, episodicService);
     }
 
     @Test

@@ -5,6 +5,8 @@ import com.moyz.adi.common.entity.CharacterMemorySemantic;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
+
 @Mapper
 public interface CharacterMemorySemanticMapper extends BaseMapper<CharacterMemorySemantic> {
 
@@ -18,4 +20,11 @@ public interface CharacterMemorySemanticMapper extends BaseMapper<CharacterMemor
                        @Param("characterId") Long characterId,
                        @Param("content") String content,
                        @Param("userId") Long userId);
+
+    /**
+     * 按记忆uuid批量累加命中次数（软删行不计）
+     * <p>
+     * Increment hit counts by memory uuid in batch (soft-deleted rows excluded).
+     */
+    void incrementHitCountByUuids(@Param("uuids") List<String> uuids);
 }

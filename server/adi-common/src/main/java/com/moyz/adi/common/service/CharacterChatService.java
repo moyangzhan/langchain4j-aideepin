@@ -29,8 +29,6 @@ import com.moyz.adi.common.memory.shortterm.MapDBChatMemoryStore;
 import com.moyz.adi.common.memory.vo.MemoryAddParam;
 import com.moyz.adi.common.rag.AdiEmbeddingStoreContentRetriever;
 import com.moyz.adi.common.rag.GraphStoreContentRetriever;
-import com.moyz.adi.common.service.embedding.ICharacterMemoryEmbeddingService;
-import com.moyz.adi.common.service.embedding.IEpisodicMemoryEmbeddingService;
 import com.moyz.adi.common.util.*;
 import com.moyz.adi.common.util.NumberUtil;
 import com.moyz.adi.common.vo.*;
@@ -106,10 +104,10 @@ public class CharacterChatService {
     private LLMCallRecordService llmCallRecordService;
 
     @Resource
-    private ICharacterMemoryEmbeddingService characterMemoryEmbeddingService;
+    private CharacterMemorySemanticService characterMemorySemanticService;
 
     @Resource
-    private IEpisodicMemoryEmbeddingService episodicMemoryEmbeddingService;
+    private CharacterMemoryEpisodicService characterMemoryEpisodicService;
 
     public SseEmitter sseAsk(AskReq askReq) {
         String sseUuid = UuidUtil.createShort();
@@ -530,6 +528,10 @@ public class CharacterChatService {
         return characterMessageService.lambdaQuery().eq(CharacterMessage::getUuid, questionUuid).oneOpt().orElseThrow(() -> new BaseException(B_MESSAGE_NOT_FOUND));
     }
 
+    private static List<String> toMemoryUuids(Map<String, Double> embeddingToScore) {
+        return embeddingToScore.keySet().stream().map(UuidUtil::toShort).toList();
+    }
+
     private void createRef(List<RetrieverWrapper> wrappers, User user, Long msgId) {
         if (CollectionUtils.isEmpty(wrappers)) {
             return;
@@ -542,15 +544,14 @@ public class CharacterChatService {
                     characterMessageService.createGraphRefs(user, msgId, graphRetriever.getGraphRef());
                 }
             } else if (RetrieveContentFrom.CHARACTER_MEMORY.equals(wrapper.getContentFrom())) {
-                // Semantic memory channel: route writes through memory_type=SEMANTIC so
-                // the reverse-lookup at read time can hit the right physical store in one shot.
+                // Semantic memory channel: refs route through memory_type=SEMANTIC so the
+                // popup reverse-lookup hits the right relational table in one shot.
                 // <p>
-                // 语义记忆通道：写入时附带 memory_type=SEMANTIC，反查时按 code 一次定位向量库。
+                // 语义记忆通道：写入时附带 memory_type=SEMANTIC，反查时按 code 一次定位关系表。
                 if (wrapper.getRetriever() instanceof AdiEmbeddingStoreContentRetriever memoryRetriever) {
                     Map<String, Double> embeddingToScore = memoryRetriever.getRetrievedEmbeddingToScore();
                     characterMessageService.createMemoryRefs(user, msgId, embeddingToScore, MemoryType.SEMANTIC);
-                    // Increment segment-level hit count for admin observability
-                    characterMemoryEmbeddingService.incrementHitCount(new ArrayList<>(embeddingToScore.keySet()));
+                    characterMemorySemanticService.incrementHitCountByUuids(toMemoryUuids(embeddingToScore));
                 }
             } else if (RetrieveContentFrom.CHARACTER_MEMORY_EPISODIC.equals(wrapper.getContentFrom())) {
                 // Episodic memory channel: same ref table, distinct memory_type code.
@@ -558,8 +559,7 @@ public class CharacterChatService {
                 if (wrapper.getRetriever() instanceof AdiEmbeddingStoreContentRetriever memoryRetriever) {
                     Map<String, Double> embeddingToScore = memoryRetriever.getRetrievedEmbeddingToScore();
                     characterMessageService.createMemoryRefs(user, msgId, embeddingToScore, MemoryType.EPISODIC);
-                    // Increment segment-level hit count for admin observability
-                    episodicMemoryEmbeddingService.incrementHitCount(new ArrayList<>(embeddingToScore.keySet()));
+                    characterMemoryEpisodicService.incrementHitCountByUuids(toMemoryUuids(embeddingToScore));
                 }
             }
 

@@ -19,4 +19,12 @@
         values (#{uuid}, #{characterId}, #{content}, #{userId})
         on conflict (uuid) do update set content = excluded.content, is_deleted = false
     </insert>
+
+    <update id="incrementHitCountByUuids">
+        update adi_character_memory_semantic
+        set hit_count = hit_count + 1
+        where is_deleted = false
+          and uuid in
+        <foreach collection="uuids" open="(" separator="," close=")" item="uuid">#{uuid}</foreach>
+    </update>
 </mapper>

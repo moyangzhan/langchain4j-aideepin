@@ -39,6 +39,16 @@ public class EmbeddingRag implements IRAGService {
      */
     private volatile RetrievedContentProcessor segmentExpandProcessor;
 
+    /**
+     * 语义记忆通道的召回后置处理器（懒加载，同上）
+     */
+    private volatile RetrievedContentProcessor semanticMemoryExpandProcessor;
+
+    /**
+     * 情景记忆通道的召回后置处理器（懒加载，同上）
+     */
+    private volatile RetrievedContentProcessor episodicMemoryExpandProcessor;
+
     public EmbeddingRag(String name, EmbeddingModel embeddingModel, EmbeddingStore<TextSegment> embeddingStore) {
         this.name = name;
         this.embeddingModel = embeddingModel;
@@ -67,7 +77,14 @@ public class EmbeddingRag implements IRAGService {
     }
 
     /**
-     * 创建召回器
+     * 创建召回器。知识库通道挂段展开处理器（text 直用 / 问题→答案 / 子块→父段上卷去重），
+     * 语义与情景记忆通道各挂命中回表处理器（按记忆 uuid 回关系表取内容）；四个检索入口
+     * （流式问答、阻塞问答、工作流、角色聊天）均经此处自动生效。
+     * <p>
+     * Create a retriever. The KB channel wires the segment expand processor; the semantic
+     * and episodic memory channels each wire a hydration processor (content fetched back
+     * from the relational table by memory uuid). All four retrieval entries (streaming
+     * ask, blocking ask, workflow, character chat) pick this up here.
      *
      * @param param 条件
      * @return ContentRetriever
@@ -87,9 +104,11 @@ public class EmbeddingRag implements IRAGService {
                 .filter(filter)
                 .breakIfSearchMissed(param.isBreakIfSearchMissed());
         if (AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE.equals(name)) {
-            // 知识库召回挂"按模式展开"后置处理器（text 直用 / 问题→答案 / 子块→父段上卷去重）；
-            // 角色记忆两条通道不设置，行为不变。四个检索入口（流式问答、阻塞问答、工作流、角色聊天KB通道）均经此处自动生效
             builder.contentPostProcessor(getSegmentExpandProcessor());
+        } else if (AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY.equals(name)) {
+            builder.contentPostProcessor(getSemanticMemoryExpandProcessor());
+        } else if (AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY_EPISODIC.equals(name)) {
+            builder.contentPostProcessor(getEpisodicMemoryExpandProcessor());
         }
         return builder.build();
     }
@@ -99,6 +118,20 @@ public class EmbeddingRag implements IRAGService {
             segmentExpandProcessor = SpringUtil.getBean(SegmentExpandProcessor.class);
         }
         return segmentExpandProcessor;
+    }
+
+    private RetrievedContentProcessor getSemanticMemoryExpandProcessor() {
+        if (null == semanticMemoryExpandProcessor) {
+            semanticMemoryExpandProcessor = SpringUtil.getBean(SemanticMemoryExpandProcessor.class);
+        }
+        return semanticMemoryExpandProcessor;
+    }
+
+    private RetrievedContentProcessor getEpisodicMemoryExpandProcessor() {
+        if (null == episodicMemoryExpandProcessor) {
+            episodicMemoryExpandProcessor = SpringUtil.getBean(EpisodicMemoryExpandProcessor.class);
+        }
+        return episodicMemoryExpandProcessor;
     }
 
     /**
