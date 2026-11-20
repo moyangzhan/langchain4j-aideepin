@@ -87,7 +87,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
      */
     public void forgotPassword(String email) {
         User user = getByEmail(email);
-        String code = UuidUtil.createShort();
+        String code = UuidUtil.createToken();
         String key = MessageFormat.format(FIND_MY_PASSWORD, code);
         stringRedisTemplate.opsForValue().set(key, user.getId().toString(), 8, TimeUnit.HOURS);
         String resetLink = adiProperties.getBackendUrl() + "/auth/password/reset?code=" + code;
@@ -479,7 +479,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         if (user.getQuotaByImageMonthly() == 0) {
             user.setQuotaByImageMonthly(parseIntConfig(AdiConstant.SysConfigKey.QUOTA_BY_IMAGE_MONTHLY));
         }
-        String token = UuidUtil.createShort();
+        String token = UuidUtil.createToken();
         String tokenKey = MessageFormat.format(USER_TOKEN, token);
         String jsonUser = JsonUtil.toJson(user);
 //        log.info("jsonUser:{}", jsonUser);
@@ -493,7 +493,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
      * @param email 用户邮箱|user email
      */
     public void sendActiveEmail(String email) {
-        String activeCode = UuidUtil.createShort();
+        String activeCode = UuidUtil.createToken();
         String activeCodeKey = MessageFormat.format(AUTH_ACTIVE_CODE, activeCode);
         stringRedisTemplate.opsForValue().set(activeCodeKey, email, AdiConstant.AUTH_ACTIVE_CODE_EXPIRE, TimeUnit.HOURS);
         String activeLink = adiProperties.getBackendUrl() + "/auth/active?code=" + activeCode;
