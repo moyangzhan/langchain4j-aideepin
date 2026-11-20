@@ -16,9 +16,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Primary;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.Statement;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,9 +38,6 @@ public class PgVectorEmbeddingStoreConfig {
 
     @Resource
     private AdiProperties adiProperties;
-
-    @Resource
-    private DataSource dataSource;
 
     /**
      * 根据选定的嵌入模型及其生成向量的维度不同来定义不同的表名，项目启动时只使用其中一种<br/>
@@ -72,10 +66,7 @@ public class PgVectorEmbeddingStoreConfig {
         if (StringUtils.isNotBlank(pair.getLeft())) {
             tableName = tableName + "_" + pair.getLeft();
         }
-        EmbeddingStore<TextSegment> store = createEmbeddingStore(tableName, pair.getRight());
-        // 知识库向量表不再维护段级 hit_count/word_count（职责已迁到 adi_document_segment 关系表，
-        // 且 text 列置空后 word_count 生成列失去意义），因此不再对 KB 表调用 ensureColumns。
-        return store;
+        return createEmbeddingStore(tableName, pair.getRight());
     }
 
     /**
@@ -91,9 +82,7 @@ public class PgVectorEmbeddingStoreConfig {
         if (StringUtils.isNotBlank(pair.getLeft())) {
             tableName = tableName + "_" + pair.getLeft();
         }
-        EmbeddingStore<TextSegment> store = createEmbeddingStore(tableName, pair.getRight());
-        ensureColumns(tableName);
-        return store;
+        return createEmbeddingStore(tableName, pair.getRight());
     }
 
     /**
@@ -112,9 +101,7 @@ public class PgVectorEmbeddingStoreConfig {
         if (StringUtils.isNotBlank(pair.getLeft())) {
             tableName = tableName + "_" + pair.getLeft();
         }
-        EmbeddingStore<TextSegment> store = createEmbeddingStore(tableName, pair.getRight());
-        ensureColumns(tableName);
-        return store;
+        return createEmbeddingStore(tableName, pair.getRight());
     }
 
     private EmbeddingStore<TextSegment> createEmbeddingStore(String tableName, int dimension) {
@@ -149,32 +136,6 @@ public class PgVectorEmbeddingStoreConfig {
                 .dropTableFirst(false)
                 .table(tableName)
                 .build();
-    }
-
-    /**
-     * Ensure custom columns exist on the embedding table. Only the character memory tables
-     * (semantic / episodic) still need this: their {@code hit_count} is incremented on retrieval
-     * and their {@code text} column remains the source of truth for memory content.
-     * The KB embedding table no longer calls this - segment-level hit_count/word_count moved to
-     * the relational {@code adi_document_segment*} tables and the vector-side {@code text} column
-     * is kept empty (see migration 013).
-     * <ul>
-     *   <li>{@code hit_count} — plain int, DEFAULT 0, incremented on retrieval.</li>
-     *   <li>{@code word_count} — STORED generated column, auto-computed from
-     *       {@code char_length(text)} on every insert/update.</li>
-     * </ul>
-     * Covers both fresh installs and model switches that create a new suffixed table.
-     */
-    private void ensureColumns(String tableName) {
-        try (Connection conn = dataSource.getConnection();
-             Statement stmt = conn.createStatement()) {
-            stmt.execute("ALTER TABLE " + tableName
-                    + " ADD COLUMN IF NOT EXISTS hit_count int DEFAULT 0,"
-                    + " ADD COLUMN IF NOT EXISTS word_count int GENERATED ALWAYS AS (char_length(\"text\")) STORED");
-            log.info("Ensured custom columns (hit_count, word_count) on table {}", tableName);
-        } catch (Exception e) {
-            log.warn("Failed to add custom columns to table {}", tableName, e);
-        }
     }
 
 }

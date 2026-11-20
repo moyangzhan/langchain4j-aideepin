@@ -5,7 +5,6 @@ import com.moyz.adi.common.dto.KbInfoResp;
 import com.moyz.adi.common.entity.AiModel;
 import com.moyz.adi.common.entity.Character;
 import com.moyz.adi.common.entity.User;
-import com.moyz.adi.common.enums.MemoryType;
 import com.moyz.adi.common.languagemodel.AbstractLLMService;
 import com.moyz.adi.common.rag.AdiEmbeddingStoreContentRetriever;
 import com.moyz.adi.common.rag.CompositeRag;
@@ -23,11 +22,8 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
-import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsIn;
-import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
-import dev.langchain4j.store.embedding.filter.logical.And;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -40,7 +36,6 @@ import java.util.concurrent.TimeUnit;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CHARACTER_ID;
 import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.KB_UUID;
-import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.MEMORY_TYPE;
 import static com.moyz.adi.common.cosntant.AdiConstant.RAG_RETRIEVE_MIN_SCORE_DEFAULT;
 
 /**
@@ -57,13 +52,11 @@ public class CharacterChatHelper {
 
     /**
      * 并发执行语义记忆、情景记忆、知识库三通道检索。
-     * semantic 通道排除显式 episodic 记录，缺失 memory_type 视为 semantic（IsNotEqualTo 键缺失时返回 true）。
-     * episodic 记忆使用物理隔离的独立向量库。
+     * 记忆通道按 conv_id 过滤；episodic 记忆使用物理隔离的独立向量库。
      * <p>
      * Concurrent retrieval across semantic memory, episodic memory and knowledge bases.
-     * The semantic channel excludes explicitly episodic records; rows missing memory_type
-     * count as semantic (IsNotEqualTo is true on missing keys).
-     * Episodic memory uses its own physically isolated vector store.
+     * Memory channels filter by conv_id; episodic memory uses its own physically
+     * isolated vector store.
      * </p>
      *
      * @param characterId  角色ID
@@ -81,13 +74,9 @@ public class CharacterChatHelper {
                         .temperature(AdiConstant.LLM_TEMPERATURE_DEFAULT)
                         .build());
 
-        Filter semanticFilter = new And(
-                new IsEqualTo(CHARACTER_ID, characterId),
-                new IsNotEqualTo(MEMORY_TYPE, MemoryType.EPISODIC.getDesc())
-        );
         RetrieverCreateParam memoryRetrieveParam = RetrieverCreateParam.builder()
                 .chatModel(chatModel)
-                .filter(semanticFilter)
+                .filter(new IsEqualTo(CHARACTER_ID, characterId))
                 .maxResults(3)
                 .minScore(RAG_RETRIEVE_MIN_SCORE_DEFAULT)
                 .breakIfSearchMissed(false)

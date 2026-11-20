@@ -177,9 +177,9 @@ execute procedure update_modified_column();
 -- the app's double-write (jar deployed before this backfill ran) are skipped, keeping the
 -- app-written row (its content is the newer one when an UPDATE happened in between).
 --
--- hit_count: the column is added to vector tables at app startup; if your active table
--- predates that and lacks the column, replace every hit_count reference in 2.1/2.2
--- with 0.
+-- hit_count: the column was only ever added to vector tables by the app's retired
+-- startup hook (ensureColumns); if your active table lacks it, replace every hit_count
+-- reference in 2.1/2.2 with 0.
 --
 -- neo4j vector backends: memory data lives in the graph store, SQL cannot reach it.
 -- A packaged runner is NOT shipped with this migration; until one is provided, backfill

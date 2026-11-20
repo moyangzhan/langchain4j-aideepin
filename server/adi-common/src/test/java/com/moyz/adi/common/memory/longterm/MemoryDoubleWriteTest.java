@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -210,15 +209,19 @@ class MemoryDoubleWriteTest {
     }
 
     @Test
-    void addToVectorKeepsScopingMetadata() {
+    void addToVectorCarriesOnlyScopingMetadataAndUuidPlaceholderText() {
         newSemanticService().applyActions(batchOf(addAction("用户养了一只猫")), 7L, 42L, emptyCandidates());
 
         @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<String>> idsCaptor = ArgumentCaptor.forClass(List.class);
+        @SuppressWarnings("unchecked")
         ArgumentCaptor<List<TextSegment>> segmentsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(semanticStore).addAll(anyList(), anyList(), segmentsCaptor.capture());
+        verify(semanticStore).addAll(idsCaptor.capture(), anyList(), segmentsCaptor.capture());
         Metadata metadata = segmentsCaptor.getValue().get(0).metadata();
+        assertEquals(1, metadata.toMap().size());
         assertEquals(7, metadata.getInteger("conv_id"));
-        assertEquals("semantic", metadata.getString("memory_type"));
+        assertEquals(idsCaptor.getValue().get(0), segmentsCaptor.getValue().get(0).text());
+        assertEquals(36, segmentsCaptor.getValue().get(0).text().length());
     }
 
     @Test
@@ -270,7 +273,7 @@ class MemoryDoubleWriteTest {
     }
 
     @Test
-    void episodicVectorSegmentKeepsScopingMetadata() {
+    void episodicVectorSegmentCarriesOnlyScopingMetadataAndUuidPlaceholderText() {
         ExtractedEpisodicEvent event = new ExtractedEpisodicEvent();
         event.setSummary("用户去了北京");
         event.setEventType("TRAVEL");
@@ -279,13 +282,14 @@ class MemoryDoubleWriteTest {
         newEpisodicService().batchAdd(7L, 42L, 100L, List.of(event), false);
 
         @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<String>> idsCaptor = ArgumentCaptor.forClass(List.class);
+        @SuppressWarnings("unchecked")
         ArgumentCaptor<List<TextSegment>> segmentsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(episodicStore).addAll(anyList(), anyList(), segmentsCaptor.capture());
+        verify(episodicStore).addAll(idsCaptor.capture(), anyList(), segmentsCaptor.capture());
         Metadata metadata = segmentsCaptor.getValue().get(0).metadata();
+        assertEquals(1, metadata.toMap().size());
         assertEquals(7, metadata.getInteger("conv_id"));
-        assertEquals("episodic", metadata.getString("memory_type"));
-        assertEquals("travel", metadata.getString("event_type"));
-        assertEquals(100L, metadata.getLong("conv_msg_id"));
-        assertTrue(metadata.getString("create_time") != null);
+        assertEquals(idsCaptor.getValue().get(0), segmentsCaptor.getValue().get(0).text());
+        assertEquals(36, segmentsCaptor.getValue().get(0).text().length());
     }
 }

@@ -166,46 +166,52 @@ public class AdiConstant {
         public static final String CHARACTER_ID = "conv_id";
 
         /**
-         * 记忆类型 metadata key（semantic / episodic）。
+         * 记忆类型 metadata key（semantic / episodic）。由 SSOT 化之前的向量写入方写入；
+         * 新写不再携带，仅 019 迁移回填 SQL 按此字面值路由。
          * <p>
-         * Memory type metadata key. Old records without this field are treated as semantic.
+         * Memory type metadata key. Written by the pre-SSOT vector writers; new writes no
+         * longer carry it — only migration 019's backfill SQL routes on this literal.
          */
         public static final String MEMORY_TYPE = "memory_type";
 
         /**
-         * 记忆创建时间（episodic 必填，格式 {@code yyyy-MM-dd HH:mm:ss}）。
-         * 注意这是写入 jsonb metadata 内部的 key，与表自带列 {@code create_time} 同名
-         * 但作用域不同——后者是 PG 列，前者是 metadata JSON 内的字段。
+         * 记忆创建时间（episodic，格式 {@code yyyy-MM-dd HH:mm:ss}）。由 SSOT 化之前的
+         * 向量写入方写入；新写不再携带，仅 019 迁移回填 SQL 按此字面值回填。
          * <p>
-         * Memory created-at timestamp (required for episodic; formatted as
-         * {@code yyyy-MM-dd HH:mm:ss}). Same name as the table column {@code create_time}
-         * but lives inside the jsonb metadata — distinct scopes.
+         * Memory created-at timestamp (episodic; formatted as
+         * {@code yyyy-MM-dd HH:mm:ss}). Written by the pre-SSOT vector writers; new writes
+         * no longer carry it — only migration 019's backfill SQL reads this literal.
          */
         public static final String CREATE_TIME = "create_time";
 
         /**
-         * 关联的角色消息 ID（episodic 必填）。键值 {@code "conv_msg_id"} 是
-         * conversation→character 重命名时保留的历史名，与 {@link #CHARACTER_ID} 同源；
-         * episodic 表与 semantic 表共用此 key 以保持 metadata 命名一致。
+         * 关联的角色消息 ID（episodic）。键值 {@code "conv_msg_id"} 是
+         * conversation→character 重命名时保留的历史名，与 {@link #CHARACTER_ID} 同源。
+         * 由 SSOT 化之前的向量写入方写入；新写不再携带，仅 019 迁移回填 SQL 按此
+         * 字面值回填。
          * <p>
-         * Character message ID this memory was derived from (required for episodic).
-         * The literal {@code "conv_msg_id"} is retained from the conversation→character
-         * rename, same as {@link #CHARACTER_ID}; episodic and semantic stores share this
-         * key for metadata consistency.
+         * Character message ID this memory was derived from (episodic). The literal
+         * {@code "conv_msg_id"} is retained from the conversation→character rename, same
+         * as {@link #CHARACTER_ID}. Written by the pre-SSOT vector writers; new writes no
+         * longer carry it — only migration 019's backfill SQL reads this literal.
          */
         public static final String CHARACTER_MSG_ID = "conv_msg_id";
 
         /**
-         * 事件类型（episodic 用）。
+         * 事件类型（episodic）。由 SSOT 化之前的向量写入方写入；新写不再携带，仅 019
+         * 迁移回填 SQL 按此字面值回填。
          * <p>
-         * Event type (episodic only).
+         * Event type (episodic). Written by the pre-SSOT vector writers; new writes no
+         * longer carry it — only migration 019's backfill SQL reads this literal.
          */
         public static final String EVENT_TYPE = "event_type";
 
         /**
-         * 重要性 1-5（episodic 用）。
+         * 重要性 1-5（episodic）。由 SSOT 化之前的向量写入方写入；新写不再携带，仅 019
+         * 迁移回填 SQL 按此字面值回填。
          * <p>
-         * Importance 1-5 (episodic only).
+         * Importance 1-5 (episodic). Written by the pre-SSOT vector writers; new writes no
+         * longer carry it — only migration 019's backfill SQL reads this literal.
          */
         public static final String IMPORTANCE = "importance";
 
