@@ -131,7 +131,7 @@ public class LongTermMemoryService {
         }
 
         // ===== Stage 4: apply semantic actions (no LLM) =====
-        semanticMemoryService.applyActions(batchActions, request.getCharacterId(), candidates);
+        semanticMemoryService.applyActions(batchActions, request.getCharacterId(), request.getUser().getId(), candidates);
     }
 
     private SseAskParam buildExtractionRequest(MemoryAddParam request, String inputMessage) {

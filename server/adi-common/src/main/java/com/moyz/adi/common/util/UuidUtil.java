@@ -64,4 +64,33 @@ public class UuidUtil {
         RANDOM.nextBytes(bytes);
         return HexFormat.of().formatHex(bytes);
     }
+
+    /**
+     * 把 32 位无横线 uuid 转成 36 位 canonical 形（pgvector 主键约束 UUID.fromString）。
+     * 输入须为 32 位十六进制；传入 36 位 canonical 形时原样归一返回。
+     * <p>
+     * Convert a 32-char dashed-less uuid into its canonical 36-char form (required
+     * by the pgvector primary key via UUID.fromString). The input must be 32 hex
+     * chars; a canonical 36-char input is returned normalized as-is.
+     */
+    public static String toCanonical(String shortUuid) {
+        String s = shortUuid.replace("-", "");
+        return new StringBuilder(36)
+                .append(s, 0, 8).append('-')
+                .append(s, 8, 12).append('-')
+                .append(s, 12, 16).append('-')
+                .append(s, 16, 20).append('-')
+                .append(s, 20, 32)
+                .toString();
+    }
+
+    /**
+     * 把 36 位 canonical uuid 转成 32 位无横线形（关系表 uuid 列、项目标识符惯例）。
+     * <p>
+     * Convert a canonical 36-char uuid into its 32-char dashed-less form (relational
+     * uuid columns, project identifier convention).
+     */
+    public static String toShort(String canonicalUuid) {
+        return canonicalUuid.replace("-", "");
+    }
 }

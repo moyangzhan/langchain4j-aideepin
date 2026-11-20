@@ -2,12 +2,11 @@ package com.moyz.adi.common.memory.longterm;
 
 import com.moyz.adi.common.config.AdiProperties;
 import com.moyz.adi.common.cosntant.AdiConstant;
+import com.moyz.adi.common.entity.CharacterMemorySemantic;
 import com.moyz.adi.common.enums.MemoryType;
 import com.moyz.adi.common.memory.vo.BatchActionMemories;
-import com.moyz.adi.common.rag.EmbeddingRagContext;
-import com.moyz.adi.common.vo.EmbeddingIngestParam;
-import dev.langchain4j.data.document.DefaultDocument;
-import dev.langchain4j.data.document.Document;
+import com.moyz.adi.common.service.CharacterMemorySemanticService;
+import com.moyz.adi.common.util.UuidUtil;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -33,11 +32,17 @@ import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CHARACTER_ID;
 
 /**
  * Semantic memory service: deduplicating merge candidates retrieval and
- * ADD / UPDATE / DELETE execution against the semantic vector store. Does not
- * call LLMs and does not account for cost — the caller (dispatcher) drives those.
+ * ADD / UPDATE / DELETE execution, double-writing the relational source of truth
+ * first and the semantic vector store second (the vector row id equals the
+ * relational row uuid in canonical form). ADD embeds the whole fact as one
+ * segment; UPDATE re-embeds the new text under the same uuid; DELETE removes the
+ * vector row first, then soft-deletes the relational row. Does not call LLMs and
+ * does not account for cost — the caller (dispatcher) drives those.
  * <p>
- * 语义记忆服务：负责合并候选检索和 ADD / UPDATE / DELETE 执行。不调 LLM、不计 token 成本，
- * 由调度器统筹这些事项。物理隔离后只在 semantic store 上工作，不再过滤 memory_type。
+ * 语义记忆服务：合并候选检索与 ADD / UPDATE / DELETE 执行，先写关系事实源行、再写语义
+ * 向量库（向量行主键 = 关系行 uuid 的 canonical 形）。ADD 整条 fact 一次直嵌；UPDATE
+ * 同 uuid 重嵌新文本；DELETE 先移向量行、后软删关系行。不调 LLM、不计 token 成本，
+ * 由调度器统筹这些事项。
  */
 @Slf4j
 @Service
@@ -53,6 +58,9 @@ public class SemanticMemoryService {
     @Resource
     private AdiProperties adiProperties;
 
+    @Resource
+    private CharacterMemorySemanticService characterMemorySemanticService;
+
     /**
      * For each fact, find its top-K nearest neighbours in the semantic store. Each
      * fact keeps its own tmpId space so the LLM never sees ambiguous IDs across facts.
@@ -62,7 +70,6 @@ public class SemanticMemoryService {
     public MergeCandidates searchMergeCandidates(List<String> facts, Long characterId) {
         Map<String, List<Map<String, String>>> factToOldMemoriesForPrompt = new LinkedHashMap<>();
         Map<String, Map<String, String>> factToTmpIdToEmbeddingId = new HashMap<>();
-        Map<String, Map<String, EmbeddingMatch<TextSegment>>> factToEmbeddingIdToMatch = new HashMap<>();
         double minScore = adiProperties.getMemory() != null
                 ? adiProperties.getMemory().getMinScore()
                 : AdiConstant.LONG_TERM_MEMORY_MIN_SCORE_DEFAULT;
@@ -95,24 +102,23 @@ public class SemanticMemoryService {
 
             factToOldMemoriesForPrompt.put(fact, oldMemoryForPrompt);
             factToTmpIdToEmbeddingId.put(fact, tmpIdToEmbeddingId);
-            factToEmbeddingIdToMatch.put(fact, embeddingIdToMatch);
         }
-        return new MergeCandidates(factToOldMemoriesForPrompt, factToTmpIdToEmbeddingId, factToEmbeddingIdToMatch);
+        return new MergeCandidates(factToOldMemoriesForPrompt, factToTmpIdToEmbeddingId);
     }
 
     /**
-     * Apply ADD / UPDATE / DELETE actions to the semantic vector store. Single-action
-     * failures are caught here so other actions still proceed.
+     * Apply ADD / UPDATE / DELETE actions to semantic memory. Single-action failures
+     * are caught here so other actions still proceed.
      * <p>
      * 应用 ADD / UPDATE / DELETE 操作。单条失败不影响其他操作。
      */
-    public void applyActions(BatchActionMemories batchActions, Long characterId, MergeCandidates candidates) {
+    public void applyActions(BatchActionMemories batchActions, Long characterId, Long userId, MergeCandidates candidates) {
         if (batchActions == null || batchActions.getActions() == null) {
             return;
         }
         for (BatchActionMemories.BatchActionMemory action : batchActions.getActions()) {
             try {
-                applyAction(action, characterId, candidates);
+                applyAction(action, characterId, userId, candidates);
             } catch (Exception ex) {
                 log.warn("Apply memory action failed, action={}, error={}", action, ex.getMessage());
             }
@@ -121,6 +127,7 @@ public class SemanticMemoryService {
 
     private void applyAction(BatchActionMemories.BatchActionMemory action,
                              Long characterId,
+                             Long userId,
                              MergeCandidates candidates) {
         if (action == null || StringUtils.isBlank(action.getEvent())) {
             return;
@@ -131,32 +138,17 @@ public class SemanticMemoryService {
             return;
         }
 
-        // ADD: no need to resolve old memories, ingest the new content directly.
-        // ADD：无需定位旧记忆，直接 ingest 新内容。
         if (AdiConstant.MemoryEvent.ADD.equalsIgnoreCase(event)) {
             if (StringUtils.isBlank(action.getText())) {
                 log.warn("ADD action missing text, skip");
                 return;
             }
-            Metadata metadata = new Metadata(Map.of(
-                    CHARACTER_ID, characterId,
-                    AdiConstant.MetadataKey.MEMORY_TYPE, MemoryType.SEMANTIC.getDesc()));
-            Document document = new DefaultDocument(action.getText(), metadata);
-            EmbeddingRagContext.get(AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY).ingest(document,
-                    EmbeddingIngestParam.builder()
-                            .overlap(20)
-                            .strategy(AdiConstant.SplitStrategy.RECURSIVE)
-                            .maxSegmentSize(AdiConstant.RAG_MAX_SEGMENT_SIZE_IN_TOKENS)
-                            .customSeparator("")
-                            .build());
+            addMemory(characterId, userId, action.getText());
             return;
         }
 
-        // UPDATE / DELETE: locate the old memory via the fact-scoped tmpId space.
-        // UPDATE / DELETE：通过 fact-scoped tmpId 空间定位旧记忆。
         Map<String, String> tmpIdToEmbeddingId = candidates.factToTmpIdToEmbeddingId.get(action.getFact());
-        Map<String, EmbeddingMatch<TextSegment>> embeddingIdToMatch = candidates.factToEmbeddingIdToMatch.get(action.getFact());
-        if (tmpIdToEmbeddingId == null || embeddingIdToMatch == null) {
+        if (tmpIdToEmbeddingId == null) {
             log.warn("LLM hallucinated fact field, no matching context, fact={}, skip", action.getFact());
             return;
         }
@@ -172,7 +164,7 @@ public class SemanticMemoryService {
         }
 
         if (AdiConstant.MemoryEvent.DELETE.equalsIgnoreCase(event)) {
-            semanticEmbeddingStore.remove(embeddingId);
+            deleteMemory(embeddingId);
             return;
         }
 
@@ -181,41 +173,59 @@ public class SemanticMemoryService {
                 log.warn("UPDATE action missing text, action={}, skip", action);
                 return;
             }
-            EmbeddingMatch<TextSegment> match = embeddingIdToMatch.get(embeddingId);
-            if (match == null) {
-                log.warn("UPDATE action embeddingId not found in match map, skip");
-                return;
-            }
-            semanticEmbeddingStore.remove(embeddingId);
-            Metadata metadata = new Metadata(Map.of(
-                    CHARACTER_ID, characterId,
-                    AdiConstant.MetadataKey.MEMORY_TYPE, MemoryType.SEMANTIC.getDesc()));
-            TextSegment newSegment = TextSegment.from(action.getText(), metadata);
-            semanticEmbeddingStore.addAll(List.of(embeddingId), List.of(match.embedding()), List.of(newSegment));
+            updateMemory(embeddingId, characterId, userId, action.getText());
             return;
         }
 
         log.warn("Unknown memory event: {}, action={}", event, action);
     }
 
+    private void addMemory(Long characterId, Long userId, String text) {
+        CharacterMemorySemantic row = new CharacterMemorySemantic();
+        row.setUuid(UuidUtil.createShort());
+        row.setCharacterId(characterId);
+        row.setContent(text);
+        row.setUserId(userId);
+        characterMemorySemanticService.save(row);
+        addToVector(row.getUuid(), characterId, text, embeddingModel.embed(text).content());
+    }
+
+    private void updateMemory(String embeddingId, Long characterId, Long userId, String text) {
+        String uuid = UuidUtil.toShort(embeddingId);
+        Embedding newEmbedding = embeddingModel.embed(text).content();
+        characterMemorySemanticService.upsertContent(uuid, characterId, text, userId);
+        semanticEmbeddingStore.remove(embeddingId);
+        addToVector(uuid, characterId, text, newEmbedding);
+    }
+
+    private void deleteMemory(String embeddingId) {
+        semanticEmbeddingStore.remove(embeddingId);
+        characterMemorySemanticService.softDeleteByUuid(UuidUtil.toShort(embeddingId));
+    }
+
+    private void addToVector(String uuid, Long characterId, String text, Embedding embedding) {
+        Metadata metadata = new Metadata(Map.of(
+                CHARACTER_ID, characterId,
+                AdiConstant.MetadataKey.MEMORY_TYPE, MemoryType.SEMANTIC.getDesc()));
+        semanticEmbeddingStore.addAll(List.of(UuidUtil.toCanonical(uuid)),
+                List.of(embedding), List.of(TextSegment.from(text, metadata)));
+    }
+
     /**
      * Merge candidates collected per-fact. Exposes the per-fact prompt input
-     * for the dispatcher to feed the LLM, and keeps the tmpId↔embeddingId
-     * mappings + raw EmbeddingMatches needed for {@link #applyActions}.
+     * for the dispatcher to feed the LLM, and keeps the tmpId↔embeddingId mapping
+     * needed for {@link #applyActions}.
      * <p>
-     * 按 fact 聚合的合并候选。三个 map 分别给调度器构造 prompt、给 applyActions 反查使用。
+     * 按 fact 聚合的合并候选。两个 map 分别给调度器构造 prompt、给 applyActions 反查使用。
      */
     public static final class MergeCandidates {
         public final Map<String, List<Map<String, String>>> factToOldMemoriesForPrompt;
         public final Map<String, Map<String, String>> factToTmpIdToEmbeddingId;
-        public final Map<String, Map<String, EmbeddingMatch<TextSegment>>> factToEmbeddingIdToMatch;
 
         public MergeCandidates(Map<String, List<Map<String, String>>> factToOldMemoriesForPrompt,
-                               Map<String, Map<String, String>> factToTmpIdToEmbeddingId,
-                               Map<String, Map<String, EmbeddingMatch<TextSegment>>> factToEmbeddingIdToMatch) {
+                               Map<String, Map<String, String>> factToTmpIdToEmbeddingId) {
             this.factToOldMemoriesForPrompt = factToOldMemoriesForPrompt;
             this.factToTmpIdToEmbeddingId = factToTmpIdToEmbeddingId;
-            this.factToEmbeddingIdToMatch = factToEmbeddingIdToMatch;
         }
 
         public boolean isEmpty() {

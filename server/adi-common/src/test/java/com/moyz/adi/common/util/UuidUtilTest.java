@@ -63,4 +63,15 @@ class UuidUtilTest {
         assertTrue(token.matches("[0-9a-f]{32}"));
         assertNotEquals(token, UuidUtil.createToken());
     }
+
+    @Test
+    void canonicalAndShortFormsRoundTrip() {
+        String shortUuid = UuidUtil.createShort();
+        String canonical = UuidUtil.toCanonical(shortUuid);
+        assertEquals(36, canonical.length());
+        assertEquals('-', canonical.charAt(8));
+        assertEquals(shortUuid, UuidUtil.toShort(canonical));
+        assertEquals(UUID.fromString(canonical).toString(), canonical);
+        assertEquals(canonical, UuidUtil.toCanonical(canonical));
+    }
 }

@@ -1,10 +1,13 @@
 package com.moyz.adi.common.memory.longterm;
 
 import com.moyz.adi.common.cosntant.AdiConstant;
+import com.moyz.adi.common.entity.CharacterMemoryEpisodic;
 import com.moyz.adi.common.enums.EventType;
 import com.moyz.adi.common.enums.MemoryType;
 import com.moyz.adi.common.memory.vo.ExtractedEpisodicEvent;
+import com.moyz.adi.common.service.CharacterMemoryEpisodicService;
 import com.moyz.adi.common.util.LocalDateTimeUtil;
+import com.moyz.adi.common.util.UuidUtil;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -22,19 +25,19 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.*;
 
 /**
- * Append-only writer for episodic memory. Each event becomes a row in the dedicated
- * {@code episodicEmbeddingStore} (physically isolated from semantic memory so the
- * two never compete for top-K). All structured fields (event_type, importance,
- * create_time, conv_msg_id) live in the vector store's metadata — no relational table.
+ * Append-only writer for episodic memory, double-writing the relational source of
+ * truth first and the dedicated {@code episodicEmbeddingStore} second. The vector
+ * row id equals the relational row uuid in canonical 36-char form; content and
+ * structured fields live on the relational row, the vector side is a retrieval
+ * index joined back by uuid.
  * <p>
- * 情景记忆 append-only 写入服务。事件写入独立的 {@code episodicEmbeddingStore}
- * （与语义记忆物理隔离，互不抢占 top-K 召回）。所有结构化字段（事件类型、重要性、创建时间、
- * 来源消息）都存在向量库 metadata 中，不再需要关系表。
+ * 情景记忆 append-only 写入服务：先写关系事实源行，再写独立情景向量库（与语义记忆物理
+ * 隔离，互不抢占 top-K）。向量行主键 = 关系行 uuid 的 canonical 36 位形；内容与结构化
+ * 字段住在关系行，向量侧为按 uuid 联接回表的检索索引。
  */
 @Slf4j
 @Service
@@ -47,16 +50,19 @@ public class EpisodicMemoryService {
     @Resource
     private EmbeddingModel embeddingModel;
 
+    @Resource
+    private CharacterMemoryEpisodicService characterMemoryEpisodicService;
+
     /**
-     * Batch add episodic events to the dedicated episodic vector store. No
+     * Batch add episodic events: relational rows first, then the vector index. No
      * idempotency check is performed: retried calls with the same
      * {@code characterMsgId} produce duplicate rows, which is acceptable for
      * episodic recall since retries are rare and duplicates have negligible
      * impact on LLM analysis quality.
      *
      * @param characterId    character id
-     * @param userId         user id (reserved for future per-user filtering)
-     * @param characterMsgId source character message id, stored in metadata for traceability only
+     * @param userId         user id (stored on the relational row)
+     * @param characterMsgId source character message id, stored for traceability only
      * @param events         events to add
      * @param isFreeToken    whether the model is free-tier (passed through for cost accounting)
      */
@@ -65,62 +71,51 @@ public class EpisodicMemoryService {
         if (CollectionUtils.isEmpty(events)) {
             return;
         }
-        // userId / isFreeToken are reserved for future per-user filtering and cost
-        // accounting; they're carried through the signature so callers don't have to
-        // change when those features arrive.
 
-        // Format once per batch with project-wide pattern (yyyy-MM-dd HH:mm:ss).
-        // Sub-second precision adds no recall value for "past events"; the canonical
-        // format is also the lingua franca used elsewhere in the codebase / UI.
-        // 每批格式化一次，使用项目统一的 yyyy-MM-dd HH:mm:ss——亚秒精度对"过往事件"
-        // 召回无价值，此格式与代码库/前端其他时间字段一致。
         String createTimeStr = LocalDateTimeUtil.format(LocalDateTime.now(), LocalDateTimeUtil.PATTERN_DEFAULT);
-        List<String> embeddingIds = new ArrayList<>();
-        List<Embedding> embeddings = new ArrayList<>();
-        List<TextSegment> segments = new ArrayList<>();
-
+        List<CharacterMemoryEpisodic> rows = new ArrayList<>();
         for (ExtractedEpisodicEvent event : events) {
             if (event == null || StringUtils.isBlank(event.getSummary())) {
                 continue;
             }
-
-            // PgVector requires a canonical UUID string (parsed via UUID.fromString);
-            // the project-wide UuidUtil.createShort() strips dashes and would fail here.
-            String embeddingId = UUID.randomUUID().toString();
-            Embedding embedding = embeddingModel.embed(event.getSummary()).content();
-
-            String eventType = EventType.fromString(event.getEventType()).getCode();
-            int importance = event.getImportance() != null
+            CharacterMemoryEpisodic row = new CharacterMemoryEpisodic();
+            row.setUuid(UuidUtil.createShort());
+            row.setCharacterId(characterId);
+            row.setContent(event.getSummary());
+            row.setEventType(EventType.fromString(event.getEventType()).getCode());
+            row.setImportance(event.getImportance() != null
                     ? Math.max(1, Math.min(5, event.getImportance()))
-                    : AdiConstant.EPISODIC_IMPORTANCE_DEFAULT;
-
-            // Build metadata with a mutable HashMap so characterMsgId can be conditionally
-            // added (Map.of rejects null values). CHARACTER_ID stays as Long to match
-            // the type used by IsEqualTo filters.
-            Map<String, Object> meta = new HashMap<>();
-            meta.put(CHARACTER_ID, characterId);
-            meta.put(MEMORY_TYPE, MemoryType.EPISODIC.getDesc());
-            meta.put(CREATE_TIME, createTimeStr);
-            meta.put(EVENT_TYPE, eventType);
-            meta.put(IMPORTANCE, importance);
-            if (characterMsgId != null) {
-                meta.put(CHARACTER_MSG_ID, characterMsgId);
-            }
-            Metadata metadata = new Metadata(meta);
-            TextSegment segment = TextSegment.from(event.getSummary(), metadata);
-
-            embeddingIds.add(embeddingId);
-            embeddings.add(embedding);
-            segments.add(segment);
+                    : AdiConstant.EPISODIC_IMPORTANCE_DEFAULT);
+            row.setSourceMsgId(characterMsgId != null ? characterMsgId : -1L);
+            row.setUserId(userId);
+            rows.add(row);
         }
 
-        if (segments.isEmpty()) {
+        if (rows.isEmpty()) {
             log.warn("No valid episodic events to persist");
             return;
         }
 
+        characterMemoryEpisodicService.saveBatch(rows);
+
+        List<String> embeddingIds = new ArrayList<>(rows.size());
+        List<Embedding> embeddings = new ArrayList<>(rows.size());
+        List<TextSegment> segments = new ArrayList<>(rows.size());
+        for (CharacterMemoryEpisodic row : rows) {
+            Map<String, Object> meta = new HashMap<>();
+            meta.put(CHARACTER_ID, characterId);
+            meta.put(MEMORY_TYPE, MemoryType.EPISODIC.getDesc());
+            meta.put(CREATE_TIME, createTimeStr);
+            meta.put(EVENT_TYPE, row.getEventType());
+            meta.put(IMPORTANCE, row.getImportance());
+            if (row.getSourceMsgId() != null && row.getSourceMsgId() != -1L) {
+                meta.put(CHARACTER_MSG_ID, row.getSourceMsgId());
+            }
+            embeddingIds.add(UuidUtil.toCanonical(row.getUuid()));
+            embeddings.add(embeddingModel.embed(row.getContent()).content());
+            segments.add(TextSegment.from(row.getContent(), new Metadata(meta)));
+        }
         episodicEmbeddingStore.addAll(embeddingIds, embeddings, segments);
-        log.info("Episodic memory batch added: characterId={}, count={}", characterId, segments.size());
+        log.info("Episodic memory batch added: characterId={}, count={}", characterId, rows.size());
     }
 }
-
