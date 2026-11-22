@@ -1,6 +1,5 @@
 package com.moyz.adi.common.memory.longterm;
 
-import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.LLMCallRecord;
 import com.moyz.adi.common.entity.User;
 import com.moyz.adi.common.enums.LLMCallRecordSourceType;

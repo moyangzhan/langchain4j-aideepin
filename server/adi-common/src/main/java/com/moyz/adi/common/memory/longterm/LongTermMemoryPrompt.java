@@ -13,20 +13,16 @@ import static com.moyz.adi.common.util.LocalDateTimeUtil.PATTERN_YYYY_MM_DD;
 public class LongTermMemoryPrompt {
 
     /**
-     * Triple-task memory extraction prompt — extracts semantic memory, episodic events
-     * AND instruction rules in a single LLM call. The semantic channel covers stable,
-     * time-agnostic knowledge about the user; the instruction channel covers behaviour
-     * rules the user teaches the assistant (how it should work); each unit is stored as
-     * a short self-contained statement; the JSON field is kept as {@code semantic_facts}
-     * for backward compatibility with the unit-layer naming ("fact"). Loosely based on
-     * mem0's fact retrieval prompt, extended with an episodic task and an instruction
-     * task.
+     * Triple-task memory extraction prompt —
+     * extracts semantic memories, episodic events and instruction rules in a single LLM call.
+     * The semantic channel covers stable, time-agnostic knowledge about the user;
+     * the instruction channel covers rules the user teaches the assistant about its own behaviour (how it should work);
+     * each entry is a short self-contained statement.
+     * The JSON field keeps {@code semantic_facts} for backward compatibility with the unit-layer naming ("fact").
      * <p>
-     * 三任务记忆提取 prompt —— 在一次 LLM 调用中同时抽取 semantic 记忆、episodic 事件和
-     * instruction 指令规则。Semantic 通道覆盖"与时间无关的、关于用户的稳定知识"；instruction
-     * 通道覆盖用户教给助手的、面向助手自身行为的规则（「怎么做」）；每条以一句"短陈述"
-     * 承载。JSON 字段沿用 {@code semantic_facts}（单元层命名为 fact）以保持向后兼容。
-     * 在 mem0 fact retrieval prompt 基础上扩展了 episodic 与 instruction 任务。
+     * 三种类型记忆提取 prompt —— 在一次 LLM 调用中同时抽取 semantic 记忆、episodic 事件和 instruction 指令规则。
+     * Semantic 通道覆盖"与时间无关的、关于用户的稳定知识"；instruction 通道覆盖用户教给助手的、面向助手自身行为的规则（「怎么做」）；每条以一句"短陈述"承载。
+     * JSON 字段沿用 {@code semantic_facts}（单元层命名为 fact）以保持向后兼容。
      * <p>
      * Reference: <a href="https://github.com/mem0ai/mem0/blob/main/mem0/configs/prompts.py">mem0 prompts</a>
      */

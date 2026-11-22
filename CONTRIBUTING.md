@@ -100,7 +100,8 @@ Schema changes ship as numbered SQL scripts (`server/db_migration/NNN_*.sql`, in
 
 - New schema or data changes: add a new script with the next number;
 - **Migration files shipped in a release are frozen**: once released, a script is never modified — follow-up changes (including fixes to released scripts) go into a new numbered script; unreleased scripts may still be edited directly;
-- Keep the full baselines (`all_ddl.sql`, `all_dml*.sql`) in sync with the incremental scripts (they serve fresh installs).
+- Keep the full baselines (`all_ddl.sql`, `all_dml*.sql`) in sync with the incremental scripts (they serve fresh installs);
+- For in-script comment conventions (bilingual header layout, `Section N` / `Step N-M` numbering, one sentence per line), see `018_document_ingest_override.sql`.
 
 ### PR Process
 

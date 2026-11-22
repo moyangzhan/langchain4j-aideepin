@@ -313,8 +313,8 @@ CREATE TABLE adi_character_memory_episodic
 (
     id            bigserial primary key,
     uuid          varchar(32) default ''               not null,
-    character_id  bigint                               not null,
-    content       text                                 not null,
+    character_id  bigint      default 0                not null,
+    content       text        default ''               not null,
     event_type    varchar(20) default ''               not null,
     importance    int         default 3                not null,
     source_msg_id bigint      default -1               not null,
@@ -331,11 +331,11 @@ COMMENT ON COLUMN adi_character_memory_episodic.uuid IS 'Memory UUID (UUID v7, 3
 COMMENT ON COLUMN adi_character_memory_episodic.character_id IS 'Owning character id (adi_character.id); timeline and cleanup enumeration key';
 COMMENT ON COLUMN adi_character_memory_episodic.content IS 'Memory content of the event';
 COMMENT ON COLUMN adi_character_memory_episodic.event_type IS 'Event type code (see EventType enum)';
-COMMENT ON COLUMN adi_character_memory_episodic.importance IS 'Importance clamped to 1-5 at write time, default 3';
-COMMENT ON COLUMN adi_character_memory_episodic.source_msg_id IS 'Source character message id for traceability, -1 when absent';
-COMMENT ON COLUMN adi_character_memory_episodic.user_id IS 'Owner user id resolved at write time (character owner), -1 when unresolvable';
+COMMENT ON COLUMN adi_character_memory_episodic.importance IS 'Importance clamped to 1-5 at write time';
+COMMENT ON COLUMN adi_character_memory_episodic.source_msg_id IS 'Source character message id for traceability';
+COMMENT ON COLUMN adi_character_memory_episodic.user_id IS 'Owner user id (character owner), resolved at write time';
 COMMENT ON COLUMN adi_character_memory_episodic.hit_count IS 'Retrieval hit count (incremented on recall)';
-COMMENT ON COLUMN adi_character_memory_episodic.word_count IS 'Character count of the content (auto-computed by PostgreSQL: char_length(content))';
+COMMENT ON COLUMN adi_character_memory_episodic.word_count IS 'Character count of the content';
 COMMENT ON COLUMN adi_character_memory_episodic.create_time IS 'Event creation time';
 COMMENT ON COLUMN adi_character_memory_episodic.update_time IS 'Last update time';
 COMMENT ON COLUMN adi_character_memory_episodic.is_deleted IS 'Whether the record is soft-deleted (deletion removes the vector row first, then soft-deletes this row)';
@@ -354,8 +354,8 @@ CREATE TABLE adi_character_memory_semantic
 (
     id           bigserial primary key,
     uuid         varchar(32) default ''               not null,
-    character_id bigint                               not null,
-    content      text                                 not null,
+    character_id bigint      default 0                not null,
+    content      text        default ''               not null,
     user_id      bigint      default -1               not null,
     hit_count    int         default 0                not null,
     word_count   int         GENERATED ALWAYS AS (char_length(content)) STORED not null,
@@ -368,9 +368,9 @@ COMMENT ON TABLE  adi_character_memory_semantic IS 'Semantic character memory (m
 COMMENT ON COLUMN adi_character_memory_semantic.uuid IS 'Memory UUID (UUID v7, 32 chars without dashes). The vector table primary key is this value in canonical 36-char dashed form; join key across vector/graph derived layers';
 COMMENT ON COLUMN adi_character_memory_semantic.character_id IS 'Owning character id (adi_character.id)';
 COMMENT ON COLUMN adi_character_memory_semantic.content IS 'Memory content; one fact = one row';
-COMMENT ON COLUMN adi_character_memory_semantic.user_id IS 'Owner user id resolved at write time (character owner), -1 when unresolvable';
+COMMENT ON COLUMN adi_character_memory_semantic.user_id IS 'Owner user id (character owner), resolved at write time';
 COMMENT ON COLUMN adi_character_memory_semantic.hit_count IS 'Retrieval hit count (incremented on recall)';
-COMMENT ON COLUMN adi_character_memory_semantic.word_count IS 'Character count of the content (auto-computed by PostgreSQL: char_length(content))';
+COMMENT ON COLUMN adi_character_memory_semantic.word_count IS 'Character count of the content';
 COMMENT ON COLUMN adi_character_memory_semantic.create_time IS 'Creation time; backfilled rows take the migration time';
 COMMENT ON COLUMN adi_character_memory_semantic.update_time IS 'Last update time';
 COMMENT ON COLUMN adi_character_memory_semantic.is_deleted IS 'Whether the record is soft-deleted (deletion removes the vector row first, then soft-deletes this row)';
@@ -389,11 +389,10 @@ CREATE TABLE adi_character_memory_instruction
 (
     id            bigserial primary key,
     uuid          varchar(32) default ''               not null,
-    character_id  bigint                               not null,
-    content       text                                 not null,
+    character_id  bigint      default 0                not null,
+    content       text        default ''               not null,
     source_msg_id bigint      default -1               not null,
     user_id       bigint      default -1               not null,
-    hit_count     int         default 0                not null,
     word_count    int         GENERATED ALWAYS AS (char_length(content)) STORED not null,
     create_time   timestamp   default CURRENT_TIMESTAMP not null,
     update_time   timestamp   default CURRENT_TIMESTAMP not null,
@@ -401,16 +400,15 @@ CREATE TABLE adi_character_memory_instruction
 );
 
 COMMENT ON TABLE  adi_character_memory_instruction IS 'Instruction character memory (mergeable behaviour rules for the assistant) - single source of truth for memory content';
-COMMENT ON COLUMN adi_character_memory_instruction.uuid IS 'Memory UUID (UUID v7, 32 chars without dashes). The vector table primary key is this value in canonical 36-char dashed form; join key across vector/graph derived layers';
+COMMENT ON COLUMN adi_character_memory_instruction.uuid IS 'Memory UUID (UUID v7, 32 chars without dashes)';
 COMMENT ON COLUMN adi_character_memory_instruction.character_id IS 'Owning character id (adi_character.id); rules are scoped per user x character';
 COMMENT ON COLUMN adi_character_memory_instruction.content IS 'Memory content; one rule = one row';
-COMMENT ON COLUMN adi_character_memory_instruction.source_msg_id IS 'Source character message id for traceability (which turn the rule was learned from), -1 when absent';
-COMMENT ON COLUMN adi_character_memory_instruction.user_id IS 'Owner user id resolved at write time (character owner), -1 when unresolvable';
-COMMENT ON COLUMN adi_character_memory_instruction.hit_count IS 'Retrieval hit count (incremented on recall)';
-COMMENT ON COLUMN adi_character_memory_instruction.word_count IS 'Character count of the content (auto-computed by PostgreSQL: char_length(content))';
+COMMENT ON COLUMN adi_character_memory_instruction.source_msg_id IS 'Source character message id (the turn the rule was learned from)';
+COMMENT ON COLUMN adi_character_memory_instruction.user_id IS 'Owner user id (character owner), resolved at write time';
+COMMENT ON COLUMN adi_character_memory_instruction.word_count IS 'Character count of the content';
 COMMENT ON COLUMN adi_character_memory_instruction.create_time IS 'Creation time';
 COMMENT ON COLUMN adi_character_memory_instruction.update_time IS 'Last update time';
-COMMENT ON COLUMN adi_character_memory_instruction.is_deleted IS 'Whether the record is soft-deleted (deletion removes the vector row first, then soft-deletes this row)';
+COMMENT ON COLUMN adi_character_memory_instruction.is_deleted IS 'Whether the record is soft-deleted';
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_character_memory_instruction_uuid ON adi_character_memory_instruction (uuid);
 CREATE INDEX IF NOT EXISTS idx_character_memory_instruction_character ON adi_character_memory_instruction (character_id);
@@ -873,7 +871,7 @@ comment on column adi_document.graphical_status is 'Graph (knowledge graph) buil
 comment on column adi_document.graphical_status_change_time is 'Time when the graph build status last changed';
 comment on column adi_document.embedding_hit_count is 'Number of times this document was recalled via vector (embedding) retrieval';
 comment on column adi_document.graph_hit_count is 'Number of times this document was recalled via graph retrieval';
-comment on column adi_document.word_count is 'Character count of the document content (auto-computed by PostgreSQL: char_length(remark))';
+comment on column adi_document.word_count is 'Character count of the document content';
 comment on column adi_document.is_enabled is 'Whether the document is enabled for retrieval (false = its segments are excluded from vector/graph search)';
 comment on column adi_document.enabled_change_time is 'Time when the enabled flag last changed';
 comment on column adi_document.index_version is 'Generation of indexed artifacts built from this document; +1 on remark / segment_mode / split-param change (knowledge base defaults and document overrides; title and other metadata excluded). Index tasks snapshot it for staleness detection and merge-debounce';
@@ -928,7 +926,7 @@ comment on column adi_document_segment.kb_uuid is 'Knowledge Base UUID';
 comment on column adi_document_segment.doc_uuid is 'Document UUID (adi_document.uuid)';
 comment on column adi_document_segment.position is 'Zero-based order of the segment inside the document';
 comment on column adi_document_segment.content is 'text: chunk text / qa: answer text / parent_child: parent chunk text (the content returned to the LLM after retrieval expansion)';
-comment on column adi_document_segment.word_count is 'Character count of the content (auto-computed by PostgreSQL: char_length(content))';
+comment on column adi_document_segment.word_count is 'Character count of the content';
 comment on column adi_document_segment.hit_count is 'text: direct hits; qa/parent_child: propagated +1 when a linked question/child chunk is hit';
 comment on column adi_document_segment.embedding_id is 'Vector store entry id; NOT NULL only in text mode (answers and parent chunks are not vectorized)';
 comment on column adi_document_segment.source is 'Origin of the segment: doc (from document ingestion) | manual (created manually) | annotation (reserved for the future annotation feature)';
@@ -977,7 +975,7 @@ comment on column adi_document_segment_question.doc_uuid is 'Document UUID (adi_
 comment on column adi_document_segment_question.answer_segment_id is 'Answer segment id (adi_document_segment.id); multiple questions may point to the same answer';
 comment on column adi_document_segment_question.position is 'Zero-based order of the question within its answer segment';
 comment on column adi_document_segment_question.content is 'Question original text (this is the content that gets vectorized)';
-comment on column adi_document_segment_question.word_count is 'Character count of the question (auto-computed by PostgreSQL: char_length(content))';
+comment on column adi_document_segment_question.word_count is 'Character count of the question';
 comment on column adi_document_segment_question.hit_count is 'Number of times this question was hit by vector retrieval';
 comment on column adi_document_segment_question.embedding_id is 'Vector store entry id';
 comment on column adi_document_segment_question.create_time is 'Creation time';
@@ -1019,7 +1017,7 @@ comment on column adi_document_segment_child_chunk.doc_uuid is 'Document UUID (a
 comment on column adi_document_segment_child_chunk.parent_segment_id is 'Parent segment id (adi_document_segment.id); multiple children belong to one parent';
 comment on column adi_document_segment_child_chunk.position is 'Zero-based order of the child chunk within its parent segment';
 comment on column adi_document_segment_child_chunk.content is 'Child chunk original text (this is the content that gets vectorized)';
-comment on column adi_document_segment_child_chunk.word_count is 'Character count of the child chunk (auto-computed by PostgreSQL: char_length(content))';
+comment on column adi_document_segment_child_chunk.word_count is 'Character count of the child chunk';
 comment on column adi_document_segment_child_chunk.hit_count is 'Number of times this child chunk was hit by vector retrieval';
 comment on column adi_document_segment_child_chunk.embedding_id is 'Vector store entry id';
 comment on column adi_document_segment_child_chunk.create_time is 'Creation time';
