@@ -41,6 +41,7 @@ public class KnowledgeBaseMessageRefGraphService extends ServiceImpl<KnowledgeBa
         if (null == result.getEdges()) {
             result.setEdges(Collections.emptyList());
         }
+        result.resolveEdgeNames();
         return result;
     }
 }

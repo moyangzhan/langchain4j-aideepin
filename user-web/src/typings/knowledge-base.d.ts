@@ -123,12 +123,18 @@ declare namespace KnowledgeBase {
     children?: SegmentChildChunk[]
   }
   interface KbEdge {
-    sourceName: string
-    targetName: string
+    id?: string
+    startId?: string
+    endId?: string
+    /** Display names resolved from startId/endId (reference-graph endpoints) */
+    sourceName?: string
+    targetName?: string
+    label?: string
     description: string
-    weight: number
+    weight?: number
   }
   interface KbVertex {
+    id?: string
     name: string
     description: string
   }

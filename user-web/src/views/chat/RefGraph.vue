@@ -30,14 +30,12 @@ function getAndRenderGraph() {
 function parseAndRender(graphRef: KnowledgeBase.QaRecordGraphRef) {
   cy.$('node').remove()
   cy.$('edge').remove()
-  // 实体名为节点键（与文档图谱页一致，不依赖图库内部 id）；同名顶点去重
-  const nodes = graphRef.vertices
-    .filter((item, idx, arr) => arr.findIndex((v) => v.name === item.name) === idx)
-    .map((item) => {
-      return { group: 'nodes', data: { id: item.name, name: item.name, description: item.description } }
-    })
+  // 顶点 id 为节点键（跨知识库子图同名实体各自成节点）；sourceName/targetName 仅作展示
+  const nodes = graphRef.vertices.map((item) => {
+    return { group: 'nodes', data: { id: item.id, name: item.name, description: item.description } }
+  })
   const edges = graphRef.edges.map((item) => {
-    return { group: 'edges', data: { source: item.sourceName, target: item.targetName, description: item.description } }
+    return { group: 'edges', data: { source: item.startId, target: item.endId, sourceName: item.sourceName, targetName: item.targetName, description: item.description } }
   })
   renderGraph(nodes, edges)
 }

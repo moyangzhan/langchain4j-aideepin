@@ -42,6 +42,7 @@ public class CharacterMessageRefGraphService extends ServiceImpl<CharacterMessag
         if (null == result.getEdges()) {
             result.setEdges(Collections.emptyList());
         }
+        result.resolveEdgeNames();
         return result;
     }
 
