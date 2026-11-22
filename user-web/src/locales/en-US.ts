@@ -271,6 +271,9 @@ export default {
       noAvailableVoice: 'No available voices in the system',
       confirmDeleteRole: 'Are you sure you want to delete the {title} role?',
     },
+    relayout: 'Relayout',
+    entity: 'Entity',
+    relation: 'Relation',
   },
   draw: {
     title: 'Draw',

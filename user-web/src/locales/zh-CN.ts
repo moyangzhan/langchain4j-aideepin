@@ -271,6 +271,9 @@ export default {
       noAvailableVoice: '系统没有可用的音色',
       confirmDeleteRole: '确定删除 {title} 角色？',
     },
+    relayout: '重新布局',
+    entity: '实体',
+    relation: '关系',
   },
   draw: {
     title: '绘图',
