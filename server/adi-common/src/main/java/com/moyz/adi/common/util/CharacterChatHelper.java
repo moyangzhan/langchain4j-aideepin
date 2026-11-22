@@ -37,6 +37,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CHARACTER_ID;
+import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CREATE_TIME;
 import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.KB_UUID;
 import static com.moyz.adi.common.cosntant.AdiConstant.RAG_RETRIEVE_MIN_SCORE_DEFAULT;
 
@@ -143,14 +144,10 @@ public class CharacterChatHelper {
     }
 
     /**
-     * 将检索结果分离为记忆文本与知识文本，并追加指令记忆全量注入段。
-     * 记忆文本融合语义知识与 episodic「过往事件」两个检索通道，加上 instruction
-     * 「行为规则」全量注入（当前生效的规则集，不按话题相似度筛选）。
+     * 将检索结果分离为记忆文本与知识文本，并追加指令记忆全量注入段；episodic 行渲染为「learned on yyyy-MM-dd: content」。
      * <p>
-     * Separate retrieved content into memory text and knowledge text, then append the
-     * instruction section. Memory merges the semantic and episodic retrieval channels
-     * plus the instruction "how you should work" full-set injection (the currently
-     * effective rules; no topic-similarity filtering).
+     * Separate retrieved content into memory and knowledge text, append the full instruction section;
+     * each episodic line renders as "learned on yyyy-MM-dd: content".
      * </p>
      */
     public static Pair<String, String> buildMemoryAndKnowledge(List<RetrieverWrapper> wrappers, Long characterId) {
@@ -169,7 +166,13 @@ public class CharacterChatHelper {
                 }
             } else if (AdiConstant.RetrieveContentFrom.CHARACTER_MEMORY_EPISODIC.equals(retrieveType)) {
                 for (Content content : response) {
-                    episodicMemory.append("- ").append(content.textSegment().text()).append("\n");
+                    String learnedDate = content.textSegment().metadata().getString(CREATE_TIME);
+                    if (StringUtils.isNotBlank(learnedDate)) {
+                        episodicMemory.append("- learned on ").append(learnedDate).append(": ")
+                                .append(content.textSegment().text()).append("\n");
+                    } else {
+                        episodicMemory.append("- ").append(content.textSegment().text()).append("\n");
+                    }
                 }
             } else if (AdiConstant.RetrieveContentFrom.KNOWLEDGE_BASE.equals(retrieveType)) {
                 for (Content content : response) {

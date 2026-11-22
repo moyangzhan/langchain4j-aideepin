@@ -5,6 +5,7 @@ import com.moyz.adi.common.cosntant.AdiConstant;
 import com.moyz.adi.common.entity.CharacterMemorySemantic;
 import com.moyz.adi.common.memory.vo.BatchActionMemories;
 import com.moyz.adi.common.service.CharacterMemorySemanticService;
+import com.moyz.adi.common.util.LocalDateTimeUtil;
 import com.moyz.adi.common.util.UuidUtil;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -21,6 +22,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -28,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CHARACTER_ID;
+import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CREATE_TIME;
 
 /**
  * Semantic memory service: deduplicating merge candidates retrieval and
@@ -36,16 +39,16 @@ import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CHARACTER_ID;
  * relational row uuid in canonical form). ADD embeds the whole fact as one
  * segment; UPDATE re-embeds the new text under the same uuid; DELETE removes the
  * vector row first, then soft-deletes the relational row. The vector side is a
- * pure retrieval index: metadata carries only the conv_id scoping key, and the
- * segment text is the uuid placeholder (langchain4j requires non-blank text;
- * hydration never reads it). Does not call LLMs and does not account for cost —
+ * pure retrieval index: metadata carries the conv_id scoping key plus a create_time write-moment snapshot
+ * (troubleshooting only, never read by retrieval or hydration), and the segment text is the uuid placeholder
+ * (langchain4j requires non-blank text; hydration never reads it). Does not call LLMs and does not account for cost —
  * the caller (dispatcher) drives those.
  * <p>
  * 语义记忆服务：合并候选检索与 ADD / UPDATE / DELETE 执行，先写关系事实源行、再写语义
  * 向量库（向量行主键 = 关系行 uuid 的 canonical 形）。ADD 整条 fact 一次直嵌；UPDATE
  * 同 uuid 重嵌新文本；DELETE 先移向量行、后软删关系行。向量侧为纯检索索引：metadata
- * 只带 conv_id 检索键，segment 文本为 uuid 占位（langchain4j 要求非空文本；回表从不读
- * 它）。不调 LLM、不计 token 成本，由调度器统筹这些事项。
+ * 带 conv_id 检索键与 create_time 写入时刻快照（排查用，检索与回表逻辑不读），segment
+ * 文本为 uuid 占位（langchain4j 要求非空文本；回表从不读它）。不调 LLM、不计 token 成本，由调度器统筹这些事项。
  */
 @Slf4j
 @Service
@@ -216,7 +219,9 @@ public class SemanticMemoryService {
 
     private void addToVector(String uuid, Long characterId, Embedding embedding) {
         String canonicalId = UuidUtil.toCanonical(uuid);
-        Metadata metadata = new Metadata(Map.of(CHARACTER_ID, characterId));
+        Metadata metadata = new Metadata(Map.of(
+                CHARACTER_ID, characterId,
+                CREATE_TIME, LocalDateTimeUtil.format(LocalDateTime.now(), LocalDateTimeUtil.PATTERN_DEFAULT)));
         semanticEmbeddingStore.addAll(List.of(canonicalId), List.of(embedding),
                 List.of(TextSegment.from(canonicalId, metadata)));
     }

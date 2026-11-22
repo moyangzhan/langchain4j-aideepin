@@ -17,12 +17,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 语义记忆通道命中回表处理器：向量命中按 embeddingId（=记忆 uuid 的 canonical 形）批量回
- * 关系表取内容；无关系行的命中丢弃并告警（孤儿语义与知识库通道一致）。
+ * 语义记忆通道命中回表处理器：向量命中按 embeddingId（=记忆 uuid 的 canonical 形）批量回关系表取内容。
+ * 无关系行的命中丢弃并告警，处置与知识库通道一致。
  * <p>
- * Post-processor for the semantic memory channel: batch-hydrates hits back to the
- * relational table by embeddingId (the memory uuid in canonical form). Hits without a
- * relational row are dropped with a warning (same orphan semantics as the KB channel).
+ * Post-processor for the semantic memory channel: batch-hydrates hits back to the relational table by embeddingId (the memory uuid in canonical form).
+ * Hits without a relational row are dropped with a warning, same handling as the KB channel.
  */
 @Slf4j
 @Component

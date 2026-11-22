@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,13 +26,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * 记忆命中回表处理器契约钉子：命中内容从关系行取（向量 text 只是占位）、保留原命中 metadata
- * 供 scoping/引用、无关系行或软删行的命中丢弃且不写分数表（孤儿语义与知识库通道一致）。
+ * 记忆命中回表处理器契约钉子：命中内容从关系行取（向量 text 只是占位）、保留原命中 metadata 供 scoping/引用、无关系行或软删行的命中丢弃且不写分数表，处置与知识库通道一致。
  * <p>
- * Pins for the memory hydration processors: content comes from the relational row (vector
- * text is only a placeholder), the hit's metadata is preserved for scoping/refs, and hits
- * without an alive relational row are dropped without entering the score map (same orphan
- * semantics as the KB channel).
+ * Pins for the memory hydration processors: content comes from the relational row (vector text is only a placeholder), the hit's metadata is preserved for scoping/refs, and hits without an alive relational row are dropped without entering the score map, same handling as the KB channel.
  */
 class MemoryExpandProcessorTest {
 
@@ -87,6 +84,7 @@ class MemoryExpandProcessorTest {
         CharacterMemoryEpisodic row = new CharacterMemoryEpisodic();
         row.setUuid(uuid);
         row.setContent("用户去了北京");
+        row.setCreateTime(LocalDateTime.of(2026, 11, 3, 9, 0));
         when(episodicService.mapByUuids(anyList())).thenReturn(Map.of(uuid, row));
 
         EpisodicMemoryExpandProcessor processor = new EpisodicMemoryExpandProcessor();
@@ -98,7 +96,30 @@ class MemoryExpandProcessorTest {
 
         assertEquals(1, result.size());
         assertEquals("用户去了北京", result.get(0).textSegment().text());
+        assertEquals("2026-11-03", result.get(0).textSegment().metadata().getString("create_time"));
         assertEquals(1, embeddingToScore.size());
+    }
+
+    @Test
+    void episodicLearnedDateOverwritesVectorLegacyCreateTime() {
+        String uuid = "0193a0b0c0d0e0f0a0b0c0d0e0f0a0b2";
+        CharacterMemoryEpisodic row = new CharacterMemoryEpisodic();
+        row.setUuid(uuid);
+        row.setContent("用户买了梨子");
+        row.setCreateTime(LocalDateTime.of(2026, 11, 12, 10, 30));
+        when(episodicService.mapByUuids(anyList())).thenReturn(Map.of(uuid, row));
+
+        EpisodicMemoryExpandProcessor processor = new EpisodicMemoryExpandProcessor();
+        ReflectionTestUtils.setField(processor, "characterMemoryEpisodicService", episodicService);
+
+        Map<String, Object> legacyMeta = new HashMap<>(Map.of("conv_id", 7, "create_time", "2026-10-01 09:15:00"));
+        EmbeddingMatch<TextSegment> legacyHit = new EmbeddingMatch<>(0.9, canonical(uuid),
+                new Embedding(new float[]{0.1f}),
+                TextSegment.from("stale vector text", new Metadata(legacyMeta)));
+
+        List<Content> result = processor.process(Query.from("q"), List.of(legacyHit), new HashMap<>());
+
+        assertEquals("2026-11-12", result.get(0).textSegment().metadata().getString("create_time"));
     }
 
     @Test

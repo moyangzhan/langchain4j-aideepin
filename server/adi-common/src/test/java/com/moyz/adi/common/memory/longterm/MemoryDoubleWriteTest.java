@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -209,7 +210,7 @@ class MemoryDoubleWriteTest {
     }
 
     @Test
-    void addToVectorCarriesOnlyScopingMetadataAndUuidPlaceholderText() {
+    void addToVectorCarriesScopingAndSnapshotMetadataAndUuidPlaceholderText() {
         newSemanticService().applyActions(batchOf(addAction("用户养了一只猫")), 7L, 42L, emptyCandidates());
 
         @SuppressWarnings("unchecked")
@@ -218,8 +219,9 @@ class MemoryDoubleWriteTest {
         ArgumentCaptor<List<TextSegment>> segmentsCaptor = ArgumentCaptor.forClass(List.class);
         verify(semanticStore).addAll(idsCaptor.capture(), anyList(), segmentsCaptor.capture());
         Metadata metadata = segmentsCaptor.getValue().get(0).metadata();
-        assertEquals(1, metadata.toMap().size());
+        assertEquals(2, metadata.toMap().size());
         assertEquals(7, metadata.getInteger("conv_id"));
+        assertTrue(metadata.getString("create_time").matches("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}"));
         assertEquals(idsCaptor.getValue().get(0), segmentsCaptor.getValue().get(0).text());
         assertEquals(36, segmentsCaptor.getValue().get(0).text().length());
     }
@@ -273,7 +275,7 @@ class MemoryDoubleWriteTest {
     }
 
     @Test
-    void episodicVectorSegmentCarriesOnlyScopingMetadataAndUuidPlaceholderText() {
+    void episodicVectorSegmentCarriesScopingAndSnapshotMetadataAndUuidPlaceholderText() {
         ExtractedEpisodicEvent event = new ExtractedEpisodicEvent();
         event.setSummary("用户去了北京");
         event.setEventType("TRAVEL");
@@ -287,8 +289,9 @@ class MemoryDoubleWriteTest {
         ArgumentCaptor<List<TextSegment>> segmentsCaptor = ArgumentCaptor.forClass(List.class);
         verify(episodicStore).addAll(idsCaptor.capture(), anyList(), segmentsCaptor.capture());
         Metadata metadata = segmentsCaptor.getValue().get(0).metadata();
-        assertEquals(1, metadata.toMap().size());
+        assertEquals(2, metadata.toMap().size());
         assertEquals(7, metadata.getInteger("conv_id"));
+        assertTrue(metadata.getString("create_time").matches("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}"));
         assertEquals(idsCaptor.getValue().get(0), segmentsCaptor.getValue().get(0).text());
         assertEquals(36, segmentsCaptor.getValue().get(0).text().length());
     }

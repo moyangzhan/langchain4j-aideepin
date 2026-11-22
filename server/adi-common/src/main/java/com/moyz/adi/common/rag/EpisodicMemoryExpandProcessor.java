@@ -3,6 +3,7 @@ package com.moyz.adi.common.rag;
 import com.moyz.adi.common.entity.CharacterMemoryEpisodic;
 import com.moyz.adi.common.service.CharacterMemoryEpisodicService;
 import com.moyz.adi.common.util.UuidUtil;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
@@ -13,17 +14,12 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 情景记忆通道命中回表处理器：向量命中按 embeddingId（=记忆 uuid 的 canonical 形）批量回
- * 关系表取内容；无关系行的命中丢弃并告警（孤儿语义与知识库通道一致）。
- * <p>
- * Post-processor for the episodic memory channel: batch-hydrates hits back to the
- * relational table by embeddingId (the memory uuid in canonical form). Hits without a
- * relational row are dropped with a warning (same orphan semantics as the KB channel).
- */
+import static com.moyz.adi.common.cosntant.AdiConstant.MetadataKey.CREATE_TIME;
+
 @Slf4j
 @Component
 public class EpisodicMemoryExpandProcessor implements RetrievedContentProcessor {
@@ -47,7 +43,13 @@ public class EpisodicMemoryExpandProcessor implements RetrievedContentProcessor 
                 continue;
             }
             embeddingToScore.put(match.embeddingId(), match.score());
-            result.add(Content.from(TextSegment.from(row.getContent(), match.embedded().metadata())));
+            Map<String, Object> enriched = new HashMap<>(match.embedded().metadata().toMap());
+            if (row.getCreateTime() != null) {
+                enriched.put(CREATE_TIME, row.getCreateTime().toLocalDate().toString());
+            } else {
+                enriched.remove(CREATE_TIME);
+            }
+            result.add(Content.from(TextSegment.from(row.getContent(), new Metadata(enriched))));
         }
         return result;
     }
