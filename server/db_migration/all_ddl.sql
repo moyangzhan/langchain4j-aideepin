@@ -11,6 +11,30 @@ SET client_encoding = 'UTF8';
 CREATE SCHEMA public;
 
 -- ============================================================
+-- Table of contents (modules in file order)
+-- ============================================================
+-- Common                          update_modified_column() trigger function
+-- Drawing                         adi_draw, adi_draw_star, adi_draw_comment
+-- Model Platform & AI Model       adi_model_platform, adi_ai_model
+-- Character                       adi_character_preset, adi_character, adi_character_preset_rel,
+--                                 adi_character_memory_episodic, adi_character_memory_semantic,
+--                                 adi_character_memory_instruction, adi_character_message,
+--                                 adi_character_message_ref_embedding, adi_character_message_ref_graph,
+--                                 adi_character_message_ref_memory_embedding
+-- LLM Call Record                 adi_llm_call_record
+-- File & Prompt                   adi_file, adi_prompt
+-- System Config & User            adi_sys_config, adi_user, adi_user_day_cost, adi_user_ext_api_key
+-- Knowledge Base                  adi_knowledge_base, adi_document, adi_document_segment,
+--                                 adi_document_segment_question, adi_document_segment_child_chunk,
+--                                 adi_knowledge_base_star, adi_knowledge_base_message,
+--                                 adi_knowledge_base_message_ref_embedding
+--   Graph RAG                     adi_knowledge_base_graph_segment, adi_knowledge_base_message_ref_graph
+-- Workflow                        adi_workflow_component, adi_workflow, adi_workflow_node,
+--                                 adi_workflow_edge, adi_workflow_runtime, adi_workflow_runtime_node
+-- MCP                             adi_mcp, adi_user_mcp
+-- Graph Provenance & Index Task   adi_document_graph_vertex, adi_document_graph_edge, adi_index_task
+
+-- ============================================================
 -- Common: update_time trigger function
 -- ============================================================
 CREATE OR REPLACE FUNCTION update_modified_column()
@@ -1370,6 +1394,9 @@ create trigger trigger_user_mcp
     for each row
 execute procedure update_modified_column();
 
+-- ============================================================
+-- Graph Provenance & Index Task: segment-level graph lineage and async index tasks
+-- ============================================================
 
 create table adi_document_graph_vertex
 (
