@@ -11,6 +11,8 @@ import java.util.regex.Pattern;
 public class AskReqValidator implements
         ConstraintValidator<AskReqCheck, AskReq> {
 
+    private static final String UUID_REGEX = "^[0-9a-fA-F]{32}$";
+
     @Override
     public void initialize(AskReqCheck constraintAnnotation) {
         //无需校验
@@ -19,22 +21,24 @@ public class AskReqValidator implements
     @Override
     public boolean isValid(AskReq value, ConstraintValidatorContext context) {
         if (StringUtils.isAllBlank(value.getPrompt(), value.getRegenerateQuestionUuid(), value.getAudioUuid())) {
-            throw new IllegalArgumentException("prompt and regenerateMsgUuid are empty");
+            return reject(context, "prompt, regenerateQuestionUuid and audioUuid are all empty");
         }
-
-        String uuidRegex = "^[0-9a-fA-F]{8}[0-9a-fA-F]{4}4[0-9a-fA-F]{3}[89abAB][0-9a-fA-F]{3}[0-9a-fA-F]{12}$";
-        //check character uuid
-        boolean isValid = Pattern.matches(uuidRegex, value.getCharacterUuid());
-        if (!isValid) {
-            throw new IllegalArgumentException("character uuid error");
+        if (!isUuid(value.getCharacterUuid())) {
+            return reject(context, "characterUuid is invalid");
         }
-        //check regenerate msg uuid
-        if (StringUtils.isNotBlank(value.getRegenerateQuestionUuid())) {
-            boolean isValid2 = Pattern.matches(uuidRegex, value.getRegenerateQuestionUuid());
-            if (!isValid2) {
-                throw new IllegalArgumentException("msg uuid error");
-            }
+        if (StringUtils.isNotBlank(value.getRegenerateQuestionUuid()) && !isUuid(value.getRegenerateQuestionUuid())) {
+            return reject(context, "regenerateQuestionUuid is invalid");
         }
         return true;
+    }
+
+    private boolean reject(ConstraintValidatorContext context, String message) {
+        context.disableDefaultConstraintViolation();
+        context.buildConstraintViolationWithTemplate(message).addConstraintViolation();
+        return false;
+    }
+
+    private boolean isUuid(String value) {
+        return StringUtils.isNotBlank(value) && Pattern.matches(UUID_REGEX, value);
     }
 }

@@ -19,7 +19,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Retention(RUNTIME)
 @Documented
 public @interface AskReqCheck {
-    String message() default "dddd";
+    String message() default "Invalid ask request";
 
     Class<?>[] groups() default {};
 
