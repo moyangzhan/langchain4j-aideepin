@@ -498,3 +498,17 @@ A free remote MCP service for live web search and URL fetching. No account or AP
 - **web_search**: Search the web for current information.
 - **web_fetch**: Extract clean Markdown from a URL.',
         true);
+
+-- Keenable Search, hosted Streamable HTTP service with no account or API key required
+insert into adi_mcp (uuid, title, transport_type, sse_url, sse_timeout, install_type, website, remark, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'Keenable Search', 'streamable_http',
+        'https://api.keenable.ai/mcp-public', 30, 'remote', 'https://keenable.ai',
+        '# Keenable Search MCP
+
+A remote MCP service for live web search and page fetching, served from Keenable''s own index. No account or API key is required.
+
+## Tools
+
+- **search_web_pages**: Search the web for current pages, optionally narrowed by site and publish date.
+- **fetch_page_content**: Read a URL as clean Markdown.',
+        true);

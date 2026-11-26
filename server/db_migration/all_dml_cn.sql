@@ -497,3 +497,17 @@ values (replace(gen_random_uuid()::text, '-', ''), 'Parallel Search', 'streamabl
 - **web_search**：搜索网页上的最新信息。
 - **web_fetch**：从指定网址提取简洁的 Markdown 内容。',
         true);
+
+-- Keenable Search，远程 Streamable HTTP 服务，无需帐户或 API 密钥
+insert into adi_mcp (uuid, title, transport_type, sse_url, sse_timeout, install_type, website, remark, is_enable)
+values (replace(gen_random_uuid()::text, '-', ''), 'Keenable Search', 'streamable_http',
+        'https://api.keenable.ai/mcp-public', 30, 'remote', 'https://keenable.ai',
+        '# Keenable Search MCP
+
+远程 MCP 服务，基于 Keenable 自有索引提供实时网页搜索和网页内容读取。无需帐户或 API 密钥。
+
+## 工具
+
+- **search_web_pages**：搜索网页上的最新内容，可按站点和发布日期筛选。
+- **fetch_page_content**：将指定网址读取为简洁的 Markdown 内容。',
+        true);
